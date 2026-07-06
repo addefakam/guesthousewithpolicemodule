@@ -1,0 +1,22 @@
+{
+  "name": "Guest House Management",
+  "short_name": "GHMS",
+  "description": "Guest House Management System",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0B101E",
+  "theme_color": "#D4AF37",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230B101E'/><text y='50' x='50' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='%23D4AF37'>GH</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230B101E'/><text y='50' x='50' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='%23D4AF37'>GH</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GHMS — Guest House Management System</title>
+  <meta name="description" content="Professional Guest House Management System for managing rooms, reservations, daytime services, expenses and resources.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800&family=Playfair+Display:wght@400;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ========= SIDEBAR ========= -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">🏡</div>
+        <div class="brand-info">
+          <span class="brand-name" id="sidebar-house-name">GuestHouse</span>
+          <span class="brand-sub" data-i18n="brand.sub">Management System</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.overview">Overview</p>
+          <a class="nav-item active" data-page="dashboard" href="#">
+            <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
+            <span class="nav-text" data-i18n="nav.dashboard">Dashboard</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.operations">Operations</p>
+          <a class="nav-item" data-page="rooms" href="#" data-role="superuser">
+            <span class="nav-icon"><i data-lucide="bed-double"></i></span>
+            <span class="nav-text" data-i18n="nav.rooms">Rooms</span>
+          </a>
+          <a class="nav-item" data-page="guests" href="#">
+            <span class="nav-icon"><i data-lucide="users"></i></span>
+            <span class="nav-text" data-i18n="nav.guests">Guests</span>
+          </a>
+          <a class="nav-item" data-page="reservations" href="#">
+            <span class="nav-icon"><i data-lucide="calendar-check"></i></span>
+            <span class="nav-text" data-i18n="nav.reservations">Reservations</span>
+          </a>
+          <a class="nav-item" data-page="calendar" href="#">
+            <span class="nav-icon"><i data-lucide="calendar-days"></i></span>
+            <span class="nav-text" data-i18n="nav.calendar">Room Calendar</span>
+          </a>
+          <a class="nav-item" data-page="daytime" href="#">
+            <span class="nav-icon"><i data-lucide="sun"></i></span>
+            <span class="nav-text" data-i18n="nav.daytime">Daytime Services</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.finance">Finance & Resources</p>
+          <a class="nav-item" data-page="expenses" href="#">
+            <span class="nav-icon"><i data-lucide="receipt"></i></span>
+            <span class="nav-text" data-i18n="nav.expenses">Expenses</span>
+          </a>
+          <a class="nav-item" data-page="resources" href="#">
+            <span class="nav-icon"><i data-lucide="package-2"></i></span>
+            <span class="nav-text" data-i18n="nav.resources">Resources</span>
+          </a>
+          <a class="nav-item" data-page="reports" href="#">
+            <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span>
+            <span class="nav-text" data-i18n="nav.reports">Reports</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.administration">Administration</p>
+          <a class="nav-item" data-page="users" href="#" data-role="superuser">
+            <span class="nav-icon"><i data-lucide="shield"></i></span>
+            <span class="nav-text" data-i18n="nav.users">User Management</span>
+          </a>
+          <a class="nav-item" data-page="feedback" href="#">
+            <span class="nav-icon"><i data-lucide="star"></i></span>
+            <span class="nav-text" data-i18n="nav.feedback">Guest Feedback</span>
+          </a>
+        </div>
+
+        <div class="nav-group">
+          <a class="nav-item" data-page="settings" href="#" data-role="superuser">
+            <span class="nav-icon"><i data-lucide="settings-2"></i></span>
+            <span class="nav-text" data-i18n="nav.settings">Settings</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="lang-switcher">
+          <button class="lang-btn active" id="lang-en" data-lang="en" title="English">EN</button>
+          <div class="lang-divider"></div>
+          <button class="lang-btn" id="lang-am" data-lang="am" title="Amharic">አማ</button>
+        </div>
+        <div class="sidebar-version">v1.0.0</div>
+      </div>
+    </aside>
+
+    <!-- ========= MAIN WRAPPER ========= -->
+    <div class="main-wrapper">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="top-left">
+          <button id="sidebar-toggle" class="icon-btn" title="Toggle Sidebar">
+            <i data-lucide="panel-left"></i>
+          </button>
+          <div class="breadcrumb">
+            <span class="breadcrumb-home" data-i18n="brand.sub">GuestHouse</span>
+            <i data-lucide="chevron-right" class="breadcrumb-sep"></i>
+            <span id="page-title" class="breadcrumb-current" data-i18n="nav.dashboard">Dashboard</span>
+          </div>
+        </div>
+        <div class="top-right">
+          <div class="date-display">
+            <i data-lucide="calendar"></i>
+            <span id="current-date"></span>
+          </div>
+          <button id="notification-bell" class="icon-btn" title="Notifications" style="position:relative;margin-right:0.5rem;">
+            <i data-lucide="bell"></i>
+            <span id="notif-badge" class="notif-badge hidden">0</span>
+          </button>
+          <div class="owner-badge">
+            <div class="owner-avatar" id="owner-avatar">GH</div>
+            <div class="owner-details">
+              <span class="owner-name" id="owner-name-display">Guest House</span>
+              <span class="owner-role" id="owner-role-display" data-i18n="role.owner">Owner</span>
+            </div>
+            <button id="logout-btn" class="icon-btn logout-btn" title="Logout" style="margin-left: 0.5rem; color: var(--danger);">
+              <i data-lucide="log-out"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main id="page-content" class="page-content">
+        <div class="init-loader">
+          <div class="spinner-ring"></div>
+          <p>Loading...</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ========= MODAL ========= -->
+  <div id="modal-overlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div id="modal-box" class="modal-box">
+      <div class="modal-head">
+        <h2 id="modal-title" class="modal-title">Modal</h2>
+        <button id="modal-close-btn" class="icon-btn modal-close" aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ========= CONFIRM DIALOG ========= -->
+  <div id="confirm-overlay" class="overlay hidden" role="alertdialog">
+    <div class="confirm-box">
+      <div class="confirm-icon-wrap">
+        <i data-lucide="alert-triangle"></i>
+      </div>
+      <h3 id="confirm-title-text"></h3>
+      <p id="confirm-msg-text"></p>
+      <div class="confirm-btns">
+        <button id="confirm-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button id="confirm-ok-btn" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= TOAST CONTAINER ========= -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- ========= LOGIN OVERLAY ========= -->
+  <div id="login-overlay" class="login-overlay hidden">
+    <div class="login-box">
+      <div class="brand-logo" style="margin: 0 auto 1rem; width: 48px; height: 48px;">🏡</div>
+      <h2 style="text-align: center; margin-bottom: 0.5rem;">GuestHouse</h2>
+      <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">Please sign in to continue</p>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-username" class="form-control" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" class="form-control" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App entry point -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

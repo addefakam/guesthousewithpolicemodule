@@ -1,0 +1,1443 @@
+     1→     1→/* ============================================================
+     2→     2→   GHMS — Guest House Management System
+     3→     3→   Design System: Dark Luxury + Glassmorphism
+     4→     4→   ============================================================ */
+     5→     5→
+     6→     6→/* ---- Google Fonts (Ethiopian + Latin) ---- */
+     7→     7→@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;500;600;700&display=swap');
+     8→     8→
+     9→     9→/* ---- CSS Custom Properties ---- */
+    10→    10→:root {
+    11→    11→  /* Color Palette */
+    12→    12→  --bg-base:      #070d1a;
+    13→    13→  --bg-surface:   #0c1426;
+    14→    14→  --bg-elevated:  #121e36;
+    15→    15→  --bg-card:      rgba(255,255,255,0.035);
+    16→    16→  --bg-card-hover:rgba(255,255,255,0.065);
+    17→    17→
+    18→    18→  /* Brand Gold */
+    19→    19→  --gold:         #f5b945;
+    20→    20→  --gold-dim:     #c99628;
+    21→    21→  --gold-glow:    rgba(245,185,69,0.18);
+    22→    22→  --gold-subtle:  rgba(245,185,69,0.08);
+    23→    23→
+    24→    24→  /* Accent Colors */
+    25→    25→  --green:        #22c55e;
+    26→    26→  --green-dim:    rgba(34,197,94,0.15);
+    27→    27→  --red:          #ef4444;
+    28→    28→  --red-dim:      rgba(239,68,68,0.15);
+    29→    29→  --blue:         #3b82f6;
+    30→    30→  --blue-dim:     rgba(59,130,246,0.15);
+    31→    31→  --orange:       #f97316;
+    32→    32→  --orange-dim:   rgba(249,115,22,0.15);
+    33→    33→  --purple:       #a855f7;
+    34→    34→  --purple-dim:   rgba(168,85,247,0.15);
+    35→    35→  --cyan:         #06b6d4;
+    36→    36→  --cyan-dim:     rgba(6,182,212,0.15);
+    37→    37→
+    38→    38→  /* Text */
+    39→    39→  --text-primary:   #eef2ff;
+    40→    40→  --text-secondary: #8b96b5;
+    41→    41→  --text-muted:     #4a5675;
+    42→    42→  --text-gold:      #f5b945;
+    43→    43→
+    44→    44→  /* Borders */
+    45→    45→  --border:         rgba(255,255,255,0.07);
+    46→    46→  --border-hover:   rgba(255,255,255,0.15);
+    47→    47→  --border-gold:    rgba(245,185,69,0.3);
+    48→    48→
+    49→    49→  /* Layout */
+    50→    50→  --sidebar-w:      256px;
+    51→    51→  --topbar-h:       62px;
+    52→    52→  --radius-xs:      6px;
+    53→    53→  --radius-sm:      10px;
+    54→    54→  --radius-md:      14px;
+    55→    55→  --radius-lg:      20px;
+    56→    56→  --radius-xl:      28px;
+    57→    57→  --radius-pill:    999px;
+    58→    58→
+    59→    59→  /* Typography */
+    60→    60→  --font-sans:   'Inter', 'Noto Sans Ethiopic', sans-serif;
+    61→    61→  --font-serif:  'Playfair Display', serif;
+    62→    62→
+    63→    63→  /* Shadows */
+    64→    64→  --shadow-sm:   0 2px 8px rgba(0,0,0,0.25);
+    65→    65→  --shadow-md:   0 4px 20px rgba(0,0,0,0.35);
+    66→    66→  --shadow-lg:   0 8px 40px rgba(0,0,0,0.45);
+    67→    67→  --shadow-gold: 0 0 30px rgba(245,185,69,0.12);
+    68→    68→
+    69→    69→  /* Transitions */
+    70→    70→  --ease:   all 0.2s cubic-bezier(0.4,0,0.2,1);
+    71→    71→  --ease-s: all 0.35s cubic-bezier(0.4,0,0.2,1);
+    72→    72→}
+    73→    73→
+    74→    74→/* ---- Reset & Base ---- */
+    75→    75→*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    76→    76→
+    77→    77→html { scroll-behavior:smooth; }
+    78→    78→
+    79→    79→body {
+    80→    80→  font-family: var(--font-sans);
+    81→    81→  background: var(--bg-base);
+    82→    82→  color: var(--text-primary);
+    83→    83→  font-size: 14px;
+    84→    84→  line-height: 1.6;
+    85→    85→  min-height: 100vh;
+    86→    86→  overflow-x: hidden;
+    87→    87→}
+    88→    88→
+    89→    89→/* Amharic language adjustments */
+    90→    90→[data-lang="am"] { font-family: 'Noto Sans Ethiopic', var(--font-sans); }
+    91→    91→[data-lang="am"] h1,
+    92→    92→[data-lang="am"] h2,
+    93→    93→[data-lang="am"] h3 { font-family: 'Noto Sans Ethiopic', sans-serif; }
+    94→    94→
+    95→    95→/* Scrollbar */
+    96→    96→::-webkit-scrollbar { width:6px; height:6px; }
+    97→    97→::-webkit-scrollbar-track { background:transparent; }
+    98→    98→::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+    99→    99→::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.2); }
+   100→   100→
+   101→   101→a { text-decoration:none; color:inherit; }
+   102→   102→button { cursor:pointer; border:none; background:none; font-family:inherit; }
+   103→   103→input, select, textarea { font-family:inherit; }
+   104→   104→img { max-width:100%; }
+   105→   105→
+   106→   106→/* ============================================================
+   107→   107→   LAYOUT
+   108→   108→   ============================================================ */
+   109→   109→#app {
+   110→   110→  display: flex;
+   111→   111→  min-height: 100vh;
+   112→   112→  position: relative;
+   113→   113→}
+   114→   114→
+   115→   115→/* ---- Sidebar ---- */
+   116→   116→.sidebar {
+   117→   117→  width: var(--sidebar-w);
+   118→   118→  min-height: 100vh;
+   119→   119→  background: linear-gradient(180deg, rgba(12,20,38,0.98) 0%, rgba(7,13,26,0.98) 100%);
+   120→   120→  border-right: 1px solid var(--border);
+   121→   121→  display: flex;
+   122→   122→  flex-direction: column;
+   123→   123→  position: fixed;
+   124→   124→  top: 0;
+   125→   125→  left: 0;
+   126→   126→  bottom: 0;
+   127→   127→  z-index: 100;
+   128→   128→  transition: var(--ease-s);
+   129→   129→  backdrop-filter: blur(20px);
+   130→   130→  overflow-y: auto;
+   131→   131→  overflow-x: hidden;
+   132→   132→}
+   133→   133→
+   134→   134→.sidebar.collapsed {
+   135→   135→  width: 70px;
+   136→   136→}
+   137→   137→
+   138→   138→/* Brand */
+   139→   139→.sidebar-brand {
+   140→   140→  display: flex;
+   141→   141→  align-items: center;
+   142→   142→  gap: 12px;
+   143→   143→  padding: 20px 18px;
+   144→   144→  border-bottom: 1px solid var(--border);
+   145→   145→  min-height: 72px;
+   146→   146→}
+   147→   147→
+   148→   148→.brand-logo {
+   149→   149→  width: 40px;
+   150→   150→  height: 40px;
+   151→   151→  border-radius: var(--radius-sm);
+   152→   152→  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+   153→   153→  display: flex;
+   154→   154→  align-items: center;
+   155→   155→  justify-content: center;
+   156→   156→  font-size: 20px;
+   157→   157→  flex-shrink: 0;
+   158→   158→  box-shadow: var(--shadow-gold);
+   159→   159→}
+   160→   160→
+   161→   161→.brand-info {
+   162→   162→  display: flex;
+   163→   163→  flex-direction: column;
+   164→   164→  overflow: hidden;
+   165→   165→  transition: var(--ease-s);
+   166→   166→}
+   167→   167→
+   168→   168→.brand-name {
+   169→   169→  font-size: 14px;
+   170→   170→  font-weight: 700;
+   171→   171→  color: var(--gold);
+   172→   172→  white-space: nowrap;
+   173→   173→  overflow: hidden;
+   174→   174→  text-overflow: ellipsis;
+   175→   175→}
+   176→   176→
+   177→   177→.brand-sub {
+   178→   178→  font-size: 10px;
+   179→   179→  color: var(--text-muted);
+   180→   180→  white-space: nowrap;
+   181→   181→}
+   182→   182→
+   183→   183→.sidebar.collapsed .brand-info,
+   184→   184→.sidebar.collapsed .nav-text,
+   185→   185→.sidebar.collapsed .nav-label,
+   186→   186→.sidebar.collapsed .sidebar-footer .lang-switcher,
+   187→   187→.sidebar.collapsed .sidebar-version { display:none; }
+   188→   188→
+   189→   189→/* Nav */
+   190→   190→.sidebar-nav {
+   191→   191→  flex: 1;
+   192→   192→  padding: 16px 10px;
+   193→   193→  display: flex;
+   194→   194→  flex-direction: column;
+   195→   195→  gap: 4px;
+   196→   196→}
+   197→   197→
+   198→   198→.nav-group {
+   199→   199→  margin-bottom: 8px;
+   200→   200→}
+   201→   201→
+   202→   202→.nav-label {
+   203→   203→  font-size: 10px;
+   204→   204→  font-weight: 600;
+   205→   205→  text-transform: uppercase;
+   206→   206→  letter-spacing: 0.08em;
+   207→   207→  color: var(--text-muted);
+   208→   208→  padding: 6px 10px 4px;
+   209→   209→  white-space: nowrap;
+   210→   210→}
+   211→   211→
+   212→   212→.nav-item {
+   213→   213→  display: flex;
+   214→   214→  align-items: center;
+   215→   215→  gap: 12px;
+   216→   216→  padding: 10px 12px;
+   217→   217→  border-radius: var(--radius-sm);
+   218→   218→  color: var(--text-secondary);
+   219→   219→  transition: var(--ease);
+   220→   220→  position: relative;
+   221→   221→  white-space: nowrap;
+   222→   222→}
+   223→   223→
+   224→   224→.nav-item:hover {
+   225→   225→  background: var(--bg-card-hover);
+   226→   226→  color: var(--text-primary);
+   227→   227→}
+   228→   228→
+   229→   229→.nav-item.active {
+   230→   230→  background: var(--gold-subtle);
+   231→   231→  color: var(--gold);
+   232→   232→  border: 1px solid var(--border-gold);
+   233→   233→}
+   234→   234→
+   235→   235→.nav-item.active::before {
+   236→   236→  content: '';
+   237→   237→  position: absolute;
+   238→   238→  left: 0;
+   239→   239→  top: 20%;
+   240→   240→  height: 60%;
+   241→   241→  width: 3px;
+   242→   242→  background: var(--gold);
+   243→   243→  border-radius: 0 3px 3px 0;
+   244→   244→}
+   245→   245→
+   246→   246→.nav-icon {
+   247→   247→  width: 20px;
+   248→   248→  height: 20px;
+   249→   249→  display: flex;
+   250→   250→  align-items: center;
+   251→   251→  justify-content: center;
+   252→   252→  flex-shrink: 0;
+   253→   253→}
+   254→   254→
+   255→   255→.nav-icon svg { width:18px; height:18px; }
+   256→   256→
+   257→   257→.nav-text {
+   258→   258→  font-size: 13.5px;
+   259→   259→  font-weight: 500;
+   260→   260→}
+   261→   261→
+   262→   262→/* Sidebar Footer */
+   263→   263→.sidebar-footer {
+   264→   264→  padding: 14px 16px;
+   265→   265→  border-top: 1px solid var(--border);
+   266→   266→  display: flex;
+   267→   267→  align-items: center;
+   268→   268→  justify-content: space-between;
+   269→   269→}
+   270→   270→
+   271→   271→.lang-switcher {
+   272→   272→  display: flex;
+   273→   273→  align-items: center;
+   274→   274→  gap: 4px;
+   275→   275→  background: var(--bg-card);
+   276→   276→  border: 1px solid var(--border);
+   277→   277→  border-radius: var(--radius-pill);
+   278→   278→  padding: 2px;
+   279→   279→}
+   280→   280→
+   281→   281→.lang-btn {
+   282→   282→  padding: 4px 10px;
+   283→   283→  border-radius: var(--radius-pill);
+   284→   284→  font-size: 11px;
+   285→   285→  font-weight: 600;
+   286→   286→  color: var(--text-muted);
+   287→   287→  transition: var(--ease);
+   288→   288→}
+   289→   289→
+   290→   290→.lang-btn.active {
+   291→   291→  background: var(--gold);
+   292→   292→  color: #070d1a;
+   293→   293→}
+   294→   294→
+   295→   295→.lang-divider {
+   296→   296→  width: 1px;
+   297→   297→  height: 12px;
+   298→   298→  background: var(--border);
+   299→   299→}
+   300→   300→
+   301→   301→.sidebar-version {
+   302→   302→  font-size: 10px;
+   303→   303→  color: var(--text-muted);
+   304→   304→}
+   305→   305→
+   306→   306→/* ---- Main Wrapper ---- */
+   307→   307→.main-wrapper {
+   308→   308→  flex: 1;
+   309→   309→  margin-left: var(--sidebar-w);
+   310→   310→  display: flex;
+   311→   311→  flex-direction: column;
+   312→   312→  min-height: 100vh;
+   313→   313→  transition: var(--ease-s);
+   314→   314→}
+   315→   315→
+   316→   316→.sidebar.collapsed ~ .main-wrapper {
+   317→   317→  margin-left: 70px;
+   318→   318→}
+   319→   319→
+   320→   320→/* ---- Top Bar ---- */
+   321→   321→.top-bar {
+   322→   322→  height: var(--topbar-h);
+   323→   323→  background: rgba(7,13,26,0.9);
+   324→   324→  backdrop-filter: blur(20px);
+   325→   325→  border-bottom: 1px solid var(--border);
+   326→   326→  display: flex;
+   327→   327→  align-items: center;
+   328→   328→  justify-content: space-between;
+   329→   329→  padding: 0 24px;
+   330→   330→  position: sticky;
+   331→   331→  top: 0;
+   332→   332→  z-index: 50;
+   333→   333→}
+   334→   334→
+   335→   335→.top-left {
+   336→   336→  display: flex;
+   337→   337→  align-items: center;
+   338→   338→  gap: 14px;
+   339→   339→}
+   340→   340→
+   341→   341→.breadcrumb {
+   342→   342→  display: flex;
+   343→   343→  align-items: center;
+   344→   344→  gap: 6px;
+   345→   345→}
+   346→   346→
+   347→   347→.breadcrumb-home {
+   348→   348→  font-size: 13px;
+   349→   349→  color: var(--text-muted);
+   350→   350→}
+   351→   351→
+   352→   352→.breadcrumb-sep {
+   353→   353→  width: 14px;
+   354→   354→  height: 14px;
+   355→   355→  color: var(--text-muted);
+   356→   356→}
+   357→   357→
+   358→   358→.breadcrumb-current {
+   359→   359→  font-size: 14px;
+   360→   360→  font-weight: 600;
+   361→   361→  color: var(--text-primary);
+   362→   362→}
+   363→   363→
+   364→   364→.top-right {
+   365→   365→  display: flex;
+   366→   366→  align-items: center;
+   367→   367→  gap: 20px;
+   368→   368→}
+   369→   369→
+   370→   370→.date-display {
+   371→   371→  display: flex;
+   372→   372→  align-items: center;
+   373→   373→  gap: 6px;
+   374→   374→  font-size: 12.5px;
+   375→   375→  color: var(--text-secondary);
+   376→   376→  background: var(--bg-card);
+   377→   377→  border: 1px solid var(--border);
+   378→   378→  padding: 6px 12px;
+   379→   379→  border-radius: var(--radius-pill);
+   380→   380→}
+   381→   381→
+   382→   382→.date-display svg { width:13px; height:13px; color:var(--gold); }
+   383→   383→
+   384→   384→.owner-badge {
+   385→   385→  display: flex;
+   386→   386→  align-items: center;
+   387→   387→  gap: 10px;
+   388→   388→}
+   389→   389→
+   390→   390→.owner-avatar {
+   391→   391→  width: 36px;
+   392→   392→  height: 36px;
+   393→   393→  border-radius: 50%;
+   394→   394→  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+   395→   395→  color: #070d1a;
+   396→   396→  font-size: 12px;
+   397→   397→  font-weight: 700;
+   398→   398→  display: flex;
+   399→   399→  align-items: center;
+   400→   400→  justify-content: center;
+   401→   401→  box-shadow: var(--shadow-gold);
+   402→   402→}
+   403→   403→
+   404→   404→.owner-details {
+   405→   405→  display: flex;
+   406→   406→  flex-direction: column;
+   407→   407→}
+   408→   408→
+   409→   409→.owner-name {
+   410→   410→  font-size: 13px;
+   411→   411→  font-weight: 600;
+   412→   412→  color: var(--text-primary);
+   413→   413→}
+   414→   414→
+   415→   415→.owner-role {
+   416→   416→  font-size: 10px;
+   417→   417→  color: var(--gold);
+   418→   418→  font-weight: 500;
+   419→   419→}
+   420→   420→
+   421→   421→/* ---- Page Content ---- */
+   422→   422→.page-content {
+   423→   423→  flex: 1;
+   424→   424→  padding: 28px;
+   425→   425→  overflow-y: auto;
+   426→   426→}
+   427→   427→
+   428→   428→/* ---- Icon Button ---- */
+   429→   429→.icon-btn {
+   430→   430→  width: 36px;
+   431→   431→  height: 36px;
+   432→   432→  border-radius: var(--radius-sm);
+   433→   433→  display: flex;
+   434→   434→  align-items: center;
+   435→   435→  justify-content: center;
+   436→   436→  color: var(--text-secondary);
+   437→   437→  transition: var(--ease);
+   438→   438→  background: transparent;
+   439→   439→}
+   440→   440→
+   441→   441→.icon-btn:hover {
+   442→   442→  background: var(--bg-card-hover);
+   443→   443→  color: var(--text-primary);
+   444→   444→}
+   445→   445→
+   446→   446→.icon-btn svg { width:18px; height:18px; }
+   447→   447→
+   448→   448→/* ============================================================
+   449→   449→   COMPONENTS
+   450→   450→   ============================================================ */
+   451→   451→
+   452→   452→/* ---- Page Header ---- */
+   453→   453→.page-header {
+   454→   454→  display: flex;
+   455→   455→  align-items: flex-start;
+   456→   456→  justify-content: space-between;
+   457→   457→  margin-bottom: 28px;
+   458→   458→  gap: 16px;
+   459→   459→}
+   460→   460→
+   461→   461→.page-header-left h1 {
+   462→   462→  font-family: var(--font-serif);
+   463→   463→  font-size: 26px;
+   464→   464→  font-weight: 700;
+   465→   465→  color: var(--text-primary);
+   466→   466→  margin-bottom: 4px;
+   467→   467→}
+   468→   468→
+   469→   469→.page-header-left p {
+   470→   470→  font-size: 13px;
+   471→   471→  color: var(--text-secondary);
+   472→   472→}
+   473→   473→
+   474→   474→.page-header-actions {
+   475→   475→  display: flex;
+   476→   476→  gap: 10px;
+   477→   477→  flex-shrink: 0;
+   478→   478→}
+   479→   479→
+   480→   480→/* ---- Buttons ---- */
+   481→   481→.btn {
+   482→   482→  display: inline-flex;
+   483→   483→  align-items: center;
+   484→   484→  gap: 7px;
+   485→   485→  padding: 9px 18px;
+   486→   486→  border-radius: var(--radius-sm);
+   487→   487→  font-size: 13.5px;
+   488→   488→  font-weight: 600;
+   489→   489→  transition: var(--ease);
+   490→   490→  cursor: pointer;
+   491→   491→  white-space: nowrap;
+   492→   492→  font-family: var(--font-sans);
+   493→   493→}
+   494→   494→
+   495→   495→.btn svg { width:15px; height:15px; }
+   496→   496→
+   497→   497→.btn-primary {
+   498→   498→  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+   499→   499→  color: #070d1a;
+   500→   500→  box-shadow: 0 4px 15px rgba(245,185,69,0.25);
+   501→   501→}
+   502→   502→
+   503→   503→.btn-primary:hover {
+   504→   504→  background: linear-gradient(135deg, #ffd066 0%, var(--gold) 100%);
+   505→   505→  box-shadow: 0 4px 20px rgba(245,185,69,0.4);
+   506→   506→  transform: translateY(-1px);
+   507→   507→}
+   508→   508→
+   509→   509→.btn-secondary {
+   510→   510→  background: var(--bg-card);
+   511→   511→  color: var(--text-primary);
+   512→   512→  border: 1px solid var(--border);
+   513→   513→}
+   514→   514→
+   515→   515→.btn-secondary:hover {
+   516→   516→  background: var(--bg-card-hover);
+   517→   517→  border-color: var(--border-hover);
+   518→   518→}
+   519→   519→
+   520→   520→.btn-ghost {
+   521→   521→  background: transparent;
+   522→   522→  color: var(--text-secondary);
+   523→   523→  border: 1px solid var(--border);
+   524→   524→}
+   525→   525→
+   526→   526→.btn-ghost:hover {
+   527→   527→  background: var(--bg-card);
+   528→   528→  color: var(--text-primary);
+   529→   529→}
+   530→   530→
+   531→   531→.btn-danger {
+   532→   532→  background: rgba(239,68,68,0.15);
+   533→   533→  color: var(--red);
+   534→   534→  border: 1px solid rgba(239,68,68,0.3);
+   535→   535→}
+   536→   536→
+   537→   537→.btn-danger:hover {
+   538→   538→  background: rgba(239,68,68,0.25);
+   539→   539→  box-shadow: 0 0 20px rgba(239,68,68,0.2);
+   540→   540→}
+   541→   541→
+   542→   542→.btn-success {
+   543→   543→  background: rgba(34,197,94,0.15);
+   544→   544→  color: var(--green);
+   545→   545→  border: 1px solid rgba(34,197,94,0.3);
+   546→   546→}
+   547→   547→
+   548→   548→.btn-success:hover { background: rgba(34,197,94,0.25); }
+   549→   549→
+   550→   550→.btn-sm {
+   551→   551→  padding: 6px 12px;
+   552→   552→  font-size: 12px;
+   553→   553→}
+   554→   554→
+   555→   555→/* ---- Cards ---- */
+   556→   556→.card {
+   557→   557→  background: var(--bg-card);
+   558→   558→  border: 1px solid var(--border);
+   559→   559→  border-radius: var(--radius-lg);
+   560→   560→  padding: 22px;
+   561→   561→  backdrop-filter: blur(10px);
+   562→   562→  transition: var(--ease);
+   563→   563→}
+   564→   564→
+   565→   565→.card:hover {
+   566→   566→  border-color: var(--border-hover);
+   567→   567→  box-shadow: var(--shadow-md);
+   568→   568→}
+   569→   569→
+   570→   570→.card-header {
+   571→   571→  display: flex;
+   572→   572→  align-items: center;
+   573→   573→  justify-content: space-between;
+   574→   574→  margin-bottom: 18px;
+   575→   575→}
+   576→   576→
+   577→   577→.card-title {
+   578→   578→  font-size: 15px;
+   579→   579→  font-weight: 700;
+   580→   580→  color: var(--text-primary);
+   581→   581→  display: flex;
+   582→   582→  align-items: center;
+   583→   583→  gap: 8px;
+   584→   584→}
+   585→   585→
+   586→   586→.card-title svg { width:16px; height:16px; color:var(--gold); }
+   587→   587→
+   588→   588→/* ---- Stat Cards ---- */
+   589→   589→.stats-grid {
+   590→   590→  display: grid;
+   591→   591→  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+   592→   592→  gap: 16px;
+   593→   593→  margin-bottom: 28px;
+   594→   594→}
+   595→   595→
+   596→   596→.stat-card {
+   597→   597→  background: var(--bg-card);
+   598→   598→  border: 1px solid var(--border);
+   599→   599→  border-radius: var(--radius-lg);
+   600→   600→  padding: 22px;
+   601→   601→  position: relative;
+   602→   602→  overflow: hidden;
+   603→   603→  transition: var(--ease);
+   604→   604→}
+   605→   605→
+   606→   606→.stat-card::before {
+   607→   607→  content: '';
+   608→   608→  position: absolute;
+   609→   609→  top: 0; right: 0;
+   610→   610→  width: 100px; height: 100px;
+   611→   611→  border-radius: 50%;
+   612→   612→  background: var(--accent-glow);
+   613→   613→  filter: blur(30px);
+   614→   614→  opacity: 0.5;
+   615→   615→  pointer-events: none;
+   616→   616→}
+   617→   617→
+   618→   618→.stat-card:hover {
+   619→   619→  transform: translateY(-2px);
+   620→   620→  box-shadow: var(--shadow-md);
+   621→   621→  border-color: var(--border-hover);
+   622→   622→}
+   623→   623→
+   624→   624→.stat-icon {
+   625→   625→  width: 44px;
+   626→   626→  height: 44px;
+   627→   627→  border-radius: var(--radius-sm);
+   628→   628→  display: flex;
+   629→   629→  align-items: center;
+   630→   630→  justify-content: center;
+   631→   631→  margin-bottom: 14px;
+   632→   632→}
+   633→   633→
+   634→   634→.stat-icon svg { width:22px; height:22px; }
+   635→   635→
+   636→   636→.stat-value {
+   637→   637→  font-size: 28px;
+   638→   638→  font-weight: 800;
+   639→   639→  line-height: 1.1;
+   640→   640→  margin-bottom: 4px;
+   641→   641→  font-family: var(--font-sans);
+   642→   642→}
+   643→   643→
+   644→   644→.stat-label {
+   645→   645→  font-size: 12px;
+   646→   646→  color: var(--text-secondary);
+   647→   647→  font-weight: 500;
+   648→   648→}
+   649→   649→
+   650→   650→.stat-trend {
+   651→   651→  font-size: 11px;
+   652→   652→  margin-top: 8px;
+   653→   653→  display: flex;
+   654→   654→  align-items: center;
+   655→   655→  gap: 4px;
+   656→   656→}
+   657→   657→
+   658→   658→.stat-trend.up { color: var(--green); }
+   659→   659→.stat-trend.down { color: var(--red); }
+   660→   660→
+   661→   661→/* Gold stat */
+   662→   662→.stat-gold { --accent-glow: var(--gold-glow); }
+   663→   663→.stat-gold .stat-icon { background: var(--gold-subtle); color: var(--gold); }
+   664→   664→.stat-gold .stat-value { color: var(--gold); }
+   665→   665→
+   666→   666→/* Green stat */
+   667→   667→.stat-green { --accent-glow: var(--green-dim); }
+   668→   668→.stat-green .stat-icon { background: var(--green-dim); color: var(--green); }
+   669→   669→.stat-green .stat-value { color: var(--green); }
+   670→   670→
+   671→   671→/* Blue stat */
+   672→   672→.stat-blue { --accent-glow: var(--blue-dim); }
+   673→   673→.stat-blue .stat-icon { background: var(--blue-dim); color: var(--blue); }
+   674→   674→.stat-blue .stat-value { color: var(--blue); }
+   675→   675→
+   676→   676→/* Red stat */
+   677→   677→.stat-red { --accent-glow: var(--red-dim); }
+   678→   678→.stat-red .stat-icon { background: var(--red-dim); color: var(--red); }
+   679→   679→.stat-red .stat-value { color: var(--red); }
+   680→   680→
+   681→   681→/* Purple stat */
+   682→   682→.stat-purple { --accent-glow: var(--purple-dim); }
+   683→   683→.stat-purple .stat-icon { background: var(--purple-dim); color: var(--purple); }
+   684→   684→.stat-purple .stat-value { color: var(--purple); }
+   685→   685→
+   686→   686→/* Orange stat */
+   687→   687→.stat-orange { --accent-glow: var(--orange-dim); }
+   688→   688→.stat-orange .stat-icon { background: var(--orange-dim); color: var(--orange); }
+   689→   689→.stat-orange .stat-value { color: var(--orange); }
+   690→   690→
+   691→   691→/* ---- Charts Grid ---- */
+   692→   692→.charts-grid {
+   693→   693→  display: grid;
+   694→   694→  grid-template-columns: 1fr 1fr;
+   695→   695→  gap: 20px;
+   696→   696→  margin-bottom: 28px;
+   697→   697→}
+   698→   698→
+   699→   699→.chart-container {
+   700→   700→  position: relative;
+   701→   701→  height: 260px;
+   702→   702→  padding-top: 10px;
+   703→   703→}
+   704→   704→
+   705→   705→/* ---- Tables ---- */
+   706→   706→.table-wrapper {
+   707→   707→  overflow-x: auto;
+   708→   708→  border-radius: var(--radius-md);
+   709→   709→}
+   710→   710→
+   711→   711→.data-table {
+   712→   712→  width: 100%;
+   713→   713→  border-collapse: collapse;
+   714→   714→}
+   715→   715→
+   716→   716→.data-table th {
+   717→   717→  padding: 10px 14px;
+   718→   718→  font-size: 11px;
+   719→   719→  font-weight: 600;
+   720→   720→  text-transform: uppercase;
+   721→   721→  letter-spacing: 0.06em;
+   722→   722→  color: var(--text-muted);
+   723→   723→  background: rgba(255,255,255,0.03);
+   724→   724→  border-bottom: 1px solid var(--border);
+   725→   725→  white-space: nowrap;
+   726→   726→  text-align: left;
+   727→   727→}
+   728→   728→
+   729→   729→.data-table td {
+   730→   730→  padding: 12px 14px;
+   731→   731→  font-size: 13.5px;
+   732→   732→  border-bottom: 1px solid rgba(255,255,255,0.04);
+   733→   733→  vertical-align: middle;
+   734→   734→}
+   735→   735→
+   736→   736→.data-table tr:last-child td { border-bottom: none; }
+   737→   737→
+   738→   738→.data-table tr:hover td {
+   739→   739→  background: rgba(255,255,255,0.025);
+   740→   740→}
+   741→   741→
+   742→   742→.data-table .actions-cell {
+   743→   743→  display: flex;
+   744→   744→  gap: 6px;
+   745→   745→  align-items: center;
+   746→   746→}
+   747→   747→
+   748→   748→/* ---- Badges ---- */
+   749→   749→.badge {
+   750→   750→  display: inline-flex;
+   751→   751→  align-items: center;
+   752→   752→  gap: 4px;
+   753→   753→  padding: 3px 10px;
+   754→   754→  border-radius: var(--radius-pill);
+   755→   755→  font-size: 11px;
+   756→   756→  font-weight: 600;
+   757→   757→  white-space: nowrap;
+   758→   758→}
+   759→   759→
+   760→   760→.badge-available   { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(34,197,94,0.2); }
+   761→   761→.badge-occupied    { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(59,130,246,0.2); }
+   762→   762→.badge-maintenance { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(249,115,22,0.2); }
+   763→   763→.badge-paid        { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(34,197,94,0.2); }
+   764→   764→.badge-partial     { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(249,115,22,0.2); }
+   765→   765→.badge-pending     { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(239,68,68,0.2); }
+   766→   766→.badge-upcoming    { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(59,130,246,0.2); }
+   767→   767→.badge-active      { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(34,197,94,0.2); }
+   768→   768→.badge-completed   { background: var(--bg-card);    color: var(--text-secondary); border: 1px solid var(--border); }
+   769→   769→.badge-cancelled   { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(239,68,68,0.2); }
+   770→   770→.badge-gold        { background: var(--gold-subtle);color: var(--gold);   border: 1px solid var(--border-gold); }
+   771→   771→
+   772→   772→/* Status dot */
+   773→   773→.status-dot {
+   774→   774→  width: 7px;
+   775→   775→  height: 7px;
+   776→   776→  border-radius: 50%;
+   777→   777→  display: inline-block;
+   778→   778→}
+   779→   779→.dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+   780→   780→.dot-blue  { background: var(--blue);  box-shadow: 0 0 6px var(--blue);  }
+   781→   781→.dot-orange{ background: var(--orange);box-shadow: 0 0 6px var(--orange);}
+   782→   782→.dot-red   { background: var(--red);   box-shadow: 0 0 6px var(--red);   }
+   783→   783→
+   784→   784→/* ---- Form Elements ---- */
+   785→   785→.form-grid {
+   786→   786→  display: grid;
+   787→   787→  grid-template-columns: 1fr 1fr;
+   788→   788→  gap: 16px;
+   789→   789→}
+   790→   790→
+   791→   791→.form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+   792→   792→.form-grid.cols-1 { grid-template-columns: 1fr; }
+   793→   793→
+   794→   794→.form-group {
+   795→   795→  display: flex;
+   796→   796→  flex-direction: column;
+   797→   797→  gap: 6px;
+   798→   798→}
+   799→   799→
+   800→   800→.form-group.span-2 { grid-column: span 2; }
+   801→   801→.form-group.span-3 { grid-column: span 3; }
+   802→   802→
+   803→   803→label {
+   804→   804→  font-size: 12px;
+   805→   805→  font-weight: 600;
+   806→   806→  color: var(--text-secondary);
+   807→   807→  letter-spacing: 0.03em;
+   808→   808→}
+   809→   809→
+   810→   810→.form-input,
+   811→   811→.form-select,
+   812→   812→.form-textarea {
+   813→   813→  background: rgba(255,255,255,0.05);
+   814→   814→  border: 1px solid var(--border);
+   815→   815→  border-radius: var(--radius-sm);
+   816→   816→  color: var(--text-primary);
+   817→   817→  font-size: 13.5px;
+   818→   818→  padding: 10px 13px;
+   819→   819→  transition: var(--ease);
+   820→   820→  width: 100%;
+   821→   821→  font-family: var(--font-sans);
+   822→   822→}
+   823→   823→
+   824→   824→.form-input:focus,
+   825→   825→.form-select:focus,
+   826→   826→.form-textarea:focus {
+   827→   827→  outline: none;
+   828→   828→  border-color: var(--gold);
+   829→   829→  background: rgba(255,255,255,0.07);
+   830→   830→  box-shadow: 0 0 0 3px rgba(245,185,69,0.1);
+   831→   831→}
+   832→   832→
+   833→   833→.form-input::placeholder { color: var(--text-muted); }
+   834→   834→
+   835→   835→.form-select option {
+   836→   836→  background: var(--bg-elevated);
+   837→   837→  color: var(--text-primary);
+   838→   838→}
+   839→   839→
+   840→   840→.form-textarea {
+   841→   841→  resize: vertical;
+   842→   842→  min-height: 90px;
+   843→   843→}
+   844→   844→
+   845→   845→.form-help {
+   846→   846→  font-size: 11px;
+   847→   847→  color: var(--text-muted);
+   848→   848→}
+   849→   849→
+   850→   850→.form-actions {
+   851→   851→  display: flex;
+   852→   852→  justify-content: flex-end;
+   853→   853→  gap: 10px;
+   854→   854→  margin-top: 22px;
+   855→   855→  padding-top: 18px;
+   856→   856→  border-top: 1px solid var(--border);
+   857→   857→}
+   858→   858→
+   859→   859→/* ---- Search Bar ---- */
+   860→   860→.search-bar {
+   861→   861→  display: flex;
+   862→   862→  align-items: center;
+   863→   863→  gap: 8px;
+   864→   864→  background: var(--bg-card);
+   865→   865→  border: 1px solid var(--border);
+   866→   866→  border-radius: var(--radius-sm);
+   867→   867→  padding: 8px 12px;
+   868→   868→  transition: var(--ease);
+   869→   869→  flex: 1;
+   870→   870→  max-width: 340px;
+   871→   871→}
+   872→   872→
+   873→   873→.search-bar:focus-within {
+   874→   874→  border-color: var(--gold);
+   875→   875→  box-shadow: 0 0 0 3px rgba(245,185,69,0.08);
+   876→   876→}
+   877→   877→
+   878→   878→.search-bar svg { width:15px; height:15px; color:var(--text-muted); flex-shrink:0; }
+   879→   879→
+   880→   880→.search-input {
+   881→   881→  background: none;
+   882→   882→  border: none;
+   883→   883→  outline: none;
+   884→   884→  color: var(--text-primary);
+   885→   885→  font-size: 13px;
+   886→   886→  width: 100%;
+   887→   887→}
+   888→   888→
+   889→   889→.search-input::placeholder { color: var(--text-muted); }
+   890→   890→
+   891→   891→/* ---- Filter Bar ---- */
+   892→   892→.filter-bar {
+   893→   893→  display: flex;
+   894→   894→  align-items: center;
+   895→   895→  gap: 10px;
+   896→   896→  margin-bottom: 20px;
+   897→   897→  flex-wrap: wrap;
+   898→   898→}
+   899→   899→
+   900→   900→.filter-btn {
+   901→   901→  padding: 6px 14px;
+   902→   902→  border-radius: var(--radius-pill);
+   903→   903→  font-size: 12px;
+   904→   904→  font-weight: 600;
+   905→   905→  background: var(--bg-card);
+   906→   906→  border: 1px solid var(--border);
+   907→   907→  color: var(--text-secondary);
+   908→   908→  transition: var(--ease);
+   909→   909→}
+   910→   910→
+   911→   911→.filter-btn:hover, .filter-btn.active {
+   912→   912→  background: var(--gold-subtle);
+   913→   913→  border-color: var(--border-gold);
+   914→   914→  color: var(--gold);
+   915→   915→}
+   916→   916→
+   917→   917→/* ---- Modal ---- */
+   918→   918→.overlay {
+   919→   919→  position: fixed;
+   920→   920→  inset: 0;
+   921→   921→  background: rgba(0,0,0,0.65);
+   922→   922→  backdrop-filter: blur(4px);
+   923→   923→  z-index: 200;
+   924→   924→  display: flex;
+   925→   925→  align-items: center;
+   926→   926→  justify-content: center;
+   927→   927→  padding: 20px;
+   928→   928→  animation: fadeIn 0.2s ease;
+   929→   929→}
+   930→   930→
+   931→   931→.overlay.hidden, .login-overlay.hidden { display:none; }
+   932→   932→
+   933→   933→.login-overlay {
+   934→   934→  position: fixed;
+   935→   935→  inset: 0;
+   936→   936→  background: rgba(7, 13, 26, 0.95);
+   937→   937→  backdrop-filter: blur(10px);
+   938→   938→  z-index: 9999;
+   939→   939→  display: flex;
+   940→   940→  align-items: center;
+   941→   941→  justify-content: center;
+   942→   942→  padding: 20px;
+   943→   943→}
+   944→   944→
+   945→   945→.login-box {
+   946→   946→  background: var(--bg-elevated);
+   947→   947→  border: 1px solid var(--border);
+   948→   948→  border-radius: var(--radius-xl);
+   949→   949→  padding: 40px;
+   950→   950→  width: 100%;
+   951→   951→  max-width: 400px;
+   952→   952→  box-shadow: var(--shadow-lg);
+   953→   953→  animation: slideUp 0.3s ease;
+   954→   954→}
+   955→   955→
+   956→   956→.modal-box {
+   957→   957→  background: var(--bg-elevated);
+   958→   958→  border: 1px solid var(--border);
+   959→   959→  border-radius: var(--radius-xl);
+   960→   960→  width: 100%;
+   961→   961→  max-width: 620px;
+   962→   962→  max-height: 90vh;
+   963→   963→  display: flex;
+   964→   964→  flex-direction: column;
+   965→   965→  box-shadow: var(--shadow-lg);
+   966→   966→  animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
+   967→   967→}
+   968→   968→
+   969→   969→.modal-head {
+   970→   970→  display: flex;
+   971→   971→  align-items: center;
+   972→   972→  justify-content: space-between;
+   973→   973→  padding: 22px 24px 18px;
+   974→   974→  border-bottom: 1px solid var(--border);
+   975→   975→}
+   976→   976→
+   977→   977→.modal-title {
+   978→   978→  font-family: var(--font-serif);
+   979→   979→  font-size: 18px;
+   980→   980→  font-weight: 700;
+   981→   981→  color: var(--text-primary);
+   982→   982→}
+   983→   983→
+   984→   984→.modal-body {
+   985→   985→  padding: 22px 24px;
+   986→   986→  overflow-y: auto;
+   987→   987→  flex: 1;
+   988→   988→}
+   989→   989→
+   990→   990→/* Confirm dialog */
+   991→   991→.confirm-box {
+   992→   992→  background: var(--bg-elevated);
+   993→   993→  border: 1px solid var(--border);
+   994→   994→  border-radius: var(--radius-xl);
+   995→   995→  padding: 36px 32px;
+   996→   996→  max-width: 420px;
+   997→   997→  width: 100%;
+   998→   998→  text-align: center;
+   999→   999→  animation: slideUp 0.25s ease;
+  1000→  1000→}
+  1001→  1001→
+  1002→  1002→.confirm-icon-wrap {
+  1003→  1003→  width: 60px;
+  1004→  1004→  height: 60px;
+  1005→  1005→  border-radius: 50%;
+  1006→  1006→  background: var(--red-dim);
+  1007→  1007→  border: 1px solid rgba(239,68,68,0.3);
+  1008→  1008→  display: flex;
+  1009→  1009→  align-items: center;
+  1010→  1010→  justify-content: center;
+  1011→  1011→  margin: 0 auto 18px;
+  1012→  1012→  color: var(--red);
+  1013→  1013→}
+  1014→  1014→
+  1015→  1015→.confirm-icon-wrap svg { width:28px; height:28px; }
+  1016→  1016→
+  1017→  1017→.confirm-box h3 {
+  1018→  1018→  font-size: 16px;
+  1019→  1019→  font-weight: 700;
+  1020→  1020→  margin-bottom: 8px;
+  1021→  1021→  color: var(--text-primary);
+  1022→  1022→}
+  1023→  1023→
+  1024→  1024→.confirm-box p {
+  1025→  1025→  font-size: 13px;
+  1026→  1026→  color: var(--text-secondary);
+  1027→  1027→  margin-bottom: 24px;
+  1028→  1028→}
+  1029→  1029→
+  1030→  1030→.confirm-btns {
+  1031→  1031→  display: flex;
+  1032→  1032→  gap: 10px;
+  1033→  1033→  justify-content: center;
+  1034→  1034→}
+  1035→  1035→
+  1036→  1036→/* ---- Toast ---- */
+  1037→  1037→#toast-container {
+  1038→  1038→  position: fixed;
+  1039→  1039→  bottom: 24px;
+  1040→  1040→  right: 24px;
+  1041→  1041→  z-index: 999;
+  1042→  1042→  display: flex;
+  1043→  1043→  flex-direction: column;
+  1044→  1044→  gap: 10px;
+  1045→  1045→  max-width: 360px;
+  1046→  1046→}
+  1047→  1047→
+  1048→  1048→.toast {
+  1049→  1049→  display: flex;
+  1050→  1050→  align-items: flex-start;
+  1051→  1051→  gap: 12px;
+  1052→  1052→  padding: 14px 16px;
+  1053→  1053→  border-radius: var(--radius-md);
+  1054→  1054→  background: var(--bg-elevated);
+  1055→  1055→  border: 1px solid var(--border);
+  1056→  1056→  box-shadow: var(--shadow-lg);
+  1057→  1057→  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  1058→  1058→  min-width: 280px;
+  1059→  1059→}
+  1060→  1060→
+  1061→  1061→.toast-icon { width:20px; height:20px; flex-shrink:0; margin-top:1px; }
+  1062→  1062→.toast-icon svg { width:20px; height:20px; }
+  1063→  1063→
+  1064→  1064→.toast-content { flex:1; }
+  1065→  1065→.toast-title { font-size:13px; font-weight:700; margin-bottom:2px; }
+  1066→  1066→.toast-msg   { font-size:12px; color:var(--text-secondary); }
+  1067→  1067→
+  1068→  1068→.toast.success { border-left:3px solid var(--green); }
+  1069→  1069→.toast.success .toast-icon { color:var(--green); }
+  1070→  1070→.toast.success .toast-title { color:var(--green); }
+  1071→  1071→
+  1072→  1072→.toast.error { border-left:3px solid var(--red); }
+  1073→  1073→.toast.error .toast-icon { color:var(--red); }
+  1074→  1074→.toast.error .toast-title { color:var(--red); }
+  1075→  1075→
+  1076→  1076→.toast.info { border-left:3px solid var(--blue); }
+  1077→  1077→.toast.info .toast-icon { color:var(--blue); }
+  1078→  1078→.toast.info .toast-title { color:var(--blue); }
+  1079→  1079→
+  1080→  1080→.toast.warning { border-left:3px solid var(--orange); }
+  1081→  1081→.toast.warning .toast-icon { color:var(--orange); }
+  1082→  1082→.toast.warning .toast-title { color:var(--orange); }
+  1083→  1083→
+  1084→  1084→/* ---- Rooms Grid ---- */
+  1085→  1085→.rooms-grid {
+  1086→  1086→  display: grid;
+  1087→  1087→  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  1088→  1088→  gap: 16px;
+  1089→  1089→}
+  1090→  1090→
+  1091→  1091→.room-card {
+  1092→  1092→  background: var(--bg-card);
+  1093→  1093→  border: 1px solid var(--border);
+  1094→  1094→  border-radius: var(--radius-lg);
+  1095→  1095→  padding: 18px;
+  1096→  1096→  transition: var(--ease);
+  1097→  1097→  position: relative;
+  1098→  1098→  overflow: hidden;
+  1099→  1099→  cursor: pointer;
+  1100→  1100→}
+  1101→  1101→
+  1102→  1102→.room-card:hover {
+  1103→  1103→  transform: translateY(-3px);
+  1104→  1104→  box-shadow: var(--shadow-md);
+  1105→  1105→  border-color: var(--border-hover);
+  1106→  1106→}
+  1107→  1107→
+  1108→  1108→.room-card.available  { border-top: 3px solid var(--green); }
+  1109→  1109→.room-card.occupied   { border-top: 3px solid var(--blue);  }
+  1110→  1110→.room-card.maintenance{ border-top: 3px solid var(--orange); }
+  1111→  1111→
+  1112→  1112→.room-number {
+  1113→  1113→  font-size: 22px;
+  1114→  1114→  font-weight: 800;
+  1115→  1115→  color: var(--text-primary);
+  1116→  1116→  font-family: var(--font-sans);
+  1117→  1117→}
+  1118→  1118→
+  1119→  1119→.room-type {
+  1120→  1120→  font-size: 11px;
+  1121→  1121→  color: var(--text-muted);
+  1122→  1122→  text-transform: uppercase;
+  1123→  1123→  letter-spacing: 0.06em;
+  1124→  1124→  margin-bottom: 12px;
+  1125→  1125→}
+  1126→  1126→
+  1127→  1127→.room-price {
+  1128→  1128→  font-size: 18px;
+  1129→  1129→  font-weight: 700;
+  1130→  1130→  color: var(--gold);
+  1131→  1131→}
+  1132→  1132→
+  1133→  1133→.room-price-label { font-size:10px; color:var(--text-muted); }
+  1134→  1134→
+  1135→  1135→.room-actions {
+  1136→  1136→  display: flex;
+  1137→  1137→  gap: 6px;
+  1138→  1138→  margin-top: 12px;
+  1139→  1139→}
+  1140→  1140→
+  1141→  1141→/* ---- Occupancy Grid ---- */
+  1142→  1142→.occupancy-grid {
+  1143→  1143→  display: grid;
+  1144→  1144→  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  1145→  1145→  gap: 8px;
+  1146→  1146→  margin-top: 16px;
+  1147→  1147→}
+  1148→  1148→
+  1149→  1149→.occ-cell {
+  1150→  1150→  aspect-ratio: 1;
+  1151→  1151→  border-radius: var(--radius-sm);
+  1152→  1152→  display: flex;
+  1153→  1153→  flex-direction: column;
+  1154→  1154→  align-items: center;
+  1155→  1155→  justify-content: center;
+  1156→  1156→  font-size: 11px;
+  1157→  1157→  font-weight: 700;
+  1158→  1158→  border: 1px solid var(--border);
+  1159→  1159→  transition: var(--ease);
+  1160→  1160→  cursor: pointer;
+  1161→  1161→}
+  1162→  1162→
+  1163→  1163→.occ-cell:hover { transform: scale(1.08); }
+  1164→  1164→.occ-cell.available   { background: var(--green-dim);  color: var(--green); }
+  1165→  1165→.occ-cell.occupied    { background: var(--blue-dim);   color: var(--blue);  }
+  1166→  1166→.occ-cell.maintenance { background: var(--orange-dim); color: var(--orange);}
+  1167→  1167→
+  1168→  1168→/* ---- Alert Boxes ---- */
+  1169→  1169→.alert {
+  1170→  1170→  display: flex;
+  1171→  1171→  gap: 12px;
+  1172→  1172→  padding: 14px 16px;
+  1173→  1173→  border-radius: var(--radius-md);
+  1174→  1174→  font-size: 13px;
+  1175→  1175→  margin-bottom: 16px;
+  1176→  1176→}
+  1177→  1177→
+  1178→  1178→.alert svg { width:18px; height:18px; flex-shrink:0; margin-top:1px; }
+  1179→  1179→
+  1180→  1180→.alert-warning {
+  1181→  1181→  background: var(--orange-dim);
+  1182→  1182→  border: 1px solid rgba(249,115,22,0.2);
+  1183→  1183→  color: var(--orange);
+  1184→  1184→}
+  1185→  1185→
+  1186→  1186→.alert-danger {
+  1187→  1187→  background: var(--red-dim);
+  1188→  1188→  border: 1px solid rgba(239,68,68,0.2);
+  1189→  1189→  color: var(--red);
+  1190→  1190→}
+  1191→  1191→
+  1192→  1192→.alert-info {
+  1193→  1193→  background: var(--blue-dim);
+  1194→  1194→  border: 1px solid rgba(59,130,246,0.2);
+  1195→  1195→  color: var(--blue);
+  1196→  1196→}
+  1197→  1197→
+  1198→  1198→/* ---- Empty State ---- */
+  1199→  1199→.empty-state {
+  1200→  1200→  display: flex;
+  1201→  1201→  flex-direction: column;
+  1202→  1202→  align-items: center;
+  1203→  1203→  justify-content: center;
+  1204→  1204→  padding: 60px 20px;
+  1205→  1205→  text-align: center;
+  1206→  1206→  color: var(--text-muted);
+  1207→  1207→}
+  1208→  1208→
+  1209→  1209→.empty-icon {
+  1210→  1210→  width: 64px;
+  1211→  1211→  height: 64px;
+  1212→  1212→  border-radius: 50%;
+  1213→  1213→  background: var(--bg-card);
+  1214→  1214→  border: 1px solid var(--border);
+  1215→  1215→  display: flex;
+  1216→  1216→  align-items: center;
+  1217→  1217→  justify-content: center;
+  1218→  1218→  margin-bottom: 16px;
+  1219→  1219→}
+  1220→  1220→
+  1221→  1221→.empty-icon svg { width:28px; height:28px; color:var(--text-muted); }
+  1222→  1222→.empty-state h3 { font-size:15px; font-weight:600; color:var(--text-secondary); margin-bottom:6px; }
+  1223→  1223→.empty-state p  { font-size:12px; }
+  1224→  1224→
+  1225→  1225→/* ---- Loading ---- */
+  1226→  1226→.init-loader {
+  1227→  1227→  display: flex;
+  1228→  1228→  flex-direction: column;
+  1229→  1229→  align-items: center;
+  1230→  1230→  justify-content: center;
+  1231→  1231→  min-height: 300px;
+  1232→  1232→  gap: 16px;
+  1233→  1233→  color: var(--text-muted);
+  1234→  1234→}
+  1235→  1235→
+  1236→  1236→.spinner-ring {
+  1237→  1237→  width: 40px;
+  1238→  1238→  height: 40px;
+  1239→  1239→  border: 3px solid var(--border);
+  1240→  1240→  border-top-color: var(--gold);
+  1241→  1241→  border-radius: 50%;
+  1242→  1242→  animation: spin 0.8s linear infinite;
+  1243→  1243→}
+  1244→  1244→
+  1245→  1245→/* ---- Divider ---- */
+  1246→  1246→.divider {
+  1247→  1247→  border: none;
+  1248→  1248→  border-top: 1px solid var(--border);
+  1249→  1249→  margin: 20px 0;
+  1250→  1250→}
+  1251→  1251→
+  1252→  1252→/* ---- Receipt / Print ---- */
+  1253→  1253→.receipt-section {
+  1254→  1254→  font-size: 13px;
+  1255→  1255→  line-height: 1.8;
+  1256→  1256→}
+  1257→  1257→
+  1258→  1258→.receipt-row {
+  1259→  1259→  display: flex;
+  1260→  1260→  justify-content: space-between;
+  1261→  1261→  padding: 4px 0;
+  1262→  1262→}
+  1263→  1263→
+  1264→  1264→.receipt-row.total {
+  1265→  1265→  font-size: 16px;
+  1266→  1266→  font-weight: 700;
+  1267→  1267→  border-top: 1px solid var(--border);
+  1268→  1268→  margin-top: 8px;
+  1269→  1269→  padding-top: 8px;
+  1270→  1270→  color: var(--gold);
+  1271→  1271→}
+  1272→  1272→
+  1273→  1273→/* ---- Settings Sections ---- */
+  1274→  1274→.settings-section {
+  1275→  1275→  margin-bottom: 32px;
+  1276→  1276→}
+  1277→  1277→
+  1278→  1278→.settings-section-title {
+  1279→  1279→  font-size: 12px;
+  1280→  1280→  font-weight: 700;
+  1281→  1281→  text-transform: uppercase;
+  1282→  1282→  letter-spacing: 0.08em;
+  1283→  1283→  color: var(--text-muted);
+  1284→  1284→  margin-bottom: 14px;
+  1285→  1285→  display: flex;
+  1286→  1286→  align-items: center;
+  1287→  1287→  gap: 8px;
+  1288→  1288→}
+  1289→  1289→
+  1290→  1290→.settings-section-title::after {
+  1291→  1291→  content: '';
+  1292→  1292→  flex: 1;
+  1293→  1293→  height: 1px;
+  1294→  1294→  background: var(--border);
+  1295→  1295→}
+  1296→  1296→
+  1297→  1297→/* ---- Tag / Chip ---- */
+  1298→  1298→.tag {
+  1299→  1299→  display: inline-flex;
+  1300→  1300→  align-items: center;
+  1301→  1301→  gap: 4px;
+  1302→  1302→  padding: 2px 8px;
+  1303→  1303→  border-radius: var(--radius-pill);
+  1304→  1304→  font-size: 11px;
+  1305→  1305→  font-weight: 500;
+  1306→  1306→  background: var(--bg-card);
+  1307→  1307→  border: 1px solid var(--border);
+  1308→  1308→  color: var(--text-secondary);
+  1309→  1309→}
+  1310→  1310→
+  1311→  1311→/* ---- Progress Bar ---- */
+  1312→  1312→.progress-bar {
+  1313→  1313→  height: 6px;
+  1314→  1314→  border-radius: 3px;
+  1315→  1315→  background: var(--bg-card);
+  1316→  1316→  overflow: hidden;
+  1317→  1317→  margin-top: 8px;
+  1318→  1318→}
+  1319→  1319→
+  1320→  1320→.progress-fill {
+  1321→  1321→  height: 100%;
+  1322→  1322→  border-radius: 3px;
+  1323→  1323→  transition: width 0.5s ease;
+  1324→  1324→}
+  1325→  1325→
+  1326→  1326→/* ---- Quick Actions ---- */
+  1327→  1327→.quick-actions {
+  1328→  1328→  display: grid;
+  1329→  1329→  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  1330→  1330→  gap: 12px;
+  1331→  1331→}
+  1332→  1332→
+  1333→  1333→.quick-action-btn {
+  1334→  1334→  display: flex;
+  1335→  1335→  flex-direction: column;
+  1336→  1336→  align-items: center;
+  1337→  1337→  gap: 10px;
+  1338→  1338→  padding: 18px 12px;
+  1339→  1339→  background: var(--bg-card);
+  1340→  1340→  border: 1px solid var(--border);
+  1341→  1341→  border-radius: var(--radius-lg);
+  1342→  1342→  color: var(--text-secondary);
+  1343→  1343→  transition: var(--ease);
+  1344→  1344→  cursor: pointer;
+  1345→  1345→}
+  1346→  1346→
+  1347→  1347→.quick-action-btn:hover {
+  1348→  1348→  background: var(--gold-subtle);
+  1349→  1349→  border-color: var(--border-gold);
+  1350→  1350→  color: var(--gold);
+  1351→  1351→  transform: translateY(-2px);
+  1352→  1352→}
+  1353→  1353→
+  1354→  1354→.quick-action-btn svg { width:24px; height:24px; }
+  1355→  1355→.quick-action-btn span { font-size:12px; font-weight:600; text-align:center; }
+  1356→  1356→
+  1357→  1357→/* ---- Guest Avatar ---- */
+  1358→  1358→.guest-avatar {
+  1359→  1359→  width: 36px;
+  1360→  1360→  height: 36px;
+  1361→  1361→  border-radius: 50%;
+  1362→  1362→  background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+  1363→  1363→  color: white;
+  1364→  1364→  font-size: 13px;
+  1365→  1365→  font-weight: 700;
+  1366→  1366→  display: flex;
+  1367→  1367→  align-items: center;
+  1368→  1368→  justify-content: center;
+  1369→  1369→  flex-shrink: 0;
+  1370→  1370→}
+  1371→  1371→
+  1372→  1372→/* ---- Activity Feed ---- */
+  1373→  1373→.activity-feed { display:flex; flex-direction:column; gap:12px; }
+  1374→  1374→
+  1375→  1375→.activity-item {
+  1376→  1376→  display: flex;
+  1377→  1377→  gap: 12px;
+  1378→  1378→  align-items: flex-start;
+  1379→  1379→}
+  1380→  1380→
+  1381→  1381→.activity-dot {
+  1382→  1382→  width: 10px;
+  1383→  1383→  height: 10px;
+  1384→  1384→  border-radius: 50%;
+  1385→  1385→  margin-top: 5px;
+  1386→  1386→  flex-shrink: 0;
+  1387→  1387→}
+  1388→  1388→
+  1389→  1389→.activity-text { font-size:13px; line-height:1.5; }
+  1390→  1390→.activity-time { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  1391→  1391→
+  1392→  1392→/* ---- Grid Layout Helpers ---- */
+  1393→  1393→.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  1394→  1394→.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+  1395→  1395→
+  1396→  1396→/* ============================================================
+  1397→  1397→   ANIMATIONS
+  1398→  1398→   ============================================================ */
+  1399→  1399→@keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+  1400→  1400→@keyframes slideUp   { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  1401→  1401→@keyframes toastIn   { from{opacity:0;transform:translateX(100%)} to{opacity:1;transform:translateX(0)} }
+  1402→  1402→@keyframes toastOut  { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(100%)} }
+  1403→  1403→@keyframes spin      { to{transform:rotate(360deg)} }
+  1404→  1404→@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  1405→  1405→@keyframes shimmer   {
+  1406→  1406→  0%   { background-position: -200% 0; }
+  1407→  1407→  100% { background-position:  200% 0; }
+  1408→  1408→}
+  1409→  1409→
+  1410→  1410→.page-enter { animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1); }
+  1411→  1411→
+  1412→  1412→/* ============================================================
+  1413→  1413→   RESPONSIVE
+  1414→  1414→   ============================================================ */
+  1415→  1415→@media (max-width: 1100px) {
+  1416→  1416→  .charts-grid { grid-template-columns: 1fr; }
+  1417→  1417→}
+  1418→  1418→
+  1419→  1419→@media (max-width: 900px) {
+  1420→  1420→  .sidebar { transform: translateX(-100%); }
+  1421→  1421→  .sidebar.mobile-open { transform: translateX(0); }
+  1422→  1422→  .main-wrapper { margin-left: 0 !important; }
+  1423→  1423→  .grid-2 { grid-template-columns:1fr; }
+  1424→  1424→  .grid-3 { grid-template-columns:1fr; }
+  1425→  1425→  .form-grid { grid-template-columns:1fr; }
+  1426→  1426→  .form-grid.cols-3 { grid-template-columns:1fr; }
+  1427→  1427→  .stats-grid { grid-template-columns:1fr 1fr; }
+  1428→  1428→  .page-content { padding:16px; }
+  1429→  1429→}
+  1430→  1430→
+  1431→  1431→@media (max-width: 560px) {
+  1432→  1432→  .stats-grid { grid-template-columns:1fr; }
+  1433→  1433→  .modal-box { max-width:100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  1434→  1434→  .page-header { flex-direction:column; }
+  1435→  1435→}
+  1436→  1436→
+  1437→  1437→/* ---- Print ---- */
+  1438→  1438→@media print {
+  1439→  1439→  .sidebar, .top-bar, .page-header-actions, .form-actions, #toast-container { display:none !important; }
+  1440→  1440→  .main-wrapper { margin-left:0; }
+  1441→  1441→  body { background:#fff; color:#000; }
+  1442→  1442→}
+  1443→  1443→
