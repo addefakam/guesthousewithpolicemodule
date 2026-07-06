@@ -417,12 +417,12 @@ export default function ReservationsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Reservations</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Reservations</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Manage bookings, check-ins, check-outs, and receipts
           </p>
         </div>
@@ -433,90 +433,90 @@ export default function ReservationsPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-border/50">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="border-border/40 bg-card/80">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <CalendarDays className="h-5 w-5 text-primary" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+              <CalendarDays className="h-4 w-4 text-primary" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.all}</p>
-              <p className="text-xs text-muted-foreground">All Reservations</p>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums">{stats.all}</p>
+              <p className="text-[11px] text-muted-foreground truncate">All Reservations</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50">
+        <Card className="border-border/40 bg-card/80">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-              <CalendarCheck className="h-5 w-5 text-emerald-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
+              <CalendarCheck className="h-4 w-4 text-emerald-400" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.active}</p>
-              <p className="text-xs text-muted-foreground">Active</p>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums">{stats.active}</p>
+              <p className="text-[11px] text-muted-foreground truncate">Active</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50">
+        <Card className="border-border/40 bg-card/80">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/10">
-              <CalendarClock className="h-5 w-5 text-sky-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/10">
+              <CalendarClock className="h-4 w-4 text-sky-400" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.upcoming}</p>
-              <p className="text-xs text-muted-foreground">Upcoming</p>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums">{stats.upcoming}</p>
+              <p className="text-[11px] text-muted-foreground truncate">Upcoming</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-border/50">
+        <Card className="border-border/40 bg-card/80">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.completed}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+            <div className="min-w-0">
+              <p className="text-xl font-bold tabular-nums">{stats.completed}</p>
+              <p className="text-[11px] text-muted-foreground truncate">Completed</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {filterButtons.map((fb) => (
           <Button
             key={fb.key}
             variant={filter === fb.key ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter(fb.key)}
-            className="gap-1.5"
+            className={`gap-1.5 h-8 text-xs ${filter !== fb.key ? 'border-border/50 text-muted-foreground hover:text-foreground' : ''}`}
           >
             {fb.label}
-            <span className="text-xs opacity-70">{fb.count}</span>
+            <span className={`text-[11px] tabular-nums ${filter === fb.key ? 'bg-primary-foreground/20 px-1.5 py-0.5 rounded-full' : 'opacity-60'}`}>{fb.count}</span>
           </Button>
         ))}
       </div>
 
       {/* Table */}
-      <Card className="border-border/50">
+      <Card className="border-border/40 bg-card/80">
         <CardContent className="p-0">
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[520px] overflow-y-auto">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Guest</TableHead>
-                  <TableHead className="hidden sm:table-cell">Room</TableHead>
-                  <TableHead className="hidden md:table-cell">Check-in</TableHead>
-                  <TableHead className="hidden md:table-cell">Check-out</TableHead>
-                  <TableHead className="text-center">Nights</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="hidden sm:table-cell">Payment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="hover:bg-transparent border-border/30">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Guest</TableHead>
+                  <TableHead className="hidden sm:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Room</TableHead>
+                  <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Check-in</TableHead>
+                  <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Check-out</TableHead>
+                  <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Nights</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Total</TableHead>
+                  <TableHead className="hidden sm:table-cell text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Payment</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Status</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground h-10">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       {Array.from({ length: 9 }).map((_, j) => (
                         <TableCell key={j}>
@@ -527,9 +527,9 @@ export default function ReservationsPage() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-32 text-center">
-                      <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
-                      <p className="text-muted-foreground">
+                    <TableCell colSpan={9} className="h-36 text-center">
+                      <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                      <p className="text-sm text-muted-foreground">
                         {filter !== 'all'
                           ? `No ${filter.toLowerCase()} reservations`
                           : 'No reservations yet'}
@@ -538,101 +538,106 @@ export default function ReservationsPage() {
                   </TableRow>
                 ) : (
                   filtered.map((resv) => (
-                    <TableRow key={resv.id} className="group">
+                    <TableRow key={resv.id} className="group border-border/20">
                       {/* Guest */}
-                      <TableCell>
+                      <TableCell className="py-3">
                         <div className="flex items-center gap-2.5">
                           <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white ${getAvatarColor(resv.guest?.name || '?')}`}
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow-sm ${getAvatarColor(resv.guest?.name || '?')}`}
                           >
                             {getInitials(resv.guest?.name || '?')}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate max-w-[140px]">
+                            <p className="text-sm font-medium truncate max-w-[160px]">
                               {resv.guest?.name || 'Unknown'}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               {resv.guest?.phone || '—'}
                             </p>
                           </div>
                         </div>
                       </TableCell>
                       {/* Room */}
-                      <TableCell className="hidden sm:table-cell">
-                        <p className="text-sm font-medium">
-                          {resv.room?.number || '—'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {resv.room?.type || ''}
-                        </p>
+                      <TableCell className="hidden sm:table-cell py-3">
+                        <div className="flex items-center gap-2">
+                          <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">
+                              {resv.room?.number || '—'}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {resv.room?.type || ''}
+                            </p>
+                          </div>
+                        </div>
                       </TableCell>
                       {/* Check-in */}
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      <TableCell className="hidden md:table-cell py-3 text-sm text-muted-foreground">
                         {formatDate(resv.checkIn)}
                       </TableCell>
                       {/* Check-out */}
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      <TableCell className="hidden md:table-cell py-3 text-sm text-muted-foreground">
                         {formatDate(resv.checkOut)}
                       </TableCell>
                       {/* Nights */}
-                      <TableCell className="text-center">
-                        <Badge variant="secondary" className="font-mono">
+                      <TableCell className="text-center py-3">
+                        <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md bg-muted px-1.5 text-xs font-semibold tabular-nums">
                           {resv.nights}
-                        </Badge>
+                        </span>
                       </TableCell>
                       {/* Total */}
-                      <TableCell className="text-right">
+                      <TableCell className="text-right py-3">
                         <div className="flex flex-col items-end gap-0.5">
-                          <span className="text-sm font-bold text-amber-400">
-                            {resv.totalCost.toLocaleString()}
+                          <span className="text-sm font-semibold text-amber-300">
+                            {settings?.currency || 'ETB'} {resv.totalCost.toLocaleString()}
                           </span>
                           {resv.balance > 0 && (
-                            <span className="text-[11px] text-red-400">
-                              Bal: {resv.balance.toLocaleString()}
+                            <span className="text-[10px] font-medium text-red-400">
+                              Due: {resv.balance.toLocaleString()}
                             </span>
                           )}
                         </div>
                       </TableCell>
                       {/* Payment */}
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="hidden sm:table-cell py-3">
                         <PaymentBadge status={resv.paymentStatus} />
                       </TableCell>
                       {/* Status */}
-                      <TableCell>
+                      <TableCell className="py-3">
                         <StatusBadge status={resv.status} />
                       </TableCell>
                       {/* Actions */}
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <TableCell className="text-right py-3">
+                        <div className="flex items-center justify-end gap-0.5">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
                             onClick={() => openReceipt(resv)}
                             title="View Receipt"
                           >
-                            <Receipt className="h-4 w-4" />
+                            <Receipt className="h-3.5 w-3.5" />
                           </Button>
                           {resv.status === 'UPCOMING' && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-emerald-400 hover:text-emerald-400"
+                              className="h-7 w-7 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
                               onClick={() => handleCheckin(resv.id)}
                               title="Check-in"
                             >
-                              <LogIn className="h-4 w-4" />
+                              <LogIn className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           {resv.status === 'ACTIVE' && (
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-amber-400 hover:text-amber-400"
+                              className="h-7 w-7 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
                               onClick={() => handleCheckout(resv.id)}
                               title="Check-out"
                             >
-                              <LogOut className="h-4 w-4" />
+                              <LogOut className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           {resv.status !== 'COMPLETED' && resv.status !== 'CANCELLED' && (
@@ -640,20 +645,20 @@ export default function ReservationsPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                 onClick={() => openEditDialog(resv)}
                                 title="Edit"
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-red-400 hover:text-red-400"
+                                className="h-7 w-7 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                                 onClick={() => confirmCancel(resv.id)}
                                 title="Cancel"
                               >
-                                <XCircle className="h-4 w-4" />
+                                <XCircle className="h-3.5 w-3.5" />
                               </Button>
                             </>
                           )}
@@ -670,237 +675,306 @@ export default function ReservationsPage() {
 
       {/* ── New/Edit Reservation Dialog ──────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { setShowFormDialog(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-          <div className="grid grid-cols-1 lg:grid-cols-5">
-            {/* Left: Form */}
-            <div className="lg:col-span-3 p-6 space-y-5">
-              <DialogHeader className="px-0">
-                <DialogTitle>
-                  {editingReservation ? 'Edit Reservation' : 'New Reservation'}
-                </DialogTitle>
-              </DialogHeader>
+        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-hidden p-0 flex flex-col">
+          {/* Dialog Header - sticky */}
+          <div className="shrink-0 px-6 pt-6 pb-0">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">
+                {editingReservation ? 'Edit Reservation' : 'New Reservation'}
+              </DialogTitle>
+            </DialogHeader>
+          </div>
 
-              <div className="grid gap-4">
-                {/* Guest */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="res-guest-name">Guest Name *</Label>
-                    <Input
-                      id="res-guest-name"
-                      placeholder="Full name"
-                      value={form.guestName}
-                      onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-                    />
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-3 min-h-0">
+              {/* Left: Form (2/3 width) */}
+              <div className="lg:col-span-2 px-6 py-5 space-y-6">
+                {/* Section: Guest Information */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Guest Information</h3>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="res-guest-phone">Guest Phone *</Label>
-                    <Input
-                      id="res-guest-phone"
-                      placeholder="+251 9XX XXX XXX"
-                      value={form.guestPhone}
-                      onChange={(e) => setForm({ ...form, guestPhone: e.target.value })}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="res-guest-name" className="text-xs text-muted-foreground">Full Name <span className="text-red-400">*</span></Label>
+                      <Input
+                        id="res-guest-name"
+                        placeholder="Enter guest name"
+                        value={form.guestName}
+                        onChange={(e) => setForm({ ...form, guestName: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="res-guest-phone" className="text-xs text-muted-foreground">Phone Number <span className="text-red-400">*</span></Label>
+                      <Input
+                        id="res-guest-phone"
+                        placeholder="+251 9XX XXX XXX"
+                        value={form.guestPhone}
+                        onChange={(e) => setForm({ ...form, guestPhone: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Room select */}
-                <div className="grid gap-2">
-                  <Label htmlFor="res-room">Room *</Label>
-                  <Select
-                    value={form.roomId}
-                    onValueChange={(v) => setForm({ ...form, roomId: v })}
-                  >
-                    <SelectTrigger id="res-room">
-                      <SelectValue placeholder="Select a room..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRooms.map((room) => (
-                        <SelectItem key={room.id} value={room.id}>
-                          {room.number} — {room.type} ({room.pricePerNight.toLocaleString()} ETB/night)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Separator className="bg-border/30" />
 
-                {/* Room details panel */}
-                {selectedRoom && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      Room Details
-                    </p>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground text-xs">Type</p>
-                        <p className="font-medium">{selectedRoom.type}</p>
+                {/* Section: Room & Dates */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BedDouble className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Room & Stay Duration</h3>
+                  </div>
+                  <div className="space-y-3 pl-6">
+                    {/* Room select + details in one row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="res-room" className="text-xs text-muted-foreground">Room <span className="text-red-400">*</span></Label>
+                        <Select
+                          value={form.roomId}
+                          onValueChange={(v) => setForm({ ...form, roomId: v })}
+                        >
+                          <SelectTrigger id="res-room" className="h-9">
+                            <SelectValue placeholder="Select a room..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableRooms.map((room) => (
+                              <SelectItem key={room.id} value={room.id}>
+                                <span className="font-medium">Room {room.number}</span>
+                                <span className="text-muted-foreground ml-1">— {room.type} — {room.pricePerNight.toLocaleString()} ETB/night</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Rate</p>
-                        <p className="font-medium text-amber-400">
-                          {selectedRoom.pricePerNight.toLocaleString()} ETB
-                        </p>
+                      {/* Inline room details */}
+                      {selectedRoom ? (
+                        <div className="flex items-center gap-3 rounded-lg bg-muted/40 border border-border/50 px-3 py-2 h-9">
+                          <Badge variant="outline" className="text-[10px] font-medium">{selectedRoom.type}</Badge>
+                          <span className="text-xs text-muted-foreground">{selectedRoom.capacity} guests</span>
+                          <span className="text-xs font-semibold text-amber-300 ml-auto">
+                            {selectedRoom.pricePerNight.toLocaleString()} ETB/night
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center rounded-lg border border-dashed border-border/50 h-9">
+                          <span className="text-xs text-muted-foreground">Select a room to see details</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="res-checkin" className="text-xs text-muted-foreground">Check-in Date <span className="text-red-400">*</span></Label>
+                        <Input
+                          id="res-checkin"
+                          type="date"
+                          value={form.checkIn}
+                          onChange={(e) => setForm({ ...form, checkIn: e.target.value })}
+                          className="h-9"
+                        />
                       </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Capacity</p>
-                        <p className="font-medium">{selectedRoom.capacity} guests</p>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="res-checkout" className="text-xs text-muted-foreground">Check-out Date <span className="text-red-400">*</span></Label>
+                        <Input
+                          id="res-checkout"
+                          type="date"
+                          value={form.checkOut}
+                          onChange={(e) => setForm({ ...form, checkOut: e.target.value })}
+                          className="h-9"
+                        />
                       </div>
                     </div>
                   </div>
-                )}
-
-                {/* Dates */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="res-checkin">Check-in Date *</Label>
-                    <Input
-                      id="res-checkin"
-                      type="date"
-                      value={form.checkIn}
-                      onChange={(e) => setForm({ ...form, checkIn: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="res-checkout">Check-out Date *</Label>
-                    <Input
-                      id="res-checkout"
-                      type="date"
-                      value={form.checkOut}
-                      onChange={(e) => setForm({ ...form, checkOut: e.target.value })}
-                    />
-                  </div>
                 </div>
 
-                {/* Cost summary */}
-                {nights > 0 && selectedRoom && (
-                  <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/5 p-4">
-                    <p className="text-xs text-amber-400/80 font-medium uppercase tracking-wider mb-2">
-                      Cost Summary
-                    </p>
-                    <div className="flex items-center justify-center gap-2 text-lg">
-                      <span className="font-mono font-bold">{nights}</span>
-                      <span className="text-muted-foreground">×</span>
-                      <span className="font-mono font-bold text-amber-400">
-                        {selectedRoom.pricePerNight.toLocaleString()}
-                      </span>
-                      <span className="text-muted-foreground">=</span>
-                      <span className="font-mono font-bold text-xl text-amber-400">
-                        {totalCost.toLocaleString()} ETB
-                      </span>
+                <Separator className="bg-border/30" />
+
+                {/* Section: Payment */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Payment</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="res-paid" className="text-xs text-muted-foreground">Amount Paid <span className="text-red-400">*</span></Label>
+                      <Input
+                        id="res-paid"
+                        type="number"
+                        placeholder="0"
+                        value={form.paidAmount}
+                        onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Payment Method</Label>
+                      <Select
+                        value={form.paymentMethod}
+                        onValueChange={(v) => setForm({ ...form, paymentMethod: v })}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="TRANSFER">Bank Transfer</SelectItem>
+                          <SelectItem value="CARD">Card</SelectItem>
+                          <SelectItem value="MOBILE">Mobile Payment</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                )}
 
-                {/* Payment */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="res-paid">Amount Paid *</Label>
-                    <Input
-                      id="res-paid"
-                      type="number"
-                      placeholder="0"
-                      value={form.paidAmount}
-                      onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Payment Method</Label>
-                    <Select
-                      value={form.paymentMethod}
-                      onValueChange={(v) => setForm({ ...form, paymentMethod: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CASH">Cash</SelectItem>
-                        <SelectItem value="TRANSFER">Transfer</SelectItem>
-                        <SelectItem value="CARD">Card</SelectItem>
-                        <SelectItem value="MOBILE">Mobile</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Cost summary - inline, cleaner */}
+                  {nights > 0 && selectedRoom && (
+                    <div className="ml-6 mt-1 rounded-lg bg-amber-500/5 border border-amber-500/20 px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-amber-400/70 uppercase tracking-wider">Cost Summary</span>
+                        <span className="text-lg font-bold text-amber-300 tabular-nums font-mono">
+                          {totalCost.toLocaleString()} ETB
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {nights} night{nights > 1 ? 's' : ''} × {selectedRoom.pricePerNight.toLocaleString()} ETB/night
+                      </p>
+                      {totalCost > 0 && parseFloat(form.paidAmount || '0') > 0 && (
+                        <div className="mt-2 pt-2 border-t border-amber-500/15 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Balance Due</span>
+                          <span className={`text-sm font-semibold tabular-nums font-mono ${(totalCost - parseFloat(form.paidAmount || '0')) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {Math.max(0, totalCost - parseFloat(form.paidAmount || '0')).toLocaleString()} ETB
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Notes */}
-                <div className="grid gap-2">
-                  <Label htmlFor="res-notes">Notes</Label>
-                  <Textarea
-                    id="res-notes"
-                    placeholder="Special requests, preferences..."
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    rows={3}
-                  />
+                <Separator className="bg-border/30" />
+
+                {/* Section: Notes */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Additional Notes</h3>
+                  </div>
+                  <div className="pl-6">
+                    <Textarea
+                      id="res-notes"
+                      placeholder="Special requests, preferences, or notes..."
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      rows={2}
+                      className="text-sm resize-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-end gap-3 pt-2">
+              {/* Right: Available Rooms Panel (1/3 width) */}
+              <div className="lg:col-span-1 border-t lg:border-t-0 lg:border-l border-border/40 bg-muted/10 flex flex-col">
+                <div className="shrink-0 p-4 pb-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                    <BedDouble className="h-4 w-4 text-muted-foreground" />
+                    Available Rooms
+                    <span className="ml-auto text-[11px] text-muted-foreground font-normal tabular-nums">{availableRooms.length}</span>
+                  </h4>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
+                    <Input
+                      placeholder="Search rooms..."
+                      value={roomSearch}
+                      onChange={(e) => setRoomSearch(e.target.value)}
+                      className="pl-8 h-8 text-xs bg-background/50 border-border/40"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 pb-4">
+                  {availableRooms.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <BedDouble className="h-8 w-8 mb-2 opacity-30" />
+                      <p className="text-xs">No available rooms</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {availableRooms.map((room) => (
+                        <button
+                          key={room.id}
+                          onClick={() => setForm({ ...form, roomId: room.id })}
+                          className={`w-full text-left rounded-lg border p-3 transition-all duration-150 ${
+                            form.roomId === room.id
+                              ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20 shadow-sm'
+                              : 'border-border/30 hover:border-border/60 hover:bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-semibold text-sm">
+                              {room.number}
+                            </span>
+                            <Badge variant="secondary" className="text-[10px] font-medium px-1.5">
+                              {room.type}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" /> {room.capacity} guests
+                            </span>
+                            <span className="font-semibold text-amber-300 tabular-nums">
+                              {room.pricePerNight.toLocaleString()} <span className="font-normal text-muted-foreground">ETB</span>
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dialog Footer - sticky */}
+          <div className="shrink-0 border-t border-border/40 px-6 py-4 bg-card/80 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              {nights > 0 && selectedRoom && (
+                <div className="hidden sm:flex items-center gap-2 text-sm">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Total:</span>
+                  <span className="font-bold text-amber-300 tabular-nums font-mono text-base">
+                    {totalCost.toLocaleString()} ETB
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 ml-auto">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => { setShowFormDialog(false); resetForm(); }}
                   disabled={formLoading}
+                  className="h-9"
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={formLoading}>
-                  {formLoading
-                    ? 'Saving...'
-                    : editingReservation
-                    ? 'Update Reservation'
-                    : 'Create Reservation'}
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={formLoading}
+                  className="h-9 px-5"
+                >
+                  {formLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                      Saving...
+                    </span>
+                  ) : editingReservation ? (
+                    'Update Reservation'
+                  ) : (
+                    'Create Reservation'
+                  )}
                 </Button>
-              </div>
-            </div>
-
-            {/* Right: Available rooms panel */}
-            <div className="lg:col-span-2 border-t lg:border-t-0 lg:border-l border-border bg-muted/20 p-4">
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <BedDouble className="h-4 w-4" /> Available Rooms
-              </h4>
-              <div className="relative mb-3">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search rooms..."
-                  value={roomSearch}
-                  onChange={(e) => setRoomSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
-              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                {availableRooms.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No available rooms
-                  </p>
-                ) : (
-                  availableRooms.map((room) => (
-                    <button
-                      key={room.id}
-                      onClick={() => setForm({ ...form, roomId: room.id })}
-                      className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
-                        form.roomId === room.id
-                          ? 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30'
-                          : 'border-border'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-sm">
-                          Room {room.number}
-                        </span>
-                        <span className="text-xs text-amber-400 font-medium">
-                          {room.pricePerNight.toLocaleString()} ETB
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                        <span>{room.type}</span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" /> {room.capacity}
-                        </span>
-                        <span>per night</span>
-                      </div>
-                    </button>
-                  ))
-                )}
               </div>
             </div>
           </div>
