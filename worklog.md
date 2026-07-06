@@ -75,3 +75,29 @@ Stage Summary:
 - Fixed files: dialog.tsx, reservations-page.tsx, rooms-page.tsx, guests-page.tsx, expenses-page.tsx, daytime-page.tsx, resources-page.tsx
 - Pattern: Header (shrink-0) → Scrollable Content (flex-1 overflow-y-auto) → Footer (shrink-0)
 - Build: Successful, no errors
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fix dialog viewport centering distortion — dialogs appeared left-aligned and overlay didn't visually cover sidebar
+
+Work Log:
+- Analyzed screenshot with VLM: confirmed overlay "contained within narrower left-aligned container" and dialog "shifted to the left"
+- Root cause: DialogContent centered in full viewport (left-[50%]) instead of content area (which starts at sidebar's 16rem). Semi-transparent overlay (bg-black/50) over dark sidebar (bg-slate-950) made overlay appear to not cover sidebar.
+- Verified Radix Portal correctly renders at document.body — issue is visual centering, not portal placement
+- Fixed dialog.tsx: changed left-[50%] to left-[calc(50%+var(--dialog-offset,0px))] for sidebar-aware centering
+- Fixed dialog.tsx: increased z-index from z-50 to z-[100]/z-[101] to ensure dialogs are above everything
+- Fixed dialog.tsx: overlay opacity bg-black/50 to bg-black/80 backdrop-blur-[2px] to properly hide sidebar
+- Fixed dialog.tsx: removed base gap-4 that interfered with custom dialog layouts
+- Fixed dialog.tsx: changed base overflow-hidden to overflow-y-auto for safer default scrolling
+- Added globals.css: --dialog-offset CSS variable, 8rem on lg screens when .has-sidebar class is present
+- Added page.tsx: useEffect toggles .has-sidebar on documentElement based on currentUser state
+- Reservations dialog: uses !overflow-hidden to override base for custom internal scroll management
+- Verified build: zero errors, zero warnings
+
+Stage Summary:
+- Root cause: Dialog centered in viewport (including sidebar) instead of content area; overlay too transparent over dark sidebar
+- Fixed files: dialog.tsx, page.tsx, globals.css, reservations-page.tsx
+- Solution: CSS variable --dialog-offset shifts dialog right by half sidebar width (8rem) on desktop when sidebar is visible
+- All 9 pages with dialogs automatically fixed via base dialog.tsx change
+- Build: Successful, no errors

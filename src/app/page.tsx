@@ -42,6 +42,18 @@ export default function AppPage() {
     );
   }, []);
 
+  // Toggle sidebar visibility class for dialog centering offset
+  useEffect(() => {
+    if (currentUser) {
+      document.documentElement.classList.add('has-sidebar');
+    } else {
+      document.documentElement.classList.remove('has-sidebar');
+    }
+    return () => {
+      document.documentElement.classList.remove('has-sidebar');
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser) return;
     import('@/lib/api')
