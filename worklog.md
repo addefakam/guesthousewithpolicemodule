@@ -50,3 +50,28 @@ Stage Summary:
 - Fixed file: /home/z/my-project/src/components/ghms/pages/reservations-page.tsx
 - Build: Successful, no errors
 - Key changes: dialog layout, table actions visibility, form sections, color contrast, visual hierarchy
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix dialog screen distortion issue affecting all GHMS pages
+
+Work Log:
+- Identified root cause: base DialogContent used `grid` display conflicting with page-level `flex` overrides, and had no max-height/overflow constraints
+- Fixed DialogContent base: `grid` → `flex flex-col`, added `max-h-[85vh] overflow-hidden`
+- Added `shrink-0` to DialogHeader and DialogFooter to prevent them from shrinking
+- Added `z-10` to close button so it stays above all content
+- Fixed rooms-page.tsx: added `overflow-y-auto flex-1` to form content div
+- Fixed guests-page.tsx: removed `max-h-[90vh] overflow-y-auto` override, added scrollable wrapper for both add/edit and profile dialogs
+- Fixed expenses-page.tsx: added `overflow-y-auto flex-1` to form content div
+- Fixed daytime-page.tsx: removed `max-h-[90vh] overflow-y-auto` override, added `overflow-y-auto flex-1` to both booking and service dialogs
+- Fixed resources-page.tsx: added `overflow-y-auto flex-1` to both item and restock dialog content
+- Fixed reservations-page.tsx: aligned max-h to 85vh, added `overflow-y-auto flex-1` to receipt content, removed conflicting overflow overrides
+- Housekeeping/settings/users: short dialogs, base fix sufficient
+- Verified: zero errors, zero warnings
+
+Stage Summary:
+- Root cause: CSS display conflict (`grid` vs `flex`) + missing overflow containment in DialogContent
+- Fixed files: dialog.tsx, reservations-page.tsx, rooms-page.tsx, guests-page.tsx, expenses-page.tsx, daytime-page.tsx, resources-page.tsx
+- Pattern: Header (shrink-0) → Scrollable Content (flex-1 overflow-y-auto) → Footer (shrink-0)
+- Build: Successful, no errors

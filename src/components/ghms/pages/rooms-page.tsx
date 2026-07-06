@@ -798,7 +798,7 @@ export default function RoomsPage() {
               {form.id ? 'Update room details below.' : 'Fill in the details to create a new room.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="room-number">

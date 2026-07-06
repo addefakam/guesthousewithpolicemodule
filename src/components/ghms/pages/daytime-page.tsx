@@ -612,7 +612,7 @@ export default function DaytimePage() {
 
       {/* Book Service Dialog */}
       <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingBooking ? 'Edit Booking' : 'Book Service'}
@@ -623,7 +623,7 @@ export default function DaytimePage() {
                 : 'Fill in the details to book a daytime service.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label>
                 Service <span className="text-red-400">*</span>
@@ -798,7 +798,7 @@ export default function DaytimePage() {
                 : 'Create a new daytime service.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label>
                 Service Name <span className="text-red-400">*</span>

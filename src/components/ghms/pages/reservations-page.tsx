@@ -675,7 +675,7 @@ export default function ReservationsPage() {
 
       {/* ── New/Edit Reservation Dialog ──────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { setShowFormDialog(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-hidden p-0 flex flex-col">
+        <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-hidden p-0 flex flex-col">
           {/* Dialog Header - sticky */}
           <div className="shrink-0 px-6 pt-6 pb-0">
             <DialogHeader>
@@ -983,14 +983,14 @@ export default function ReservationsPage() {
 
       {/* ── Receipt Dialog ────────────────────────────────────────────────── */}
       <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" id="receipt-content">
+        <DialogContent className="sm:max-w-lg" id="receipt-content">
           {receiptReservation && settings && (
             <>
               <DialogHeader className="sr-only">
                 <DialogTitle>Receipt</DialogTitle>
               </DialogHeader>
 
-              <div className="print:p-0 space-y-5">
+              <div className="print:p-0 space-y-5 overflow-y-auto flex-1">
                 {/* Header */}
                 <div className="text-center">
                   <h2 className="text-xl font-bold text-primary">
