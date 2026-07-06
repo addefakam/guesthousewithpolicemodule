@@ -586,102 +586,155 @@
    586→};
    587→
    588→// ============================================================
-   589→// SEED DATA (only if no data exists)
+   589→// HOUSEKEEPING
    590→// ============================================================
-   591→export function seedDemoData() {
-   592→  if (get('seeded')) return;
-   593→  set('seeded', true);
+   591→export const Housekeeping = {
+   592→  getAll() { return get('housekeeping') || []; },
+   593→  save(t) { set('housekeeping', t); },
    594→
-   595→  // Users
-   596→  Users.add({ username: 'admin', password: '123', role: 'superuser', name: 'Super Admin' });
-   597→  Users.add({ username: 'operator', password: '123', role: 'operator', name: 'Front Desk' });
-   598→
-   599→  // Rooms (Name and Status removed from registration; Status is internal/default available)
-   600→  Rooms.add({ number: '101', type: 'single',  pricePerNight: 800,  floor: 1, capacity: 1, status: 'available',  amenities: 'WiFi, TV, AC' });
-   601→  Rooms.add({ number: '102', type: 'double',  pricePerNight: 1200, floor: 1, capacity: 2, status: 'occupied',   amenities: 'WiFi, TV, AC, Fridge' });
-   602→  Rooms.add({ number: '103', type: 'twin',    pricePerNight: 1200, floor: 1, capacity: 2, status: 'maintenance',amenities: 'WiFi, TV' });
-   603→  Rooms.add({ number: '201', type: 'suite',   pricePerNight: 2500, floor: 2, capacity: 4, status: 'occupied',   amenities: 'WiFi, TV, AC, Jacuzzi, Minibar' });
-   604→  Rooms.add({ number: '202', type: 'deluxe',  pricePerNight: 1800, floor: 2, capacity: 2, status: 'available',  amenities: 'WiFi, TV, AC, Balcony' });
-   605→
-   606→  // Guests
-   607→  const g1 = Guests.add({ name: 'Abebe Kebede',    phone: '0911234567', email: 'abebe@email.com', idNumber: 'ET123456', idType: 'national_id', nationality: 'Ethiopian', address: 'Addis Ababa' });
-   608→  const g2 = Guests.add({ name: 'Sara Mohammed',   phone: '0922345678', email: 'sara@email.com',  idNumber: 'ET234567', idType: 'national_id', nationality: 'Ethiopian', address: 'Bahir Dar' });
-   609→  const g3 = Guests.add({ name: 'John Smith',      phone: '+1234567890',email: 'john@email.com',  idNumber: 'US987654', idType: 'passport',    nationality: 'American',  address: 'New York, USA' });
-   610→
-   611→  // Reservations
-   612→  const today = new Date();
-   613→  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-   614→  const tomorrow  = new Date(today); tomorrow.setDate(today.getDate() + 1);
-   615→  const nextWeek  = new Date(today); nextWeek.setDate(today.getDate() + 5);
+   595→  addTask(task) {
+   596→    const all = this.getAll();
+   597→    const newTask = { id: uid(), createdAt: now(), status: 'pending', ...task };
+   598→    all.push(newTask);
+   599→    this.save(all);
+   600→    Activity.log(`Housekeeping task created: ${task.type} for Room ${Rooms.getById(task.roomId)?.number || '?'}`, 'info');
+   601→    return newTask;
+   602→  },
+   603→
+   604→  update(id, changes) {
+   605→    const all = this.getAll().map(t => t.id === id ? { ...t, ...changes, updatedAt: now() } : t);
+   606→    this.save(all);
+   607→    if (changes.status === 'completed') {
+   608→      const task = all.find(t => t.id === id);
+   609→      Activity.log(`Housekeeping completed: ${task?.type} for Room ${Rooms.getById(task?.roomId)?.number || '?'}`, 'info');
+   610→    }
+   611→    return all.find(t => t.id === id);
+   612→  },
+   613→
+   614→  delete(id) { this.save(this.getAll().filter(t => t.id !== id)); },
+   615→  getById(id) { return this.getAll().find(t => t.id === id); },
    616→
-   617→  const rooms = Rooms.getAll();
-   618→  Reservations.add({
-   619→    guestId: g1.id,
-   620→    roomId: rooms[1].id,
-   621→    checkIn: yesterday.toISOString().slice(0,10),
-   622→    checkOut: tomorrow.toISOString().slice(0,10),
-   623→    paidAmount: 1200,
-   624→    paymentMethod: 'cash',
-   625→    notes: 'Early check-in requested',
-   626→  });
-   627→
-   628→  Reservations.add({
-   629→    guestId: g3.id,
-   630→    roomId: rooms[3].id,
-   631→    checkIn: today.toISOString().slice(0,10),
-   632→    checkOut: nextWeek.toISOString().slice(0,10),
-   633→    paidAmount: 12500,
-   634→    paymentMethod: 'transfer',
-   635→  });
-   636→
-   637→  const futureCI = new Date(today); futureCI.setDate(today.getDate() + 2);
-   638→  const futureCO = new Date(today); futureCO.setDate(today.getDate() + 5);
-   639→  Reservations.add({
-   640→    guestId: g2.id,
-   641→    roomId: rooms[0].id,
-   642→    checkIn: futureCI.toISOString().slice(0,10),
-   643→    checkOut: futureCO.toISOString().slice(0,10),
-   644→    paidAmount: 0,
-   645→    paymentMethod: 'cash',
-   646→  });
-   647→
-   648→  // Daytime Services
-   649→  DaytimeServices.add({ name: 'Conference Room',    price: 1500, category: 'Facilities',  duration: 'Full Day',   description: 'Air-conditioned conference room for up to 20 people' });
-   650→  DaytimeServices.add({ name: 'Laundry Service',    price: 150,  category: 'Laundry',     duration: 'Per load',   description: 'Wash and fold laundry service' });
-   651→  DaytimeServices.add({ name: 'Breakfast Buffet',   price: 350,  category: 'Meals',       duration: 'Per person', description: 'Full breakfast buffet service' });
-   652→  DaytimeServices.add({ name: 'Airport Transfer',   price: 800,  category: 'Transport',   duration: 'One way',    description: 'Drop or pickup from Bole Airport' });
-   653→  DaytimeServices.add({ name: 'Massage & Spa',      price: 600,  category: 'Wellness',    duration: '1 hour',     description: 'Relaxing massage and spa service' });
-   654→
-   655→  // Expenses
-   656→  const expDates = [0,1,2,3,4,5,6].map(i => {
-   657→    const d = new Date(); d.setDate(d.getDate()-i); return d.toISOString().slice(0,10);
-   658→  });
-   659→  Expenses.add({ date: expDates[0], category: 'utilities',   amount: 1200, description: 'Electricity bill',    vendor: 'EEU',         paymentMethod: 'transfer' });
-   660→  Expenses.add({ date: expDates[0], category: 'supplies',    amount: 550,  description: 'Cleaning supplies',   vendor: 'Local Market', paymentMethod: 'cash' });
-   661→  Expenses.add({ date: expDates[1], category: 'staff',       amount: 3000, description: 'Weekly staff wages',  vendor: 'Staff',        paymentMethod: 'cash' });
-   662→  Expenses.add({ date: expDates[2], category: 'food',        amount: 800,  description: 'Breakfast supplies',  vendor: 'Supermarket',  paymentMethod: 'cash' });
-   663→  Expenses.add({ date: expDates[3], category: 'maintenance', amount: 450,  description: 'Plumbing repair',     vendor: 'Teklu Plumbing',paymentMethod:'cash' });
-   664→  Expenses.add({ date: expDates[4], category: 'utilities',   amount: 350,  description: 'Internet bill',       vendor: 'Ethio Telecom', paymentMethod:'transfer' });
-   665→  Expenses.add({ date: expDates[5], category: 'supplies',    amount: 280,  description: 'Towels & bed linen',  vendor: 'Textile Shop',  paymentMethod:'cash' });
-   666→
-   667→  // Resources
-   668→  Resources.add({ name: 'Bath Towels',      category: 'Linens',    quantity: 45, unit: 'pcs',   minLevel: 20, costPerUnit: 80,  supplier: 'Textile Shop' });
-   669→  Resources.add({ name: 'Bed Sheets',       category: 'Linens',    quantity: 30, unit: 'sets',  minLevel: 15, costPerUnit: 150, supplier: 'Textile Shop' });
-   670→  Resources.add({ name: 'Soap Bars',        category: 'Toiletries',quantity: 8,  unit: 'boxes', minLevel: 5,  costPerUnit: 120, supplier: 'Supermarket' });
-   671→  Resources.add({ name: 'Shampoo',          category: 'Toiletries',quantity: 12, unit: 'btls',  minLevel: 10, costPerUnit: 45,  supplier: 'Supermarket' });
-   672→  Resources.add({ name: 'Bottled Water',    category: 'Food',      quantity: 3,  unit: 'crates',minLevel: 5,  costPerUnit: 250, supplier: 'Water Supplier' });
-   673→  Resources.add({ name: 'Coffee/Tea',       category: 'Food',      quantity: 6,  unit: 'pkgs',  minLevel: 4,  costPerUnit: 90,  supplier: 'Supermarket' });
-   674→  Resources.add({ name: 'Toilet Paper',     category: 'Supplies',  quantity: 60, unit: 'rolls', minLevel: 30, costPerUnit: 15,  supplier: 'Supermarket' });
-   675→  Resources.add({ name: 'Laundry Detergent',category: 'Supplies',  quantity: 4,  unit: 'kg',    minLevel: 5,  costPerUnit: 180, supplier: 'Local Market' });
-   676→
-   677→  // Daytime bookings
-   678→  const svcs = DaytimeServices.getAll();
-   679→  DaytimeBookings.add({ serviceId: svcs[0].id, guestName: 'Kality Company', guestPhone: '0912000001', date: expDates[0], time: '09:00', quantity: 1, paidAmount: 1500, paymentMethod: 'transfer' });
-   680→  DaytimeBookings.add({ serviceId: svcs[2].id, guestName: 'Walk-in Guest',  guestPhone: '0912000002', date: expDates[0], time: '08:00', quantity: 3, paidAmount: 1050, paymentMethod: 'cash' });
-   681→
-   682→  Activity.log('System initialized with demo data', 'info');
-   683→  Activity.log('Abebe Kebede checked in to Room 102', 'checkin');
-   684→  Activity.log('John Smith checked in to Room 201', 'checkin');
-   685→  Activity.log('Laundry service booked', 'service');
-   686→}
-   687→
+   617→  getByRoom(roomId) { return this.getAll().filter(t => t.roomId === roomId); },
+   618→
+   619→  getByDate(date) { return this.getAll().filter(t => t.scheduledDate === date); },
+   620→
+   621→  getToday() { return this.getByDate(new Date().toISOString().slice(0,10)); },
+   622→
+   623→  getStats() {
+   624→    const all = this.getAll();
+   625→    return {
+   626→      total: all.length,
+   627→      pending: all.filter(t => t.status === 'pending').length,
+   628→      in_progress: all.filter(t => t.status === 'in_progress').length,
+   629→      completed: all.filter(t => t.status === 'completed').length,
+   630→    };
+   631→  }
+   632→};
+   633→
+   634→// ============================================================
+   635→// SEED DATA (only if no data exists)
+   636→// ============================================================
+   637→export function seedDemoData() {
+   638→  if (get('seeded')) return;
+   639→  set('seeded', true);
+   640→
+   641→  // Users
+   642→  Users.add({ username: 'admin', password: '123', role: 'superuser', name: 'Super Admin' });
+   643→  Users.add({ username: 'operator', password: '123', role: 'operator', name: 'Front Desk' });
+   644→
+   645→  // Rooms (Name and Status removed from registration; Status is internal/default available)
+   646→  Rooms.add({ number: '101', type: 'single',  pricePerNight: 800,  floor: 1, capacity: 1, status: 'available',  amenities: 'WiFi, TV, AC' });
+   647→  Rooms.add({ number: '102', type: 'double',  pricePerNight: 1200, floor: 1, capacity: 2, status: 'occupied',   amenities: 'WiFi, TV, AC, Fridge' });
+   648→  Rooms.add({ number: '103', type: 'twin',    pricePerNight: 1200, floor: 1, capacity: 2, status: 'maintenance',amenities: 'WiFi, TV' });
+   649→  Rooms.add({ number: '201', type: 'suite',   pricePerNight: 2500, floor: 2, capacity: 4, status: 'occupied',   amenities: 'WiFi, TV, AC, Jacuzzi, Minibar' });
+   650→  Rooms.add({ number: '202', type: 'deluxe',  pricePerNight: 1800, floor: 2, capacity: 2, status: 'available',  amenities: 'WiFi, TV, AC, Balcony' });
+   651→
+   652→  // Guests
+   653→  const g1 = Guests.add({ name: 'Abebe Kebede',    phone: '0911234567', email: 'abebe@email.com', idNumber: 'ET123456', idType: 'national_id', nationality: 'Ethiopian', address: 'Addis Ababa' });
+   654→  const g2 = Guests.add({ name: 'Sara Mohammed',   phone: '0922345678', email: 'sara@email.com',  idNumber: 'ET234567', idType: 'national_id', nationality: 'Ethiopian', address: 'Bahir Dar' });
+   655→  const g3 = Guests.add({ name: 'John Smith',      phone: '+1234567890',email: 'john@email.com',  idNumber: 'US987654', idType: 'passport',    nationality: 'American',  address: 'New York, USA' });
+   656→
+   657→  // Reservations
+   658→  const today = new Date();
+   659→  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+   660→  const tomorrow  = new Date(today); tomorrow.setDate(today.getDate() + 1);
+   661→  const nextWeek  = new Date(today); nextWeek.setDate(today.getDate() + 5);
+   662→
+   663→  const rooms = Rooms.getAll();
+   664→  Reservations.add({
+   665→    guestId: g1.id,
+   666→    roomId: rooms[1].id,
+   667→    checkIn: yesterday.toISOString().slice(0,10),
+   668→    checkOut: tomorrow.toISOString().slice(0,10),
+   669→    paidAmount: 1200,
+   670→    paymentMethod: 'cash',
+   671→    notes: 'Early check-in requested',
+   672→  });
+   673→
+   674→  Reservations.add({
+   675→    guestId: g3.id,
+   676→    roomId: rooms[3].id,
+   677→    checkIn: today.toISOString().slice(0,10),
+   678→    checkOut: nextWeek.toISOString().slice(0,10),
+   679→    paidAmount: 12500,
+   680→    paymentMethod: 'transfer',
+   681→  });
+   682→
+   683→  const futureCI = new Date(today); futureCI.setDate(today.getDate() + 2);
+   684→  const futureCO = new Date(today); futureCO.setDate(today.getDate() + 5);
+   685→  Reservations.add({
+   686→    guestId: g2.id,
+   687→    roomId: rooms[0].id,
+   688→    checkIn: futureCI.toISOString().slice(0,10),
+   689→    checkOut: futureCO.toISOString().slice(0,10),
+   690→    paidAmount: 0,
+   691→    paymentMethod: 'cash',
+   692→  });
+   693→
+   694→  // Daytime Services
+   695→  DaytimeServices.add({ name: 'Conference Room',    price: 1500, category: 'Facilities',  duration: 'Full Day',   description: 'Air-conditioned conference room for up to 20 people' });
+   696→  DaytimeServices.add({ name: 'Laundry Service',    price: 150,  category: 'Laundry',     duration: 'Per load',   description: 'Wash and fold laundry service' });
+   697→  DaytimeServices.add({ name: 'Breakfast Buffet',   price: 350,  category: 'Meals',       duration: 'Per person', description: 'Full breakfast buffet service' });
+   698→  DaytimeServices.add({ name: 'Airport Transfer',   price: 800,  category: 'Transport',   duration: 'One way',    description: 'Drop or pickup from Bole Airport' });
+   699→  DaytimeServices.add({ name: 'Massage & Spa',      price: 600,  category: 'Wellness',    duration: '1 hour',     description: 'Relaxing massage and spa service' });
+   700→
+   701→  // Expenses
+   702→  const expDates = [0,1,2,3,4,5,6].map(i => {
+   703→    const d = new Date(); d.setDate(d.getDate()-i); return d.toISOString().slice(0,10);
+   704→  });
+   705→  Expenses.add({ date: expDates[0], category: 'utilities',   amount: 1200, description: 'Electricity bill',    vendor: 'EEU',         paymentMethod: 'transfer' });
+   706→  Expenses.add({ date: expDates[0], category: 'supplies',    amount: 550,  description: 'Cleaning supplies',   vendor: 'Local Market', paymentMethod: 'cash' });
+   707→  Expenses.add({ date: expDates[1], category: 'staff',       amount: 3000, description: 'Weekly staff wages',  vendor: 'Staff',        paymentMethod: 'cash' });
+   708→  Expenses.add({ date: expDates[2], category: 'food',        amount: 800,  description: 'Breakfast supplies',  vendor: 'Supermarket',  paymentMethod: 'cash' });
+   709→  Expenses.add({ date: expDates[3], category: 'maintenance', amount: 450,  description: 'Plumbing repair',     vendor: 'Teklu Plumbing',paymentMethod:'cash' });
+   710→  Expenses.add({ date: expDates[4], category: 'utilities',   amount: 350,  description: 'Internet bill',       vendor: 'Ethio Telecom', paymentMethod:'transfer' });
+   711→  Expenses.add({ date: expDates[5], category: 'supplies',    amount: 280,  description: 'Towels & bed linen',  vendor: 'Textile Shop',  paymentMethod:'cash' });
+   712→
+   713→  // Resources
+   714→  Resources.add({ name: 'Bath Towels',      category: 'Linens',    quantity: 45, unit: 'pcs',   minLevel: 20, costPerUnit: 80,  supplier: 'Textile Shop' });
+   715→  Resources.add({ name: 'Bed Sheets',       category: 'Linens',    quantity: 30, unit: 'sets',  minLevel: 15, costPerUnit: 150, supplier: 'Textile Shop' });
+   716→  Resources.add({ name: 'Soap Bars',        category: 'Toiletries',quantity: 8,  unit: 'boxes', minLevel: 5,  costPerUnit: 120, supplier: 'Supermarket' });
+   717→  Resources.add({ name: 'Shampoo',          category: 'Toiletries',quantity: 12, unit: 'btls',  minLevel: 10, costPerUnit: 45,  supplier: 'Supermarket' });
+   718→  Resources.add({ name: 'Bottled Water',    category: 'Food',      quantity: 3,  unit: 'crates',minLevel: 5,  costPerUnit: 250, supplier: 'Water Supplier' });
+   719→  Resources.add({ name: 'Coffee/Tea',       category: 'Food',      quantity: 6,  unit: 'pkgs',  minLevel: 4,  costPerUnit: 90,  supplier: 'Supermarket' });
+   720→  Resources.add({ name: 'Toilet Paper',     category: 'Supplies',  quantity: 60, unit: 'rolls', minLevel: 30, costPerUnit: 15,  supplier: 'Supermarket' });
+   721→  Resources.add({ name: 'Laundry Detergent',category: 'Supplies',  quantity: 4,  unit: 'kg',    minLevel: 5,  costPerUnit: 180, supplier: 'Local Market' });
+   722→
+   723→  // Daytime bookings
+   724→  const svcs = DaytimeServices.getAll();
+   725→  DaytimeBookings.add({ serviceId: svcs[0].id, guestName: 'Kality Company', guestPhone: '0912000001', date: expDates[0], time: '09:00', quantity: 1, paidAmount: 1500, paymentMethod: 'transfer' });
+   726→  DaytimeBookings.add({ serviceId: svcs[2].id, guestName: 'Walk-in Guest',  guestPhone: '0912000002', date: expDates[0], time: '08:00', quantity: 3, paidAmount: 1050, paymentMethod: 'cash' });
+   727→
+   728→  Activity.log('System initialized with demo data', 'info');
+   729→  Activity.log('Abebe Kebede checked in to Room 102', 'checkin');
+   730→  Activity.log('John Smith checked in to Room 201', 'checkin');
+   731→  Activity.log('Laundry service booked', 'service');
+   732→
+   733→  // Housekeeping tasks
+   734→  const rooms = Rooms.getAll();
+   735→  Housekeeping.addTask({ roomId: rooms[0].id, type: 'cleaning', status: 'pending', assignedTo: 'Housekeeper 1', scheduledDate: new Date().toISOString().slice(0,10), notes: 'Regular cleaning' });
+   736→  Housekeeping.addTask({ roomId: rooms[1].id, type: 'cleaning', status: 'in_progress', assignedTo: 'Housekeeper 1', scheduledDate: new Date().toISOString().slice(0,10), notes: 'Deep cleaning after checkout' });
+   737→  Housekeeping.addTask({ roomId: rooms[3].id, type: 'maintenance', status: 'pending', assignedTo: 'Maintenance', scheduledDate: new Date().toISOString().slice(0,10), notes: 'AC inspection needed' });
+   738→  Housekeeping.addTask({ roomId: rooms[4].id, type: 'cleaning', status: 'completed', assignedTo: 'Housekeeper 2', scheduledDate: new Date(Date.now() - 86400000).toISOString().slice(0,10), completedAt: new Date(Date.now() - 43200000).toISOString(), notes: 'Post-stay cleaning' });
+   739→}
+   740→

@@ -1,0 +1,695 @@
+     1→/**
+     2→ * calendar.js — Calendar View Module
+     3→ * Monthly room-booking calendar grid for Guest House Management System
+     4→ */
+     5→import { Reservations, Rooms, Guests } from '../data.js';
+     6→import { t, formatCurrency, formatDate } from '../i18n.js';
+     7→import { showToast, escHtml, openModal, closeModal } from '../app.js';
+     8→
+     9→// ============================================================
+    10→// STATE
+    11→// ============================================================
+    12→let viewYear, viewMonth; // month is 0-indexed (JS Date convention)
+    13→const CELL_W = 36;       // px per day column
+    14→const ROW_H  = 44;       // px per room row
+    15→const BLOCK_PAD = 3;     // px vertical padding inside row for blocks
+    16→
+    17→// ============================================================
+    18→// HELPERS
+    19→// ============================================================
+    20→function initDate() {
+    21→  const now = new Date();
+    22→  viewYear  = now.getFullYear();
+    23→  viewMonth = now.getMonth();
+    24→}
+    25→
+    26→function daysInMonth(y, m) {
+    27→  return new Date(y, m + 1, 0).getDate();
+    28→}
+    29→
+    30→function dayOfWeek(y, m, d) {
+    31→  return new Date(y, m, d).getDay(); // 0 = Sun
+    32→}
+    33→
+    34→function isWeekend(y, m, d) {
+    35→  const dow = dayOfWeek(y, m, d);
+    36→  return dow === 0 || dow === 6;
+    37→}
+    38→
+    39→function isToday(y, m, d) {
+    40→  const now = new Date();
+    41→  return now.getFullYear() === y && now.getMonth() === m && now.getDate() === d;
+    42→}
+    43→
+    44→function getInitials(name) {
+    45→  if (!name) return '?';
+    46→  return name.split(' ').slice(0, 2).map(w => (w[0] || '').toUpperCase()).join('');
+    47→}
+    48→
+    49→function monthLabel(y, m) {
+    50→  const months = t('months');
+    51→  return `${months[m]} ${y}`;
+    52→}
+    53→
+    54→// ============================================================
+    55→// STATUS COLORS
+    56→// ============================================================
+    57→function statusColors(status) {
+    58→  switch (status) {
+    59→    case 'active':    return { bg: 'rgba(59,130,246,0.15)',  border: '#3b82f6', text: '#2563eb' };
+    60→    case 'upcoming':  return { bg: 'rgba(34,197,94,0.15)',   border: '#22c55e', text: '#16a34a' };
+    61→    case 'completed': return { bg: 'rgba(156,163,175,0.18)', border: '#9ca3af', text: '#6b7280' };
+    62→    case 'cancelled': return { bg: 'rgba(239,68,68,0.12)',  border: '#ef4444', text: '#ef4444' };
+    63→    default:          return { bg: 'rgba(156,163,175,0.18)', border: '#9ca3af', text: '#6b7280' };
+    64→  }
+    65→}
+    66→
+    67→function statusBadge(status) {
+    68→  const map = {
+    69→    active:    { label: t('res.active'),    cls: 'badge-active' },
+    70→    upcoming:  { label: t('res.upcoming'),  cls: 'badge-upcoming' },
+    71→    completed: { label: t('res.completed'), cls: 'badge-completed' },
+    72→    cancelled: { label: t('res.cancelled'), cls: 'badge-cancelled' },
+    73→  };
+    74→  const info = map[status] || map.upcoming;
+    75→  return `<span class="badge ${info.cls}">${info.label}</span>`;
+    76→}
+    77→
+    78→function paymentBadge(pStatus) {
+    79→  const map = {
+    80→    paid:    { label: t('res.paid_lbl'), cls: 'badge-active' },
+    81→    partial: { label: t('res.partial'),  cls: 'badge-upcoming' },
+    82→    pending: { label: t('res.pending'),  cls: 'badge-completed' },
+    83→  };
+    84→  const info = map[pStatus] || map.pending;
+    85→  return `<span class="badge ${info.cls}">${info.label}</span>`;
+    86→}
+    87→
+    88→// ============================================================
+    89→// DATA — reservations visible in the given month
+    90→// ============================================================
+    91→function getReservationsForMonth(y, m) {
+    92→  const dim = daysInMonth(y, m);
+    93→  const ms  = new Date(y, m, 1).toISOString().slice(0, 10);
+    94→  const me  = new Date(y, m, dim).toISOString().slice(0, 10);
+    95→
+    96→  return Reservations.getAll()
+    97→    .filter(r => r.status !== 'cancelled' && r.checkIn && r.checkOut)
+    98→    .filter(r => r.checkIn <= me && r.checkOut > ms)
+    99→    .map(r => ({
+   100→      ...r,
+   101→      _guest: Guests.getById(r.guestId),
+   102→      _room:  Rooms.getById(r.roomId),
+   103→    }));
+   104→}
+   105→
+   106→// Visible block geometry for a reservation within the month grid
+   107→function blockGeometry(res, y, m) {
+   108→  const dim = daysInMonth(y, m);
+   109→  const ci  = new Date(res.checkIn + 'T00:00:00');
+   110→  const co  = new Date(res.checkOut + 'T00:00:00');
+   111→  const mFirst = new Date(y, m, 1);
+   112→  const mLast  = new Date(y, m, dim + 1); // day after month end
+   113→
+   114→  // Day-of-month (1-based) for visible start/end
+   115→  let startDay = ci >= mFirst ? ci.getDate() : 1;
+   116→  let endDay   = co <= mLast  ? co.getDate() : dim + 1;
+   117→
+   118→  startDay = Math.max(1, Math.min(dim + 1, startDay));
+   119→  endDay   = Math.max(startDay, Math.min(dim + 1, endDay));
+   120→
+   121→  if (startDay >= endDay) return null; // no visible portion
+   122→
+   123→  return {
+   124→    left:     (startDay - 1) * CELL_W,
+   125→    width:    (endDay - startDay) * CELL_W,
+   126→    startDay,
+   127→    endDay,
+   128→  };
+   129→}
+   130→
+   131→// ============================================================
+   132→// CALENDAR-SPECIFIC STYLES (injected once)
+   133→// ============================================================
+   134→let stylesInjected = false;
+   135→function injectStyles() {
+   136→  if (stylesInjected) return;
+   137→  stylesInjected = true;
+   138→  const style = document.createElement('style');
+   139→  style.textContent = `
+   140→    /* Calendar day header */
+   141→    .cal-day-hdr {
+   142→      display: flex;
+   143→      flex-direction: column;
+   144→      align-items: center;
+   145→      justify-content: center;
+   146→      padding: 4px 0 6px;
+   147→      font-size: 12px;
+   148→      font-weight: 600;
+   149→      color: var(--text-secondary);
+   150→      border-right: 1px solid var(--border);
+   151→      user-select: none;
+   152→    }
+   153→    .cal-day-hdr .cal-day-num { font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+   154→    .cal-day-hdr .cal-day-dow { font-size: 9px; font-weight: 500; color: var(--text-muted); line-height: 1.2; margin-top: 1px; }
+   155→    .cal-day-hdr.cal-weekend .cal-day-num { color: var(--red); }
+   156→    .cal-day-hdr.cal-today .cal-day-num {
+   157→      background: var(--blue);
+   158→      color: #fff;
+   159→      width: 22px;
+   160→      height: 22px;
+   161→      border-radius: 50%;
+   162→      display: flex;
+   163→      align-items: center;
+   164→      justify-content: center;
+   165→      line-height: 1;
+   166→    }
+   167→
+   168→    /* Calendar cell */
+   169→    .cal-cell {
+   170→      border-right: 1px solid var(--border);
+   171→      border-bottom: 1px solid var(--border);
+   172→    }
+   173→    .cal-cell.cal-weekend-cell { background: rgba(239,68,68,0.04); }
+   174→    .cal-cell.cal-today-cell  { background: rgba(59,130,246,0.06); }
+   175→
+   176→    /* Calendar room label */
+   177→    .cal-room-label {
+   178→      font-size: 12px;
+   179→      font-weight: 600;
+   180→      color: var(--text-primary);
+   181→      border-right: 1px solid var(--border);
+   182→      background: var(--bg-card);
+   183→      position: sticky;
+   184→      left: 0;
+   185→      z-index: 1;
+   186→    }
+   187→
+   188→    /* Calendar row */
+   189→    .cal-row { border-bottom: 1px solid var(--border); }
+   190→    .cal-row:last-child { border-bottom: none; }
+   191→    .cal-row:hover { background: var(--bg-elevated); }
+   192→
+   193→    /* Reservation block */
+   194→    .cal-block {
+   195→      position: absolute;
+   196→      border-radius: 4px;
+   197→      cursor: pointer;
+   198→      display: flex;
+   199→      align-items: center;
+   200→      padding: 0 6px;
+   201→      overflow: hidden;
+   202→      z-index: 2;
+   203→      transition: filter 0.15s, box-shadow 0.15s;
+   204→      font-size: 10px;
+   205→      font-weight: 700;
+   206→      letter-spacing: 0.02em;
+   207→    }
+   208→    .cal-block:hover {
+   209→      filter: brightness(1.1);
+   210→      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+   211→      z-index: 3;
+   212→    }
+   213→
+   214→    /* Legend */
+   215→    .cal-legend-item {
+   216→      display: flex;
+   217→      align-items: center;
+   218→      gap: 6px;
+   219→      font-size: 12px;
+   220→      color: var(--text-secondary);
+   221→    }
+   222→    .cal-legend-swatch {
+   223→      width: 16px;
+   224→      height: 12px;
+   225→      border-radius: 3px;
+   226→      flex-shrink: 0;
+   227→    }
+   228→
+   229→    /* Mobile reservation card */
+   230→    .cal-mobile-card {
+   231→      display: flex;
+   232→      align-items: center;
+   233→      gap: 10px;
+   234→      padding: 10px 12px;
+   235→      border-radius: 8px;
+   236→      cursor: pointer;
+   237→      margin-bottom: 6px;
+   238→      transition: filter 0.15s;
+   239→    }
+   240→    .cal-mobile-card:hover { filter: brightness(1.05); }
+   241→
+   242→    /* Scrollbar */
+   243→    #cal-scroll::-webkit-scrollbar { height: 6px; }
+   244→    #cal-scroll::-webkit-scrollbar-track { background: var(--bg-elevated); border-radius: 3px; }
+   245→    #cal-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+   246→  `;
+   247→  document.head.appendChild(style);
+   248→}
+   249→
+   250→// ============================================================
+   251→// DESKTOP GRID VIEW
+   252→// ============================================================
+   253→function buildDesktopView() {
+   254→  const rooms   = Rooms.getAll().sort((a, b) =>
+   255→    (a.number || '').localeCompare(b.number || '', undefined, { numeric: true })
+   256→  );
+   257→  const resList = getReservationsForMonth(viewYear, viewMonth);
+   258→  const dim     = daysInMonth(viewYear, viewMonth);
+   259→  const DOW     = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+   260→
+   261→  // ---- Day column headers ----
+   262→  let dayHeaders = '';
+   263→  for (let d = 1; d <= dim; d++) {
+   264→    const we  = isWeekend(viewYear, viewMonth, d) ? 'cal-weekend' : '';
+   265→    const td  = isToday(viewYear, viewMonth, d)   ? 'cal-today'   : '';
+   266→    const brd = d === dim ? '' : 'border-right:1px solid var(--border);';
+   267→    dayHeaders += `
+   268→      <div class="cal-day-hdr ${we} ${td}" style="width:${CELL_W}px;flex-shrink:0;${brd}">
+   269→        <span class="cal-day-num">${d}</span>
+   270→        <span class="cal-day-dow">${DOW[dayOfWeek(viewYear, viewMonth, d)]}</span>
+   271→      </div>`;
+   272→  }
+   273→
+   274→  // ---- Room rows ----
+   275→  let roomRows = '';
+   276→  if (rooms.length === 0) {
+   277→    roomRows = `
+   278→      <div class="empty-state" style="padding:48px 24px">
+   279→        <div class="empty-icon"><i data-lucide="door-open"></i></div>
+   280→        <h3>${t('room.no_rooms')}</h3>
+   281→        <p>${t('room.add_first')}</p>
+   282→      </div>`;
+   283→  } else {
+   284→    rooms.forEach(room => {
+   285→      const roomRes = resList.filter(r => r.roomId === room.id);
+   286→
+   287→      // Day cells (grid lines)
+   288→      let cells = '';
+   289→      for (let d = 1; d <= dim; d++) {
+   290→        const we  = isWeekend(viewYear, viewMonth, d) ? 'cal-weekend-cell' : '';
+   291→        const td  = isToday(viewYear, viewMonth, d)   ? 'cal-today-cell'   : '';
+   292→        const brd = d === dim ? '' : 'border-right:1px solid var(--border);';
+   293→        cells += `<div class="cal-cell ${we} ${td}" style="width:${CELL_W}px;flex-shrink:0;${brd}"></div>`;
+   294→      }
+   295→
+   296→      // Reservation blocks
+   297→      let blocks = '';
+   298→      roomRes.forEach(r => {
+   299→        const geo = blockGeometry(r, viewYear, viewMonth);
+   300→        if (!geo) return;
+   301→        const c  = statusColors(r.status);
+   302→        const ini = getInitials(r._guest?.name);
+   303→        const showText = geo.width >= CELL_W * 1.8;
+   304→        blocks += `
+   305→          <div class="cal-block" data-res-id="${escHtml(r.id)}"
+   306→               style="left:${geo.left}px;width:${geo.width}px;top:${BLOCK_PAD}px;bottom:${BLOCK_PAD}px;
+   307→                      background:${c.bg};border-left:3px solid ${c.border};color:${c.text};"
+   308→               title="${escHtml(r._guest?.name || 'Guest')} — ${r._room?.number || '?'}">
+   309→            ${showText ? `<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ini)}</span>` : ''}
+   310→          </div>`;
+   311→      });
+   312→
+   313→      roomRows += `
+   314→        <div class="cal-row" style="display:flex;align-items:stretch;min-height:${ROW_H}px">
+   315→          <div class="cal-room-label" style="width:110px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 10px">
+   316→            <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+   317→                         font-size:10px;font-weight:700;background:var(--bg-elevated);color:var(--text-secondary);flex-shrink:0">
+   318→              ${escHtml(room.number)}
+   319→            </span>
+   320→            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(room.name || room.number)}">
+   321→              ${escHtml(room.name || '')}
+   322→            </span>
+   323→          </div>
+   324→          <div style="position:relative;display:flex;flex:1">
+   325→            ${cells}
+   326→            ${blocks}
+   327→          </div>
+   328→        </div>`;
+   329→    });
+   330→  }
+   331→
+   332→  // ---- Occupancy mini-stats ----
+   333→  const totalNights = resList.reduce((s, r) => s + (r.nights || 0), 0);
+   334→  const uniqueRooms = new Set(resList.map(r => r.roomId)).size;
+   335→
+   336→  return `
+   337→    <!-- Month Navigation -->
+   338→    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+   339→      <button class="btn btn-ghost btn-sm" id="cal-prev" aria-label="Previous month">
+   340→        <i data-lucide="chevron-left" style="width:16px;height:16px"></i>
+   341→      </button>
+   342→      <h2 id="cal-month-label" style="font-size:18px;font-weight:700;min-width:160px;text-align:center;margin:0">
+   343→        ${monthLabel(viewYear, viewMonth)}
+   344→      </h2>
+   345→      <button class="btn btn-ghost btn-sm" id="cal-next" aria-label="Next month">
+   346→        <i data-lucide="chevron-right" style="width:16px;height:16px"></i>
+   347→      </button>
+   348→      <button class="btn btn-secondary btn-sm" id="cal-today" style="margin-left:8px">
+   349→        <i data-lucide="calendar-check" style="width:14px;height:14px"></i> Today
+   350→      </button>
+   351→    </div>
+   352→
+   353→    <!-- Mini stats -->
+   354→    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
+   355→      <div class="stat-card stat-blue">
+   356→        <div class="stat-value">${resList.length}</div>
+   357→        <div class="stat-label">${t('nav.reservations')}</div>
+   358→      </div>
+   359→      <div class="stat-card stat-green">
+   360→        <div class="stat-value">${uniqueRooms}</div>
+   361→        <div class="stat-label">${t('nav.rooms')} ${t('dash.occupancy').toLowerCase()}</div>
+   362→      </div>
+   363→      <div class="stat-card stat-gold">
+   364→        <div class="stat-value">${totalNights}</div>
+   365→        <div class="stat-label">${t('res.nights')} ${t('common.of').toLowerCase()} ${t('nav.reservations').toLowerCase()}</div>
+   366→      </div>
+   367→    </div>
+   368→
+   369→    <!-- Calendar Grid -->
+   370→    <div class="card" style="padding:0;overflow:hidden">
+   371→      <div id="cal-scroll" style="overflow-x:auto;max-height:62vh">
+   372→        <!-- Sticky day header row -->
+   373→        <div style="display:flex;align-items:stretch;border-bottom:2px solid var(--border);
+   374→                    position:sticky;top:0;z-index:3;background:var(--bg-card)">
+   375→          <div style="width:110px;flex-shrink:0;border-right:1px solid var(--border)"></div>
+   376→          <div style="display:flex">
+   377→            ${dayHeaders}
+   378→          </div>
+   379→        </div>
+   380→        <!-- Room rows -->
+   381→        ${roomRows}
+   382→      </div>
+   383→    </div>
+   384→
+   385→    <!-- Legend -->
+   386→    <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap">
+   387→      ${buildLegend()}
+   388→    </div>`;
+   389→}
+   390→
+   391→// ============================================================
+   392→// MOBILE LIST VIEW
+   393→// ============================================================
+   394→function buildMobileView() {
+   395→  const resList = getReservationsForMonth(viewYear, viewMonth);
+   396→  const rooms   = Rooms.getAll().sort((a, b) =>
+   397→    (a.number || '').localeCompare(b.number || '', undefined, { numeric: true })
+   398→  );
+   399→
+   400→  let sections = '';
+   401→  rooms.forEach(room => {
+   402→    const roomRes = resList.filter(r => r.roomId === room.id);
+   403→    if (roomRes.length === 0) return;
+   404→
+   405→    const cards = roomRes.map(r => {
+   406→      const c   = statusColors(r.status);
+   407→      const ini = getInitials(r._guest?.name);
+   408→      return `
+   409→        <div class="cal-mobile-card" data-res-id="${escHtml(r.id)}"
+   410→             style="background:${c.bg};border-left:3px solid ${c.border}">
+   411→          <div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+   412→                      font-size:12px;font-weight:700;background:${c.border};color:#fff;flex-shrink:0">
+   413→            ${escHtml(ini)}
+   414→          </div>
+   415→          <div style="flex:1;min-width:0">
+   416→            <div style="font-size:13px;font-weight:600;color:var(--text-primary);
+   417→                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+   418→              ${escHtml(r._guest?.name || 'Guest')}
+   419→            </div>
+   420→            <div style="font-size:11px;color:var(--text-secondary);margin-top:1px">
+   421→              ${formatDate(r.checkIn)} &rarr; ${formatDate(r.checkOut)}
+   422→            </div>
+   423→          </div>
+   424→          <div style="text-align:right;flex-shrink:0">
+   425→            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">
+   426→              ${formatCurrency(r.totalCost)}
+   427→            </div>
+   428→            <div style="margin-top:2px">${statusBadge(r.status)}</div>
+   429→          </div>
+   430→        </div>`;
+   431→    }).join('');
+   432→
+   433→    sections += `
+   434→      <div style="margin-bottom:20px">
+   435→        <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:8px;
+   436→                    display:flex;align-items:center;gap:6px">
+   437→          <i data-lucide="door-open" style="width:14px;height:14px"></i>
+   438→          ${escHtml(room.number)}${room.name ? ` — ${escHtml(room.name)}` : ''}
+   439→        </div>
+   440→        ${cards}
+   441→      </div>`;
+   442→  });
+   443→
+   444→  const emptyContent = rooms.length === 0
+   445→    ? `<div class="empty-state" style="padding:48px 24px">
+   446→         <div class="empty-icon"><i data-lucide="door-open"></i></div>
+   447→         <h3>${t('room.no_rooms')}</h3>
+   448→         <p>${t('room.add_first')}</p>
+   449→       </div>`
+   450→    : sections.length === 0
+   451→      ? `<div class="empty-state" style="padding:48px 24px">
+   452→           <div class="empty-icon"><i data-lucide="calendar-x"></i></div>
+   453→           <h3>No reservations this month</h3>
+   454→         </div>`
+   455→      : sections;
+   456→
+   457→  return `
+   458→    <!-- Month Navigation -->
+   459→    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+   460→      <button class="btn btn-ghost btn-sm" id="cal-prev">
+   461→        <i data-lucide="chevron-left" style="width:16px;height:16px"></i>
+   462→      </button>
+   463→      <h2 id="cal-month-label" style="font-size:18px;font-weight:700;min-width:160px;text-align:center;margin:0">
+   464→        ${monthLabel(viewYear, viewMonth)}
+   465→      </h2>
+   466→      <button class="btn btn-ghost btn-sm" id="cal-next">
+   467→        <i data-lucide="chevron-right" style="width:16px;height:16px"></i>
+   468→      </button>
+   469→      <button class="btn btn-secondary btn-sm" id="cal-today" style="margin-left:8px">
+   470→        <i data-lucide="calendar-check" style="width:14px;height:14px"></i> Today
+   471→      </button>
+   472→    </div>
+   473→
+   474→    <div class="card" style="padding:16px">
+   475→      ${emptyContent}
+   476→    </div>
+   477→
+   478→    <!-- Legend -->
+   479→    <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap">
+   480→      ${buildLegend()}
+   481→    </div>`;
+   482→}
+   483→
+   484→// ============================================================
+   485→// LEGEND
+   486→// ============================================================
+   487→function buildLegend() {
+   488→  const items = [
+   489→    { status: 'active',    label: t('res.active') },
+   490→    { status: 'upcoming',  label: t('res.upcoming') },
+   491→    { status: 'completed', label: t('res.completed') },
+   492→  ];
+   493→  return items.map(item => {
+   494→    const c = statusColors(item.status);
+   495→    return `<div class="cal-legend-item">
+   496→      <div class="cal-legend-swatch" style="background:${c.bg};border-left:3px solid ${c.border}"></div>
+   497→      <span>${escHtml(item.label)}</span>
+   498→    </div>`;
+   499→  }).join('');
+   500→}
+   501→
+   502→// ============================================================
+   503→// RESERVATION DETAIL MODAL
+   504→// ============================================================
+   505→function showReservationModal(res) {
+   506→  const guest   = Guests.getById(res.guestId);
+   507→  const room    = Rooms.getById(res.roomId);
+   508→  const balance = (parseFloat(res.totalCost) || 0) - (parseFloat(res.paidAmount) || 0);
+   509→  const nights  = res.nights || Reservations.calcNights(res.checkIn, res.checkOut);
+   510→
+   511→  openModal(t('res.title'), `
+   512→    <div class="modal-body">
+   513→      <!-- Guest & Status -->
+   514→      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+   515→        <div class="guest-avatar" style="width:44px;height:44px;font-size:16px;flex-shrink:0">
+   516→          ${getInitials(guest?.name)}
+   517→        </div>
+   518→        <div style="flex:1;min-width:0">
+   519→          <div style="font-size:15px;font-weight:700;color:var(--text-primary);
+   520→                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+   521→            ${escHtml(guest?.name || 'Guest')}
+   522→          </div>
+   523→          ${guest?.phone ? `<div style="font-size:12px;color:var(--text-secondary)">${escHtml(guest.phone)}</div>` : ''}
+   524→        </div>
+   525→        <div style="flex-shrink:0">${statusBadge(res.status)}</div>
+   526→      </div>
+   527→
+   528→      <!-- Details Grid -->
+   529→      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+   530→        <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated)">
+   531→          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${t('res.room')}</div>
+   532→          <div style="font-size:14px;font-weight:600;color:var(--text-primary)">
+   533→            <i data-lucide="door-open" style="width:13px;height:13px;display:inline;vertical-align:-2px"></i>
+   534→            ${escHtml(room?.number || '?')}${room?.name ? ` — ${escHtml(room.name)}` : ''}
+   535→          </div>
+   536→        </div>
+   537→        <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated)">
+   538→          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${t('res.nights')}</div>
+   539→          <div style="font-size:14px;font-weight:600;color:var(--text-primary)">
+   540→            ${nights} ${t('common.days')}
+   541→          </div>
+   542→        </div>
+   543→        <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated)">
+   544→          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${t('common.checkin')}</div>
+   545→          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${formatDate(res.checkIn)}</div>
+   546→        </div>
+   547→        <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated)">
+   548→          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${t('common.checkout')}</div>
+   549→          <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${formatDate(res.checkOut)}</div>
+   550→        </div>
+   551→      </div>
+   552→
+   553→      <!-- Financial Summary -->
+   554→      <div style="padding:12px;border-radius:8px;background:var(--bg-elevated);margin-bottom:16px">
+   555→        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+   556→          <span style="font-size:13px;color:var(--text-secondary)">${t('res.total')}</span>
+   557→          <span style="font-size:15px;font-weight:700;color:var(--text-primary)">${formatCurrency(res.totalCost)}</span>
+   558→        </div>
+   559→        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+   560→          <span style="font-size:13px;color:var(--text-secondary)">${t('res.paid')}</span>
+   561→          <span style="font-size:14px;font-weight:600;color:var(--green)">${formatCurrency(res.paidAmount)}</span>
+   562→        </div>
+   563→        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+   564→          <span style="font-size:13px;color:var(--text-secondary)">${t('res.balance')}</span>
+   565→          <span style="font-size:14px;font-weight:600;color:${balance > 0.01 ? 'var(--red)' : 'var(--green)'}">
+   566→            ${formatCurrency(balance)}
+   567→          </span>
+   568→        </div>
+   569→        <div style="height:1px;background:var(--border);margin:10px 0"></div>
+   570→        <div style="display:flex;justify-content:space-between;align-items:center">
+   571→          <span style="font-size:13px;color:var(--text-secondary)">${t('res.payment_status')}</span>
+   572→          ${paymentBadge(res.paymentStatus)}
+   573→        </div>
+   574→      </div>
+   575→
+   576→      ${res.notes ? `
+   577→      <div style="padding:10px 12px;border-radius:8px;background:var(--bg-elevated);margin-bottom:16px">
+   578→        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${t('common.notes')}</div>
+   579→        <div style="font-size:13px;color:var(--text-primary);white-space:pre-wrap">${escHtml(res.notes)}</div>
+   580→      </div>` : ''}
+   581→
+   582→      <div class="form-actions">
+   583→        <button type="button" class="btn btn-ghost" id="cal-modal-close">${t('common.close')}</button>
+   584→      </div>
+   585→    </div>
+   586→  `);
+   587→
+   588→  lucide.createIcons();
+   589→  document.getElementById('cal-modal-close')?.addEventListener('click', closeModal);
+   590→}
+   591→
+   592→// ============================================================
+   593→// EVENTS
+   594→// ============================================================
+   595→function bindEvents(container) {
+   596→  // Previous month
+   597→  container.querySelector('#cal-prev')?.addEventListener('click', () => {
+   598→    viewMonth--;
+   599→    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+   600→    refreshView(container);
+   601→  });
+   602→
+   603→  // Next month
+   604→  container.querySelector('#cal-next')?.addEventListener('click', () => {
+   605→    viewMonth++;
+   606→    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+   607→    refreshView(container);
+   608→  });
+   609→
+   610→  // Today
+   611→  container.querySelector('#cal-today')?.addEventListener('click', () => {
+   612→    const now = new Date();
+   613→    viewYear  = now.getFullYear();
+   614→    viewMonth = now.getMonth();
+   615→    refreshView(container);
+   616→  });
+   617→
+   618→  // Reservation block clicks (event delegation)
+   619→  container.querySelectorAll('[data-res-id]').forEach(el => {
+   620→    el.addEventListener('click', (e) => {
+   621→      e.stopPropagation();
+   622→      const resId = el.getAttribute('data-res-id');
+   623→      const res   = Reservations.getById(resId);
+   624→      if (res) showReservationModal(res);
+   625→    });
+   626→  });
+   627→}
+   628→
+   629→// ============================================================
+   630→// REFRESH — re-render only the calendar body, keep page shell
+   631→// ============================================================
+   632→function refreshView(container) {
+   633→  const calView = container.querySelector('#cal-view');
+   634→  if (!calView) {
+   635→    // Fallback: full re-render
+   636→    render(container);
+   637→    return;
+   638→  }
+   639→
+   640→  const isMobile = window.innerWidth <= 768;
+   641→  calView.innerHTML = isMobile ? buildMobileView() : buildDesktopView();
+   642→
+   643→  lucide.createIcons();
+   644→  bindEvents(container);
+   645→  scrollToToday(container);
+   646→}
+   647→
+   648→// ============================================================
+   649→// SCROLL TO TODAY'S COLUMN (desktop only)
+   650→// ============================================================
+   651→function scrollToToday(container) {
+   652→  requestAnimationFrame(() => {
+   653→    const scroll = container.querySelector('#cal-scroll');
+   654→    if (!scroll) return;
+   655→
+   656→    // If viewing the current month, center on today's column
+   657→    const now = new Date();
+   658→    if (viewYear === now.getFullYear() && viewMonth === now.getMonth()) {
+   659→      const todayLeft = (now.getDate() - 1) * CELL_W;
+   660→      const viewW     = scroll.clientWidth;
+   661→      scroll.scrollLeft = Math.max(0, todayLeft - viewW / 3);
+   662→    } else {
+   663→      // Otherwise scroll to the start
+   664→      scroll.scrollLeft = 0;
+   665→    }
+   666→  });
+   667→}
+   668→
+   669→// ============================================================
+   670→// MAIN EXPORT
+   671→// ============================================================
+   672→export function render(container) {
+   673→  initDate();
+   674→  injectStyles();
+   675→
+   676→  const isMobile = window.innerWidth <= 768;
+   677→
+   678→  container.innerHTML = `
+   679→    <div class="page-enter">
+   680→      <div class="page-header">
+   681→        <div class="page-header-left">
+   682→          <h1>Calendar</h1>
+   683→          <p>Room booking calendar</p>
+   684→        </div>
+   685→      </div>
+   686→
+   687→      <div id="cal-view">
+   688→        ${isMobile ? buildMobileView() : buildDesktopView()}
+   689→      </div>
+   690→    </div>`;
+   691→
+   692→  lucide.createIcons();
+   693→  bindEvents(container);
+   694→  scrollToToday(container);
+   695→}
