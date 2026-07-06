@@ -1,0 +1,687 @@
+     1→     1→/**
+     2→     2→ * data.js — LocalStorage Data Layer
+     3→     3→ * All CRUD operations for Guest House Management System
+     4→     4→ */
+     5→     5→
+     6→     6→const PREFIX = 'ghms_';
+     7→     7→
+     8→     8→// ---- Utility ----
+     9→     9→function uid() {
+    10→    10→  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    11→    11→}
+    12→    12→
+    13→    13→function now() {
+    14→    14→  return new Date().toISOString();
+    15→    15→}
+    16→    16→
+    17→    17→function get(key) {
+    18→    18→  try { return JSON.parse(localStorage.getItem(PREFIX + key) || 'null'); }
+    19→    19→  catch { return null; }
+    20→    20→}
+    21→    21→
+    22→    22→function set(key, val) {
+    23→    23→  localStorage.setItem(PREFIX + key, JSON.stringify(val));
+    24→    24→}
+    25→    25→
+    26→    26→// ============================================================
+    27→    27→// USERS & AUTH
+    28→    28→// ============================================================
+    29→    29→export const Users = {
+    30→    30→  getAll() { return get('users') || []; },
+    31→    31→  save(users) { set('users', users); },
+    32→    32→
+    33→    33→  add(user) {
+    34→    34→    const all = this.getAll();
+    35→    35→    const newUser = { id: uid(), createdAt: now(), ...user };
+    36→    36→    all.push(newUser);
+    37→    37→    this.save(all);
+    38→    38→    return newUser;
+    39→    39→  },
+    40→    40→
+    41→    41→  update(id, changes) {
+    42→    42→    const all = this.getAll().map(u => u.id === id ? { ...u, ...changes, updatedAt: now() } : u);
+    43→    43→    this.save(all);
+    44→    44→    return all.find(u => u.id === id);
+    45→    45→  },
+    46→    46→
+    47→    47→  delete(id) { this.save(this.getAll().filter(u => u.id !== id)); },
+    48→    48→
+    49→    49→  getById(id) { return this.getAll().find(u => u.id === id); },
+    50→    50→
+    51→    51→  getByUsername(username) { return this.getAll().find(u => u.username === username); }
+    52→    52→};
+    53→    53→
+    54→    54→// Ensure default users exist if none are found (e.g., if seeded flag was already set before auth was added)
+    55→    55→if (Users.getAll().length === 0) {
+    56→    56→  Users.add({ username: 'admin', password: '123', role: 'superuser', name: 'Super Admin' });
+    57→    57→  Users.add({ username: 'operator', password: '123', role: 'operator', name: 'Front Desk' });
+    58→    58→}
+    59→    59→
+    60→    60→export const Auth = {
+    61→    61→  login(username, password) {
+    62→    62→    const user = Users.getByUsername(username);
+    63→    63→    if (user && user.password === password) { // simple plaintext for demo
+    64→    64→      set('current_user', user);
+    65→    65→      Activity.log(`User logged in: ${username}`, 'info');
+    66→    66→      return true;
+    67→    67→    }
+    68→    68→    return false;
+    69→    69→  },
+    70→    70→
+    71→    71→  logout() {
+    72→    72→    localStorage.removeItem(PREFIX + 'current_user');
+    73→    73→    Activity.log(`User logged out`, 'info');
+    74→    74→  },
+    75→    75→
+    76→    76→  getCurrentUser() { return get('current_user'); },
+    77→    77→
+    78→    78→  hasRole(role) {
+    79→    79→    const u = this.getCurrentUser();
+    80→    80→    return u && u.role === role;
+    81→    81→  }
+    82→    82→};
+    83→    83→
+    84→    84→// ============================================================
+    85→    85→// ROOMS
+    86→    86→// ============================================================
+    87→    87→export const Rooms = {
+    88→    88→  getAll() { return get('rooms') || []; },
+    89→    89→  save(rooms) { set('rooms', rooms); },
+    90→    90→
+    91→    91→  add(room) {
+    92→    92→    const rooms = this.getAll();
+    93→    93→    const newRoom = { id: uid(), createdAt: now(), status: 'available', ...room };
+    94→    94→    rooms.push(newRoom);
+    95→    95→    this.save(rooms);
+    96→    96→    return newRoom;
+    97→    97→  },
+    98→    98→
+    99→    99→  update(id, changes) {
+   100→   100→    const rooms = this.getAll().map(r => r.id === id ? { ...r, ...changes, updatedAt: now() } : r);
+   101→   101→    this.save(rooms);
+   102→   102→    return rooms.find(r => r.id === id);
+   103→   103→  },
+   104→   104→
+   105→   105→  delete(id) {
+   106→   106→    this.save(this.getAll().filter(r => r.id !== id));
+   107→   107→  },
+   108→   108→
+   109→   109→  getById(id) { return this.getAll().find(r => r.id === id); },
+   110→   110→
+   111→   111→  getAvailable() { return this.getAll().filter(r => r.status === 'available'); },
+   112→   112→
+   113→   113→  setStatus(id, status) { return this.update(id, { status }); },
+   114→   114→
+   115→   115→  getStats() {
+   116→   116→    const rooms = this.getAll();
+   117→   117→    return {
+   118→   118→      total:       rooms.length,
+   119→   119→      available:   rooms.filter(r => r.status === 'available').length,
+   120→   120→      occupied:    rooms.filter(r => r.status === 'occupied').length,
+   121→   121→      maintenance: rooms.filter(r => r.status === 'maintenance').length,
+   122→   122→    };
+   123→   123→  }
+   124→   124→};
+   125→   125→
+   126→   126→// ============================================================
+   127→   127→// GUESTS
+   128→   128→// ============================================================
+   129→   129→export const Guests = {
+   130→   130→  getAll() { return get('guests') || []; },
+   131→   131→  save(g) { set('guests', g); },
+   132→   132→
+   133→   133→  add(guest) {
+   134→   134→    const guests = this.getAll();
+   135→   135→    const newGuest = { id: uid(), createdAt: now(), ...guest };
+   136→   136→    guests.push(newGuest);
+   137→   137→    this.save(guests);
+   138→   138→    return newGuest;
+   139→   139→  },
+   140→   140→
+   141→   141→  update(id, changes) {
+   142→   142→    const guests = this.getAll().map(g => g.id === id ? { ...g, ...changes, updatedAt: now() } : g);
+   143→   143→    this.save(guests);
+   144→   144→    return guests.find(g => g.id === id);
+   145→   145→  },
+   146→   146→
+   147→   147→  delete(id) {
+   148→   148→    this.save(this.getAll().filter(g => g.id !== id));
+   149→   149→  },
+   150→   150→
+   151→   151→  getById(id) { return this.getAll().find(g => g.id === id); },
+   152→   152→
+   153→   153→  search(query) {
+   154→   154→    const q = query.toLowerCase();
+   155→   155→    return this.getAll().filter(g =>
+   156→   156→      g.name?.toLowerCase().includes(q) ||
+   157→   157→      g.phone?.includes(q) ||
+   158→   158→      g.idNumber?.toLowerCase().includes(q) ||
+   159→   159→      g.email?.toLowerCase().includes(q)
+   160→   160→    );
+   161→   161→  },
+   162→   162→
+   163→   163→  getInitials(name) {
+   164→   164→    if (!name) return '?';
+   165→   165→    return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+   166→   166→  }
+   167→   167→};
+   168→   168→
+   169→   169→// ============================================================
+   170→   170→// RESERVATIONS
+   171→   171→// ============================================================
+   172→   172→export const Reservations = {
+   173→   173→  getAll() { return get('reservations') || []; },
+   174→   174→  save(r) { set('reservations', r); },
+   175→   175→
+   176→   176→  add(res) {
+   177→   177→    const all = this.getAll();
+   178→   178→    const nights = this.calcNights(res.checkIn, res.checkOut);
+   179→   179→    const room   = Rooms.getById(res.roomId);
+   180→   180→    const rate   = room ? parseFloat(room.pricePerNight) : 0;
+   181→   181→    const total  = nights * rate;
+   182→   182→
+   183→   183→    const newRes = {
+   184→   184→      id: uid(),
+   185→   185→      createdAt: now(),
+   186→   186→      nights,
+   187→   187→      roomRate: rate,
+   188→   188→      totalCost: total,
+   189→   189→      paidAmount: parseFloat(res.paidAmount) || 0,
+   190→   190→      paymentStatus: this.calcPaymentStatus(parseFloat(res.paidAmount) || 0, total),
+   191→   191→      status: 'upcoming',
+   192→   192→      ...res,
+   193→   193→    };
+   194→   194→    all.push(newRes);
+   195→   195→    this.save(all);
+   196→   196→
+   197→   197→    // Check-in immediately if check-in date is today or past
+   198→   198→    const today = new Date(); today.setHours(0,0,0,0);
+   199→   199→    const checkInDate = new Date(res.checkIn); checkInDate.setHours(0,0,0,0);
+   200→   200→    if (checkInDate <= today) {
+   201→   201→      this.checkIn(newRes.id);
+   202→   202→    }
+   203→   203→    return newRes;
+   204→   204→  },
+   205→   205→
+   206→   206→  update(id, changes) {
+   207→   207→    const all = this.getAll().map(r => {
+   208→   208→      if (r.id !== id) return r;
+   209→   209→      const updated = { ...r, ...changes, updatedAt: now() };
+   210→   210→      if (changes.paidAmount !== undefined || changes.totalCost !== undefined) {
+   211→   211→        updated.paymentStatus = this.calcPaymentStatus(
+   212→   212→          parseFloat(updated.paidAmount) || 0,
+   213→   213→          parseFloat(updated.totalCost) || 0
+   214→   214→        );
+   215→   215→      }
+   216→   216→      return updated;
+   217→   217→    });
+   218→   218→    this.save(all);
+   219→   219→    return all.find(r => r.id === id);
+   220→   220→  },
+   221→   221→
+   222→   222→  delete(id) {
+   223→   223→    const res = this.getById(id);
+   224→   224→    if (res && res.roomId) Rooms.setStatus(res.roomId, 'available');
+   225→   225→    this.save(this.getAll().filter(r => r.id !== id));
+   226→   226→  },
+   227→   227→
+   228→   228→  checkIn(id) {
+   229→   229→    const res = this.getById(id);
+   230→   230→    if (!res) return;
+   231→   231→    this.update(id, { status: 'active', actualCheckIn: now() });
+   232→   232→    Rooms.setStatus(res.roomId, 'occupied');
+   233→   233→    Activity.log(`Guest checked in to Room ${Rooms.getById(res.roomId)?.number || '?'}`, 'checkin');
+   234→   234→  },
+   235→   235→
+   236→   236→  checkOut(id) {
+   237→   237→    const res = this.getById(id);
+   238→   238→    if (!res) return;
+   239→   239→    this.update(id, { status: 'completed', actualCheckOut: now() });
+   240→   240→    Rooms.setStatus(res.roomId, 'available');
+   241→   241→    Activity.log(`Guest checked out from Room ${Rooms.getById(res.roomId)?.number || '?'}`, 'checkout');
+   242→   242→  },
+   243→   243→
+   244→   244→  cancel(id) {
+   245→   245→    const res = this.getById(id);
+   246→   246→    if (!res) return;
+   247→   247→    this.update(id, { status: 'cancelled' });
+   248→   248→    if (res.status === 'active') Rooms.setStatus(res.roomId, 'available');
+   249→   249→    Activity.log('Reservation cancelled', 'cancel');
+   250→   250→  },
+   251→   251→
+   252→   252→  getById(id) { return this.getAll().find(r => r.id === id); },
+   253→   253→
+   254→   254→  calcNights(checkIn, checkOut) {
+   255→   255→    const d1 = new Date(checkIn);
+   256→   256→    const d2 = new Date(checkOut);
+   257→   257→    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+   258→   258→    return diff > 0 ? diff : 1;
+   259→   259→  },
+   260→   260→
+   261→   261→  calcPaymentStatus(paid, total) {
+   262→   262→    if (paid <= 0) return 'pending';
+   263→   263→    if (paid >= total) return 'paid';
+   264→   264→    return 'partial';
+   265→   265→  },
+   266→   266→
+   267→   267→  getActive() { return this.getAll().filter(r => r.status === 'active'); },
+   268→   268→
+   269→   269→  getUpcoming() {
+   270→   270→    const today = new Date(); today.setHours(0,0,0,0);
+   271→   271→    return this.getAll().filter(r => {
+   272→   272→      const ci = new Date(r.checkIn); ci.setHours(0,0,0,0);
+   273→   273→      return r.status === 'upcoming' && ci >= today;
+   274→   274→    });
+   275→   275→  },
+   276→   276→
+   277→   277→  getTodayCheckIns() {
+   278→   278→    const today = new Date().toISOString().slice(0,10);
+   279→   279→    return this.getAll().filter(r => r.checkIn?.slice(0,10) === today);
+   280→   280→  },
+   281→   281→
+   282→   282→  getTodayCheckOuts() {
+   283→   283→    const today = new Date().toISOString().slice(0,10);
+   284→   284→    return this.getAll().filter(r => r.checkOut?.slice(0,10) === today && r.status === 'active');
+   285→   285→  },
+   286→   286→
+   287→   287→  getPendingPayments() {
+   288→   288→    return this.getAll().filter(r =>
+   289→   289→      (r.paymentStatus === 'pending' || r.paymentStatus === 'partial') &&
+   290→   290→      r.status !== 'cancelled'
+   291→   291→    );
+   292→   292→  },
+   293→   293→
+   294→   294→  getRevenue(from, to) {
+   295→   295→    const f = new Date(from); f.setHours(0,0,0,0);
+   296→   296→    const t = new Date(to);   t.setHours(23,59,59,999);
+   297→   297→    return this.getAll()
+   298→   298→      .filter(r => {
+   299→   299→        const d = new Date(r.createdAt);
+   300→   300→        return d >= f && d <= t && r.status !== 'cancelled';
+   301→   301→      })
+   302→   302→      .reduce((sum, r) => sum + (parseFloat(r.paidAmount) || 0), 0);
+   303→   303→  },
+   304→   304→
+   305→   305→  getLast7DaysRevenue() {
+   306→   306→    const result = [];
+   307→   307→    for (let i = 6; i >= 0; i--) {
+   308→   308→      const d = new Date();
+   309→   309→      d.setDate(d.getDate() - i);
+   310→   310→      const dateStr = d.toISOString().slice(0,10);
+   311→   311→      const rev = this.getAll()
+   312→   312→        .filter(r => r.createdAt?.slice(0,10) === dateStr && r.status !== 'cancelled')
+   313→   313→        .reduce((s, r) => s + (parseFloat(r.paidAmount) || 0), 0);
+   314→   314→      result.push({ date: dateStr, revenue: rev });
+   315→   315→    }
+   316→   316→    return result;
+   317→   317→  },
+   318→   318→
+   319→   319→  filter({ status, from, to, guestId, roomId } = {}) {
+   320→   320→    return this.getAll().filter(r => {
+   321→   321→      if (status && status !== 'all' && r.status !== status) return false;
+   322→   322→      if (from && r.checkIn < from) return false;
+   323→   323→      if (to   && r.checkOut > to) return false;
+   324→   324→      if (guestId && r.guestId !== guestId) return false;
+   325→   325→      if (roomId  && r.roomId  !== roomId)  return false;
+   326→   326→      return true;
+   327→   327→    });
+   328→   328→  }
+   329→   329→};
+   330→   330→
+   331→   331→// ============================================================
+   332→   332→// DAYTIME SERVICES (Catalogue)
+   333→   333→// ============================================================
+   334→   334→export const DaytimeServices = {
+   335→   335→  getAll() { return get('daytime_services') || []; },
+   336→   336→  save(s) { set('daytime_services', s); },
+   337→   337→
+   338→   338→  add(service) {
+   339→   339→    const all = this.getAll();
+   340→   340→    const newSvc = { id: uid(), createdAt: now(), active: true, ...service };
+   341→   341→    all.push(newSvc);
+   342→   342→    this.save(all);
+   343→   343→    return newSvc;
+   344→   344→  },
+   345→   345→
+   346→   346→  update(id, changes) {
+   347→   347→    const all = this.getAll().map(s => s.id === id ? { ...s, ...changes } : s);
+   348→   348→    this.save(all);
+   349→   349→    return all.find(s => s.id === id);
+   350→   350→  },
+   351→   351→
+   352→   352→  delete(id) { this.save(this.getAll().filter(s => s.id !== id)); },
+   353→   353→
+   354→   354→  getById(id) { return this.getAll().find(s => s.id === id); },
+   355→   355→
+   356→   356→  getActive() { return this.getAll().filter(s => s.active); }
+   357→   357→};
+   358→   358→
+   359→   359→// ============================================================
+   360→   360→// DAYTIME BOOKINGS
+   361→   361→// ============================================================
+   362→   362→export const DaytimeBookings = {
+   363→   363→  getAll() { return get('daytime_bookings') || []; },
+   364→   364→  save(b) { set('daytime_bookings', b); },
+   365→   365→
+   366→   366→  add(booking) {
+   367→   367→    const all = this.getAll();
+   368→   368→    const svc  = DaytimeServices.getById(booking.serviceId);
+   369→   369→    const price = svc ? parseFloat(svc.price) : parseFloat(booking.unitPrice) || 0;
+   370→   370→    const qty   = parseInt(booking.quantity) || 1;
+   371→   371→    const total = price * qty;
+   372→   372→
+   373→   373→    const newBooking = {
+   374→   374→      id: uid(),
+   375→   375→      createdAt: now(),
+   376→   376→      unitPrice: price,
+   377→   377→      quantity: qty,
+   378→   378→      totalCost: total,
+   379→   379→      paidAmount: parseFloat(booking.paidAmount) || 0,
+   380→   380→      paymentStatus: parseFloat(booking.paidAmount) >= total ? 'paid' :
+   381→   381→                     parseFloat(booking.paidAmount) > 0 ? 'partial' : 'pending',
+   382→   382→      ...booking,
+   383→   383→    };
+   384→   384→    all.push(newBooking);
+   385→   385→    this.save(all);
+   386→   386→    Activity.log(`Daytime service booked: ${svc?.name || '—'}`, 'service');
+   387→   387→    return newBooking;
+   388→   388→  },
+   389→   389→
+   390→   390→  update(id, changes) {
+   391→   391→    const all = this.getAll().map(b => b.id === id ? { ...b, ...changes, updatedAt: now() } : b);
+   392→   392→    this.save(all);
+   393→   393→    return all.find(b => b.id === id);
+   394→   394→  },
+   395→   395→
+   396→   396→  delete(id) { this.save(this.getAll().filter(b => b.id !== id)); },
+   397→   397→
+   398→   398→  getById(id) { return this.getAll().find(b => b.id === id); },
+   399→   399→
+   400→   400→  getToday() {
+   401→   401→    const today = new Date().toISOString().slice(0,10);
+   402→   402→    return this.getAll().filter(b => b.date === today);
+   403→   403→  },
+   404→   404→
+   405→   405→  getRevenue(from, to) {
+   406→   406→    const f = new Date(from); f.setHours(0,0,0,0);
+   407→   407→    const to2 = new Date(to); to2.setHours(23,59,59,999);
+   408→   408→    return this.getAll()
+   409→   409→      .filter(b => { const d = new Date(b.createdAt); return d >= f && d <= to2; })
+   410→   410→      .reduce((s, b) => s + (parseFloat(b.paidAmount) || 0), 0);
+   411→   411→  }
+   412→   412→};
+   413→   413→
+   414→   414→// ============================================================
+   415→   415→// EXPENSES
+   416→   416→// ============================================================
+   417→   417→export const Expenses = {
+   418→   418→  getAll() { return get('expenses') || []; },
+   419→   419→  save(e) { set('expenses', e); },
+   420→   420→
+   421→   421→  add(expense) {
+   422→   422→    const all = this.getAll();
+   423→   423→    const newExp = { id: uid(), createdAt: now(), ...expense };
+   424→   424→    all.push(newExp);
+   425→   425→    this.save(all);
+   426→   426→    Activity.log(`Expense recorded: ${expense.description || expense.category}`, 'expense');
+   427→   427→    return newExp;
+   428→   428→  },
+   429→   429→
+   430→   430→  update(id, changes) {
+   431→   431→    const all = this.getAll().map(e => e.id === id ? { ...e, ...changes, updatedAt: now() } : e);
+   432→   432→    this.save(all);
+   433→   433→    return all.find(e => e.id === id);
+   434→   434→  },
+   435→   435→
+   436→   436→  delete(id) { this.save(this.getAll().filter(e => e.id !== id)); },
+   437→   437→
+   438→   438→  getById(id) { return this.getAll().find(e => e.id === id); },
+   439→   439→
+   440→   440→  getToday() {
+   441→   441→    const today = new Date().toISOString().slice(0,10);
+   442→   442→    return this.getAll().filter(e => e.date === today);
+   443→   443→  },
+   444→   444→
+   445→   445→  getThisMonth() {
+   446→   446→    const ym = new Date().toISOString().slice(0,7);
+   447→   447→    return this.getAll().filter(e => e.date?.startsWith(ym));
+   448→   448→  },
+   449→   449→
+   450→   450→  getTotalToday() {
+   451→   451→    return this.getToday().reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+   452→   452→  },
+   453→   453→
+   454→   454→  getTotalMonth() {
+   455→   455→    return this.getThisMonth().reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+   456→   456→  },
+   457→   457→
+   458→   458→  filter({ from, to, category } = {}) {
+   459→   459→    return this.getAll().filter(e => {
+   460→   460→      if (from && e.date < from) return false;
+   461→   461→      if (to   && e.date > to)   return false;
+   462→   462→      if (category && category !== 'all' && e.category !== category) return false;
+   463→   463→      return true;
+   464→   464→    });
+   465→   465→  },
+   466→   466→
+   467→   467→  getTotal(from, to) {
+   468→   468→    return this.filter({ from, to }).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+   469→   469→  },
+   470→   470→
+   471→   471→  getByCategory(from, to) {
+   472→   472→    const filtered = this.filter({ from, to });
+   473→   473→    const map = {};
+   474→   474→    filtered.forEach(e => {
+   475→   475→      map[e.category] = (map[e.category] || 0) + (parseFloat(e.amount) || 0);
+   476→   476→    });
+   477→   477→    return map;
+   478→   478→  }
+   479→   479→};
+   480→   480→
+   481→   481→// ============================================================
+   482→   482→// EXPENSE CATEGORIES
+   483→   483→// ============================================================
+   484→   484→export const ExpenseCategories = {
+   485→   485→  getAll() {
+   486→   486→    return get('expense_categories') || [
+   487→   487→      { id: 'utilities',  name: 'Utilities',      nameAm: 'ዩቲሊቲ',        icon: 'zap',          color: '#f59e0b' },
+   488→   488→      { id: 'staff',      name: 'Staff / Salary',  nameAm: 'ደሞዝ',          icon: 'users',         color: '#3b82f6' },
+   489→   489→      { id: 'supplies',   name: 'Supplies',         nameAm: 'አቅርቦቶች',       icon: 'shopping-bag',  color: '#22c55e' },
+   490→   490→      { id: 'maintenance',name: 'Maintenance',      nameAm: 'ጥገና',           icon: 'wrench',        color: '#f97316' },
+   491→   491→      { id: 'food',       name: 'Food & Catering',  nameAm: 'ምግብ',           icon: 'utensils',      color: '#a855f7' },
+   492→   492→      { id: 'marketing',  name: 'Marketing',        nameAm: 'ማርኬቲንግ',        icon: 'megaphone',     color: '#06b6d4' },
+   493→   493→      { id: 'other',      name: 'Other',            nameAm: 'ሌሎች',           icon: 'more-horizontal',color: '#8b96b5' },
+   494→   494→    ];
+   495→   495→  },
+   496→   496→  save(c) { set('expense_categories', c); },
+   497→   497→  add(cat) {
+   498→   498→    const all = this.getAll();
+   499→   499→    const nc = { id: uid(), ...cat };
+   500→   500→    all.push(nc);
+   501→   501→    this.save(all);
+   502→   502→    return nc;
+   503→   503→  },
+   504→   504→  delete(id) { this.save(this.getAll().filter(c => c.id !== id)); },
+   505→   505→  getById(id) { return this.getAll().find(c => c.id === id); },
+   506→   506→  getName(id) {
+   507→   507→    const c = this.getById(id);
+   508→   508→    return c ? c.name : id;
+   509→   509→  }
+   510→   510→};
+   511→   511→
+   512→   512→// ============================================================
+   513→   513→// RESOURCES (Inventory)
+   514→   514→// ============================================================
+   515→   515→export const Resources = {
+   516→   516→  getAll() { return get('resources') || []; },
+   517→   517→  save(r) { set('resources', r); },
+   518→   518→
+   519→   519→  add(item) {
+   520→   520→    const all = this.getAll();
+   521→   521→    const ni = { id: uid(), createdAt: now(), lastRestocked: now(), ...item };
+   522→   522→    all.push(ni);
+   523→   523→    this.save(all);
+   524→   524→    return ni;
+   525→   525→  },
+   526→   526→
+   527→   527→  update(id, changes) {
+   528→   528→    const all = this.getAll().map(r => r.id === id ? { ...r, ...changes, updatedAt: now() } : r);
+   529→   529→    this.save(all);
+   530→   530→    return all.find(r => r.id === id);
+   531→   531→  },
+   532→   532→
+   533→   533→  delete(id) { this.save(this.getAll().filter(r => r.id !== id)); },
+   534→   534→
+   535→   535→  restock(id, qty) {
+   536→   536→    return this.update(id, {
+   537→   537→      quantity: (parseFloat(this.getById(id)?.quantity) || 0) + parseFloat(qty),
+   538→   538→      lastRestocked: now()
+   539→   539→    });
+   540→   540→  },
+   541→   541→
+   542→   542→  getById(id) { return this.getAll().find(r => r.id === id); },
+   543→   543→
+   544→   544→  getLowStock() {
+   545→   545→    return this.getAll().filter(r => parseFloat(r.quantity) <= parseFloat(r.minLevel || 0));
+   546→   546→  }
+   547→   547→};
+   548→   548→
+   549→   549→// ============================================================
+   550→   550→// ACTIVITY LOG
+   551→   551→// ============================================================
+   552→   552→export const Activity = {
+   553→   553→  getAll() { return get('activity') || []; },
+   554→   554→
+   555→   555→  log(message, type = 'info') {
+   556→   556→    const all = this.getAll();
+   557→   557→    all.unshift({ id: uid(), message, type, createdAt: now() });
+   558→   558→    // Keep last 100
+   559→   559→    set('activity', all.slice(0, 100));
+   560→   560→  },
+   561→   561→
+   562→   562→  getRecent(n = 10) { return this.getAll().slice(0, n); }
+   563→   563→};
+   564→   564→
+   565→   565→// ============================================================
+   566→   566→// SETTINGS
+   567→   567→// ============================================================
+   568→   568→export const Settings = {
+   569→   569→  get() {
+   570→   570→    return get('settings') || {
+   571→   571→      guestHouseName: 'My Guest House',
+   572→   572→      ownerName:      'Owner',
+   573→   573→      address:        '',
+   574→   574→      phone:          '',
+   575→   575→      email:          '',
+   576→   576→      currency:       'ETB',
+   577→   577→      language:       'en',
+   578→   578→    };
+   579→   579→  },
+   580→   580→  save(s) {
+   581→   581→    set('settings', { ...this.get(), ...s });
+   582→   582→  },
+   583→   583→  update(changes) {
+   584→   584→    this.save({ ...this.get(), ...changes });
+   585→   585→  }
+   586→   586→};
+   587→   587→
+   588→   588→// ============================================================
+   589→   589→// SEED DATA (only if no data exists)
+   590→   590→// ============================================================
+   591→   591→export function seedDemoData() {
+   592→   592→  if (get('seeded')) return;
+   593→   593→  set('seeded', true);
+   594→   594→
+   595→   595→  // Users
+   596→   596→  Users.add({ username: 'admin', password: '123', role: 'superuser', name: 'Super Admin' });
+   597→   597→  Users.add({ username: 'operator', password: '123', role: 'operator', name: 'Front Desk' });
+   598→   598→
+   599→   599→  // Rooms (Name and Status removed from registration; Status is internal/default available)
+   600→   600→  Rooms.add({ number: '101', type: 'single',  pricePerNight: 800,  floor: 1, capacity: 1, status: 'available',  amenities: 'WiFi, TV, AC' });
+   601→   601→  Rooms.add({ number: '102', type: 'double',  pricePerNight: 1200, floor: 1, capacity: 2, status: 'occupied',   amenities: 'WiFi, TV, AC, Fridge' });
+   602→   602→  Rooms.add({ number: '103', type: 'twin',    pricePerNight: 1200, floor: 1, capacity: 2, status: 'maintenance',amenities: 'WiFi, TV' });
+   603→   603→  Rooms.add({ number: '201', type: 'suite',   pricePerNight: 2500, floor: 2, capacity: 4, status: 'occupied',   amenities: 'WiFi, TV, AC, Jacuzzi, Minibar' });
+   604→   604→  Rooms.add({ number: '202', type: 'deluxe',  pricePerNight: 1800, floor: 2, capacity: 2, status: 'available',  amenities: 'WiFi, TV, AC, Balcony' });
+   605→   605→
+   606→   606→  // Guests
+   607→   607→  const g1 = Guests.add({ name: 'Abebe Kebede',    phone: '0911234567', email: 'abebe@email.com', idNumber: 'ET123456', idType: 'national_id', nationality: 'Ethiopian', address: 'Addis Ababa' });
+   608→   608→  const g2 = Guests.add({ name: 'Sara Mohammed',   phone: '0922345678', email: 'sara@email.com',  idNumber: 'ET234567', idType: 'national_id', nationality: 'Ethiopian', address: 'Bahir Dar' });
+   609→   609→  const g3 = Guests.add({ name: 'John Smith',      phone: '+1234567890',email: 'john@email.com',  idNumber: 'US987654', idType: 'passport',    nationality: 'American',  address: 'New York, USA' });
+   610→   610→
+   611→   611→  // Reservations
+   612→   612→  const today = new Date();
+   613→   613→  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+   614→   614→  const tomorrow  = new Date(today); tomorrow.setDate(today.getDate() + 1);
+   615→   615→  const nextWeek  = new Date(today); nextWeek.setDate(today.getDate() + 5);
+   616→   616→
+   617→   617→  const rooms = Rooms.getAll();
+   618→   618→  Reservations.add({
+   619→   619→    guestId: g1.id,
+   620→   620→    roomId: rooms[1].id,
+   621→   621→    checkIn: yesterday.toISOString().slice(0,10),
+   622→   622→    checkOut: tomorrow.toISOString().slice(0,10),
+   623→   623→    paidAmount: 1200,
+   624→   624→    paymentMethod: 'cash',
+   625→   625→    notes: 'Early check-in requested',
+   626→   626→  });
+   627→   627→
+   628→   628→  Reservations.add({
+   629→   629→    guestId: g3.id,
+   630→   630→    roomId: rooms[3].id,
+   631→   631→    checkIn: today.toISOString().slice(0,10),
+   632→   632→    checkOut: nextWeek.toISOString().slice(0,10),
+   633→   633→    paidAmount: 12500,
+   634→   634→    paymentMethod: 'transfer',
+   635→   635→  });
+   636→   636→
+   637→   637→  const futureCI = new Date(today); futureCI.setDate(today.getDate() + 2);
+   638→   638→  const futureCO = new Date(today); futureCO.setDate(today.getDate() + 5);
+   639→   639→  Reservations.add({
+   640→   640→    guestId: g2.id,
+   641→   641→    roomId: rooms[0].id,
+   642→   642→    checkIn: futureCI.toISOString().slice(0,10),
+   643→   643→    checkOut: futureCO.toISOString().slice(0,10),
+   644→   644→    paidAmount: 0,
+   645→   645→    paymentMethod: 'cash',
+   646→   646→  });
+   647→   647→
+   648→   648→  // Daytime Services
+   649→   649→  DaytimeServices.add({ name: 'Conference Room',    price: 1500, category: 'Facilities',  duration: 'Full Day',   description: 'Air-conditioned conference room for up to 20 people' });
+   650→   650→  DaytimeServices.add({ name: 'Laundry Service',    price: 150,  category: 'Laundry',     duration: 'Per load',   description: 'Wash and fold laundry service' });
+   651→   651→  DaytimeServices.add({ name: 'Breakfast Buffet',   price: 350,  category: 'Meals',       duration: 'Per person', description: 'Full breakfast buffet service' });
+   652→   652→  DaytimeServices.add({ name: 'Airport Transfer',   price: 800,  category: 'Transport',   duration: 'One way',    description: 'Drop or pickup from Bole Airport' });
+   653→   653→  DaytimeServices.add({ name: 'Massage & Spa',      price: 600,  category: 'Wellness',    duration: '1 hour',     description: 'Relaxing massage and spa service' });
+   654→   654→
+   655→   655→  // Expenses
+   656→   656→  const expDates = [0,1,2,3,4,5,6].map(i => {
+   657→   657→    const d = new Date(); d.setDate(d.getDate()-i); return d.toISOString().slice(0,10);
+   658→   658→  });
+   659→   659→  Expenses.add({ date: expDates[0], category: 'utilities',   amount: 1200, description: 'Electricity bill',    vendor: 'EEU',         paymentMethod: 'transfer' });
+   660→   660→  Expenses.add({ date: expDates[0], category: 'supplies',    amount: 550,  description: 'Cleaning supplies',   vendor: 'Local Market', paymentMethod: 'cash' });
+   661→   661→  Expenses.add({ date: expDates[1], category: 'staff',       amount: 3000, description: 'Weekly staff wages',  vendor: 'Staff',        paymentMethod: 'cash' });
+   662→   662→  Expenses.add({ date: expDates[2], category: 'food',        amount: 800,  description: 'Breakfast supplies',  vendor: 'Supermarket',  paymentMethod: 'cash' });
+   663→   663→  Expenses.add({ date: expDates[3], category: 'maintenance', amount: 450,  description: 'Plumbing repair',     vendor: 'Teklu Plumbing',paymentMethod:'cash' });
+   664→   664→  Expenses.add({ date: expDates[4], category: 'utilities',   amount: 350,  description: 'Internet bill',       vendor: 'Ethio Telecom', paymentMethod:'transfer' });
+   665→   665→  Expenses.add({ date: expDates[5], category: 'supplies',    amount: 280,  description: 'Towels & bed linen',  vendor: 'Textile Shop',  paymentMethod:'cash' });
+   666→   666→
+   667→   667→  // Resources
+   668→   668→  Resources.add({ name: 'Bath Towels',      category: 'Linens',    quantity: 45, unit: 'pcs',   minLevel: 20, costPerUnit: 80,  supplier: 'Textile Shop' });
+   669→   669→  Resources.add({ name: 'Bed Sheets',       category: 'Linens',    quantity: 30, unit: 'sets',  minLevel: 15, costPerUnit: 150, supplier: 'Textile Shop' });
+   670→   670→  Resources.add({ name: 'Soap Bars',        category: 'Toiletries',quantity: 8,  unit: 'boxes', minLevel: 5,  costPerUnit: 120, supplier: 'Supermarket' });
+   671→   671→  Resources.add({ name: 'Shampoo',          category: 'Toiletries',quantity: 12, unit: 'btls',  minLevel: 10, costPerUnit: 45,  supplier: 'Supermarket' });
+   672→   672→  Resources.add({ name: 'Bottled Water',    category: 'Food',      quantity: 3,  unit: 'crates',minLevel: 5,  costPerUnit: 250, supplier: 'Water Supplier' });
+   673→   673→  Resources.add({ name: 'Coffee/Tea',       category: 'Food',      quantity: 6,  unit: 'pkgs',  minLevel: 4,  costPerUnit: 90,  supplier: 'Supermarket' });
+   674→   674→  Resources.add({ name: 'Toilet Paper',     category: 'Supplies',  quantity: 60, unit: 'rolls', minLevel: 30, costPerUnit: 15,  supplier: 'Supermarket' });
+   675→   675→  Resources.add({ name: 'Laundry Detergent',category: 'Supplies',  quantity: 4,  unit: 'kg',    minLevel: 5,  costPerUnit: 180, supplier: 'Local Market' });
+   676→   676→
+   677→   677→  // Daytime bookings
+   678→   678→  const svcs = DaytimeServices.getAll();
+   679→   679→  DaytimeBookings.add({ serviceId: svcs[0].id, guestName: 'Kality Company', guestPhone: '0912000001', date: expDates[0], time: '09:00', quantity: 1, paidAmount: 1500, paymentMethod: 'transfer' });
+   680→   680→  DaytimeBookings.add({ serviceId: svcs[2].id, guestName: 'Walk-in Guest',  guestPhone: '0912000002', date: expDates[0], time: '08:00', quantity: 3, paidAmount: 1050, paymentMethod: 'cash' });
+   681→   681→
+   682→   682→  Activity.log('System initialized with demo data', 'info');
+   683→   683→  Activity.log('Abebe Kebede checked in to Room 102', 'checkin');
+   684→   684→  Activity.log('John Smith checked in to Room 201', 'checkin');
+   685→   685→  Activity.log('Laundry service booked', 'service');
+   686→   686→}
+   687→   687→
