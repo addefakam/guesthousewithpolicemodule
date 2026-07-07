@@ -87,7 +87,6 @@ export default function Sidebar() {
     [setCurrentPage, setSidebarOpen]
   );
 
-  // Close sidebar on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && sidebarOpen) {
@@ -105,7 +104,6 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-white border-r border-gray-200/80">
-      {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Building2 className="h-5 w-5 text-primary" />
@@ -114,7 +112,6 @@ export default function Sidebar() {
           <span className="text-sm font-bold text-foreground tracking-tight">GHMS</span>
           <span className="text-[11px] text-muted-foreground leading-none">Guest House Management</span>
         </div>
-        {/* Close button on mobile */}
         <Button
           variant="ghost"
           size="icon"
@@ -125,9 +122,8 @@ export default function Sidebar() {
         </Button>
       </div>
 
-      <Separator className="bg-border" />
+      <Separator />
 
-      {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-3">
         <nav className="space-y-6">
           {navGroups.map((group) => {
@@ -169,9 +165,8 @@ export default function Sidebar() {
         </nav>
       </ScrollArea>
 
-      <Separator className="bg-border" />
+      <Separator />
 
-      {/* User section */}
       <div className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
@@ -201,7 +196,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
@@ -209,7 +203,6 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Mobile sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -218,7 +211,6 @@ export default function Sidebar() {
         {sidebarContent}
       </aside>
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col">
         {sidebarContent}
       </aside>

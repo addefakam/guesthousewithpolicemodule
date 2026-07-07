@@ -480,14 +480,14 @@ export default function GuestsPage() {
 
       {/* ── Add/Edit Guest Dialog ─────────────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { setShowFormDialog(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingGuest ? 'Edit Guest' : 'Add New Guest'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="guest-name">Full Name *</Label>
               <Input
@@ -612,14 +612,14 @@ export default function GuestsPage() {
 
       {/* ── View Profile Dialog ───────────────────────────────────────────── */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           {profileGuest && (
             <>
               <DialogHeader>
                 <DialogTitle>Guest Profile</DialogTitle>
               </DialogHeader>
 
-              <div className="overflow-y-auto flex-1 space-y-0">
+              {/* Profile header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-2">
                 <div
                   className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white ${getAvatarColor(profileGuest.name)} relative`}
@@ -799,7 +799,6 @@ export default function GuestsPage() {
                     ))}
                   </div>
                 )}
-              </div>
               </div>
             </>
           )}

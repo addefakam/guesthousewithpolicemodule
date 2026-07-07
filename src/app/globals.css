@@ -45,7 +45,6 @@
 
 :root {
   --radius: 0.625rem;
-  /* Light theme — clean Z.ai-inspired palette */
   --background: 210 20% 98%;
   --foreground: 222.2 47% 11.2%;
   --card: 0 0% 100%;

@@ -547,7 +547,7 @@ export default function ExpensesPage() {
                 : 'Record a new expense entry.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
+          <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>

@@ -478,7 +478,7 @@ export default function ResourcesPage() {
                 : 'Add a new item to inventory.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 overflow-y-auto flex-1">
+          <div className="grid gap-4 py-2">
             <div className="space-y-2">
               <Label>
                 Item Name <span className="text-red-400">*</span>
@@ -605,7 +605,7 @@ export default function ResourcesPage() {
               Add stock for {restockItem?.name}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4 overflow-y-auto flex-1">
+          <div className="space-y-6 py-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Current Stock</span>
               <span className="text-3xl font-bold">
