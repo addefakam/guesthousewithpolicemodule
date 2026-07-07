@@ -1,0 +1,972 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import {
+     5→  Plus,
+     6→  Search,
+     7→  LayoutGrid,
+     8→  List,
+     9→  CalendarDays,
+    10→  Pencil,
+    11→  RefreshCw,
+    12→  Trash2,
+    13→  BedDouble,
+    14→  DoorOpen,
+    15→  Wrench,
+    16→  Users,
+    17→  ChevronLeft,
+    18→  ChevronRight,
+    19→} from 'lucide-react';
+    20→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    21→import { Badge } from '@/components/ui/badge';
+    22→import { Button } from '@/components/ui/button';
+    23→import { Input } from '@/components/ui/input';
+    24→import { Label } from '@/components/ui/label';
+    25→import { Textarea } from '@/components/ui/textarea';
+    26→import { Skeleton } from '@/components/ui/skeleton';
+    27→import {
+    28→  Select,
+    29→  SelectContent,
+    30→  SelectItem,
+    31→  SelectTrigger,
+    32→  SelectValue,
+    33→} from '@/components/ui/select';
+    34→import {
+    35→  Dialog,
+    36→  DialogContent,
+    37→  DialogHeader,
+    38→  DialogTitle,
+    39→  DialogFooter,
+    40→  DialogDescription,
+    41→} from '@/components/ui/dialog';
+    42→import {
+    43→  Table,
+    44→  TableHeader,
+    45→  TableBody,
+    46→  TableRow,
+    47→  TableHead,
+    48→  TableCell,
+    49→} from '@/components/ui/table';
+    50→import { getRooms, createRoom, updateRoom, deleteRoom, updateRoomStatus, getReservations } from '@/lib/api';
+    51→import { useAppStore } from '@/lib/store';
+    52→import { toast } from 'sonner';
+    53→
+    54→type ViewMode = 'grid' | 'list' | 'calendar';
+    55→type FilterStatus = 'ALL' | 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+    56→
+    57→interface Room {
+    58→  id: string;
+    59→  number: string;
+    60→  name: string;
+    61→  type: string;
+    62→  pricePerNight: number;
+    63→  floor: number;
+    64→  capacity: number;
+    65→  status: string;
+    66→  amenities: string;
+    67→  description: string;
+    68→  image: string | null;
+    69→}
+    70→
+    71→interface Reservation {
+    72→  id: string;
+    73→  guest: { name: string };
+    74→  room: { id: string; number: string };
+    75→  checkIn: string;
+    76→  checkOut: string;
+    77→  status: string;
+    78→}
+    79→
+    80→interface RoomFormData {
+    81→  id?: string;
+    82→  number: string;
+    83→  name: string;
+    84→  type: string;
+    85→  pricePerNight: string;
+    86→  floor: string;
+    87→  capacity: string;
+    88→  amenities: string;
+    89→  description: string;
+    90→}
+    91→
+    92→const emptyForm: RoomFormData = {
+    93→  number: '',
+    94→  name: '',
+    95→  type: 'SINGLE',
+    96→  pricePerNight: '',
+    97→  floor: '1',
+    98→  capacity: '1',
+    99→  amenities: '',
+   100→  description: '',
+   101→};
+   102→
+   103→function formatCurrency(amount: number): string {
+   104→  return new Intl.NumberFormat('en-ET', {
+   105→    style: 'currency',
+   106→    currency: 'ETB',
+   107→    minimumFractionDigits: 0,
+   108→    maximumFractionDigits: 0,
+   109→  }).format(amount);
+   110→}
+   111→
+   112→function getStatusBadge(status: string) {
+   113→  switch (status) {
+   114→    case 'AVAILABLE':
+   115→      return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[11px]">Available</Badge>;
+   116→    case 'OCCUPIED':
+   117→      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[11px]">Occupied</Badge>;
+   118→    case 'MAINTENANCE':
+   119→      return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[11px]">Maintenance</Badge>;
+   120→    case 'RESERVED':
+   121→      return <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[11px]">Reserved</Badge>;
+   122→    default:
+   123→      return <Badge variant="outline" className="text-[11px]">{status}</Badge>;
+   124→  }
+   125→}
+   126→
+   127→function getTypeBadge(type: string) {
+   128→  return (
+   129→    <Badge variant="secondary" className="text-[11px]">
+   130→      {type}
+   131→    </Badge>
+   132→  );
+   133→}
+   134→
+   135→// Calendar helpers
+   136→function getWeekDays(offset: number = 0): Date[] {
+   137→  const days: Date[] = [];
+   138→  const today = new Date();
+   139→  const startOfWeek = new Date(today);
+   140→  startOfWeek.setDate(today.getDate() - today.getDay() + 1 + offset * 7); // Monday
+   141→  for (let i = 0; i < 7; i++) {
+   142→    const d = new Date(startOfWeek);
+   143→    d.setDate(startOfWeek.getDate() + i);
+   144→    days.push(d);
+   145→  }
+   146→  return days;
+   147→}
+   148→
+   149→function dateToStr(d: Date): string {
+   150→  return d.toISOString().split('T')[0];
+   151→}
+   152→
+   153→function getDayLabel(d: Date): string {
+   154→  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+   155→}
+   156→
+   157→function isToday(d: Date): boolean {
+   158→  return dateToStr(d) === dateToStr(new Date());
+   159→}
+   160→
+   161→export default function RoomsPage() {
+   162→  const { refreshKey, triggerRefresh } = useAppStore();
+   163→
+   164→  const [rooms, setRooms] = useState<Room[]>([]);
+   165→  const [reservations, setReservations] = useState<Reservation[]>([]);
+   166→  const [loading, setLoading] = useState(true);
+   167→  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+   168→  const [filter, setFilter] = useState<FilterStatus>('ALL');
+   169→  const [search, setSearch] = useState('');
+   170→
+   171→  // Dialog states
+   172→  const [formOpen, setFormOpen] = useState(false);
+   173→  const [form, setForm] = useState<RoomFormData>(emptyForm);
+   174→  const [formSaving, setFormSaving] = useState(false);
+   175→
+   176→  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+   177→  const [statusRoom, setStatusRoom] = useState<Room | null>(null);
+   178→  const [statusSaving, setStatusSaving] = useState(false);
+   179→
+   180→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   181→  const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null);
+   182→  const [deleteSaving, setDeleteSaving] = useState(false);
+   183→
+   184→  // Calendar state
+   185→  const [weekOffset, setWeekOffset] = useState(0);
+   186→  const [calendarDays, setCalendarDays] = useState<Date[]>(getWeekDays(0));
+   187→
+   188→  const fetchData = useCallback(async () => {
+   189→    try {
+   190→      setLoading(true);
+   191→      const [roomsData, resData] = await Promise.all([
+   192→        getRooms(),
+   193→        getReservations(),
+   194→      ]);
+   195→      setRooms(roomsData);
+   196→      setReservations(resData);
+   197→    } catch (err) {
+   198→      console.error(err);
+   199→      toast.error('Failed to load rooms');
+   200→    } finally {
+   201→      setLoading(false);
+   202→    }
+   203→  }, []);
+   204→
+   205→  useEffect(() => {
+   206→    fetchData();
+   207→  }, [fetchData, refreshKey]);
+   208→
+   209→  useEffect(() => {
+   210→    setCalendarDays(getWeekDays(weekOffset));
+   211→  }, [weekOffset]);
+   212→
+   213→  // Filtered rooms
+   214→  const filteredRooms = rooms.filter((r) => {
+   215→    if (filter !== 'ALL' && r.status !== filter) return false;
+   216→    if (search) {
+   217→      const q = search.toLowerCase();
+   218→      return (
+   219→        r.number.toLowerCase().includes(q) ||
+   220→        r.name.toLowerCase().includes(q) ||
+   221→        r.type.toLowerCase().includes(q)
+   222→      );
+   223→    }
+   224→    return true;
+   225→  });
+   226→
+   227→  // Stats
+   228→  const stats = {
+   229→    total: rooms.length,
+   230→    available: rooms.filter((r) => r.status === 'AVAILABLE').length,
+   231→    occupied: rooms.filter((r) => r.status === 'OCCUPIED').length,
+   232→    maintenance: rooms.filter((r) => r.status === 'MAINTENANCE').length,
+   233→  };
+   234→
+   235→  // Form handlers
+   236→  const openAddForm = () => {
+   237→    setForm(emptyForm);
+   238→    setFormOpen(true);
+   239→  };
+   240→
+   241→  const openEditForm = (room: Room) => {
+   242→    setForm({
+   243→      id: room.id,
+   244→      number: room.number,
+   245→      name: room.name,
+   246→      type: room.type,
+   247→      pricePerNight: String(room.pricePerNight),
+   248→      floor: String(room.floor),
+   249→      capacity: String(room.capacity),
+   250→      amenities: room.amenities,
+   251→      description: room.description,
+   252→    });
+   253→    setFormOpen(true);
+   254→  };
+   255→
+   256→  const handleSaveForm = async () => {
+   257→    if (!form.number || !form.type || !form.pricePerNight) {
+   258→      toast.error('Please fill in required fields (Number, Type, Price)');
+   259→      return;
+   260→    }
+   261→    try {
+   262→      setFormSaving(true);
+   263→      const payload = {
+   264→        number: form.number,
+   265→        name: form.name || form.number,
+   266→        type: form.type,
+   267→        pricePerNight: parseFloat(form.pricePerNight),
+   268→        floor: parseInt(form.floor) || 1,
+   269→        capacity: parseInt(form.capacity) || 1,
+   270→        amenities: form.amenities,
+   271→        description: form.description,
+   272→      };
+   273→
+   274→      if (form.id) {
+   275→        await updateRoom(form.id, payload);
+   276→        toast.success('Room updated successfully');
+   277→      } else {
+   278→        await createRoom(payload);
+   279→        toast.success('Room created successfully');
+   280→      }
+   281→      setFormOpen(false);
+   282→      triggerRefresh();
+   283→    } catch (err: any) {
+   284→      toast.error(err.message || 'Failed to save room');
+   285→    } finally {
+   286→      setFormSaving(false);
+   287→    }
+   288→  };
+   289→
+   290→  const openStatusDialog = (room: Room) => {
+   291→    setStatusRoom(room);
+   292→    setStatusDialogOpen(true);
+   293→  };
+   294→
+   295→  const handleStatusChange = async (status: string) => {
+   296→    if (!statusRoom || status === statusRoom.status) return;
+   297→    try {
+   298→      setStatusSaving(true);
+   299→      await updateRoomStatus(statusRoom.id, status);
+   300→      toast.success(`Room ${statusRoom.number} status changed to ${status}`);
+   301→      setStatusDialogOpen(false);
+   302→      triggerRefresh();
+   303→    } catch (err: any) {
+   304→      toast.error(err.message || 'Failed to update status');
+   305→    } finally {
+   306→      setStatusSaving(false);
+   307→    }
+   308→  };
+   309→
+   310→  const openDeleteDialog = (roomId: string) => {
+   311→    setDeleteRoomId(roomId);
+   312→    setDeleteDialogOpen(true);
+   313→  };
+   314→
+   315→  const handleDelete = async () => {
+   316→    if (!deleteRoomId) return;
+   317→    try {
+   318→      setDeleteSaving(true);
+   319→      await deleteRoom(deleteRoomId);
+   320→      toast.success('Room deleted');
+   321→      setDeleteDialogOpen(false);
+   322→      triggerRefresh();
+   323→    } catch (err: any) {
+   324→      toast.error(err.message || 'Failed to delete room');
+   325→    } finally {
+   326→      setDeleteSaving(false);
+   327→    }
+   328→  };
+   329→
+   330→  // Calendar helpers
+   331→  const getReservationForRoomOnDate = (roomId: string, date: string): Reservation | undefined => {
+   332→    return reservations.find(
+   333→      (r) => r.room.id === roomId && r.checkIn <= date && r.checkOut > date && r.status !== 'CANCELLED'
+   334→    );
+   335→  };
+   336→
+   337→  // Skeleton loading
+   338→  if (loading && rooms.length === 0) {
+   339→    return (
+   340→      <div className="space-y-6">
+   341→        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+   342→          {Array.from({ length: 4 }).map((_, i) => (
+   343→            <Skeleton key={i} className="h-24 rounded-xl" />
+   344→          ))}
+   345→        </div>
+   346→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   347→          {Array.from({ length: 8 }).map((_, i) => (
+   348→            <Skeleton key={i} className="h-48 rounded-xl" />
+   349→          ))}
+   350→        </div>
+   351→      </div>
+   352→    );
+   353→  }
+   354→
+   355→  return (
+   356→    <div className="space-y-6">
+   357→      {/* Stats Row */}
+   358→      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+   359→        <Card className="border-border/50">
+   360→          <CardContent className="flex items-center gap-3 p-4">
+   361→            <div className="rounded-lg bg-amber-500/10 p-2">
+   362→              <BedDouble className="h-4 w-4 text-amber-500" />
+   363→            </div>
+   364→            <div>
+   365→              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+   366→              <p className="text-xs text-muted-foreground">Total Rooms</p>
+   367→            </div>
+   368→          </CardContent>
+   369→        </Card>
+   370→        <Card className="border-border/50">
+   371→          <CardContent className="flex items-center gap-3 p-4">
+   372→            <div className="rounded-lg bg-emerald-500/10 p-2">
+   373→              <DoorOpen className="h-4 w-4 text-emerald-500" />
+   374→            </div>
+   375→            <div>
+   376→              <p className="text-2xl font-bold text-foreground">{stats.available}</p>
+   377→              <p className="text-xs text-muted-foreground">Available</p>
+   378→            </div>
+   379→          </CardContent>
+   380→        </Card>
+   381→        <Card className="border-border/50">
+   382→          <CardContent className="flex items-center gap-3 p-4">
+   383→            <div className="rounded-lg bg-blue-500/10 p-2">
+   384→              <Users className="h-4 w-4 text-blue-500" />
+   385→            </div>
+   386→            <div>
+   387→              <p className="text-2xl font-bold text-foreground">{stats.occupied}</p>
+   388→              <p className="text-xs text-muted-foreground">Occupied</p>
+   389→            </div>
+   390→          </CardContent>
+   391→        </Card>
+   392→        <Card className="border-border/50">
+   393→          <CardContent className="flex items-center gap-3 p-4">
+   394→            <div className="rounded-lg bg-orange-500/10 p-2">
+   395→              <Wrench className="h-4 w-4 text-orange-500" />
+   396→            </div>
+   397→            <div>
+   398→              <p className="text-2xl font-bold text-foreground">{stats.maintenance}</p>
+   399→              <p className="text-xs text-muted-foreground">Maintenance</p>
+   400→            </div>
+   401→          </CardContent>
+   402→        </Card>
+   403→      </div>
+   404→
+   405→      {/* Toolbar */}
+   406→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   407→        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+   408→          {/* Search */}
+   409→          <div className="relative">
+   410→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   411→            <Input
+   412→              placeholder="Search rooms..."
+   413→              value={search}
+   414→              onChange={(e) => setSearch(e.target.value)}
+   415→              className="w-56 pl-9"
+   416→            />
+   417→          </div>
+   418→
+   419→          {/* Filter Buttons */}
+   420→          <div className="flex gap-1.5">
+   421→            {(['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'] as FilterStatus[]).map((s) => (
+   422→              <Button
+   423→                key={s}
+   424→                size="sm"
+   425→                variant={filter === s ? 'default' : 'outline'}
+   426→                className={
+   427→                  filter === s
+   428→                    ? 'h-8 text-xs'
+   429→                    : 'h-8 text-xs border-border/50 hover:border-primary/30'
+   430→                }
+   431→                onClick={() => setFilter(s)}
+   432→              >
+   433→                {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+   434→                {s !== 'ALL' && (
+   435→                  <span className="ml-1.5 text-[10px] opacity-70">
+   436→                    ({s === 'AVAILABLE' ? stats.available : s === 'OCCUPIED' ? stats.occupied : stats.maintenance})
+   437→                  </span>
+   438→                )}
+   439→              </Button>
+   440→            ))}
+   441→          </div>
+   442→        </div>
+   443→
+   444→        <div className="flex items-center gap-2">
+   445→          {/* View Toggle */}
+   446→          <div className="flex rounded-lg border border-border/50 p-0.5">
+   447→            <Button
+   448→              size="sm"
+   449→              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+   450→              className="h-7 w-7 p-0"
+   451→              onClick={() => setViewMode('grid')}
+   452→            >
+   453→              <LayoutGrid className="h-3.5 w-3.5" />
+   454→            </Button>
+   455→            <Button
+   456→              size="sm"
+   457→              variant={viewMode === 'list' ? 'default' : 'ghost'}
+   458→              className="h-7 w-7 p-0"
+   459→              onClick={() => setViewMode('list')}
+   460→            >
+   461→              <List className="h-3.5 w-3.5" />
+   462→            </Button>
+   463→            <Button
+   464→              size="sm"
+   465→              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+   466→              className="h-7 w-7 p-0"
+   467→              onClick={() => setViewMode('calendar')}
+   468→            >
+   469→              <CalendarDays className="h-3.5 w-3.5" />
+   470→            </Button>
+   471→          </div>
+   472→
+   473→          {/* Add Room */}
+   474→          <Button
+   475→            size="sm"
+   476→            className="h-8 gap-1.5"
+   477→            onClick={openAddForm}
+   478→          >
+   479→            <Plus className="h-3.5 w-3.5" />
+   480→            Add Room
+   481→          </Button>
+   482→        </div>
+   483→      </div>
+   484→
+   485→      {/* GRID VIEW */}
+   486→      {viewMode === 'grid' && (
+   487→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   488→          {filteredRooms.length === 0 ? (
+   489→            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+   490→              <BedDouble className="mb-3 h-10 w-10 text-muted-foreground/50" />
+   491→              <p className="text-sm text-muted-foreground">No rooms found</p>
+   492→            </div>
+   493→          ) : (
+   494→            filteredRooms.map((room) => (
+   495→              <Card
+   496→                key={room.id}
+   497→                className="group border-border/50 transition-all duration-200 hover:border-border hover:shadow-lg hover:-translate-y-0.5"
+   498→              >
+   499→                <CardContent className="p-4">
+   500→                  {/* Header */}
+   501→                  <div className="flex items-start justify-between">
+   502→                    <div>
+   503→                      <h3 className="text-xl font-bold text-amber-500">{room.number}</h3>
+   504→                      <p className="text-xs text-muted-foreground mt-0.5">{room.name}</p>
+   505→                    </div>
+   506→                    {getStatusBadge(room.status)}
+   507→                  </div>
+   508→
+   509→                  {/* Details */}
+   510→                  <div className="mt-3 space-y-2">
+   511→                    <div className="flex items-center gap-2">
+   512→                      {getTypeBadge(room.type)}
+   513→                      <span className="text-xs text-muted-foreground">Floor {room.floor}</span>
+   514→                      <span className="text-xs text-muted-foreground">&middot;</span>
+   515→                      <span className="text-xs text-muted-foreground">
+   516→                        <Users className="inline h-3 w-3 mr-0.5" />
+   517→                        {room.capacity}
+   518→                      </span>
+   519→                    </div>
+   520→
+   521→                    {/* Amenities */}
+   522→                    {room.amenities && (
+   523→                      <div className="flex flex-wrap gap-1">
+   524→                        {room.amenities.split(',').slice(0, 3).map((a, i) => (
+   525→                          <span
+   526→                            key={i}
+   527→                            className="rounded bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+   528→                          >
+   529→                            {a.trim()}
+   530→                          </span>
+   531→                        ))}
+   532→                        {room.amenities.split(',').length > 3 && (
+   533→                          <span className="text-[10px] text-muted-foreground">
+   534→                            +{room.amenities.split(',').length - 3}
+   535→                          </span>
+   536→                        )}
+   537→                      </div>
+   538→                    )}
+   539→
+   540→                    {/* Price */}
+   541→                    <div className="mt-2">
+   542→                      <span className="text-lg font-bold text-amber-500">
+   543→                        {formatCurrency(room.pricePerNight)}
+   544→                      </span>
+   545→                      <span className="text-xs text-muted-foreground"> / night</span>
+   546→                    </div>
+   547→                  </div>
+   548→
+   549→                  {/* Actions */}
+   550→                  <div className="mt-3 flex gap-2 border-t border-border/30 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+   551→                    <Button
+   552→                      size="sm"
+   553→                      variant="ghost"
+   554→                      className="h-7 flex-1 text-xs gap-1"
+   555→                      onClick={() => openEditForm(room)}
+   556→                    >
+   557→                      <Pencil className="h-3 w-3" />
+   558→                      Edit
+   559→                    </Button>
+   560→                    <Button
+   561→                      size="sm"
+   562→                      variant="ghost"
+   563→                      className="h-7 flex-1 text-xs gap-1"
+   564→                      onClick={() => openStatusDialog(room)}
+   565→                    >
+   566→                      <RefreshCw className="h-3 w-3" />
+   567→                      Status
+   568→                    </Button>
+   569→                    <Button
+   570→                      size="sm"
+   571→                      variant="ghost"
+   572→                      className="h-7 text-xs gap-1 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+   573→                      onClick={() => openDeleteDialog(room.id)}
+   574→                    >
+   575→                      <Trash2 className="h-3 w-3" />
+   576→                    </Button>
+   577→                  </div>
+   578→                </CardContent>
+   579→              </Card>
+   580→            ))
+   581→          )}
+   582→        </div>
+   583→      )}
+   584→
+   585→      {/* LIST VIEW */}
+   586→      {viewMode === 'list' && (
+   587→        <Card className="border-border/50">
+   588→          <CardContent className="p-0">
+   589→            {filteredRooms.length === 0 ? (
+   590→              <div className="flex flex-col items-center justify-center py-16 text-center">
+   591→                <BedDouble className="mb-3 h-10 w-10 text-muted-foreground/50" />
+   592→                <p className="text-sm text-muted-foreground">No rooms found</p>
+   593→              </div>
+   594→            ) : (
+   595→              <div className="overflow-x-auto">
+   596→                <Table>
+   597→                  <TableHeader>
+   598→                    <TableRow>
+   599→                      <TableHead className="text-xs">Number</TableHead>
+   600→                      <TableHead className="text-xs">Name</TableHead>
+   601→                      <TableHead className="text-xs">Type</TableHead>
+   602→                      <TableHead className="text-xs">Floor</TableHead>
+   603→                      <TableHead className="text-xs">Capacity</TableHead>
+   604→                      <TableHead className="text-xs">Price/Night</TableHead>
+   605→                      <TableHead className="text-xs">Status</TableHead>
+   606→                      <TableHead className="text-xs text-right">Actions</TableHead>
+   607→                    </TableRow>
+   608→                  </TableHeader>
+   609→                  <TableBody>
+   610→                    {filteredRooms.map((room) => (
+   611→                      <TableRow key={room.id}>
+   612→                        <TableCell className="font-bold text-amber-500">{room.number}</TableCell>
+   613→                        <TableCell className="text-sm">{room.name}</TableCell>
+   614→                        <TableCell>{getTypeBadge(room.type)}</TableCell>
+   615→                        <TableCell className="text-sm text-muted-foreground">{room.floor}</TableCell>
+   616→                        <TableCell className="text-sm text-muted-foreground">{room.capacity}</TableCell>
+   617→                        <TableCell className="text-sm font-medium text-amber-500">
+   618→                          {formatCurrency(room.pricePerNight)}
+   619→                        </TableCell>
+   620→                        <TableCell>{getStatusBadge(room.status)}</TableCell>
+   621→                        <TableCell>
+   622→                          <div className="flex items-center justify-end gap-1">
+   623→                            <Button
+   624→                              size="sm"
+   625→                              variant="ghost"
+   626→                              className="h-7 w-7 p-0"
+   627→                              onClick={() => openEditForm(room)}
+   628→                            >
+   629→                              <Pencil className="h-3.5 w-3.5" />
+   630→                            </Button>
+   631→                            <Button
+   632→                              size="sm"
+   633→                              variant="ghost"
+   634→                              className="h-7 w-7 p-0"
+   635→                              onClick={() => openStatusDialog(room)}
+   636→                            >
+   637→                              <RefreshCw className="h-3.5 w-3.5" />
+   638→                            </Button>
+   639→                            <Button
+   640→                              size="sm"
+   641→                              variant="ghost"
+   642→                              className="h-7 w-7 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+   643→                              onClick={() => openDeleteDialog(room.id)}
+   644→                            >
+   645→                              <Trash2 className="h-3.5 w-3.5" />
+   646→                            </Button>
+   647→                          </div>
+   648→                        </TableCell>
+   649→                      </TableRow>
+   650→                    ))}
+   651→                  </TableBody>
+   652→                </Table>
+   653→              </div>
+   654→            )}
+   655→          </CardContent>
+   656→        </Card>
+   657→      )}
+   658→
+   659→      {/* CALENDAR VIEW */}
+   660→      {viewMode === 'calendar' && (
+   661→        <Card className="border-border/50">
+   662→          <CardHeader className="pb-3">
+   663→            <div className="flex items-center justify-between">
+   664→              <CardTitle className="text-base font-semibold">Room Availability Calendar</CardTitle>
+   665→              <div className="flex items-center gap-2">
+   666→                <Button
+   667→                  size="sm"
+   668→                  variant="outline"
+   669→                  className="h-7 w-7 p-0 border-border/50"
+   670→                  onClick={() => setWeekOffset((w) => w - 1)}
+   671→                >
+   672→                  <ChevronLeft className="h-4 w-4" />
+   673→                </Button>
+   674→                <span className="text-xs text-muted-foreground min-w-32 text-center">
+   675→                  {weekOffset === 0
+   676→                    ? 'This Week'
+   677→                    : `${calendarDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${calendarDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+   678→                </span>
+   679→                <Button
+   680→                  size="sm"
+   681→                  variant="outline"
+   682→                  className="h-7 w-7 p-0 border-border/50"
+   683→                  onClick={() => setWeekOffset((w) => w + 1)}
+   684→                >
+   685→                  <ChevronRight className="h-4 w-4" />
+   686→                </Button>
+   687→                {weekOffset !== 0 && (
+   688→                  <Button
+   689→                    size="sm"
+   690→                    variant="ghost"
+   691→                    className="h-7 text-xs"
+   692→                    onClick={() => setWeekOffset(0)}
+   693→                  >
+   694→                    Today
+   695→                  </Button>
+   696→                )}
+   697→              </div>
+   698→            </div>
+   699→          </CardHeader>
+   700→          <CardContent className="p-4 pt-0">
+   701→            <div className="overflow-x-auto">
+   702→              {/* Legend */}
+   703→              <div className="mb-3 flex flex-wrap gap-4">
+   704→                <div className="flex items-center gap-1.5">
+   705→                  <div className="h-3 w-3 rounded bg-emerald-500/30 border border-emerald-500/50" />
+   706→                  <span className="text-[11px] text-muted-foreground">Available</span>
+   707→                </div>
+   708→                <div className="flex items-center gap-1.5">
+   709→                  <div className="h-3 w-3 rounded bg-blue-500/30 border border-blue-500/50" />
+   710→                  <span className="text-[11px] text-muted-foreground">Occupied</span>
+   711→                </div>
+   712→                <div className="flex items-center gap-1.5">
+   713→                  <div className="h-3 w-3 rounded bg-orange-500/30 border border-orange-500/50" />
+   714→                  <span className="text-[11px] text-muted-foreground">Maintenance</span>
+   715→                </div>
+   716→              </div>
+   717→
+   718→              <table className="w-full text-xs">
+   719→                <thead>
+   720→                  <tr>
+   721→                    <th className="sticky left-0 z-10 bg-card px-2 py-2 text-left text-xs font-medium text-muted-foreground min-w-[100px]">
+   722→                      Room
+   723→                    </th>
+   724→                    {calendarDays.map((day, i) => (
+   725→                      <th
+   726→                        key={i}
+   727→                        className={`px-2 py-2 text-center font-medium min-w-[120px] ${
+   728→                          isToday(day) ? 'text-amber-400' : 'text-muted-foreground'
+   729→                        }`}
+   730→                      >
+   731→                        {getDayLabel(day)}
+   732→                      </th>
+   733→                    ))}
+   734→                  </tr>
+   735→                </thead>
+   736→                <tbody>
+   737→                  {filteredRooms.map((room) => (
+   738→                    <tr key={room.id} className="border-t border-border/30">
+   739→                      <td className="sticky left-0 z-10 bg-card px-2 py-1.5">
+   740→                        <div className="flex items-center gap-1.5">
+   741→                          <span className="font-bold text-amber-500">{room.number}</span>
+   742→                          <span className="text-muted-foreground hidden sm:inline">{room.type}</span>
+   743→                        </div>
+   744→                      </td>
+   745→                      {calendarDays.map((day, dayIdx) => {
+   746→                        const dateStr = dateToStr(day);
+   747→                        const reservation = getReservationForRoomOnDate(room.id, dateStr);
+   748→                        const isTodayCol = isToday(day);
+   749→
+   750→                        let cellClass = 'bg-emerald-500/10 border-emerald-500/30';
+   751→                        let content: React.ReactNode = '';
+   752→
+   753→                        if (room.status === 'MAINTENANCE') {
+   754→                          cellClass = 'bg-orange-500/15 border-orange-500/30';
+   755→                          content = <span className="text-orange-400/70 text-[10px]">Maint.</span>;
+   756→                        } else if (reservation) {
+   757→                          cellClass = 'bg-blue-500/15 border-blue-500/30';
+   758→                          content = (
+   759→                            <span className="text-[10px] text-blue-300 truncate block max-w-[100px]">
+   760→                              {reservation.guest.name}
+   761→                            </span>
+   762→                          );
+   763→                        }
+   764→
+   765→                        return (
+   766→                          <td
+   767→                            key={dayIdx}
+   768→                            className={`px-1 py-1 text-center border border-transparent rounded-sm mx-0.5 ${cellClass} ${
+   769→                              isTodayCol ? 'ring-1 ring-amber-500/50' : ''
+   770→                            }`}
+   771→                          >
+   772→                            <div className="py-1">{content}</div>
+   773→                          </td>
+   774→                        );
+   775→                      })}
+   776→                    </tr>
+   777→                  ))}
+   778→                </tbody>
+   779→              </table>
+   780→
+   781→              {filteredRooms.length === 0 && (
+   782→                <div className="flex flex-col items-center justify-center py-12 text-center">
+   783→                  <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/50" />
+   784→                  <p className="text-sm text-muted-foreground">No rooms to display</p>
+   785→                </div>
+   786→              )}
+   787→            </div>
+   788→          </CardContent>
+   789→        </Card>
+   790→      )}
+   791→
+   792→      {/* Add/Edit Room Dialog */}
+   793→      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+   794→        <DialogContent className="sm:max-w-lg">
+   795→          <DialogHeader>
+   796→            <DialogTitle>{form.id ? 'Edit Room' : 'Add New Room'}</DialogTitle>
+   797→            <DialogDescription>
+   798→              {form.id ? 'Update room details below.' : 'Fill in the details to create a new room.'}
+   799→            </DialogDescription>
+   800→          </DialogHeader>
+   801→          <div className="grid gap-4 py-2">
+   802→            <div className="grid grid-cols-2 gap-4">
+   803→              <div className="space-y-1.5">
+   804→                <Label htmlFor="room-number">
+   805→                  Room Number <span className="text-rose-400">*</span>
+   806→                </Label>
+   807→                <Input
+   808→                  id="room-number"
+   809→                  placeholder="e.g. 101"
+   810→                  value={form.number}
+   811→                  onChange={(e) => setForm({ ...form, number: e.target.value })}
+   812→                />
+   813→              </div>
+   814→              <div className="space-y-1.5">
+   815→                <Label htmlFor="room-type">
+   816→                  Type <span className="text-rose-400">*</span>
+   817→                </Label>
+   818→                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+   819→                  <SelectTrigger className="w-full">
+   820→                    <SelectValue />
+   821→                  </SelectTrigger>
+   822→                  <SelectContent>
+   823→                    <SelectItem value="SINGLE">Single</SelectItem>
+   824→                    <SelectItem value="DOUBLE">Double</SelectItem>
+   825→                    <SelectItem value="TWIN">Twin</SelectItem>
+   826→                    <SelectItem value="SUITE">Suite</SelectItem>
+   827→                    <SelectItem value="DELUXE">Deluxe</SelectItem>
+   828→                  </SelectContent>
+   829→                </Select>
+   830→              </div>
+   831→            </div>
+   832→
+   833→            <div className="space-y-1.5">
+   834→              <Label htmlFor="room-price">
+   835→                Price Per Night (ETB) <span className="text-rose-400">*</span>
+   836→              </Label>
+   837→              <Input
+   838→                id="room-price"
+   839→                type="number"
+   840→                placeholder="0"
+   841→                value={form.pricePerNight}
+   842→                onChange={(e) => setForm({ ...form, pricePerNight: e.target.value })}
+   843→              />
+   844→            </div>
+   845→
+   846→            <div className="grid grid-cols-2 gap-4">
+   847→              <div className="space-y-1.5">
+   848→                <Label htmlFor="room-floor">Floor</Label>
+   849→                <Input
+   850→                  id="room-floor"
+   851→                  type="number"
+   852→                  placeholder="1"
+   853→                  value={form.floor}
+   854→                  onChange={(e) => setForm({ ...form, floor: e.target.value })}
+   855→                />
+   856→              </div>
+   857→              <div className="space-y-1.5">
+   858→                <Label htmlFor="room-capacity">Capacity</Label>
+   859→                <Input
+   860→                  id="room-capacity"
+   861→                  type="number"
+   862→                  placeholder="1"
+   863→                  value={form.capacity}
+   864→                  onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+   865→                />
+   866→              </div>
+   867→            </div>
+   868→
+   869→            <div className="space-y-1.5">
+   870→              <Label htmlFor="room-amenities">Amenities</Label>
+   871→              <Input
+   872→                id="room-amenities"
+   873→                placeholder="WiFi, TV, AC, Mini Bar (comma separated)"
+   874→                value={form.amenities}
+   875→                onChange={(e) => setForm({ ...form, amenities: e.target.value })}
+   876→              />
+   877→            </div>
+   878→
+   879→            <div className="space-y-1.5">
+   880→              <Label htmlFor="room-description">Description</Label>
+   881→              <Textarea
+   882→                id="room-description"
+   883→                placeholder="Optional description..."
+   884→                value={form.description}
+   885→                onChange={(e) => setForm({ ...form, description: e.target.value })}
+   886→                rows={3}
+   887→              />
+   888→            </div>
+   889→          </div>
+   890→          <DialogFooter>
+   891→            <Button variant="outline" onClick={() => setFormOpen(false)} className="border-border/50">
+   892→              Cancel
+   893→            </Button>
+   894→            <Button onClick={handleSaveForm} disabled={formSaving}>
+   895→              {formSaving ? 'Saving...' : 'Save Room'}
+   896→            </Button>
+   897→          </DialogFooter>
+   898→        </DialogContent>
+   899→      </Dialog>
+   900→
+   901→      {/* Change Status Dialog */}
+   902→      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+   903→        <DialogContent className="sm:max-w-sm">
+   904→          <DialogHeader>
+   905→            <DialogTitle>Change Room Status</DialogTitle>
+   906→            <DialogDescription>
+   907→              Room <span className="font-semibold text-amber-500">{statusRoom?.number}</span> — currently{' '}
+   908→              <span className="font-medium">{statusRoom?.status}</span>
+   909→            </DialogDescription>
+   910→          </DialogHeader>
+   911→          <div className="grid gap-2 py-2">
+   912→            {(['AVAILABLE', 'OCCUPIED', 'MAINTENANCE'] as const).map((status) => {
+   913→              const isCurrent = statusRoom?.status === status;
+   914→              const colorMap: Record<string, string> = {
+   915→                AVAILABLE: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20',
+   916→                OCCUPIED: 'border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20',
+   917→                MAINTENANCE: 'border-orange-500/50 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20',
+   918→              };
+   919→              return (
+   920→                <Button
+   921→                  key={status}
+   922→                  variant="outline"
+   923→                  className={`h-10 justify-start gap-2 font-medium ${colorMap[status]} ${
+   924→                    isCurrent ? 'ring-2 ring-foreground/20' : ''
+   925→                  }`}
+   926→                  disabled={isCurrent || statusSaving}
+   927→                  onClick={() => handleStatusChange(status)}
+   928→                >
+   929→                  {isCurrent && (
+   930→                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+   931→                  )}
+   932→                  {status.charAt(0) + status.slice(1).toLowerCase()}
+   933→                  {isCurrent && (
+   934→                    <span className="ml-auto text-[10px] opacity-60">(current)</span>
+   935→                  )}
+   936→                </Button>
+   937→              );
+   938→            })}
+   939→          </div>
+   940→        </DialogContent>
+   941→      </Dialog>
+   942→
+   943→      {/* Delete Confirmation Dialog */}
+   944→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   945→        <DialogContent className="sm:max-w-sm">
+   946→          <DialogHeader>
+   947→            <DialogTitle>Delete Room</DialogTitle>
+   948→            <DialogDescription>
+   949→              Are you sure you want to delete this room? This action cannot be undone.
+   950→            </DialogDescription>
+   951→          </DialogHeader>
+   952→          <DialogFooter>
+   953→            <Button
+   954→              variant="outline"
+   955→              onClick={() => setDeleteDialogOpen(false)}
+   956→              className="border-border/50"
+   957→            >
+   958→              Cancel
+   959→            </Button>
+   960→            <Button
+   961→              variant="destructive"
+   962→              onClick={handleDelete}
+   963→              disabled={deleteSaving}
+   964→            >
+   965→              {deleteSaving ? 'Deleting...' : 'Delete'}
+   966→            </Button>
+   967→          </DialogFooter>
+   968→        </DialogContent>
+   969→      </Dialog>
+   970→    </div>
+   971→  );
+   972→}

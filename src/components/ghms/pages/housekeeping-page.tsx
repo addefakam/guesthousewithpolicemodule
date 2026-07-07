@@ -237,7 +237,7 @@ export default function HousekeepingPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Housekeeping Tasks</CardTitle>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {FILTERS.map((f) => (
                   <Button
                     key={f}
@@ -254,7 +254,7 @@ export default function HousekeepingPage() {
                   type="date"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-[160px]"
+                  className="w-full sm:w-[160px]"
                   placeholder="Filter by date"
                 />
                 {dateFilter && (

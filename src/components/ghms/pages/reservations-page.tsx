@@ -499,7 +499,7 @@ export default function ReservationsPage() {
       {/* Table */}
       <Card className="border-border/50">
         <CardContent className="p-0">
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -603,7 +603,7 @@ export default function ReservationsPage() {
                       </TableCell>
                       {/* Actions */}
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -670,7 +670,7 @@ export default function ReservationsPage() {
 
       {/* ── New/Edit Reservation Dialog ──────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { setShowFormDialog(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="sm:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
           <div className="grid grid-cols-1 lg:grid-cols-5">
             {/* Left: Form */}
             <div className="lg:col-span-3 p-6 space-y-5">
@@ -682,7 +682,7 @@ export default function ReservationsPage() {
 
               <div className="grid gap-4">
                 {/* Guest */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="res-guest-name">Guest Name *</Label>
                     <Input
@@ -749,7 +749,7 @@ export default function ReservationsPage() {
                 )}
 
                 {/* Dates */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="res-checkin">Check-in Date *</Label>
                     <Input
@@ -791,7 +791,7 @@ export default function ReservationsPage() {
                 )}
 
                 {/* Payment */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="res-paid">Amount Paid *</Label>
                     <Input

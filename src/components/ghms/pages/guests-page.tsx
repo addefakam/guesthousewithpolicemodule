@@ -358,7 +358,7 @@ export default function GuestsPage() {
       {/* Table */}
       <Card className="border-border/50">
         <CardContent className="p-0">
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -439,7 +439,7 @@ export default function GuestsPage() {
                         {guest.updatedAt ? formatDate(guest.updatedAt) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -519,7 +519,7 @@ export default function GuestsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>ID Type</Label>
                 <Select
@@ -685,7 +685,7 @@ export default function GuestsPage() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 <div className="rounded-lg bg-muted/50 p-4 text-center">
                   <p className="text-2xl font-bold text-foreground">{profileGuest.totalStays}</p>
                   <p className="text-xs text-muted-foreground mt-1">Total Stays</p>
@@ -717,7 +717,7 @@ export default function GuestsPage() {
                   </p>
                 ) : (
                   <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-                    <Table>
+                    <div className="overflow-x-auto"><Table>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
                           <TableHead>Room</TableHead>
@@ -748,7 +748,7 @@ export default function GuestsPage() {
                           </TableRow>
                         ))}
                       </TableBody>
-                    </Table>
+                    </Table></div>
                   </div>
                 )}
               </div>

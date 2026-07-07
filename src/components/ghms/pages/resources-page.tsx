@@ -248,7 +248,7 @@ export default function ResourcesPage() {
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         <Card className="border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -355,7 +355,7 @@ export default function ResourcesPage() {
       {/* Inventory Table */}
       <Card className="border-border/50">
         <CardContent className="p-0">
-          <div className="max-h-[520px] overflow-y-auto">
+          <div className="max-h-[520px] overflow-x-auto overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -491,7 +491,7 @@ export default function ResourcesPage() {
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Input
@@ -519,7 +519,7 @@ export default function ResourcesPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Quantity <span className="text-red-400">*</span>
@@ -553,7 +553,7 @@ export default function ResourcesPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cost per Unit</Label>
                 <Input

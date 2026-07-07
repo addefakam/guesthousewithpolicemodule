@@ -1,0 +1,602 @@
+   100→   100→   100→  description: '',
+   101→   101→   101→};
+   102→   102→   102→
+   103→   103→   103→function formatCurrency(amount: number): string {
+   104→   104→   104→  return new Intl.NumberFormat('en-ET', {
+   105→   105→   105→    style: 'currency',
+   106→   106→   106→    currency: 'ETB',
+   107→   107→   107→    minimumFractionDigits: 0,
+   108→   108→   108→    maximumFractionDigits: 0,
+   109→   109→   109→  }).format(amount);
+   110→   110→   110→}
+   111→   111→   111→
+   112→   112→   112→function getStatusBadge(status: string) {
+   113→   113→   113→  switch (status) {
+   114→   114→   114→    case 'AVAILABLE':
+   115→   115→   115→      return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[11px]">Available</Badge>;
+   116→   116→   116→    case 'OCCUPIED':
+   117→   117→   117→      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[11px]">Occupied</Badge>;
+   118→   118→   118→    case 'MAINTENANCE':
+   119→   119→   119→      return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[11px]">Maintenance</Badge>;
+   120→   120→   120→    case 'RESERVED':
+   121→   121→   121→      return <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[11px]">Reserved</Badge>;
+   122→   122→   122→    default:
+   123→   123→   123→      return <Badge variant="outline" className="text-[11px]">{status}</Badge>;
+   124→   124→   124→  }
+   125→   125→   125→}
+   126→   126→   126→
+   127→   127→   127→function getTypeBadge(type: string) {
+   128→   128→   128→  return (
+   129→   129→   129→    <Badge variant="secondary" className="text-[11px]">
+   130→   130→   130→      {type}
+   131→   131→   131→    </Badge>
+   132→   132→   132→  );
+   133→   133→   133→}
+   134→   134→   134→
+   135→   135→   135→// Calendar helpers
+   136→   136→   136→function getWeekDays(offset: number = 0): Date[] {
+   137→   137→   137→  const days: Date[] = [];
+   138→   138→   138→  const today = new Date();
+   139→   139→   139→  const startOfWeek = new Date(today);
+   140→   140→   140→  startOfWeek.setDate(today.getDate() - today.getDay() + 1 + offset * 7); // Monday
+   141→   141→   141→  for (let i = 0; i < 7; i++) {
+   142→   142→   142→    const d = new Date(startOfWeek);
+   143→   143→   143→    d.setDate(startOfWeek.getDate() + i);
+   144→   144→   144→    days.push(d);
+   145→   145→   145→  }
+   146→   146→   146→  return days;
+   147→   147→   147→}
+   148→   148→   148→
+   149→   149→   149→function dateToStr(d: Date): string {
+   150→   150→   150→  return d.toISOString().split('T')[0];
+   151→   151→   151→}
+   152→   152→   152→
+   153→   153→   153→function getDayLabel(d: Date): string {
+   154→   154→   154→  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+   155→   155→   155→}
+   156→   156→   156→
+   157→   157→   157→function isToday(d: Date): boolean {
+   158→   158→   158→  return dateToStr(d) === dateToStr(new Date());
+   159→   159→   159→}
+   160→   160→   160→
+   161→   161→   161→export default function RoomsPage() {
+   162→   162→   162→  const { refreshKey, triggerRefresh } = useAppStore();
+   163→   163→   163→
+   164→   164→   164→  const [rooms, setRooms] = useState<Room[]>([]);
+   165→   165→   165→  const [reservations, setReservations] = useState<Reservation[]>([]);
+   166→   166→   166→  const [loading, setLoading] = useState(true);
+   167→   167→   167→  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+   168→   168→   168→  const [filter, setFilter] = useState<FilterStatus>('ALL');
+   169→   169→   169→  const [search, setSearch] = useState('');
+   170→   170→   170→
+   171→   171→   171→  // Dialog states
+   172→   172→   172→  const [formOpen, setFormOpen] = useState(false);
+   173→   173→   173→  const [form, setForm] = useState<RoomFormData>(emptyForm);
+   174→   174→   174→  const [formSaving, setFormSaving] = useState(false);
+   175→   175→   175→
+   176→   176→   176→  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+   177→   177→   177→  const [statusRoom, setStatusRoom] = useState<Room | null>(null);
+   178→   178→   178→  const [statusSaving, setStatusSaving] = useState(false);
+   179→   179→   179→
+   180→   180→   180→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   181→   181→   181→  const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null);
+   182→   182→   182→  const [deleteSaving, setDeleteSaving] = useState(false);
+   183→   183→   183→
+   184→   184→   184→  // Calendar state
+   185→   185→   185→  const [weekOffset, setWeekOffset] = useState(0);
+   186→   186→   186→  const [calendarDays, setCalendarDays] = useState<Date[]>(getWeekDays(0));
+   187→   187→   187→
+   188→   188→   188→  const fetchData = useCallback(async () => {
+   189→   189→   189→    try {
+   190→   190→   190→      setLoading(true);
+   191→   191→   191→      const [roomsData, resData] = await Promise.all([
+   192→   192→   192→        getRooms(),
+   193→   193→   193→        getReservations(),
+   194→   194→   194→      ]);
+   195→   195→   195→      setRooms(roomsData);
+   196→   196→   196→      setReservations(resData);
+   197→   197→   197→    } catch (err) {
+   198→   198→   198→      console.error(err);
+   199→   199→   199→      toast.error('Failed to load rooms');
+   200→   200→   200→    } finally {
+   201→   201→   201→      setLoading(false);
+   202→   202→   202→    }
+   203→   203→   203→  }, []);
+   204→   204→   204→
+   205→   205→   205→  useEffect(() => {
+   206→   206→   206→    fetchData();
+   207→   207→   207→  }, [fetchData, refreshKey]);
+   208→   208→   208→
+   209→   209→   209→  useEffect(() => {
+   210→   210→   210→    setCalendarDays(getWeekDays(weekOffset));
+   211→   211→   211→  }, [weekOffset]);
+   212→   212→   212→
+   213→   213→   213→  // Filtered rooms
+   214→   214→   214→  const filteredRooms = rooms.filter((r) => {
+   215→   215→   215→    if (filter !== 'ALL' && r.status !== filter) return false;
+   216→   216→   216→    if (search) {
+   217→   217→   217→      const q = search.toLowerCase();
+   218→   218→   218→      return (
+   219→   219→   219→        r.number.toLowerCase().includes(q) ||
+   220→   220→   220→        r.name.toLowerCase().includes(q) ||
+   221→   221→   221→        r.type.toLowerCase().includes(q)
+   222→   222→   222→      );
+   223→   223→   223→    }
+   224→   224→   224→    return true;
+   225→   225→   225→  });
+   226→   226→   226→
+   227→   227→   227→  // Stats
+   228→   228→   228→  const stats = {
+   229→   229→   229→    total: rooms.length,
+   230→   230→   230→    available: rooms.filter((r) => r.status === 'AVAILABLE').length,
+   231→   231→   231→    occupied: rooms.filter((r) => r.status === 'OCCUPIED').length,
+   232→   232→   232→    maintenance: rooms.filter((r) => r.status === 'MAINTENANCE').length,
+   233→   233→   233→  };
+   234→   234→   234→
+   235→   235→   235→  // Form handlers
+   236→   236→   236→  const openAddForm = () => {
+   237→   237→   237→    setForm(emptyForm);
+   238→   238→   238→    setFormOpen(true);
+   239→   239→   239→  };
+   240→   240→   240→
+   241→   241→   241→  const openEditForm = (room: Room) => {
+   242→   242→   242→    setForm({
+   243→   243→   243→      id: room.id,
+   244→   244→   244→      number: room.number,
+   245→   245→   245→      name: room.name,
+   246→   246→   246→      type: room.type,
+   247→   247→   247→      pricePerNight: String(room.pricePerNight),
+   248→   248→   248→      floor: String(room.floor),
+   249→   249→   249→      capacity: String(room.capacity),
+   250→   250→   250→      amenities: room.amenities,
+   251→   251→   251→      description: room.description,
+   252→   252→   252→    });
+   253→   253→   253→    setFormOpen(true);
+   254→   254→   254→  };
+   255→   255→   255→
+   256→   256→   256→  const handleSaveForm = async () => {
+   257→   257→   257→    if (!form.number || !form.type || !form.pricePerNight) {
+   258→   258→   258→      toast.error('Please fill in required fields (Number, Type, Price)');
+   259→   259→   259→      return;
+   260→   260→   260→    }
+   261→   261→   261→    try {
+   262→   262→   262→      setFormSaving(true);
+   263→   263→   263→      const payload = {
+   264→   264→   264→        number: form.number,
+   265→   265→   265→        name: form.name || form.number,
+   266→   266→   266→        type: form.type,
+   267→   267→   267→        pricePerNight: parseFloat(form.pricePerNight),
+   268→   268→   268→        floor: parseInt(form.floor) || 1,
+   269→   269→   269→        capacity: parseInt(form.capacity) || 1,
+   270→   270→   270→        amenities: form.amenities,
+   271→   271→   271→        description: form.description,
+   272→   272→   272→      };
+   273→   273→   273→
+   274→   274→   274→      if (form.id) {
+   275→   275→   275→        await updateRoom(form.id, payload);
+   276→   276→   276→        toast.success('Room updated successfully');
+   277→   277→   277→      } else {
+   278→   278→   278→        await createRoom(payload);
+   279→   279→   279→        toast.success('Room created successfully');
+   280→   280→   280→      }
+   281→   281→   281→      setFormOpen(false);
+   282→   282→   282→      triggerRefresh();
+   283→   283→   283→    } catch (err: any) {
+   284→   284→   284→      toast.error(err.message || 'Failed to save room');
+   285→   285→   285→    } finally {
+   286→   286→   286→      setFormSaving(false);
+   287→   287→   287→    }
+   288→   288→   288→  };
+   289→   289→   289→
+   290→   290→   290→  const openStatusDialog = (room: Room) => {
+   291→   291→   291→    setStatusRoom(room);
+   292→   292→   292→    setStatusDialogOpen(true);
+   293→   293→   293→  };
+   294→   294→   294→
+   295→   295→   295→  const handleStatusChange = async (status: string) => {
+   296→   296→   296→    if (!statusRoom || status === statusRoom.status) return;
+   297→   297→   297→    try {
+   298→   298→   298→      setStatusSaving(true);
+   299→   299→   299→      await updateRoomStatus(statusRoom.id, status);
+   300→   300→   300→      toast.success(`Room ${statusRoom.number} status changed to ${status}`);
+   301→   301→   301→      setStatusDialogOpen(false);
+   302→   302→   302→      triggerRefresh();
+   303→   303→   303→    } catch (err: any) {
+   304→   304→   304→      toast.error(err.message || 'Failed to update status');
+   305→   305→   305→    } finally {
+   306→   306→   306→      setStatusSaving(false);
+   307→   307→   307→    }
+   308→   308→   308→  };
+   309→   309→   309→
+   310→   310→   310→  const openDeleteDialog = (roomId: string) => {
+   311→   311→   311→    setDeleteRoomId(roomId);
+   312→   312→   312→    setDeleteDialogOpen(true);
+   313→   313→   313→  };
+   314→   314→   314→
+   315→   315→   315→  const handleDelete = async () => {
+   316→   316→   316→    if (!deleteRoomId) return;
+   317→   317→   317→    try {
+   318→   318→   318→      setDeleteSaving(true);
+   319→   319→   319→      await deleteRoom(deleteRoomId);
+   320→   320→   320→      toast.success('Room deleted');
+   321→   321→   321→      setDeleteDialogOpen(false);
+   322→   322→   322→      triggerRefresh();
+   323→   323→   323→    } catch (err: any) {
+   324→   324→   324→      toast.error(err.message || 'Failed to delete room');
+   325→   325→   325→    } finally {
+   326→   326→   326→      setDeleteSaving(false);
+   327→   327→   327→    }
+   328→   328→   328→  };
+   329→   329→   329→
+   330→   330→   330→  // Calendar helpers
+   331→   331→   331→  const getReservationForRoomOnDate = (roomId: string, date: string): Reservation | undefined => {
+   332→   332→   332→    return reservations.find(
+   333→   333→   333→      (r) => r.room.id === roomId && r.checkIn <= date && r.checkOut > date && r.status !== 'CANCELLED'
+   334→   334→   334→    );
+   335→   335→   335→  };
+   336→   336→   336→
+   337→   337→   337→  // Skeleton loading
+   338→   338→   338→  if (loading && rooms.length === 0) {
+   339→   339→   339→    return (
+   340→   340→   340→      <div className="space-y-6">
+   341→   341→   341→        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+   342→   342→   342→          {Array.from({ length: 4 }).map((_, i) => (
+   343→   343→   343→            <Skeleton key={i} className="h-24 rounded-xl" />
+   344→   344→   344→          ))}
+   345→   345→   345→        </div>
+   346→   346→   346→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   347→   347→   347→          {Array.from({ length: 8 }).map((_, i) => (
+   348→   348→   348→            <Skeleton key={i} className="h-48 rounded-xl" />
+   349→   349→   349→          ))}
+   350→   350→   350→        </div>
+   351→   351→   351→      </div>
+   352→   352→   352→    );
+   353→   353→   353→  }
+   354→   354→   354→
+   355→   355→   355→  return (
+   356→   356→   356→    <div className="space-y-6">
+   357→   357→   357→      {/* Stats Row */}
+   358→   358→   358→      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+   359→   359→   359→        <Card className="border-border/50">
+   360→   360→   360→          <CardContent className="flex items-center gap-3 p-4">
+   361→   361→   361→            <div className="rounded-lg bg-amber-500/10 p-2">
+   362→   362→   362→              <BedDouble className="h-4 w-4 text-amber-500" />
+   363→   363→   363→            </div>
+   364→   364→   364→            <div>
+   365→   365→   365→              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+   366→   366→   366→              <p className="text-xs text-muted-foreground">Total Rooms</p>
+   367→   367→   367→            </div>
+   368→   368→   368→          </CardContent>
+   369→   369→   369→        </Card>
+   370→   370→   370→        <Card className="border-border/50">
+   371→   371→   371→          <CardContent className="flex items-center gap-3 p-4">
+   372→   372→   372→            <div className="rounded-lg bg-emerald-500/10 p-2">
+   373→   373→   373→              <DoorOpen className="h-4 w-4 text-emerald-500" />
+   374→   374→   374→            </div>
+   375→   375→   375→            <div>
+   376→   376→   376→              <p className="text-2xl font-bold text-foreground">{stats.available}</p>
+   377→   377→   377→              <p className="text-xs text-muted-foreground">Available</p>
+   378→   378→   378→            </div>
+   379→   379→   379→          </CardContent>
+   380→   380→   380→        </Card>
+   381→   381→   381→        <Card className="border-border/50">
+   382→   382→   382→          <CardContent className="flex items-center gap-3 p-4">
+   383→   383→   383→            <div className="rounded-lg bg-blue-500/10 p-2">
+   384→   384→   384→              <Users className="h-4 w-4 text-blue-500" />
+   385→   385→   385→            </div>
+   386→   386→   386→            <div>
+   387→   387→   387→              <p className="text-2xl font-bold text-foreground">{stats.occupied}</p>
+   388→   388→   388→              <p className="text-xs text-muted-foreground">Occupied</p>
+   389→   389→   389→            </div>
+   390→   390→   390→          </CardContent>
+   391→   391→   391→        </Card>
+   392→   392→   392→        <Card className="border-border/50">
+   393→   393→   393→          <CardContent className="flex items-center gap-3 p-4">
+   394→   394→   394→            <div className="rounded-lg bg-orange-500/10 p-2">
+   395→   395→   395→              <Wrench className="h-4 w-4 text-orange-500" />
+   396→   396→   396→            </div>
+   397→   397→   397→            <div>
+   398→   398→   398→              <p className="text-2xl font-bold text-foreground">{stats.maintenance}</p>
+   399→   399→   399→              <p className="text-xs text-muted-foreground">Maintenance</p>
+   400→   400→   400→            </div>
+   401→   401→   401→          </CardContent>
+   402→   402→   402→        </Card>
+   403→   403→   403→      </div>
+   404→   404→   404→
+   405→   405→   405→      {/* Toolbar */}
+   406→   406→   406→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   407→   407→   407→        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+   408→   408→   408→          {/* Search */}
+   409→   409→   409→          <div className="relative">
+   410→   410→   410→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   411→   411→   411→            <Input
+   412→   412→   412→              placeholder="Search rooms..."
+   413→   413→   413→              value={search}
+   414→   414→   414→              onChange={(e) => setSearch(e.target.value)}
+   415→   415→   415→              className="w-56 pl-9"
+   416→   416→   416→            />
+   417→   417→   417→          </div>
+   418→   418→   418→
+   419→   419→   419→          {/* Filter Buttons */}
+   420→   420→   420→          <div className="flex gap-1.5">
+   421→   421→   421→            {(['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'] as FilterStatus[]).map((s) => (
+   422→   422→   422→              <Button
+   423→   423→   423→                key={s}
+   424→   424→   424→                size="sm"
+   425→   425→   425→                variant={filter === s ? 'default' : 'outline'}
+   426→   426→   426→                className={
+   427→   427→   427→                  filter === s
+   428→   428→   428→                    ? 'h-8 text-xs'
+   429→   429→   429→                    : 'h-8 text-xs border-border/50 hover:border-primary/30'
+   430→   430→   430→                }
+   431→   431→   431→                onClick={() => setFilter(s)}
+   432→   432→   432→              >
+   433→   433→   433→                {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+   434→   434→   434→                {s !== 'ALL' && (
+   435→   435→   435→                  <span className="ml-1.5 text-[10px] opacity-70">
+   436→   436→   436→                    ({s === 'AVAILABLE' ? stats.available : s === 'OCCUPIED' ? stats.occupied : stats.maintenance})
+   437→   437→   437→                  </span>
+   438→   438→   438→                )}
+   439→   439→   439→              </Button>
+   440→   440→   440→            ))}
+   441→   441→   441→          </div>
+   442→   442→   442→        </div>
+   443→   443→   443→
+   444→   444→   444→        <div className="flex items-center gap-2">
+   445→   445→   445→          {/* View Toggle */}
+   446→   446→   446→          <div className="flex rounded-lg border border-border/50 p-0.5">
+   447→   447→   447→            <Button
+   448→   448→   448→              size="sm"
+   449→   449→   449→              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+   450→   450→   450→              className="h-7 w-7 p-0"
+   451→   451→   451→              onClick={() => setViewMode('grid')}
+   452→   452→   452→            >
+   453→   453→   453→              <LayoutGrid className="h-3.5 w-3.5" />
+   454→   454→   454→            </Button>
+   455→   455→   455→            <Button
+   456→   456→   456→              size="sm"
+   457→   457→   457→              variant={viewMode === 'list' ? 'default' : 'ghost'}
+   458→   458→   458→              className="h-7 w-7 p-0"
+   459→   459→   459→              onClick={() => setViewMode('list')}
+   460→   460→   460→            >
+   461→   461→   461→              <List className="h-3.5 w-3.5" />
+   462→   462→   462→            </Button>
+   463→   463→   463→            <Button
+   464→   464→   464→              size="sm"
+   465→   465→   465→              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+   466→   466→   466→              className="h-7 w-7 p-0"
+   467→   467→   467→              onClick={() => setViewMode('calendar')}
+   468→   468→   468→            >
+   469→   469→   469→              <CalendarDays className="h-3.5 w-3.5" />
+   470→   470→   470→            </Button>
+   471→   471→   471→          </div>
+   472→   472→   472→
+   473→   473→   473→          {/* Add Room */}
+   474→   474→   474→          <Button
+   475→   475→   475→            size="sm"
+   476→   476→   476→            className="h-8 gap-1.5"
+   477→   477→   477→            onClick={openAddForm}
+   478→   478→   478→          >
+   479→   479→   479→            <Plus className="h-3.5 w-3.5" />
+   480→   480→   480→            Add Room
+   481→   481→   481→          </Button>
+   482→   482→   482→        </div>
+   483→   483→   483→      </div>
+   484→   484→   484→
+   485→   485→   485→      {/* GRID VIEW */}
+   486→   486→   486→      {viewMode === 'grid' && (
+   487→   487→   487→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   488→   488→   488→          {filteredRooms.length === 0 ? (
+   489→   489→   489→            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+   490→   490→   490→              <BedDouble className="mb-3 h-10 w-10 text-muted-foreground/50" />
+   491→   491→   491→              <p className="text-sm text-muted-foreground">No rooms found</p>
+   492→   492→   492→            </div>
+   493→   493→   493→          ) : (
+   494→   494→   494→            filteredRooms.map((room) => (
+   495→   495→   495→              <Card
+   496→   496→   496→                key={room.id}
+   497→   497→   497→                className="group border-border/50 transition-all duration-200 hover:border-border hover:shadow-lg hover:-translate-y-0.5"
+   498→   498→   498→              >
+   499→   499→   499→                <CardContent className="p-4">
+   500→   500→   500→                  {/* Header */}
+   501→   501→   501→                  <div className="flex items-start justify-between">
+   502→   502→   502→                    <div>
+   503→   503→   503→                      <h3 className="text-xl font-bold text-amber-500">{room.number}</h3>
+   504→   504→   504→                      <p className="text-xs text-muted-foreground mt-0.5">{room.name}</p>
+   505→   505→   505→                    </div>
+   506→   506→   506→                    {getStatusBadge(room.status)}
+   507→   507→   507→                  </div>
+   508→   508→   508→
+   509→   509→   509→                  {/* Details */}
+   510→   510→   510→                  <div className="mt-3 space-y-2">
+   511→   511→   511→                    <div className="flex items-center gap-2">
+   512→   512→   512→                      {getTypeBadge(room.type)}
+   513→   513→   513→                      <span className="text-xs text-muted-foreground">Floor {room.floor}</span>
+   514→   514→   514→                      <span className="text-xs text-muted-foreground">&middot;</span>
+   515→   515→   515→                      <span className="text-xs text-muted-foreground">
+   516→   516→   516→                        <Users className="inline h-3 w-3 mr-0.5" />
+   517→   517→   517→                        {room.capacity}
+   518→   518→   518→                      </span>
+   519→   519→   519→                    </div>
+   520→   520→   520→
+   521→   521→   521→                    {/* Amenities */}
+   522→   522→   522→                    {room.amenities && (
+   523→   523→   523→                      <div className="flex flex-wrap gap-1">
+   524→   524→   524→                        {room.amenities.split(',').slice(0, 3).map((a, i) => (
+   525→   525→   525→                          <span
+   526→   526→   526→                            key={i}
+   527→   527→   527→                            className="rounded bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+   528→   528→   528→                          >
+   529→   529→   529→                            {a.trim()}
+   530→   530→   530→                          </span>
+   531→   531→   531→                        ))}
+   532→   532→   532→                        {room.amenities.split(',').length > 3 && (
+   533→   533→   533→                          <span className="text-[10px] text-muted-foreground">
+   534→   534→   534→                            +{room.amenities.split(',').length - 3}
+   535→   535→   535→                          </span>
+   536→   536→   536→                        )}
+   537→   537→   537→                      </div>
+   538→   538→   538→                    )}
+   539→   539→   539→
+   540→   540→   540→                    {/* Price */}
+   541→   541→   541→                    <div className="mt-2">
+   542→   542→   542→                      <span className="text-lg font-bold text-amber-500">
+   543→   543→   543→                        {formatCurrency(room.pricePerNight)}
+   544→   544→   544→                      </span>
+   545→   545→   545→                      <span className="text-xs text-muted-foreground"> / night</span>
+   546→   546→   546→                    </div>
+   547→   547→   547→                  </div>
+   548→   548→   548→
+   549→   549→   549→                  {/* Actions */}
+   550→   550→   550→                  <div className="mt-3 flex gap-2 border-t border-border/30 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+   551→   551→   551→                    <Button
+   552→   552→   552→                      size="sm"
+   553→   553→   553→                      variant="ghost"
+   554→   554→   554→                      className="h-7 flex-1 text-xs gap-1"
+   555→   555→   555→                      onClick={() => openEditForm(room)}
+   556→   556→   556→                    >
+   557→   557→   557→                      <Pencil className="h-3 w-3" />
+   558→   558→   558→                      Edit
+   559→   559→   559→                    </Button>
+   560→   560→   560→                    <Button
+   561→   561→   561→                      size="sm"
+   562→   562→   562→                      variant="ghost"
+   563→   563→   563→                      className="h-7 flex-1 text-xs gap-1"
+   564→   564→   564→                      onClick={() => openStatusDialog(room)}
+   565→   565→   565→                    >
+   566→   566→   566→                      <RefreshCw className="h-3 w-3" />
+   567→   567→   567→                      Status
+   568→   568→   568→                    </Button>
+   569→   569→   569→                    <Button
+   570→   570→   570→                      size="sm"
+   571→   571→   571→                      variant="ghost"
+   572→   572→   572→                      className="h-7 text-xs gap-1 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+   573→   573→   573→                      onClick={() => openDeleteDialog(room.id)}
+   574→   574→   574→                    >
+   575→   575→   575→                      <Trash2 className="h-3 w-3" />
+   576→   576→   576→                    </Button>
+   577→   577→   577→                  </div>
+   578→   578→   578→                </CardContent>
+   579→   579→   579→              </Card>
+   580→   580→   580→            ))
+   581→   581→   581→          )}
+   582→   582→   582→        </div>
+   583→   583→   583→      )}
+   584→   584→   584→
+   585→   585→   585→      {/* LIST VIEW */}
+   586→   586→   586→      {viewMode === 'list' && (
+   587→   587→   587→        <Card className="border-border/50">
+   588→   588→   588→          <CardContent className="p-0">
+   589→   589→   589→            {filteredRooms.length === 0 ? (
+   590→   590→   590→              <div className="flex flex-col items-center justify-center py-16 text-center">
+   591→   591→   591→                <BedDouble className="mb-3 h-10 w-10 text-muted-foreground/50" />
+   592→   592→   592→                <p className="text-sm text-muted-foreground">No rooms found</p>
+   593→   593→   593→              </div>
+   594→   594→   594→            ) : (
+   595→   595→   595→              <div className="overflow-x-auto">
+   596→   596→   596→                <Table>
+   597→   597→   597→                  <TableHeader>
+   598→   598→   598→                    <TableRow>
+   599→   599→   599→                      <TableHead className="text-xs">Number</TableHead>
+   600→   600→   600→                      <TableHead className="text-xs">Name</TableHead>
+   601→   601→   601→                      <TableHead className="text-xs">Type</TableHead>
+   602→   602→   602→                      <TableHead className="text-xs">Floor</TableHead>
+   603→   603→   603→                      <TableHead className="text-xs">Capacity</TableHead>
+   604→   604→   604→                      <TableHead className="text-xs">Price/Night</TableHead>
+   605→   605→   605→                      <TableHead className="text-xs">Status</TableHead>
+   606→   606→   606→                      <TableHead className="text-xs text-right">Actions</TableHead>
+   607→   607→   607→                    </TableRow>
+   608→   608→   608→                  </TableHeader>
+   609→   609→   609→                  <TableBody>
+   610→   610→   610→                    {filteredRooms.map((room) => (
+   611→   611→   611→                      <TableRow key={room.id}>
+   612→   612→   612→                        <TableCell className="font-bold text-amber-500">{room.number}</TableCell>
+   613→   613→   613→                        <TableCell className="text-sm">{room.name}</TableCell>
+   614→   614→   614→                        <TableCell>{getTypeBadge(room.type)}</TableCell>
+   615→   615→   615→                        <TableCell className="text-sm text-muted-foreground">{room.floor}</TableCell>
+   616→   616→   616→                        <TableCell className="text-sm text-muted-foreground">{room.capacity}</TableCell>
+   617→   617→   617→                        <TableCell className="text-sm font-medium text-amber-500">
+   618→   618→   618→                          {formatCurrency(room.pricePerNight)}
+   619→   619→   619→                        </TableCell>
+   620→   620→   620→                        <TableCell>{getStatusBadge(room.status)}</TableCell>
+   621→   621→   621→                        <TableCell>
+   622→   622→   622→                          <div className="flex items-center justify-end gap-1">
+   623→   623→   623→                            <Button
+   624→   624→   624→                              size="sm"
+   625→   625→   625→                              variant="ghost"
+   626→   626→   626→                              className="h-7 w-7 p-0"
+   627→   627→   627→                              onClick={() => openEditForm(room)}
+   628→   628→   628→                            >
+   629→   629→   629→                              <Pencil className="h-3.5 w-3.5" />
+   630→   630→   630→                            </Button>
+   631→   631→   631→                            <Button
+   632→   632→   632→                              size="sm"
+   633→   633→   633→                              variant="ghost"
+   634→   634→   634→                              className="h-7 w-7 p-0"
+   635→   635→   635→                              onClick={() => openStatusDialog(room)}
+   636→   636→   636→                            >
+   637→   637→   637→                              <RefreshCw className="h-3.5 w-3.5" />
+   638→   638→   638→                            </Button>
+   639→   639→   639→                            <Button
+   640→   640→   640→                              size="sm"
+   641→   641→   641→                              variant="ghost"
+   642→   642→   642→                              className="h-7 w-7 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+   643→   643→   643→                              onClick={() => openDeleteDialog(room.id)}
+   644→   644→   644→                            >
+   645→   645→   645→                              <Trash2 className="h-3.5 w-3.5" />
+   646→   646→   646→                            </Button>
+   647→   647→   647→                          </div>
+   648→   648→   648→                        </TableCell>
+   649→   649→   649→                      </TableRow>
+   650→   650→   650→                    ))}
+   651→   651→   651→                  </TableBody>
+   652→   652→   652→                </Table>
+   653→   653→   653→              </div>
+   654→   654→   654→            )}
+   655→   655→   655→          </CardContent>
+   656→   656→   656→        </Card>
+   657→   657→   657→      )}
+   658→   658→   658→
+   659→   659→   659→      {/* CALENDAR VIEW */}
+   660→   660→   660→      {viewMode === 'calendar' && (
+   661→   661→   661→        <Card className="border-border/50">
+   662→   662→   662→          <CardHeader className="pb-3">
+   663→   663→   663→            <div className="flex items-center justify-between">
+   664→   664→   664→              <CardTitle className="text-base font-semibold">Room Availability Calendar</CardTitle>
+   665→   665→   665→              <div className="flex items-center gap-2">
+   666→   666→   666→                <Button
+   667→   667→   667→                  size="sm"
+   668→   668→   668→                  variant="outline"
+   669→   669→   669→                  className="h-7 w-7 p-0 border-border/50"
+   670→   670→   670→                  onClick={() => setWeekOffset((w) => w - 1)}
+   671→   671→   671→                >
+   672→   672→   672→                  <ChevronLeft className="h-4 w-4" />
+   673→   673→   673→                </Button>
+   674→   674→   674→                <span className="text-xs text-muted-foreground min-w-32 text-center">
+   675→   675→   675→                  {weekOffset === 0
+   676→   676→   676→                    ? 'This Week'
+   677→   677→   677→                    : `${calendarDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${calendarDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+   678→   678→   678→                </span>
+   679→   679→   679→                <Button
+   680→   680→   680→                  size="sm"
+   681→   681→   681→                  variant="outline"
+   682→   682→   682→                  className="h-7 w-7 p-0 border-border/50"
+   683→   683→   683→                  onClick={() => setWeekOffset((w) => w + 1)}
+   684→   684→   684→                >
+   685→   685→   685→                  <ChevronRight className="h-4 w-4" />
+   686→   686→   686→                </Button>
+   687→   687→   687→                {weekOffset !== 0 && (
+   688→   688→   688→                  <Button
+   689→   689→   689→                    size="sm"
+   690→   690→   690→                    variant="ghost"
+   691→   691→   691→                    className="h-7 text-xs"
+   692→   692→   692→                    onClick={() => setWeekOffset(0)}
+   693→   693→   693→                  >
+   694→   694→   694→                    Today
+   695→   695→   695→                  </Button>
+   696→   696→   696→                )}
+   697→   697→   697→              </div>
+   698→   698→   698→            </div>
+   699→   699→   699→          </CardHeader>
+
+[showing lines 100-699 of 972; use offset=700 with limit to continue reading]

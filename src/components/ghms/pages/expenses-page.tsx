@@ -397,7 +397,7 @@ export default function ExpensesPage() {
               <Label className="text-xs text-muted-foreground">Date From</Label>
               <Input
                 type="date"
-                className="h-9 w-40"
+                className="h-9 w-full sm:w-40"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
               />
@@ -406,7 +406,7 @@ export default function ExpensesPage() {
               <Label className="text-xs text-muted-foreground">Date To</Label>
               <Input
                 type="date"
-                className="h-9 w-40"
+                className="h-9 w-full sm:w-40"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
               />
@@ -447,7 +447,7 @@ export default function ExpensesPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="max-h-[420px] overflow-y-auto">
+          <div className="max-h-[420px] overflow-x-auto overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -548,7 +548,7 @@ export default function ExpensesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Date <span className="text-red-400">*</span>
@@ -594,7 +594,7 @@ export default function ExpensesPage() {
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Amount (ETB) <span className="text-red-400">*</span>
@@ -632,7 +632,7 @@ export default function ExpensesPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Vendor</Label>
                 <Input

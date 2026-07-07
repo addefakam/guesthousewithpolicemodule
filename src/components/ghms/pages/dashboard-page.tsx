@@ -287,7 +287,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <p className="text-2xl font-bold tracking-tight text-foreground">
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {displayValue}
                   </p>
                   <p className="mt-0.5 text-xs font-medium text-foreground/80">{cfg.label}</p>
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">No check-ins or check-outs today</p>
               </div>
             ) : (
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-96 overflow-x-auto overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

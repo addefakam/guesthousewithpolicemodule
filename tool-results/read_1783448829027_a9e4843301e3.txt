@@ -1,0 +1,908 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from 'react';
+     4→     4→import {
+     5→     5→  Sun,
+     6→     6→  Plus,
+     7→     7→  Pencil,
+     8→     8→  Trash2,
+     9→     9→  CalendarPlus,
+    10→    10→  Clock,
+    11→    11→  Banknote,
+    12→    12→  Tag,
+    13→    13→  Loader2,
+    14→    14→  Package,
+    15→    15→} from 'lucide-react';
+    16→    16→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    17→    17→import { Button } from '@/components/ui/button';
+    18→    18→import { Input } from '@/components/ui/input';
+    19→    19→import { Label } from '@/components/ui/label';
+    20→    20→import { Textarea } from '@/components/ui/textarea';
+    21→    21→import { Badge } from '@/components/ui/badge';
+    22→    22→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    23→    23→import {
+    24→    24→  Table,
+    25→    25→  TableBody,
+    26→    26→  TableCell,
+    27→    27→  TableHead,
+    28→    28→  TableHeader,
+    29→    29→  TableRow,
+    30→    30→} from '@/components/ui/table';
+    31→    31→import {
+    32→    32→  Dialog,
+    33→    33→  DialogContent,
+    34→    34→  DialogDescription,
+    35→    35→  DialogFooter,
+    36→    36→  DialogHeader,
+    37→    37→  DialogTitle,
+    38→    38→} from '@/components/ui/dialog';
+    39→    39→import {
+    40→    40→  Select,
+    41→    41→  SelectContent,
+    42→    42→  SelectItem,
+    43→    43→  SelectTrigger,
+    44→    44→  SelectValue,
+    45→    45→} from '@/components/ui/select';
+    46→    46→import { useAppStore } from '@/lib/store';
+    47→    47→import * as api from '@/lib/api';
+    48→    48→import { toast } from 'sonner';
+    49→    49→
+    50→    50→interface DaytimeService {
+    51→    51→  id: string;
+    52→    52→  name: string;
+    53→    53→  price: number;
+    54→    54→  category: string;
+    55→    55→  duration: string;
+    56→    56→  description: string;
+    57→    57→  active: boolean;
+    58→    58→}
+    59→    59→
+    60→    60→interface DaytimeBooking {
+    61→    61→  id: string;
+    62→    62→  serviceId: string;
+    63→    63→  guestName: string;
+    64→    64→  guestPhone: string;
+    65→    65→  date: string;
+    66→    66→  time: string;
+    67→    67→  quantity: number;
+    68→    68→  unitPrice: number;
+    69→    69→  totalCost: number;
+    70→    70→  paidAmount: number;
+    71→    71→  paymentStatus: string;
+    72→    72→  paymentMethod: string | null;
+    73→    73→  notes: string;
+    74→    74→  service?: DaytimeService;
+    75→    75→}
+    76→    76→
+    77→    77→const today = new Date().toISOString().split('T')[0];
+    78→    78→
+    79→    79→const PAYMENT_STATUS_VARIANT: Record<string, string> = {
+    80→    80→  PAID: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    81→    81→  PARTIAL: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    82→    82→  PENDING: 'bg-red-500/20 text-red-400 border-red-500/30',
+    83→    83→};
+    84→    84→
+    85→    85→export default function DaytimePage() {
+    86→    86→  const { refreshKey, triggerRefresh } = useAppStore();
+    87→    87→  const [services, setServices] = useState<DaytimeService[]>([]);
+    88→    88→  const [bookings, setBookings] = useState<DaytimeBooking[]>([]);
+    89→    89→  const [loading, setLoading] = useState(true);
+    90→    90→
+    91→    91→  // Dialogs
+    92→    92→  const [bookDialogOpen, setBookDialogOpen] = useState(false);
+    93→    93→  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+    94→    94→  const [editingBooking, setEditingBooking] = useState<DaytimeBooking | null>(null);
+    95→    95→  const [editingService, setEditingService] = useState<DaytimeService | null>(null);
+    96→    96→
+    97→    97→  // Booking form
+    98→    98→  const [bookForm, setBookForm] = useState({
+    99→    99→    serviceId: '',
+   100→   100→    guestName: '',
+   101→   101→    guestPhone: '',
+   102→   102→    date: today,
+   103→   103→    time: '',
+   104→   104→    quantity: 1,
+   105→   105→    unitPrice: 0,
+   106→   106→    totalCost: 0,
+   107→   107→    paidAmount: 0,
+   108→   108→    paymentMethod: '',
+   109→   109→    notes: '',
+   110→   110→  });
+   111→   111→
+   112→   112→  // Service form
+   113→   113→  const [svcForm, setSvcForm] = useState({
+   114→   114→    name: '',
+   115→   115→    category: '',
+   116→   116→    price: 0,
+   117→   117→    duration: '',
+   118→   118→    active: 'true',
+   119→   119→    description: '',
+   120→   120→  });
+   121→   121→
+   122→   122→  const [submitting, setSubmitting] = useState(false);
+   123→   123→
+   124→   124→  const fetchData = useCallback(async () => {
+   125→   125→    setLoading(true);
+   126→   126→    try {
+   127→   127→      const [svcRes, bookRes] = await Promise.all([
+   128→   128→        api.getDaytimeServices(),
+   129→   129→        api.getDaytimeBookings(),
+   130→   130→      ]);
+   131→   131→      setServices(svcRes);
+   132→   132→      setBookings(bookRes);
+   133→   133→    } catch {
+   134→   134→      toast.error('Failed to load daytime data');
+   135→   135→    } finally {
+   136→   136→      setLoading(false);
+   137→   137→    }
+   138→   138→  }, []);
+   139→   139→
+   140→   140→  useEffect(() => {
+   141→   141→    fetchData();
+   142→   142→  }, [fetchData, refreshKey]);
+   143→   143→
+   144→   144→  // Stats
+   145→   145→  const activeServices = services.filter((s) => s.active).length;
+   146→   146→  const todayBookings = bookings.filter((b) => b.date === today);
+   147→   147→  const todayRevenue = todayBookings.reduce(
+   148→   148→    (sum, b) => sum + b.paidAmount,
+   149→   149→    0
+   150→   150→  );
+   151→   151→  const totalRevenue = bookings.reduce((sum, b) => sum + b.paidAmount, 0);
+   152→   152→
+   153→   153→  // Booking dialog helpers
+   154→   154→  const openBookDialog = (booking?: DaytimeBooking) => {
+   155→   155→    if (booking) {
+   156→   156→      setEditingBooking(booking);
+   157→   157→      setBookForm({
+   158→   158→        serviceId: booking.serviceId,
+   159→   159→        guestName: booking.guestName,
+   160→   160→        guestPhone: booking.guestPhone,
+   161→   161→        date: booking.date,
+   162→   162→        time: booking.time,
+   163→   163→        quantity: booking.quantity,
+   164→   164→        unitPrice: booking.unitPrice,
+   165→   165→        totalCost: booking.totalCost,
+   166→   166→        paidAmount: booking.paidAmount,
+   167→   167→        paymentMethod: booking.paymentMethod || '',
+   168→   168→        notes: booking.notes,
+   169→   169→      });
+   170→   170→    } else {
+   171→   171→      setEditingBooking(null);
+   172→   172→      setBookForm({
+   173→   173→        serviceId: '',
+   174→   174→        guestName: '',
+   175→   175→        guestPhone: '',
+   176→   176→        date: today,
+   177→   177→        time: '',
+   178→   178→        quantity: 1,
+   179→   179→        unitPrice: 0,
+   180→   180→        totalCost: 0,
+   181→   181→        paidAmount: 0,
+   182→   182→        paymentMethod: '',
+   183→   183→        notes: '',
+   184→   184→      });
+   185→   185→    }
+   186→   186→    setBookDialogOpen(true);
+   187→   187→  };
+   188→   188→
+   189→   189→  const handleServiceSelect = (serviceId: string) => {
+   190→   190→    const svc = services.find((s) => s.id === serviceId);
+   191→   191→    if (svc) {
+   192→   192→      setBookForm((f) => ({
+   193→   193→        ...f,
+   194→   194→        serviceId,
+   195→   195→        unitPrice: svc.price,
+   196→   196→        totalCost: svc.price * f.quantity,
+   197→   197→      }));
+   198→   198→    }
+   199→   199→  };
+   200→   200→
+   201→   201→  const handleQtyChange = (qty: number) => {
+   202→   202→    setBookForm((f) => ({
+   203→   203→      ...f,
+   204→   204→      quantity: qty,
+   205→   205→      totalCost: f.unitPrice * qty,
+   206→   206→    }));
+   207→   207→  };
+   208→   208→
+   209→   209→  const handleSubmitBooking = async () => {
+   210→   210→    if (!bookForm.serviceId || !bookForm.guestName || !bookForm.date) {
+   211→   211→      toast.error('Please fill in all required fields');
+   212→   212→      return;
+   213→   213→    }
+   214→   214→    setSubmitting(true);
+   215→   215→    try {
+   216→   216→      const paymentStatus =
+   217→   217→        bookForm.paidAmount >= bookForm.totalCost
+   218→   218→          ? 'PAID'
+   219→   219→          : bookForm.paidAmount > 0
+   220→   220→            ? 'PARTIAL'
+   221→   221→            : 'PENDING';
+   222→   222→
+   223→   223→      const data = {
+   224→   224→        ...bookForm,
+   225→   225→        paymentStatus,
+   226→   226→        paymentMethod: bookForm.paymentMethod || null,
+   227→   227→      };
+   228→   228→
+   229→   229→      if (editingBooking) {
+   230→   230→        await api.updateDaytimeBooking(editingBooking.id, data);
+   231→   231→        toast.success('Booking updated');
+   232→   232→      } else {
+   233→   233→        await api.createDaytimeBooking(data);
+   234→   234→        toast.success('Booking created');
+   235→   235→      }
+   236→   236→      setBookDialogOpen(false);
+   237→   237→      triggerRefresh();
+   238→   238→    } catch {
+   239→   239→      toast.error('Failed to save booking');
+   240→   240→    } finally {
+   241→   241→      setSubmitting(false);
+   242→   242→    }
+   243→   243→  };
+   244→   244→
+   245→   245→  const handleDeleteBooking = async (id: string) => {
+   246→   246→    if (!confirm('Delete this booking?')) return;
+   247→   247→    try {
+   248→   248→      await api.deleteDaytimeBooking(id);
+   249→   249→      toast.success('Booking deleted');
+   250→   250→      triggerRefresh();
+   251→   251→    } catch {
+   252→   252→      toast.error('Failed to delete booking');
+   253→   253→    }
+   254→   254→  };
+   255→   255→
+   256→   256→  // Service dialog helpers
+   257→   257→  const openServiceDialog = (service?: DaytimeService) => {
+   258→   258→    if (service) {
+   259→   259→      setEditingService(service);
+   260→   260→      setSvcForm({
+   261→   261→        name: service.name,
+   262→   262→        category: service.category,
+   263→   263→        price: service.price,
+   264→   264→        duration: service.duration,
+   265→   265→        active: service.active ? 'true' : 'false',
+   266→   266→        description: service.description,
+   267→   267→      });
+   268→   268→    } else {
+   269→   269→      setEditingService(null);
+   270→   270→      setSvcForm({
+   271→   271→        name: '',
+   272→   272→        category: '',
+   273→   273→        price: 0,
+   274→   274→        duration: '',
+   275→   275→        active: 'true',
+   276→   276→        description: '',
+   277→   277→      });
+   278→   278→    }
+   279→   279→    setServiceDialogOpen(true);
+   280→   280→  };
+   281→   281→
+   282→   282→  const handleSubmitService = async () => {
+   283→   283→    if (!svcForm.name || !svcForm.category || !svcForm.price) {
+   284→   284→      toast.error('Please fill in all required fields');
+   285→   285→      return;
+   286→   286→    }
+   287→   287→    setSubmitting(true);
+   288→   288→    try {
+   289→   289→      const data = {
+   290→   290→        ...svcForm,
+   291→   291→        price: Number(svcForm.price),
+   292→   292→        active: svcForm.active === 'true',
+   293→   293→      };
+   294→   294→      if (editingService) {
+   295→   295→        await api.updateDaytimeService(editingService.id, data);
+   296→   296→        toast.success('Service updated');
+   297→   297→      } else {
+   298→   298→        await api.createDaytimeService(data);
+   299→   299→        toast.success('Service created');
+   300→   300→      }
+   301→   301→      setServiceDialogOpen(false);
+   302→   302→      triggerRefresh();
+   303→   303→    } catch {
+   304→   304→      toast.error('Failed to save service');
+   305→   305→    } finally {
+   306→   306→      setSubmitting(false);
+   307→   307→    }
+   308→   308→  };
+   309→   309→
+   310→   310→  const handleDeleteService = async (id: string) => {
+   311→   311→    if (!confirm('Delete this service?')) return;
+   312→   312→    try {
+   313→   313→      await api.deleteDaytimeService(id);
+   314→   314→      toast.success('Service deleted');
+   315→   315→      triggerRefresh();
+   316→   316→    } catch {
+   317→   317→      toast.error('Failed to delete service');
+   318→   318→    }
+   319→   319→  };
+   320→   320→
+   321→   321→  const formatCurrency = (n: number) =>
+   322→   322→    new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB' }).format(n);
+   323→   323→
+   324→   324→  const categorySuggestions = [...new Set(services.map((s) => s.category))];
+   325→   325→
+   326→   326→  if (loading) {
+   327→   327→    return (
+   328→   328→      <div className="flex items-center justify-center py-20">
+   329→   329→        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   330→   330→      </div>
+   331→   331→    );
+   332→   332→  }
+   333→   333→
+   334→   334→  return (
+   335→   335→    <div className="space-y-6">
+   336→   336→      {/* Stats Row */}
+   337→   337→      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+   338→   338→        <Card className="border-border/50">
+   339→   339→          <CardContent className="p-4">
+   340→   340→            <div className="flex items-center gap-3">
+   341→   341→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+   342→   342→                <Package className="h-5 w-5 text-primary" />
+   343→   343→              </div>
+   344→   344→              <div>
+   345→   345→                <p className="text-xs text-muted-foreground">Services Offered</p>
+   346→   346→                <p className="text-xl font-bold">{activeServices}</p>
+   347→   347→              </div>
+   348→   348→            </div>
+   349→   349→          </CardContent>
+   350→   350→        </Card>
+   351→   351→        <Card className="border-border/50">
+   352→   352→          <CardContent className="p-4">
+   353→   353→            <div className="flex items-center gap-3">
+   354→   354→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/10">
+   355→   355→                <CalendarPlus className="h-5 w-5 text-sky-400" />
+   356→   356→              </div>
+   357→   357→              <div>
+   358→   358→                <p className="text-xs text-muted-foreground">Today&apos;s Bookings</p>
+   359→   359→                <p className="text-xl font-bold">{todayBookings.length}</p>
+   360→   360→              </div>
+   361→   361→            </div>
+   362→   362→          </CardContent>
+   363→   363→        </Card>
+   364→   364→        <Card className="border-border/50">
+   365→   365→          <CardContent className="p-4">
+   366→   366→            <div className="flex items-center gap-3">
+   367→   367→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+   368→   368→                <Sun className="h-5 w-5 text-amber-400" />
+   369→   369→              </div>
+   370→   370→              <div>
+   371→   371→                <p className="text-xs text-muted-foreground">Today&apos;s Revenue</p>
+   372→   372→                <p className="text-xl font-bold text-amber-400">
+   373→   373→                  {formatCurrency(todayRevenue)}
+   374→   374→                </p>
+   375→   375→              </div>
+   376→   376→            </div>
+   377→   377→          </CardContent>
+   378→   378→        </Card>
+   379→   379→        <Card className="border-border/50">
+   380→   380→          <CardContent className="p-4">
+   381→   381→            <div className="flex items-center gap-3">
+   382→   382→              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+   383→   383→                <Banknote className="h-5 w-5 text-emerald-400" />
+   384→   384→              </div>
+   385→   385→              <div>
+   386→   386→                <p className="text-xs text-muted-foreground">Total Revenue</p>
+   387→   387→                <p className="text-xl font-bold text-emerald-400">
+   388→   388→                  {formatCurrency(totalRevenue)}
+   389→   389→                </p>
+   390→   390→              </div>
+   391→   391→            </div>
+   392→   392→          </CardContent>
+   393→   393→        </Card>
+   394→   394→      </div>
+   395→   395→
+   396→   396→      {/* Tabs */}
+   397→   397→      <Tabs defaultValue="bookings" className="space-y-4">
+   398→   398→        <TabsList>
+   399→   399→          <TabsTrigger value="bookings">Bookings</TabsTrigger>
+   400→   400→          <TabsTrigger value="catalogue">Service Catalogue</TabsTrigger>
+   401→   401→        </TabsList>
+   402→   402→
+   403→   403→        {/* Tab 1: Bookings */}
+   404→   404→        <TabsContent value="bookings">
+   405→   405→          <Card className="border-border/50">
+   406→   406→            <CardHeader className="flex flex-row items-center justify-between pb-3">
+   407→   407→              <CardTitle className="text-base">Daytime Bookings</CardTitle>
+   408→   408→              <Button size="sm" onClick={() => openBookDialog()}>
+   409→   409→                <Plus className="mr-1 h-4 w-4" />
+   410→   410→                Book Service
+   411→   411→              </Button>
+   412→   412→            </CardHeader>
+   413→   413→            <CardContent>
+   414→   414→              <div className="max-h-[480px] overflow-y-auto">
+   415→   415→                <Table>
+   416→   416→                  <TableHeader>
+   417→   417→                    <TableRow>
+   418→   418→                      <TableHead>Guest</TableHead>
+   419→   419→                      <TableHead>Service</TableHead>
+   420→   420→                      <TableHead>Date</TableHead>
+   421→   421→                      <TableHead>Time</TableHead>
+   422→   422→                      <TableHead className="text-center">Qty</TableHead>
+   423→   423→                      <TableHead>Total</TableHead>
+   424→   424→                      <TableHead>Payment</TableHead>
+   425→   425→                      <TableHead className="text-right">Actions</TableHead>
+   426→   426→                    </TableRow>
+   427→   427→                  </TableHeader>
+   428→   428→                  <TableBody>
+   429→   429→                    {bookings.length === 0 ? (
+   430→   430→                      <TableRow>
+   431→   431→                        <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+   432→   432→                          No bookings yet
+   433→   433→                        </TableCell>
+   434→   434→                      </TableRow>
+   435→   435→                    ) : (
+   436→   436→                      bookings.map((b) => (
+   437→   437→                        <TableRow key={b.id}>
+   438→   438→                          <TableCell>
+   439→   439→                            <div>
+   440→   440→                              <p className="font-medium">{b.guestName}</p>
+   441→   441→                              <p className="text-xs text-muted-foreground">{b.guestPhone}</p>
+   442→   442→                            </div>
+   443→   443→                          </TableCell>
+   444→   444→                          <TableCell>
+   445→   445→                            <div>
+   446→   446→                              <p className="font-medium">{b.service?.name || 'Unknown'}</p>
+   447→   447→                              <p className="text-xs text-muted-foreground">
+   448→   448→                                {b.service?.category || ''}
+   449→   449→                              </p>
+   450→   450→                            </div>
+   451→   451→                          </TableCell>
+   452→   452→                          <TableCell className="text-sm">{b.date}</TableCell>
+   453→   453→                          <TableCell className="text-sm">{b.time || '—'}</TableCell>
+   454→   454→                          <TableCell className="text-center">{b.quantity}</TableCell>
+   455→   455→                          <TableCell>
+   456→   456→                            <div>
+   457→   457→                              <p className="font-semibold text-amber-400">
+   458→   458→                                {formatCurrency(b.totalCost)}
+   459→   459→                              </p>
+   460→   460→                              {b.paymentStatus !== 'PAID' && (
+   461→   461→                                <p className="text-xs text-red-400">
+   462→   462→                                  Balance: {formatCurrency(b.totalCost - b.paidAmount)}
+   463→   463→                                </p>
+   464→   464→                              )}
+   465→   465→                            </div>
+   466→   466→                          </TableCell>
+   467→   467→                          <TableCell>
+   468→   468→                            <Badge
+   469→   469→                              variant="outline"
+   470→   470→                              className={PAYMENT_STATUS_VARIANT[b.paymentStatus] || ''}
+   471→   471→                            >
+   472→   472→                              {b.paymentStatus}
+   473→   473→                            </Badge>
+   474→   474→                          </TableCell>
+   475→   475→                          <TableCell className="text-right">
+   476→   476→                            <div className="flex items-center justify-end gap-1">
+   477→   477→                              <Button
+   478→   478→                                variant="ghost"
+   479→   479→                                size="icon"
+   480→   480→                                className="h-8 w-8"
+   481→   481→                                onClick={() => openBookDialog(b)}
+   482→   482→                              >
+   483→   483→                                <Pencil className="h-4 w-4" />
+   484→   484→                              </Button>
+   485→   485→                              <Button
+   486→   486→                                variant="ghost"
+   487→   487→                                size="icon"
+   488→   488→                                className="h-8 w-8 text-red-400 hover:text-red-300"
+   489→   489→                                onClick={() => handleDeleteBooking(b.id)}
+   490→   490→                              >
+   491→   491→                                <Trash2 className="h-4 w-4" />
+   492→   492→                              </Button>
+   493→   493→                            </div>
+   494→   494→                          </TableCell>
+   495→   495→                        </TableRow>
+   496→   496→                      ))
+   497→   497→                    )}
+   498→   498→                  </TableBody>
+   499→   499→                </Table>
+   500→   500→              </div>
+   501→   501→            </CardContent>
+   502→   502→          </Card>
+   503→   503→        </TabsContent>
+   504→   504→
+   505→   505→        {/* Tab 2: Service Catalogue */}
+   506→   506→        <TabsContent value="catalogue">
+   507→   507→          <Card className="border-border/50">
+   508→   508→            <CardHeader className="flex flex-row items-center justify-between pb-3">
+   509→   509→              <CardTitle className="text-base">Service Catalogue</CardTitle>
+   510→   510→              <Button size="sm" onClick={() => openServiceDialog()}>
+   511→   511→                <Plus className="mr-1 h-4 w-4" />
+   512→   512→                Add Service
+   513→   513→              </Button>
+   514→   514→            </CardHeader>
+   515→   515→            <CardContent>
+   516→   516→              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   517→   517→                {services.length === 0 ? (
+   518→   518→                  <p className="col-span-full py-8 text-center text-muted-foreground">
+   519→   519→                    No services added yet
+   520→   520→                  </p>
+   521→   521→                ) : (
+   522→   522→                  services.map((s) => (
+   523→   523→                    <Card
+   524→   524→                      key={s.id}
+   525→   525→                      className="border-border/50 bg-card/50 transition-colors hover:bg-card"
+   526→   526→                    >
+   527→   527→                      <CardContent className="p-4 space-y-3">
+   528→   528→                        <div className="flex items-start justify-between">
+   529→   529→                          <Badge variant="outline" className="text-xs">
+   530→   530→                            {s.category}
+   531→   531→                          </Badge>
+   532→   532→                          <Badge
+   533→   533→                            variant="outline"
+   534→   534→                            className={
+   535→   535→                              s.active
+   536→   536→                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+   537→   537→                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+   538→   538→                            }
+   539→   539→                          >
+   540→   540→                            {s.active ? 'Active' : 'Inactive'}
+   541→   541→                          </Badge>
+   542→   542→                        </div>
+   543→   543→                        <div>
+   544→   544→                          <h3 className="font-semibold">{s.name}</h3>
+   545→   545→                          {s.duration && (
+   546→   546→                            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+   547→   547→                              <Clock className="h-3 w-3" />
+   548→   548→                              {s.duration}
+   549→   549→                            </p>
+   550→   550→                          )}
+   551→   551→                        </div>
+   552→   552→                        <p className="text-2xl font-bold text-amber-400">
+   553→   553→                          {formatCurrency(s.price)}
+   554→   554→                        </p>
+   555→   555→                        {s.description && (
+   556→   556→                          <p className="text-xs text-muted-foreground line-clamp-2">
+   557→   557→                            {s.description}
+   558→   558→                          </p>
+   559→   559→                        )}
+   560→   560→                        <div className="flex gap-1 pt-1">
+   561→   561→                          <Button
+   562→   562→                            variant="outline"
+   563→   563→                            size="sm"
+   564→   564→                            className="flex-1 text-xs"
+   565→   565→                            onClick={() => {
+   566→   566→                              setBookForm({
+   567→   567→                                serviceId: s.id,
+   568→   568→                                guestName: '',
+   569→   569→                                guestPhone: '',
+   570→   570→                                date: today,
+   571→   571→                                time: '',
+   572→   572→                                quantity: 1,
+   573→   573→                                unitPrice: s.price,
+   574→   574→                                totalCost: s.price,
+   575→   575→                                paidAmount: 0,
+   576→   576→                                paymentMethod: '',
+   577→   577→                                notes: '',
+   578→   578→                              });
+   579→   579→                              setEditingBooking(null);
+   580→   580→                              setBookDialogOpen(true);
+   581→   581→                            }}
+   582→   582→                          >
+   583→   583→                            <CalendarPlus className="mr-1 h-3 w-3" />
+   584→   584→                            Book
+   585→   585→                          </Button>
+   586→   586→                          <Button
+   587→   587→                            variant="ghost"
+   588→   588→                            size="icon"
+   589→   589→                            className="h-8 w-8"
+   590→   590→                            onClick={() => openServiceDialog(s)}
+   591→   591→                          >
+   592→   592→                            <Pencil className="h-4 w-4" />
+   593→   593→                          </Button>
+   594→   594→                          <Button
+   595→   595→                            variant="ghost"
+   596→   596→                            size="icon"
+   597→   597→                            className="h-8 w-8 text-red-400 hover:text-red-300"
+   598→   598→                            onClick={() => handleDeleteService(s.id)}
+   599→   599→                          >
+   600→   600→                            <Trash2 className="h-4 w-4" />
+   601→   601→                          </Button>
+   602→   602→                        </div>
+   603→   603→                      </CardContent>
+   604→   604→                    </Card>
+   605→   605→                  ))
+   606→   606→                )}
+   607→   607→              </div>
+   608→   608→            </CardContent>
+   609→   609→          </Card>
+   610→   610→        </TabsContent>
+   611→   611→      </Tabs>
+   612→   612→
+   613→   613→      {/* Book Service Dialog */}
+   614→   614→      <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
+   615→   615→        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+   616→   616→          <DialogHeader>
+   617→   617→            <DialogTitle>
+   618→   618→              {editingBooking ? 'Edit Booking' : 'Book Service'}
+   619→   619→            </DialogTitle>
+   620→   620→            <DialogDescription>
+   621→   621→              {editingBooking
+   622→   622→                ? 'Update the booking details below.'
+   623→   623→                : 'Fill in the details to book a daytime service.'}
+   624→   624→            </DialogDescription>
+   625→   625→          </DialogHeader>
+   626→   626→          <div className="grid gap-4 py-2">
+   627→   627→            <div className="space-y-2">
+   628→   628→              <Label>
+   629→   629→                Service <span className="text-red-400">*</span>
+   630→   630→              </Label>
+   631→   631→              <Select
+   632→   632→                value={bookForm.serviceId}
+   633→   633→                onValueChange={handleServiceSelect}
+   634→   634→              >
+   635→   635→                <SelectTrigger className="w-full">
+   636→   636→                  <SelectValue placeholder="Select a service" />
+   637→   637→                </SelectTrigger>
+   638→   638→                <SelectContent>
+   639→   639→                  {services
+   640→   640→                    .filter((s) => s.active)
+   641→   641→                    .map((s) => (
+   642→   642→                      <SelectItem key={s.id} value={s.id}>
+   643→   643→                        {s.name} — {formatCurrency(s.price)}
+   644→   644→                      </SelectItem>
+   645→   645→                    ))}
+   646→   646→                </SelectContent>
+   647→   647→              </Select>
+   648→   648→            </div>
+   649→   649→            <div className="grid grid-cols-2 gap-4">
+   650→   650→              <div className="space-y-2">
+   651→   651→                <Label>
+   652→   652→                  Guest Name <span className="text-red-400">*</span>
+   653→   653→                </Label>
+   654→   654→                <Input
+   655→   655→                  placeholder="Guest name"
+   656→   656→                  value={bookForm.guestName}
+   657→   657→                  onChange={(e) =>
+   658→   658→                    setBookForm((f) => ({ ...f, guestName: e.target.value }))
+   659→   659→                  }
+   660→   660→                />
+   661→   661→              </div>
+   662→   662→              <div className="space-y-2">
+   663→   663→                <Label>Guest Phone</Label>
+   664→   664→                <Input
+   665→   665→                  placeholder="Phone number"
+   666→   666→                  value={bookForm.guestPhone}
+   667→   667→                  onChange={(e) =>
+   668→   668→                    setBookForm((f) => ({ ...f, guestPhone: e.target.value }))
+   669→   669→                  }
+   670→   670→                />
+   671→   671→              </div>
+   672→   672→            </div>
+   673→   673→            <div className="grid grid-cols-2 gap-4">
+   674→   674→              <div className="space-y-2">
+   675→   675→                <Label>
+   676→   676→                  Date <span className="text-red-400">*</span>
+   677→   677→                </Label>
+   678→   678→                <Input
+   679→   679→                  type="date"
+   680→   680→                  value={bookForm.date}
+   681→   681→                  onChange={(e) =>
+   682→   682→                    setBookForm((f) => ({ ...f, date: e.target.value }))
+   683→   683→                  }
+   684→   684→                />
+   685→   685→              </div>
+   686→   686→              <div className="space-y-2">
+   687→   687→                <Label>Time</Label>
+   688→   688→                <Input
+   689→   689→                  type="time"
+   690→   690→                  value={bookForm.time}
+   691→   691→                  onChange={(e) =>
+   692→   692→                    setBookForm((f) => ({ ...f, time: e.target.value }))
+   693→   693→                  }
+   694→   694→                />
+   695→   695→              </div>
+   696→   696→            </div>
+   697→   697→            <div className="grid grid-cols-3 gap-4">
+   698→   698→              <div className="space-y-2">
+   699→   699→                <Label>Quantity</Label>
+   700→   700→                <Input
+   701→   701→                  type="number"
+   702→   702→                  min={1}
+   703→   703→                  value={bookForm.quantity}
+   704→   704→                  onChange={(e) =>
+   705→   705→                    handleQtyChange(Math.max(1, parseInt(e.target.value) || 1))
+   706→   706→                  }
+   707→   707→                />
+   708→   708→              </div>
+   709→   709→              <div className="space-y-2">
+   710→   710→                <Label>Unit Price</Label>
+   711→   711→                <Input
+   712→   712→                  value={formatCurrency(bookForm.unitPrice)}
+   713→   713→                  readOnly
+   714→   714→                  className="bg-muted/50"
+   715→   715→                />
+   716→   716→              </div>
+   717→   717→              <div className="space-y-2">
+   718→   718→                <Label>Total</Label>
+   719→   719→                <Input
+   720→   720→                  value={formatCurrency(bookForm.totalCost)}
+   721→   721→                  readOnly
+   722→   722→                  className="bg-amber-500/10 font-semibold text-amber-400"
+   723→   723→                />
+   724→   724→              </div>
+   725→   725→            </div>
+   726→   726→            <div className="grid grid-cols-2 gap-4">
+   727→   727→              <div className="space-y-2">
+   728→   728→                <Label>Amount Paid</Label>
+   729→   729→                <Input
+   730→   730→                  type="number"
+   731→   731→                  min={0}
+   732→   732→                  value={bookForm.paidAmount}
+   733→   733→                  onChange={(e) =>
+   734→   734→                    setBookForm((f) => ({
+   735→   735→                      ...f,
+   736→   736→                      paidAmount: parseFloat(e.target.value) || 0,
+   737→   737→                    }))
+   738→   738→                  }
+   739→   739→                />
+   740→   740→              </div>
+   741→   741→              <div className="space-y-2">
+   742→   742→                <Label>Payment Method</Label>
+   743→   743→                <Select
+   744→   744→                  value={bookForm.paymentMethod}
+   745→   745→                  onValueChange={(v) =>
+   746→   746→                    setBookForm((f) => ({ ...f, paymentMethod: v }))
+   747→   747→                  }
+   748→   748→                >
+   749→   749→                  <SelectTrigger className="w-full">
+   750→   750→                    <SelectValue placeholder="Select method" />
+   751→   751→                  </SelectTrigger>
+   752→   752→                  <SelectContent>
+   753→   753→                    <SelectItem value="CASH">Cash</SelectItem>
+   754→   754→                    <SelectItem value="TRANSFER">Transfer</SelectItem>
+   755→   755→                    <SelectItem value="CARD">Card</SelectItem>
+   756→   756→                    <SelectItem value="MOBILE">Mobile</SelectItem>
+   757→   757→                  </SelectContent>
+   758→   758→                </Select>
+   759→   759→              </div>
+   760→   760→            </div>
+   761→   761→            <div className="space-y-2">
+   762→   762→              <Label>Notes</Label>
+   763→   763→              <Textarea
+   764→   764→                placeholder="Additional notes..."
+   765→   765→                value={bookForm.notes}
+   766→   766→                onChange={(e) =>
+   767→   767→                  setBookForm((f) => ({ ...f, notes: e.target.value }))
+   768→   768→                }
+   769→   769→                rows={2}
+   770→   770→              />
+   771→   771→            </div>
+   772→   772→          </div>
+   773→   773→          <DialogFooter>
+   774→   774→            <Button
+   775→   775→              variant="outline"
+   776→   776→              onClick={() => setBookDialogOpen(false)}
+   777→   777→            >
+   778→   778→              Cancel
+   779→   779→            </Button>
+   780→   780→            <Button onClick={handleSubmitBooking} disabled={submitting}>
+   781→   781→              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   782→   782→              {editingBooking ? 'Update Booking' : 'Create Booking'}
+   783→   783→            </Button>
+   784→   784→          </DialogFooter>
+   785→   785→        </DialogContent>
+   786→   786→      </Dialog>
+   787→   787→
+   788→   788→      {/* Add/Edit Service Dialog */}
+   789→   789→      <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
+   790→   790→        <DialogContent className="sm:max-w-lg">
+   791→   791→          <DialogHeader>
+   792→   792→            <DialogTitle>
+   793→   793→              {editingService ? 'Edit Service' : 'Add Service'}
+   794→   794→            </DialogTitle>
+   795→   795→            <DialogDescription>
+   796→   796→              {editingService
+   797→   797→                ? 'Update the service details below.'
+   798→   798→                : 'Create a new daytime service.'}
+   799→   799→            </DialogDescription>
+   800→   800→          </DialogHeader>
+   801→   801→          <div className="grid gap-4 py-2">
+   802→   802→            <div className="space-y-2">
+   803→   803→              <Label>
+   804→   804→                Service Name <span className="text-red-400">*</span>
+   805→   805→              </Label>
+   806→   806→              <Input
+   807→   807→                placeholder="e.g. Ethiopian Coffee Ceremony"
+   808→   808→                value={svcForm.name}
+   809→   809→                onChange={(e) =>
+   810→   810→                  setSvcForm((f) => ({ ...f, name: e.target.value }))
+   811→   811→                }
+   812→   812→              />
+   813→   813→            </div>
+   814→   814→            <div className="grid grid-cols-2 gap-4">
+   815→   815→              <div className="space-y-2">
+   816→   816→                <Label>
+   817→   817→                  Category <span className="text-red-400">*</span>
+   818→   818→                </Label>
+   819→   819→                <Input
+   820→   820→                  placeholder="e.g. Spa, Food, Tour"
+   821→   821→                  list="svc-categories"
+   822→   822→                  value={svcForm.category}
+   823→   823→                  onChange={(e) =>
+   824→   824→                    setSvcForm((f) => ({ ...f, category: e.target.value }))
+   825→   825→                  }
+   826→   826→                />
+   827→   827→                <datalist id="svc-categories">
+   828→   828→                  {categorySuggestions.map((c) => (
+   829→   829→                    <option key={c} value={c} />
+   830→   830→                  ))}
+   831→   831→                </datalist>
+   832→   832→              </div>
+   833→   833→              <div className="space-y-2">
+   834→   834→                <Label>
+   835→   835→                  Price (ETB) <span className="text-red-400">*</span>
+   836→   836→                </Label>
+   837→   837→                <Input
+   838→   838→                  type="number"
+   839→   839→                  min={0}
+   840→   840→                  placeholder="0"
+   841→   841→                  value={svcForm.price || ''}
+   842→   842→                  onChange={(e) =>
+   843→   843→                    setSvcForm((f) => ({
+   844→   844→                      ...f,
+   845→   845→                      price: parseFloat(e.target.value) || 0,
+   846→   846→                    }))
+   847→   847→                  }
+   848→   848→                />
+   849→   849→              </div>
+   850→   850→            </div>
+   851→   851→            <div className="grid grid-cols-2 gap-4">
+   852→   852→              <div className="space-y-2">
+   853→   853→                <Label>Duration</Label>
+   854→   854→                <Input
+   855→   855→                  placeholder="e.g. 30 min, 1 hour"
+   856→   856→                  value={svcForm.duration}
+   857→   857→                  onChange={(e) =>
+   858→   858→                    setSvcForm((f) => ({ ...f, duration: e.target.value }))
+   859→   859→                  }
+   860→   860→                />
+   861→   861→              </div>
+   862→   862→              <div className="space-y-2">
+   863→   863→                <Label>Status</Label>
+   864→   864→                <Select
+   865→   865→                  value={svcForm.active}
+   866→   866→                  onValueChange={(v) =>
+   867→   867→                    setSvcForm((f) => ({ ...f, active: v }))
+   868→   868→                  }
+   869→   869→                >
+   870→   870→                  <SelectTrigger className="w-full">
+   871→   871→                    <SelectValue />
+   872→   872→                  </SelectTrigger>
+   873→   873→                  <SelectContent>
+   874→   874→                    <SelectItem value="true">Active</SelectItem>
+   875→   875→                    <SelectItem value="false">Inactive</SelectItem>
+   876→   876→                  </SelectContent>
+   877→   877→                </Select>
+   878→   878→              </div>
+   879→   879→            </div>
+   880→   880→            <div className="space-y-2">
+   881→   881→              <Label>Description</Label>
+   882→   882→              <Textarea
+   883→   883→                placeholder="Brief description of the service..."
+   884→   884→                value={svcForm.description}
+   885→   885→                onChange={(e) =>
+   886→   886→                  setSvcForm((f) => ({ ...f, description: e.target.value }))
+   887→   887→                }
+   888→   888→                rows={3}
+   889→   889→              />
+   890→   890→            </div>
+   891→   891→          </div>
+   892→   892→          <DialogFooter>
+   893→   893→            <Button
+   894→   894→              variant="outline"
+   895→   895→              onClick={() => setServiceDialogOpen(false)}
+   896→   896→            >
+   897→   897→              Cancel
+   898→   898→            </Button>
+   899→   899→            <Button onClick={handleSubmitService} disabled={submitting}>
+   900→   900→              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   901→   901→              {editingService ? 'Update Service' : 'Create Service'}
+   902→   902→            </Button>
+   903→   903→          </DialogFooter>
+   904→   904→        </DialogContent>
+   905→   905→      </Dialog>
+   906→   906→    </div>
+   907→   907→  );
+   908→   908→}

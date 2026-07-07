@@ -338,7 +338,7 @@ export default function RoomsPage() {
   if (loading && rooms.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
@@ -355,7 +355,7 @@ export default function RoomsPage() {
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-4">
         <Card className="border-border/50">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="rounded-lg bg-amber-500/10 p-2">
@@ -412,7 +412,7 @@ export default function RoomsPage() {
               placeholder="Search rooms..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-56 pl-9"
+              className="w-full sm:w-56 pl-9"
             />
           </div>
 
@@ -547,7 +547,7 @@ export default function RoomsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="mt-3 flex gap-2 border-t border-border/30 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="mt-3 flex gap-2 border-t border-border/30 pt-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <Button
                       size="sm"
                       variant="ghost"
@@ -799,7 +799,7 @@ export default function RoomsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="room-number">
                   Room Number <span className="text-rose-400">*</span>
@@ -843,7 +843,7 @@ export default function RoomsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="room-floor">Floor</Label>
                 <Input

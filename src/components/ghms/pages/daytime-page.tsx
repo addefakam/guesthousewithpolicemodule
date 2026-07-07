@@ -334,7 +334,7 @@ export default function DaytimePage() {
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
         <Card className="border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -411,7 +411,7 @@ export default function DaytimePage() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="max-h-[480px] overflow-y-auto">
+              <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -646,7 +646,7 @@ export default function DaytimePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Guest Name <span className="text-red-400">*</span>
@@ -670,7 +670,7 @@ export default function DaytimePage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Date <span className="text-red-400">*</span>
@@ -694,7 +694,7 @@ export default function DaytimePage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input
@@ -723,7 +723,7 @@ export default function DaytimePage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Amount Paid</Label>
                 <Input
@@ -811,7 +811,7 @@ export default function DaytimePage() {
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>
                   Category <span className="text-red-400">*</span>
@@ -848,7 +848,7 @@ export default function DaytimePage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Duration</Label>
                 <Input
