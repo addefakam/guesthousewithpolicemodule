@@ -101,3 +101,30 @@ Stage Summary:
 - Solution: CSS variable --dialog-offset shifts dialog right by half sidebar width (8rem) on desktop when sidebar is visible
 - All 9 pages with dialogs automatically fixed via base dialog.tsx change
 - Build: Successful, no errors
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix client-side runtime exception crashing the GHMS app after dialog centering deployment
+
+Work Log:
+- User reported: "Application error: a client-side exception has occurred" after Task 4 fixes deployed
+- Identified 3 potential crash causes in the previous fix:
+  1. `left-[calc(50%+var(--dialog-offset,0px))]` — Tailwind v4 arbitrary value with comma inside var() could cause CSS parsing issues
+  2. `document.documentElement.classList` in useEffect — potential SSR/hydration risk
+  3. `--dialog-offset` CSS variable with complex calc in Tailwind arbitrary value
+- Applied 3 defensive fixes:
+  1. **dialog.tsx**: Reverted to standard `left-1/2` class — no more Tailwind arbitrary value with CSS variable
+  2. **globals.css**: Replaced CSS variable approach with pure CSS rule `:root.has-sidebar [data-slot="dialog-content"] { left: calc(50% + 8rem) }` — zero Tailwind involvement, guaranteed to compile correctly
+  3. **page.tsx**: Added `typeof window === 'undefined'` guard and try/catch around `document.documentElement.classList` operations
+- Added `error.tsx` error boundary to display actual error message/stack if crash persists (diagnostic aid)
+- Clean rebuild from scratch: zero errors, zero warnings
+- Verified standalone server starts and returns HTTP 200
+- Verified compiled CSS contains correct `:root.has-sidebar [data-slot=dialog-content]{left:calc(50% + 8rem)}` rule
+
+Stage Summary:
+- Root cause: Most likely the Tailwind v4 arbitrary value `left-[calc(50%+var(--dialog-offset,0px))]` causing runtime CSS parsing issues in the browser
+- Fix: Replaced with pure CSS media query rule — no Tailwind arbitrary values, no CSS variables
+- Dialog centering still works: CSS selector targets `[data-slot="dialog-content"]` when `.has-sidebar` is on `:root`
+- Fixed files: dialog.tsx, globals.css, page.tsx, error.tsx (new)
+- Build: Successful, zero errors, zero warnings

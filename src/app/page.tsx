@@ -44,13 +44,18 @@ export default function AppPage() {
 
   // Toggle sidebar visibility class for dialog centering offset
   useEffect(() => {
-    if (currentUser) {
-      document.documentElement.classList.add('has-sidebar');
-    } else {
-      document.documentElement.classList.remove('has-sidebar');
-    }
+    if (typeof window === 'undefined') return;
+    try {
+      if (currentUser) {
+        document.documentElement.classList.add('has-sidebar');
+      } else {
+        document.documentElement.classList.remove('has-sidebar');
+      }
+    } catch {}
     return () => {
-      document.documentElement.classList.remove('has-sidebar');
+      try {
+        document.documentElement.classList.remove('has-sidebar');
+      } catch {}
     };
   }, [currentUser]);
 

@@ -120,15 +120,11 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Dialog centering offset — shifts dialogs right by half the sidebar width
-   so they appear centered within the content area, not the full viewport */
-:root {
-  --dialog-offset: 0px;
-}
-
+/* Dialog centering offset — shifts dialogs right so they appear
+   centered within the content area (right of the 16rem sidebar) */
 @media (min-width: 1024px) {
-  :root.has-sidebar {
-    --dialog-offset: 8rem;
+  :root.has-sidebar [data-slot="dialog-content"] {
+    left: calc(50% + 8rem);
   }
 }
 
