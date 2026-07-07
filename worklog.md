@@ -127,4 +127,25 @@ Stage Summary:
 - Fix: Replaced with pure CSS media query rule — no Tailwind arbitrary values, no CSS variables
 - Dialog centering still works: CSS selector targets `[data-slot="dialog-content"]` when `.has-sidebar` is on `:root`
 - Fixed files: dialog.tsx, globals.css, page.tsx, error.tsx (new)
-- Build: Successful, zero errors, zero warnings
+- Build: Successful, zero errors, zero warnings---
+Task ID: 1
+Agent: main
+Task: Fix dialog modal overlay not covering page - dialogs float on top instead of proper modal
+
+Work Log:
+- Diagnosed that z-50 was insufficient for dialog overlay (sidebar z-30, header z-20 with backdrop-blur stacking context)
+- First attempt: Changed to z-[100]/z-[101] with Tailwind classes + !important CSS rules in globals.css
+- User reported issue persists - Tailwind classes may not be compiling correctly for dynamically rendered portal content
+- Rewrote dialog.tsx and alert-dialog.tsx to use **inline styles** for all critical modal properties:
+  - Overlay: position:fixed, inset:0, zIndex:9998, backgroundColor:"rgba(0,0,0,0.6)", backdropFilter:"blur(2px)"
+  - Content: position:fixed, top:50%, left:50%, transform:translate(-50%,-50%), zIndex:9999, backgroundColor:"#ffffff"
+- Separated layout props (max-h, overflow-y, padding) into className so pages can override them
+- Also fixed select.tsx dropdown z-index to z-[102] for proper layering inside dialogs
+- Clean rebuild (rm -rf .next) to eliminate stale chunk references
+- Server restarted and verified 200 OK
+
+Stage Summary:
+- All dialog modals now use inline styles for critical positioning/display properties - cannot be affected by CSS class processing issues
+- Applied to both Dialog and AlertDialog components
+- Build verified: inline style values confirmed in compiled JS chunks
+- Server running at localhost:3000, returning 200

@@ -37,10 +37,18 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px]",
-        className
-      )}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9998,
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
+      }}
+      className={className}
       {...props}
     />
   )
@@ -59,10 +67,20 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          "fixed left-1/2 top-1/2 z-[101] w-full max-w-[calc(100%-2rem)] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto border border-gray-200 bg-white shadow-xl rounded-xl p-6",
-          className
-        )}
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 9999,
+          width: "100%",
+          maxWidth: "calc(100% - 2rem)",
+          backgroundColor: "#ffffff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "0.75rem",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        }}
+        className={cn("max-h-[90vh] overflow-y-auto p-6", className)}
         {...props}
       >
         {children}
