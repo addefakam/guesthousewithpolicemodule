@@ -675,7 +675,7 @@ export default function ReservationsPage() {
 
       {/* ── New/Edit Reservation Dialog ──────────────────────────────────── */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { setShowFormDialog(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-hidden p-0 !overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-5xl max-h-[85vh] p-0 flex flex-col" style={{ overflow: 'hidden' }}>
           {/* Dialog Header - sticky */}
           <div className="shrink-0 px-6 pt-6 pb-0">
             <DialogHeader>
