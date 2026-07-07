@@ -104,28 +104,28 @@ export default function Sidebar() {
   };
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-slate-950 text-slate-300">
+    <div className="flex h-full flex-col bg-white border-r border-gray-200/80">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Building2 className="h-5 w-5 text-primary" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-white tracking-tight">GHMS</span>
-          <span className="text-[11px] text-slate-500 leading-none">Guest House Management</span>
+          <span className="text-sm font-bold text-foreground tracking-tight">GHMS</span>
+          <span className="text-[11px] text-muted-foreground leading-none">Guest House Management</span>
         </div>
         {/* Close button on mobile */}
         <Button
           variant="ghost"
           size="icon"
-          className="ml-auto h-8 w-8 text-slate-500 hover:text-white lg:hidden"
+          className="ml-auto h-8 w-8 text-muted-foreground hover:text-foreground lg:hidden"
           onClick={() => setSidebarOpen(false)}
         >
           <X className="h-4 w-4" />
         </Button>
       </div>
 
-      <Separator className="bg-slate-800/50" />
+      <Separator className="bg-border" />
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-3">
@@ -138,7 +138,7 @@ export default function Sidebar() {
 
             return (
               <div key={group.label}>
-                <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   {group.label}
                 </p>
                 <div className="space-y-0.5">
@@ -151,10 +151,10 @@ export default function Sidebar() {
                         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
                           isActive
                             ? 'bg-primary/10 text-primary'
-                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         }`}
                       >
-                        <span className={isActive ? 'text-primary' : 'text-slate-500'}>{item.icon}</span>
+                        <span className={isActive ? 'text-primary' : 'text-muted-foreground/70'}>{item.icon}</span>
                         {item.label}
                         {isActive && (
                           <ChevronLeft className="ml-auto h-3.5 w-3.5 text-primary/70" />
@@ -169,26 +169,26 @@ export default function Sidebar() {
         </nav>
       </ScrollArea>
 
-      <Separator className="bg-slate-800/50" />
+      <Separator className="bg-border" />
 
       {/* User section */}
       <div className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-slate-300">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
             {currentUser?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex flex-1 flex-col min-w-0">
-            <span className="text-sm font-medium text-white truncate">
+            <span className="text-sm font-medium text-foreground truncate">
               {currentUser?.name || 'User'}
             </span>
-            <span className="text-[11px] text-slate-500 capitalize">
+            <span className="text-[11px] text-muted-foreground capitalize">
               {currentUser?.role?.toLowerCase() || 'role'}
             </span>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-red-400 hover:bg-red-400/10 shrink-0"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
             onClick={handleLogout}
             title="Logout"
           >
@@ -204,7 +204,7 @@ export default function Sidebar() {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -219,7 +219,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-800/50">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col">
         {sidebarContent}
       </aside>
     </>

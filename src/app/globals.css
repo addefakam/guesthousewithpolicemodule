@@ -45,38 +45,39 @@
 
 :root {
   --radius: 0.625rem;
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 6.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 6.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 43 96% 56%;
-  --primary-foreground: 222.2 84% 4.9%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  /* Light theme — clean Z.ai-inspired palette */
+  --background: 210 20% 98%;
+  --foreground: 222.2 47% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47% 11.2%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47% 11.2%;
+  --primary: 221.2 83% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47% 11.2%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 43 96% 56%;
-  --chart-1: 43 96% 56%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83% 53.3%;
+  --chart-1: 221.2 83% 53.3%;
   --chart-2: 142 71% 45%;
-  --chart-3: 217 91% 60%;
+  --chart-3: 47 96% 53%;
   --chart-4: 0 84% 60%;
   --chart-5: 280 67% 51%;
-  --sidebar: 222.2 84% 3.9%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 43 96% 56%;
-  --sidebar-primary-foreground: 222.2 84% 4.9%;
-  --sidebar-accent: 217.2 32.6% 17.5%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222.2 47% 11.2%;
+  --sidebar-primary: 221.2 83% 53.3%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-accent: 221.2 83% 53.3%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 217.2 32.6% 17.5%;
-  --sidebar-ring: 43 96% 56%;
+  --sidebar-border: 214.3 31.8% 91.4%;
+  --sidebar-ring: 221.2 83% 53.3%;
 }
 
 .dark {
@@ -118,14 +119,6 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans), system-ui, sans-serif;
-}
-
-/* Dialog centering offset — shifts dialogs right so they appear
-   centered within the content area (right of the 16rem sidebar) */
-@media (min-width: 1024px) {
-  :root.has-sidebar [data-slot="dialog-content"] {
-    left: calc(50% + 8rem);
-  }
 }
 
 @layer base {
