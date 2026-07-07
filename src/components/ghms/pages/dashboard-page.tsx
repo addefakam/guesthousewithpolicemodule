@@ -252,10 +252,10 @@ export default function DashboardPage() {
     revenue: d.revenue,
   }));
 
-  const checkIns = schedule.filter((s) => s.checkIn === today.toISOString().split('T')[0]);
-  const checkOuts = schedule.filter((s) => s.checkOut === today.toISOString().split('T')[0]);
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
+  const checkIns = schedule.filter((s) => s.checkIn === todayStr);
+  const checkOuts = schedule.filter((s) => s.checkOut === todayStr);
 
   return (
     <div className="space-y-6">
