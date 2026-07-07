@@ -125,3 +125,26 @@ body {
     @apply border-border outline-ring/50;
   }
 }
+
+/* ── Dialog: ensure proper modal behavior ─────────────────────────────────── */
+[data-slot="dialog-overlay"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+}
+
+[data-slot="dialog-content"] {
+  position: fixed !important;
+  z-index: 101 !important;
+}
+
+/* Radix body scroll lock */
+body[data-radix-scroll-area-viewport],
+body {
+  /* Radix Dialog handles overflow:hidden via inline styles */
+}
+
+/* Ensure Select/Popover portals are above dialog */
+[data-radix-popper-content-wrapper] {
+  z-index: 102 !important;
+}
