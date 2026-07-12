@@ -1,19 +1,43 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { providerId, isPolice } = getProviderFilter(request);
+
+    // Police users have their own dashboard API - return empty data
+    if (isPolice) {
+      return NextResponse.json({
+        occupancyRate: 0,
+        totalRooms: 0,
+        occupiedRooms: 0,
+        availableRooms: 0,
+        todayRevenue: 0,
+        activeGuests: 0,
+        pendingPaymentsAmount: 0,
+        pendingPaymentsCount: 0,
+        todayExpenses: 0,
+        todayCheckins: 0,
+        last7DaysRevenue: [],
+        recentActivity: [],
+      });
+    }
+
+    const where = providerId ? { providerId } : {};
+
     const today = new Date().toISOString().split("T")[0];
 
     // Occupancy
-    const totalRooms = await db.room.count();
-    const occupiedRooms = await db.room.count({ where: { status: "OCCUPIED" } });
-    const availableRooms = await db.room.count({ where: { status: "AVAILABLE" } });
+    const totalRooms = await db.room.count({ where });
+    const occupiedRooms = await db.room.count({ where: { ...where, status: "OCCUPIED" } });
+    const availableRooms = await db.room.count({ where: { ...where, status: "AVAILABLE" } });
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
     // Today's revenue from check-ins today or active reservations
     const todayReservations = await db.reservation.findMany({
       where: {
+        ...where,
         status: { in: ["ACTIVE", "COMPLETED"] },
         checkIn: { lte: today },
         checkOut: { gt: today },
@@ -21,7 +45,7 @@ export async function GET() {
     });
 
     const todayServiceBookings = await db.daytimeBooking.findMany({
-      where: { date: today },
+      where: { ...where, date: today },
     });
 
     const todayRevenue =
@@ -30,12 +54,13 @@ export async function GET() {
 
     // Active guests
     const activeGuests = await db.reservation.count({
-      where: { status: "ACTIVE" },
+      where: { ...where, status: "ACTIVE" },
     });
 
     // Pending payments
     const pendingPayments = await db.reservation.findMany({
       where: {
+        ...where,
         paymentStatus: { in: ["PENDING", "PARTIAL"] },
         status: { not: "CANCELLED" },
       },
@@ -44,12 +69,12 @@ export async function GET() {
     const pendingPaymentsAmount = pendingPayments.reduce((s, r) => s + r.balance, 0);
 
     // Today's expenses
-    const todayExpenses = await db.expense.findMany({ where: { date: today } });
+    const todayExpenses = await db.expense.findMany({ where: { ...where, date: today } });
     const todayExpensesTotal = todayExpenses.reduce((s, e) => s + e.amount + e.taxAmount, 0);
 
     // Today's check-ins
     const todayCheckins = await db.reservation.count({
-      where: { checkIn: today },
+      where: { ...where, checkIn: today },
     });
 
     // Last 7 days revenue
@@ -61,6 +86,7 @@ export async function GET() {
 
       const dayReservations = await db.reservation.findMany({
         where: {
+          ...where,
           status: { in: ["ACTIVE", "COMPLETED"] },
           checkIn: { lte: dateStr },
           checkOut: { gt: dateStr },
@@ -68,7 +94,7 @@ export async function GET() {
       });
 
       const dayServices = await db.daytimeBooking.findMany({
-        where: { date: dateStr },
+        where: { ...where, date: dateStr },
       });
 
       const dayRevenue =
@@ -80,6 +106,7 @@ export async function GET() {
 
     // Recent activity
     const recentActivity = await db.activityLog.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       take: 8,
     });

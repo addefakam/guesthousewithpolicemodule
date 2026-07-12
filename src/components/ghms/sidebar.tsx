@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import {
   Building2,
   LayoutDashboard,
@@ -18,8 +18,11 @@ import {
   LogOut,
   X,
   ChevronLeft,
+  Shield,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, type Page } from '@/lib/store';
@@ -31,10 +34,11 @@ interface NavGroup {
     label: string;
     icon: React.ReactNode;
     superuserOnly?: boolean;
+    badge?: React.ReactNode;
   }[];
 }
 
-const navGroups: NavGroup[] = [
+const providerNavGroups: NavGroup[] = [
   {
     label: 'Overview',
     items: [
@@ -78,6 +82,71 @@ export default function Sidebar() {
   const { currentPage, setCurrentPage, currentUser, setCurrentUser, sidebarOpen, setSidebarOpen } =
     useAppStore();
   const isSuperuser = currentUser?.role === 'SUPERUSER';
+  const isPolice = currentUser?.role === 'POLICE';
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Fetch pending provider count for police badge
+  useEffect(() => {
+    if (!isPolice) return;
+    import('@/lib/api')
+      .then(({ getProviders }) => getProviders())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setPendingCount(list.filter((p: any) => p.status === 'PENDING').length);
+      })
+      .catch(() => {});
+  }, [isPolice, useAppStore.getState().refreshKey]);
+
+  const getNavGroups = useCallback((): NavGroup[] => {
+    if (isPolice) {
+      return [
+        {
+          label: 'Overview',
+          items: [
+            {
+              page: 'police-dashboard',
+              label: 'Police Dashboard',
+              icon: <Shield className="h-4 w-4" />,
+            },
+            {
+              page: 'police-guests',
+              label: 'Guest Monitoring',
+              icon: <Eye className="h-4 w-4" />,
+            },
+          ],
+        },
+        {
+          label: 'Authority',
+          items: [
+            {
+              page: 'providers',
+              label: 'Providers',
+              icon: <Building2 className="h-4 w-4" />,
+              badge:
+                pendingCount > 0 ? (
+                  <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-amber-500 text-white hover:bg-amber-500">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </Badge>
+                ) : undefined,
+            },
+          ],
+        },
+        {
+          label: 'System',
+          items: [
+            {
+              page: 'notifications',
+              label: 'Notifications',
+              icon: <Bell className="h-4 w-4" />,
+            },
+          ],
+        },
+      ];
+    }
+    return providerNavGroups;
+  }, [isPolice, pendingCount]);
+
+  const navGroups = getNavGroups();
 
   const handleNavigate = useCallback(
     (page: Page) => {
@@ -106,11 +175,19 @@ export default function Sidebar() {
     <div className="flex h-full flex-col bg-white border-r border-gray-200/80">
       <div className="flex items-center gap-3 px-5 py-5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Building2 className="h-5 w-5 text-primary" />
+          {isPolice ? (
+            <Shield className="h-5 w-5 text-primary" />
+          ) : (
+            <Building2 className="h-5 w-5 text-primary" />
+          )}
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-foreground tracking-tight">GHMS</span>
-          <span className="text-[11px] text-muted-foreground leading-none">Guest House Management</span>
+          <span className="text-sm font-bold text-foreground tracking-tight">
+            {isPolice ? 'GHMS Police' : 'GHMS'}
+          </span>
+          <span className="text-[11px] text-muted-foreground leading-none">
+            {isPolice ? 'Guest House Monitoring' : 'Guest House Management'}
+          </span>
         </div>
         <Button
           variant="ghost"
@@ -151,8 +228,9 @@ export default function Sidebar() {
                         }`}
                       >
                         <span className={isActive ? 'text-primary' : 'text-muted-foreground/70'}>{item.icon}</span>
-                        {item.label}
-                        {isActive && (
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {item.badge}
+                        {isActive && !item.badge && (
                           <ChevronLeft className="ml-auto h-3.5 w-3.5 text-primary/70" />
                         )}
                       </button>

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    let settings = await db.settings.findUnique({ where: { id: "main" } });
+    const { providerId } = getProviderFilter(request);
+
+    let settings = await db.settings.findFirst({
+      where: { providerId: providerId || "" },
+    });
 
     if (!settings) {
-      settings = await db.settings.create({ data: { id: "main" } });
+      settings = await db.settings.create({
+        data: { providerId: providerId || "" },
+      });
     }
 
     return NextResponse.json(settings);
@@ -18,14 +25,27 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
 
-    // Ensure we always update the "main" record
-    const settings = await db.settings.upsert({
-      where: { id: "main" },
-      update: body,
-      create: { id: "main", ...body },
+    const pid = providerId || "";
+
+    // Find existing settings for this provider, or create new
+    const existing = await db.settings.findFirst({
+      where: { providerId: pid },
     });
+
+    let settings;
+    if (existing) {
+      settings = await db.settings.update({
+        where: { id: existing.id },
+        data: body,
+      });
+    } else {
+      settings = await db.settings.create({
+        data: { providerId: pid, ...body },
+      });
+    }
 
     return NextResponse.json(settings);
   } catch (error) {

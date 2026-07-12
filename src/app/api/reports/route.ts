@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId, isPolice } = getProviderFilter(request);
+
+    // Police users have their own reports API - return empty data
+    if (isPolice) {
+      return NextResponse.json({
+        period: { from: "", to: "" },
+        roomRevenue: 0,
+        serviceRevenue: 0,
+        grossRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        occupancyRate: 0,
+        reservationCount: 0,
+        uniqueGuests: 0,
+        totalNights: 0,
+        revenueByRoomType: {},
+        expensesByCategory: {},
+        dailyBreakdown: [],
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -15,9 +37,12 @@ export async function GET(request: NextRequest) {
     const startDate = from || defaultFrom;
     const endDate = to || defaultTo;
 
+    const where = providerId ? { providerId } : {};
+
     // Room revenue from completed/active reservations
     const reservations = await db.reservation.findMany({
       where: {
+        ...where,
         checkIn: { lte: endDate },
         checkOut: { gte: startDate },
         status: { in: ["COMPLETED", "ACTIVE"] },
@@ -28,6 +53,7 @@ export async function GET(request: NextRequest) {
     // Service revenue from daytime bookings
     const serviceBookings = await db.daytimeBooking.findMany({
       where: {
+        ...where,
         date: { gte: startDate, lte: endDate },
       },
       include: { service: true, payments: true },
@@ -36,6 +62,7 @@ export async function GET(request: NextRequest) {
     // Expenses
     const expenses = await db.expense.findMany({
       where: {
+        ...where,
         date: { gte: startDate, lte: endDate },
       },
     });
@@ -43,6 +70,7 @@ export async function GET(request: NextRequest) {
     // All reservations in period for stats
     const allReservations = await db.reservation.findMany({
       where: {
+        ...where,
         createdAt: { gte: new Date(startDate), lte: new Date(endDate + "T23:59:59") },
       },
     });
@@ -55,8 +83,8 @@ export async function GET(request: NextRequest) {
     const netProfit = grossRevenue - totalExpenses;
 
     // Occupancy rate
-    const totalRooms = await db.room.count();
-    const occupiedRooms = await db.room.count({ where: { status: "OCCUPIED" } });
+    const totalRooms = await db.room.count({ where });
+    const occupiedRooms = await db.room.count({ where: { ...where, status: "OCCUPIED" } });
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
     // Reservation stats

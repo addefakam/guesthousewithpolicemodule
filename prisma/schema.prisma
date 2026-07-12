@@ -10,9 +10,17 @@ datasource db {
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 enum UserRole {
+  POLICE
   SUPERUSER
   OPERATOR
   STAFF
+}
+
+enum ProviderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
 }
 
 enum RoomType {
@@ -71,19 +79,51 @@ enum HousekeepingTaskStatus {
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
+model Provider {
+  id          String          @id @default(cuid())
+  name        String
+  ownerName   String
+  phone       String
+  email       String          @default("")
+  address     String          @default("")
+  type        String          @default("GUEST_HOUSE")
+  licenseNo   String          @default("")
+  status      ProviderStatus  @default(PENDING)
+  approvedBy  String?
+  approvedAt  DateTime?
+  rejectionReason String      @default("")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  users       User[]
+  rooms       Room[]
+  guests      Guest[]
+  reservations Reservation[]
+  expenses    Expense[]
+  daytimeServices  DaytimeService[]
+  daytimeBookings DaytimeBooking[]
+  resources   Resource[]
+  housekeepingTasks HousekeepingTask[]
+  settings    Settings[]
+  notifications Notification[]
+}
+
 model User {
-  id       String   @id @default(cuid())
-  username String   @unique
-  password String
-  role     UserRole @default(STAFF)
-  name     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String          @id @default(cuid())
+  username    String          @unique
+  password    String
+  role        UserRole        @default(STAFF)
+  name        String
+  providerId  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  provider    Provider?       @relation(fields: [providerId], references: [id])
 }
 
 model Room {
   id            String     @id @default(cuid())
-  number        String     @unique
+  number        String
   name          String
   type          RoomType
   pricePerNight Float
@@ -93,11 +133,15 @@ model Room {
   amenities     String
   description   String
   image         String?
+  providerId    String
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  reservations      Reservation[]
-  housekeepingTasks HousekeepingTask[]
+  provider           Provider       @relation(fields: [providerId], references: [id])
+  reservations       Reservation[]
+  housekeepingTasks  HousekeepingTask[]
+
+  @@unique([number, providerId])
 }
 
 model Guest {
@@ -113,9 +157,11 @@ model Guest {
   vip         Boolean  @default(false)
   totalSpent  Float    @default(0)
   totalStays  Int      @default(0)
+  providerId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  provider     Provider  @relation(fields: [providerId], references: [id])
   reservations Reservation[]
   reviews      Review[]
 }
@@ -139,11 +185,13 @@ model Reservation {
   actualCheckOut  DateTime?
   taxAmount       Float             @default(0)
   discountAmount  Float             @default(0)
+  providerId      String
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  guest    Guest  @relation(fields: [guestId], references: [id])
-  room     Room   @relation(fields: [roomId], references: [id])
+  provider Provider  @relation(fields: [providerId], references: [id])
+  guest    Guest    @relation(fields: [guestId], references: [id])
+  room     Room     @relation(fields: [roomId], references: [id])
   payments Payment[]
   reviews  Review[]
 }
@@ -156,9 +204,11 @@ model DaytimeService {
   duration    String   @default("")
   description String   @default("")
   active      Boolean  @default(true)
+  providerId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  provider        Provider        @relation(fields: [providerId], references: [id])
   daytimeBookings DaytimeBooking[]
 }
 
@@ -176,10 +226,12 @@ model DaytimeBooking {
   paymentStatus  PaymentStatusType @default(PENDING)
   paymentMethod  PaymentMethodType?
   notes          String            @default("")
+  providerId     String
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  service  DaytimeService @relation(fields: [serviceId], references: [id])
+  provider Provider        @relation(fields: [providerId], references: [id])
+  service  DaytimeService  @relation(fields: [serviceId], references: [id])
   payments Payment[]
 }
 
@@ -193,8 +245,11 @@ model Expense {
   paymentMethod PaymentMethodType
   receiptNo     String            @default("")
   taxAmount     Float             @default(0)
+  providerId    String
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id])
 }
 
 model ExpenseCategory {
@@ -216,8 +271,11 @@ model Resource {
   costPerUnit  Float   @default(0)
   supplier     String  @default("")
   lastRestocked DateTime?
+  providerId   String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id])
 }
 
 model Payment {
@@ -228,6 +286,7 @@ model Payment {
   method           PaymentMethodType
   referenceNo      String            @default("")
   notes            String            @default("")
+  providerId       String
   createdAt        DateTime          @default(now())
 
   reservation    Reservation?    @relation(fields: [reservationId], references: [id])
@@ -241,7 +300,11 @@ model Notification {
   type      NotificationType @default(INFO)
   isRead    Boolean          @default(false)
   link      String?
+  providerId String?
+  userId    String?
   createdAt DateTime         @default(now())
+
+  provider Provider? @relation(fields: [providerId], references: [id])
 }
 
 model HousekeepingTask {
@@ -253,10 +316,12 @@ model HousekeepingTask {
   scheduledDate String
   notes         String                 @default("")
   completedAt   DateTime?
+  providerId    String
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @updatedAt
 
-  room Room @relation(fields: [roomId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+  room     Room     @relation(fields: [roomId], references: [id])
 }
 
 model Review {
@@ -272,14 +337,15 @@ model Review {
 }
 
 model ActivityLog {
-  id        String   @id @default(cuid())
-  message   String
-  type      String   @default("INFO")
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  message    String
+  type       String   @default("INFO")
+  providerId String?
+  createdAt  DateTime @default(now())
 }
 
 model Settings {
-  id              String   @id @default("main")
+  id              String   @id @default(cuid())
   guestHouseName  String   @default("Guest House")
   ownerName       String   @default("")
   address         String   @default("")
@@ -291,6 +357,9 @@ model Settings {
   logo            String?
   checkInTime     String   @default("14:00")
   checkOutTime    String   @default("12:00")
+  providerId      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  provider Provider? @relation(fields: [providerId], references: [id])
 }

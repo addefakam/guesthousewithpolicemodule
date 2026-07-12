@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const lowStock = searchParams.get("lowStock");
 
     const where: Record<string, unknown> = {};
+    if (providerId) where.providerId = providerId;
 
     if (category) where.category = category;
     if (lowStock === "true") {
       // Items where quantity <= minLevel
       const allItems = await db.resource.findMany({
+        where,
         orderBy: { name: "asc" },
       });
       const filtered = allItems.filter((item) => item.quantity <= item.minLevel);
@@ -32,6 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { name, category, quantity, unit, minLevel, costPerUnit, supplier } = body;
 
@@ -49,6 +54,7 @@ export async function POST(request: NextRequest) {
         costPerUnit: parseFloat(costPerUnit) || 0,
         supplier: supplier || "",
         lastRestocked: new Date(),
+        providerId: providerId || "",
       },
     });
 
@@ -61,6 +67,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, quantity, minLevel, costPerUnit, ...data } = body;
 
@@ -73,7 +80,7 @@ export async function PUT(request: NextRequest) {
     if (costPerUnit !== undefined) data.costPerUnit = parseFloat(costPerUnit);
 
     const resource = await db.resource.update({
-      where: { id },
+      where: { id, ...(providerId ? { providerId } : {}) },
       data,
     });
 
@@ -90,6 +97,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -97,7 +105,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Resource ID is required" }, { status: 400 });
     }
 
-    await db.resource.delete({ where: { id } });
+    await db.resource.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Resources DELETE error:", error);

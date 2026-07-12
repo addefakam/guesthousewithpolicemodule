@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
+    const where: Record<string, unknown> = {};
+    if (providerId) where.providerId = providerId;
+
     const users = await db.user.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -23,6 +29,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { username, password, role, name } = body;
 
@@ -36,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await db.user.create({
-      data: { username, password, role: role || "STAFF", name },
+      data: { username, password, role: role || "STAFF", name, providerId: providerId || "" },
     });
 
     const { password: _, ...userWithoutPassword } = user;
@@ -49,6 +56,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, username, password, role, name } = body;
 
@@ -63,7 +71,7 @@ export async function PUT(request: NextRequest) {
     if (name !== undefined) data.name = name;
 
     const user = await db.user.update({
-      where: { id },
+      where: { id, ...(providerId ? { providerId } : {}) },
       data,
     });
 
@@ -84,6 +92,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const selfId = searchParams.get("selfId");
@@ -96,7 +105,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
     }
 
-    await db.user.delete({ where: { id } });
+    await db.user.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Users DELETE error:", error);

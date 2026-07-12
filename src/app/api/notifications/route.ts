@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const unread = searchParams.get("unread");
 
     const where: Record<string, unknown> = {};
+    if (providerId) where.providerId = providerId;
     if (unread === "true") {
       where.isRead = false;
     }
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { title, message, type, link } = body;
 
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
         message,
         type: type || "INFO",
         link: link || null,
+        providerId: providerId || "",
       },
     });
 
@@ -49,6 +54,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { ids } = body;
 
@@ -56,8 +62,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "IDs array is required" }, { status: 400 });
     }
 
+    const updateWhere: Record<string, unknown> = { id: { in: ids } };
+    if (providerId) updateWhere.providerId = providerId;
+
     await db.notification.updateMany({
-      where: { id: { in: ids } },
+      where: updateWhere,
       data: { isRead: true },
     });
 

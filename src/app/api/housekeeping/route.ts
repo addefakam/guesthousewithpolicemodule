@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const date = searchParams.get("date");
 
     const where: Record<string, unknown> = {};
+    if (providerId) where.providerId = providerId;
 
     if (status) where.status = status;
     if (date) where.scheduledDate = date;
@@ -26,6 +29,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { roomId, type, scheduledDate, assignedTo, notes } = body;
 
@@ -41,6 +45,7 @@ export async function POST(request: NextRequest) {
         scheduledDate,
         assignedTo: assignedTo || null,
         notes: notes || "",
+        providerId: providerId || "",
       },
       include: { room: true },
     });
@@ -54,6 +59,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, ...data } = body;
 
@@ -67,7 +73,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const task = await db.housekeepingTask.update({
-      where: { id },
+      where: { id, ...(providerId ? { providerId } : {}) },
       data,
       include: { room: true },
     });
@@ -85,6 +91,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -92,7 +99,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
     }
 
-    await db.housekeepingTask.delete({ where: { id } });
+    await db.housekeepingTask.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Housekeeping DELETE error:", error);

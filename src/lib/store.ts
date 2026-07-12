@@ -12,13 +12,25 @@ export type Page =
   | 'housekeeping'
   | 'users'
   | 'notifications'
-  | 'settings';
+  | 'settings'
+  | 'providers'
+  | 'police-guests'
+  | 'police-dashboard';
+
+interface ProviderInfo {
+  id: string;
+  name: string;
+  status: string;
+  type: string;
+}
 
 interface CurrentUser {
   id: string;
   username: string;
   role: string;
   name: string;
+  providerId?: string | null;
+  provider?: ProviderInfo | null;
 }
 
 interface AppState {

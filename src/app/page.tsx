@@ -23,10 +23,13 @@ const pageTitles: Record<Page, string> = {
   users: 'Users',
   notifications: 'Notifications',
   settings: 'Settings',
+  providers: 'Providers',
+  'police-guests': 'Guest Monitoring',
+  'police-dashboard': 'Police Dashboard',
 };
 
 export default function AppPage() {
-  const { currentUser, currentPage, setSidebarOpen } = useAppStore();
+  const { currentUser, currentPage, setCurrentPage, setSidebarOpen } = useAppStore();
   const [currentDate, setCurrentDate] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -49,6 +52,12 @@ export default function AppPage() {
       .then((data) => setUnreadCount(Array.isArray(data) ? data.length : 0))
       .catch(() => {});
   }, [currentUser, useAppStore.getState().refreshKey]);
+
+  useEffect(() => {
+    if (currentUser?.role === 'POLICE' && currentPage === 'dashboard') {
+      setCurrentPage('police-dashboard');
+    }
+  }, [currentUser, currentPage, setCurrentPage]);
 
   if (!currentUser) {
     return <LoginPage />;

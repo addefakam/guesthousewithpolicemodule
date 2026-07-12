@@ -23,6 +23,9 @@ const pageComponents: Record<Page, React.ComponentType> = {
   users: dynamic(() => import('./pages/users-page'), { loading: () => loadingFallback }),
   notifications: dynamic(() => import('./pages/notifications-page'), { loading: () => loadingFallback }),
   settings: dynamic(() => import('./pages/settings-page'), { loading: () => loadingFallback }),
+  providers: dynamic(() => import('./pages/providers-page'), { loading: () => loadingFallback }),
+  'police-guests': dynamic(() => import('./pages/police-guests-page'), { loading: () => loadingFallback }),
+  'police-dashboard': dynamic(() => import('./pages/police-dashboard-page'), { loading: () => loadingFallback }),
 };
 
 export default function PageRenderer() {

@@ -1,3 +1,5 @@
+import { useAppStore } from '@/lib/store';
+
 const BASE_URL = '';
 
 async function fetchAPI<T = any>(
@@ -5,11 +7,22 @@ async function fetchAPI<T = any>(
   url: string,
   data?: any
 ): Promise<T> {
+  const { currentUser } = useAppStore.getState();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Pass role and providerId for tenant isolation
+  if (currentUser) {
+    headers['x-user-role'] = currentUser.role;
+    if (currentUser.providerId) {
+      headers['x-provider-id'] = currentUser.providerId;
+    }
+  }
+
   const res = await fetch(`${BASE_URL}${url}`, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: data ? JSON.stringify(data) : undefined,
   });
 
@@ -124,9 +137,7 @@ export const updateResource = (id: string, data: any) =>
 export const deleteResource = (id: string) =>
   fetchAPI('DELETE', `/api/resources?id=${id}`);
 export const restockResource = (id: string, quantity: number) =>
-  fetchAPI('POST', `/api/resources/${encodeURIComponent(id)}/restock`, {
-    quantity,
-  });
+  fetchAPI('POST', `/api/resources/${encodeURIComponent(id)}/restock`, { quantity });
 
 // Notifications
 export const getNotifications = (unread?: boolean) => {
@@ -190,3 +201,25 @@ export const getActivity = (limit?: number) => {
   const qs = limit ? `?limit=${limit}` : '';
   return fetchAPI('GET', `/api/activity${qs}`);
 };
+
+// ─── Police / Provider Management ──────────────────────────────────
+
+export const getProviders = () => fetchAPI('GET', '/api/providers');
+export const approveProvider = (id: string) =>
+  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'APPROVED' });
+export const rejectProvider = (id: string, reason: string) =>
+  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'REJECTED', rejectionReason: reason });
+export const suspendProvider = (id: string) =>
+  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'SUSPENDED' });
+export const getPoliceDashboard = () => fetchAPI('GET', '/api/police-dashboard');
+export const getPoliceGuests = (search?: string, providerId?: string) => {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (providerId) params.set('providerId', providerId);
+  const qs = params.toString() ? `?${params}` : '';
+  return fetchAPI('GET', `/api/police-guests${qs}`);
+};
+
+// Provider Registration Request
+export const requestProviderAccess = (data: any) =>
+  fetchAPI('POST', '/api/providers', data);

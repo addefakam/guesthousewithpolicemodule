@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 function calculateNights(checkIn: string, checkOut: string): number {
   const start = new Date(checkIn);
@@ -14,13 +15,14 @@ function todayStr(): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
     const where: Record<string, unknown> = {};
-
+    if (providerId) where.providerId = providerId;
     if (status) where.status = status;
     if (from || to) {
       const dateFilter: Record<string, unknown> = {};
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { guestId, roomId, checkIn, checkOut, notes, paymentMethod, discountAmount, taxAmount } = body;
 
@@ -85,6 +88,7 @@ export async function POST(request: NextRequest) {
         notes: notes || "",
         discountAmount: discount,
         taxAmount: tax,
+        providerId: providerId || "",
       },
       include: { guest: true, room: true },
     });
@@ -119,6 +123,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, guestId, roomId, checkIn, checkOut, notes, paymentMethod, discountAmount, taxAmount, paidAmount, balance, paymentStatus, status } = body;
 
@@ -146,7 +151,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const reservation = await db.reservation.update({
-      where: { id },
+      where: { id, ...(providerId ? { providerId } : {}) },
       data,
       include: { guest: true, room: true },
     });
@@ -164,6 +169,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -171,7 +177,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Reservation ID is required" }, { status: 400 });
     }
 
-    await db.reservation.delete({ where: { id } });
+    await db.reservation.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Reservations DELETE error:", error);

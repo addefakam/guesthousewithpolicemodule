@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
     const where: Record<string, unknown> = {};
+    if (providerId) where.providerId = providerId;
 
     if (date) {
       where.date = date;
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { serviceId, guestName, guestPhone, date, time, quantity, paymentMethod, notes } = body;
 
@@ -63,6 +67,7 @@ export async function POST(request: NextRequest) {
         paymentStatus,
         paymentMethod: paymentMethod || null,
         notes: notes || "",
+        providerId: providerId || "",
       },
       include: { service: true },
     });
@@ -76,6 +81,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, serviceId, quantity, paidAmount, balance, paymentStatus, paymentMethod, ...rest } = body;
 
@@ -93,7 +99,7 @@ export async function PUT(request: NextRequest) {
     if (paymentMethod !== undefined) data.paymentMethod = paymentMethod;
 
     const booking = await db.daytimeBooking.update({
-      where: { id },
+      where: { id, ...(providerId ? { providerId } : {}) },
       data,
       include: { service: true },
     });
@@ -111,6 +117,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -118,7 +125,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Booking ID is required" }, { status: 400 });
     }
 
-    await db.daytimeBooking.delete({ where: { id } });
+    await db.daytimeBooking.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Daytime bookings DELETE error:", error);
