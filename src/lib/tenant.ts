@@ -119,6 +119,19 @@ export function blockPoliceWrites(request: Request, method: string): NextRespons
   return null;
 }
 
+/** Block SUPERUSER from guest operation endpoints (reservations, guests, payments, checkin/checkout) */
+export function blockSuperuserGuestOps(request: Request, method: string): NextResponse | null {
+  if (method === "GET") return null; // SUPERUSER can still view guest data
+  const ctx = getAuthContext(request);
+  if (ctx.isSuperuser) {
+    return NextResponse.json(
+      { error: "Access denied. Admins cannot perform guest operations. Assign this task to an Operator or Staff member." },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
 /** Check if current role can perform a write action */
 export function checkWritePermission(
   request: Request,
@@ -145,6 +158,14 @@ export function checkWritePermission(
   if (options?.requireSuperuser && !ctx.isSuperuser) {
     return NextResponse.json(
       { error: "Access denied. Only the primary admin can perform this action." },
+      { status: 403 }
+    );
+  }
+
+  // Block SUPERUSER from guest operations if specified
+  if (options?.blockSuperuser && ctx.isSuperuser) {
+    return NextResponse.json(
+      { error: "Access denied. Admins cannot perform guest operations. Assign this task to an Operator or Staff member." },
       { status: 403 }
     );
   }

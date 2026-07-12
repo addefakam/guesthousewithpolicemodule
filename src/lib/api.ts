@@ -220,6 +220,28 @@ export const getPoliceGuests = (search?: string, providerId?: string) => {
   return fetchAPI('GET', `/api/police-guests${qs}`);
 };
 
-// Provider Registration Request
-export const requestProviderAccess = (data: any) =>
-  fetchAPI('POST', '/api/providers', data);
+// Provider Registration Request (with license file upload)
+export const requestProviderAccess = async (data: any, licenseFile?: File | null) => {
+  if (licenseFile) {
+    const { currentUser } = useAppStore.getState();
+    const formData = new FormData();
+    // Text fields
+    const textFields = ['name', 'ownerName', 'phone', 'email', 'address', 'type', 'licenseNo', 'username', 'password'];
+    textFields.forEach((key) => {
+      if (data[key] !== undefined && data[key] !== '') formData.append(key, data[key]);
+    });
+    formData.append('licenseFile', licenseFile);
+
+    const res = await fetch('/api/providers', {
+      method: 'POST',
+      body: formData,
+      // Do NOT set Content-Type — browser sets multipart boundary automatically
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.message || error.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+  return fetchAPI('POST', '/api/providers', data);
+};

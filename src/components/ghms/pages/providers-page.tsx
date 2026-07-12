@@ -294,7 +294,12 @@ export default function ProvidersPage() {
                         {p.address || '-'}
                       </TableCell>
                       <TableCell className="text-sm hidden xl:table-cell">
-                        {p.licenseNumber || '-'}
+                        {p.licenseNo || '-'}
+                        {p.licenseFile && (
+                          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 font-medium">
+                            Doc
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>{statusBadge(p.status)}</TableCell>
                       <TableCell className="text-sm text-right hidden sm:table-cell">
@@ -468,9 +473,9 @@ export default function ProvidersPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> License
+                    <FileText className="h-3 w-3" /> License No.
                   </p>
-                  <p className="text-sm">{detailProvider.licenseNumber || '-'}</p>
+                  <p className="text-sm">{detailProvider.licenseNo || '-'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
@@ -499,6 +504,41 @@ export default function ProvidersPage() {
                   </p>
                 </div>
               </div>
+              {detailProvider.licenseFile && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
+                      <FileText className="h-3 w-3" /> Attached License Document
+                    </p>
+                    <div className="rounded-lg border border-border/50 overflow-hidden">
+                      {detailProvider.licenseFile.startsWith('data:image/') ? (
+                        <img
+                          src={detailProvider.licenseFile}
+                          alt="License document"
+                          className="max-h-64 w-full object-contain bg-gray-50"
+                        />
+                      ) : (
+                        <div className="p-4 bg-gray-50 flex items-center gap-3">
+                          <FileText className="h-10 w-10 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">License Document</p>
+                            <p className="text-xs text-muted-foreground">PDF file - Click to view</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <a
+                      href={detailProvider.licenseFile}
+                      download={`license_${detailProvider.name.replace(/\s+/g, '_')}.${detailProvider.licenseFile.includes('pdf') ? 'pdf' : 'jpg'}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Download License
+                    </a>
+                  </div>
+                </>
+              )}
               {detailProvider.rejectionReason && (
                 <>
                   <Separator />

@@ -35,6 +35,7 @@ interface NavGroup {
     icon: React.ReactNode;
     superuserOnly?: boolean;
     operatorAndAbove?: boolean;  // SUPERUSER + OPERATOR, not STAFF
+    operatorOnly?: boolean;      // OPERATOR only, not SUPERUSER (guest ops)
     badge?: React.ReactNode;
   }[];
 }
@@ -50,8 +51,8 @@ const providerNavGroups: NavGroup[] = [
     label: 'Operations',
     items: [
       { page: 'rooms', label: 'Rooms', icon: <BedDouble className="h-4 w-4" /> },
-      { page: 'reservations', label: 'Reservations', icon: <CalendarDays className="h-4 w-4" /> },
-      { page: 'daytime', label: 'Daytime Services', icon: <Sun className="h-4 w-4" /> },
+      { page: 'reservations', label: 'Reservations', icon: <CalendarDays className="h-4 w-4" />, operatorOnly: true },
+      { page: 'daytime', label: 'Daytime Services', icon: <Sun className="h-4 w-4" />, operatorOnly: true },
       { page: 'housekeeping', label: 'Housekeeping', icon: <Sparkles className="h-4 w-4" /> },
     ],
   },
@@ -66,7 +67,7 @@ const providerNavGroups: NavGroup[] = [
   {
     label: 'Management',
     items: [
-      { page: 'guests', label: 'Guests', icon: <Users className="h-4 w-4" /> },
+      { page: 'guests', label: 'Guests', icon: <Users className="h-4 w-4" />, operatorOnly: true },
       { page: 'users', label: 'Users', icon: <UserCog className="h-4 w-4" />, superuserOnly: true },
       { page: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
     ],
@@ -210,7 +211,8 @@ export default function Sidebar() {
             const visibleItems = group.items.filter(
               (item) =>
                 (!item.superuserOnly || isSuperuser) &&
-                (!item.operatorAndAbove || isSuperuser || isOperator)
+                (!item.operatorAndAbove || isSuperuser || isOperator) &&
+                (!item.operatorOnly || isOperator || isStaff)
             );
             if (visibleItems.length === 0) return null;
 

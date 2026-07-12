@@ -57,6 +57,7 @@ export default function AppPage() {
   const policeOnlyPages: Page[] = ['police-dashboard', 'police-guests', 'providers'];
   const superuserOnlyPages: Page[] = ['users', 'settings'];
   const operatorOrAbovePages: Page[] = ['expenses', 'resources', 'reports'];
+  const operatorOnlyPages: Page[] = ['reservations', 'guests', 'daytime']; // SUPERUSER cannot access guest ops
 
   useEffect(() => {
     if (!currentUser) return;
@@ -79,6 +80,11 @@ export default function AppPage() {
     }
     // Operator+ pages (not STAFF)
     if (role === 'STAFF' && operatorOrAbovePages.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      return;
+    }
+    // Operator-only pages (not SUPERUSER - guest operations)
+    if (role === 'SUPERUSER' && operatorOnlyPages.includes(currentPage)) {
       setCurrentPage('dashboard');
       return;
     }

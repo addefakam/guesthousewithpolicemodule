@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { blockSuperuserGuestOps } from "@/lib/tenant";
 
 function calculateNights(checkIn: string, checkOut: string): number {
   const start = new Date(checkIn);
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffCanCreate: true });
+    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffCanCreate: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT");
+    const denied = checkWritePermission(request, "PUT", { blockSuperuser: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -173,7 +174,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "DELETE");
+    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
