@@ -149,3 +149,33 @@ Stage Summary:
 - Applied to both Dialog and AlertDialog components
 - Build verified: inline style values confirmed in compiled JS chunks
 - Server running at localhost:3000, returning 200
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Rebuild and redeploy GHMS after context loss — verify provider registration and SUPERUSER guest ops block
+
+Work Log:
+- Found two stale next-server processes consuming memory, killed them
+- Clean rebuild: rm -rf .next && npx next build — zero errors, 29 routes compiled
+- Changed Caddyfile from `127.0.0.1:3000` to `localhost:3000` for IPv6 compatibility, then back to `127.0.0.1:3000` with `HOSTNAME=0.0.0.0`
+- Created keep-alive script `/home/z/my-project/scripts/serve-ghms.sh` for server persistence
+- Verified all 11 API tests pass:
+  1. Provider registration (public POST) → 201, creates Provider + User with PENDING status
+  2. Login blocked when provider PENDING → 403 with descriptive message
+  3. SUPERUSER blocked from creating reservation → 403
+  4. SUPERUSER blocked from creating guest → 403
+  5. SUPERUSER blocked from creating payment → 403
+  6. SUPERUSER blocked from check-in → 403
+  7. SUPERUSER blocked from check-out → 403
+  8. SUPERUSER blocked from cancel → 403
+  9. Police can approve provider → 200, status becomes APPROVED
+  10. Login works after APPROVED → 200, returns user with provider info
+  11. POLICE blocked from creating rooms → 403
+  12. STAFF can create guest → 201
+
+Stage Summary:
+- Both features (provider registration + SUPERUSER guest ops block) were already implemented in the previous session
+- This session: fixed server stability (killed stale processes, clean rebuild, IPv4 binding, keep-alive script)
+- All 11 RBAC and business process tests passing
+- Server running at http://localhost:3000 via Caddy at http://localhost:81
