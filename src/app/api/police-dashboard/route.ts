@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePolice } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const denied = requirePolice(request);
+    if (denied) return denied;
     const today = new Date().toISOString().split("T")[0];
 
     // Provider stats

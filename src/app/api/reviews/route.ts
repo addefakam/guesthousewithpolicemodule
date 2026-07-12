@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getProviderFilter, blockPoliceWrites } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const guestId = searchParams.get("guestId");
 
     const where: Record<string, unknown> = {};
+    if (providerId) where.guest = { providerId };
     if (guestId) where.guestId = guestId;
 
     const reviews = await db.review.findMany({
@@ -23,6 +26,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const denied = blockPoliceWrites(request, "POST");
+    if (denied) return denied;
     const body = await request.json();
     const { guestId, reservationId, rating, comment } = body;
 
@@ -53,6 +58,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const denied = blockPoliceWrites(request, "DELETE");
+    if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

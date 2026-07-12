@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { checkWritePermission } from "@/lib/tenant";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const denied = checkWritePermission(request, "POST");
+    if (denied) return denied;
     const { id } = await params;
     const body = await request.json();
     const { qty } = body;

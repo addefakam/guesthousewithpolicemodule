@@ -34,6 +34,7 @@ interface NavGroup {
     label: string;
     icon: React.ReactNode;
     superuserOnly?: boolean;
+    operatorAndAbove?: boolean;  // SUPERUSER + OPERATOR, not STAFF
     badge?: React.ReactNode;
   }[];
 }
@@ -57,9 +58,9 @@ const providerNavGroups: NavGroup[] = [
   {
     label: 'Finance',
     items: [
-      { page: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" /> },
-      { page: 'resources', label: 'Resources', icon: <Package className="h-4 w-4" /> },
-      { page: 'reports', label: 'Reports', icon: <BarChart3 className="h-4 w-4" /> },
+      { page: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, operatorAndAbove: true },
+      { page: 'resources', label: 'Resources', icon: <Package className="h-4 w-4" />, operatorAndAbove: true },
+      { page: 'reports', label: 'Reports', icon: <BarChart3 className="h-4 w-4" />, operatorAndAbove: true },
     ],
   },
   {
@@ -82,6 +83,8 @@ export default function Sidebar() {
   const { currentPage, setCurrentPage, currentUser, setCurrentUser, sidebarOpen, setSidebarOpen } =
     useAppStore();
   const isSuperuser = currentUser?.role === 'SUPERUSER';
+  const isOperator = currentUser?.role === 'OPERATOR';
+  const isStaff = currentUser?.role === 'STAFF';
   const isPolice = currentUser?.role === 'POLICE';
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -205,7 +208,9 @@ export default function Sidebar() {
         <nav className="space-y-6">
           {navGroups.map((group) => {
             const visibleItems = group.items.filter(
-              (item) => !item.superuserOnly || isSuperuser
+              (item) =>
+                (!item.superuserOnly || isSuperuser) &&
+                (!item.operatorAndAbove || isSuperuser || isOperator)
             );
             if (visibleItems.length === 0) return null;
 
@@ -254,8 +259,8 @@ export default function Sidebar() {
             <span className="text-sm font-medium text-foreground truncate">
               {currentUser?.name || 'User'}
             </span>
-            <span className="text-[11px] text-muted-foreground capitalize">
-              {currentUser?.role?.toLowerCase() || 'role'}
+            <span className="text-[11px] text-muted-foreground">
+              {{ POLICE: 'Police Officer', SUPERUSER: 'Admin', OPERATOR: 'Operator', STAFF: 'Staff' }[currentUser?.role as string] || currentUser?.role?.toLowerCase() || 'role'}
             </span>
           </div>
           <Button

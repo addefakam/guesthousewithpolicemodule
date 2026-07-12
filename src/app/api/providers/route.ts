@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePolice } from "@/lib/tenant";
 
 // GET - List all providers (police use) or single provider
 export async function GET(request: NextRequest) {
   try {
+    const denied = requirePolice(request);
+    if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (id) {
@@ -58,6 +61,8 @@ export async function POST(request: NextRequest) {
 // PUT - Approve/reject/suspend provider
 export async function PUT(request: NextRequest) {
   try {
+    const denied = requirePolice(request);
+    if (denied) return denied;
     const body = await request.json();
     const { id, status, rejectionReason, approvedBy } = body;
     if (!id || !status) {

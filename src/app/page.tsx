@@ -53,6 +53,38 @@ export default function AppPage() {
       .catch(() => {});
   }, [currentUser, useAppStore.getState().refreshKey]);
 
+  // Role-based page access guard
+  const policeOnlyPages: Page[] = ['police-dashboard', 'police-guests', 'providers'];
+  const superuserOnlyPages: Page[] = ['users', 'settings'];
+  const operatorOrAbovePages: Page[] = ['expenses', 'resources', 'reports'];
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const role = currentUser.role as string;
+
+    // Police can only see police pages
+    if (role !== 'POLICE' && policeOnlyPages.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      return;
+    }
+    // Non-police cannot see police pages
+    if (role === 'POLICE' && !policeOnlyPages.includes(currentPage) && currentPage !== 'notifications') {
+      setCurrentPage('police-dashboard');
+      return;
+    }
+    // Superuser-only pages
+    if (role !== 'SUPERUSER' && superuserOnlyPages.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      return;
+    }
+    // Operator+ pages (not STAFF)
+    if (role === 'STAFF' && operatorOrAbovePages.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      return;
+    }
+  }, [currentUser, currentPage, setCurrentPage]);
+
+  // Redirect police to their dashboard on login
   useEffect(() => {
     if (currentUser?.role === 'POLICE' && currentPage === 'dashboard') {
       setCurrentPage('police-dashboard');

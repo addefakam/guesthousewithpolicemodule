@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter } from "@/lib/tenant";
+import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const denied = checkWritePermission(request, "POST");
+    if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { name, category, quantity, unit, minLevel, costPerUnit, supplier } = body;
@@ -67,6 +69,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const denied = checkWritePermission(request, "PUT");
+    if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
     const { id, quantity, minLevel, costPerUnit, ...data } = body;
@@ -97,6 +101,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const denied = checkWritePermission(request, "DELETE");
+    if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

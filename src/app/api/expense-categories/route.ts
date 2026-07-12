@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { checkWritePermission } from "@/lib/tenant";
 
 export async function GET() {
   try {
@@ -15,6 +16,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const denied = checkWritePermission(request, "POST");
+    if (denied) return denied;
     const body = await request.json();
     const { name, nameAm, color, icon } = body;
 
@@ -40,6 +43,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const denied = checkWritePermission(request, "DELETE");
+    if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requirePolice } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
   try {
+    const denied = requirePolice(request);
+    if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const providerId = searchParams.get("providerId") || "";

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getAuthContext, getProviderFilter } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ctx = getAuthContext(request);
+    if (!ctx.isSuperuser) {
+      return NextResponse.json({ error: "Access denied. Only the primary admin can export data." }, { status: 403 });
+    }
+    const { providerId } = getProviderFilter(request);
     const [
       users,
       rooms,
@@ -20,21 +26,21 @@ export async function GET() {
       activityLogs,
       settings,
     ] = await Promise.all([
-      db.user.findMany({ select: { id: true, username: true, role: true, name: true, createdAt: true, updatedAt: true } }),
-      db.room.findMany(),
-      db.guest.findMany(),
-      db.reservation.findMany({ include: { guest: true, room: true } }),
-      db.daytimeService.findMany(),
-      db.daytimeBooking.findMany({ include: { service: true } }),
-      db.expense.findMany(),
+      db.user.findMany({ where: providerId ? { providerId } : undefined, select: { id: true, username: true, role: true, name: true, createdAt: true, updatedAt: true } }),
+      db.room.findMany({ where: providerId ? { providerId } : undefined }),
+      db.guest.findMany({ where: providerId ? { providerId } : undefined }),
+      db.reservation.findMany({ where: providerId ? { providerId } : undefined, include: { guest: true, room: true } }),
+      db.daytimeService.findMany({ where: providerId ? { providerId } : undefined }),
+      db.daytimeBooking.findMany({ where: providerId ? { providerId } : undefined, include: { service: true } }),
+      db.expense.findMany({ where: providerId ? { providerId } : undefined }),
       db.expenseCategory.findMany(),
-      db.resource.findMany(),
-      db.payment.findMany(),
-      db.notification.findMany(),
-      db.housekeepingTask.findMany({ include: { room: true } }),
-      db.review.findMany({ include: { guest: true } }),
-      db.activityLog.findMany(),
-      db.settings.findMany(),
+      db.resource.findMany({ where: providerId ? { providerId } : undefined }),
+      db.payment.findMany({ where: providerId ? { providerId } : undefined }),
+      db.notification.findMany({ where: providerId ? { providerId } : undefined }),
+      db.housekeepingTask.findMany({ where: providerId ? { providerId } : undefined, include: { room: true } }),
+      db.review.findMany({ where: providerId ? { guest: { providerId } } : undefined, include: { guest: true } }),
+      db.activityLog.findMany({ where: providerId ? { providerId } : undefined }),
+      db.settings.findMany({ where: providerId ? { providerId } : undefined }),
     ]);
 
     return NextResponse.json({
@@ -63,6 +69,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const ctx = getAuthContext(request);
+    if (!ctx.isSuperuser) {
+      return NextResponse.json({ error: "Access denied. Only the primary admin can import data." }, { status: 403 });
+    }
     const data = await request.json();
 
     if (!data || typeof data !== "object") {
