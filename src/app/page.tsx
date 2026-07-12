@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Menu, Bell } from 'lucide-react';
+import { Menu, Bell, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -116,6 +116,14 @@ export default function AppPage() {
           <h1 className="text-base font-semibold text-foreground">
             {pageTitles[currentPage]}
           </h1>
+
+          {/* Provider workspace indicator */}
+          {currentUser?.provider?.name && (
+            <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-normal border-primary/20 text-primary bg-primary/5 px-2.5 py-0.5">
+              <Building2 className="h-3 w-3" />
+              {currentUser.provider.name}
+            </Badge>
+          )}
 
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-xs text-muted-foreground sm:block">

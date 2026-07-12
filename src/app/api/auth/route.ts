@@ -25,8 +25,14 @@ export async function POST(request: NextRequest) {
 
     // Block provider users if their provider is not approved
     if (user.provider && user.provider.status !== "APPROVED") {
+      const statusMessages: Record<string, string> = {
+        PENDING: "Your provider account is pending police approval. Please wait for an officer to review and approve your registration.",
+        REJECTED: "Your provider registration has been rejected. Please contact the police office for more information.",
+        SUSPENDED: "Your provider account has been suspended. All operations are disabled until re-activation by police.",
+      };
+      const msg = statusMessages[user.provider.status] || `Your account is not active. Status: ${user.provider.status}`;
       return NextResponse.json(
-        { error: `Your account is pending approval. Provider status: ${user.provider.status}` },
+        { error: msg, providerStatus: user.provider.status, providerName: user.provider.name },
         { status: 403 }
       );
     }
