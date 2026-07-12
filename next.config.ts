@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // output: "standalone",  // Disabled: causes process to die on this platform
-  /* config options here */
+  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
