@@ -115,6 +115,7 @@ model User {
   password    String
   role        UserRole        @default(STAFF)
   name        String
+  permissions String          @default("[\"reservations\",\"guests\"]")  // JSON array of allowed pages for STAFF
   providerId  String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

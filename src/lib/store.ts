@@ -29,6 +29,7 @@ interface CurrentUser {
   username: string;
   role: string;
   name: string;
+  permissions?: string;  // JSON array for STAFF role
   providerId?: string | null;
   provider?: ProviderInfo | null;
 }

@@ -55,9 +55,9 @@ export default function AppPage() {
 
   // Role-based page access guard
   const policeOnlyPages: Page[] = ['police-dashboard', 'police-guests', 'providers'];
-  const superuserOnlyPages: Page[] = ['users', 'settings'];
-  const operatorOrAbovePages: Page[] = ['expenses', 'resources', 'reports'];
-  const operatorOnlyPages: Page[] = ['reservations', 'guests', 'daytime']; // SUPERUSER cannot access guest ops
+  const operatorAndAbovePages: Page[] = ['users', 'settings', 'reports']; // SUPERUSER + OPERATOR
+  const operatorOnlyPages: Page[] = ['housekeeping', 'expenses', 'resources']; // OPERATOR only, not SUPERUSER
+  const staffOnlyPages: Page[] = ['reservations', 'guests', 'daytime']; // STAFF only (guest operations)
 
   useEffect(() => {
     if (!currentUser) return;
@@ -73,20 +73,37 @@ export default function AppPage() {
       setCurrentPage('police-dashboard');
       return;
     }
-    // Superuser-only pages
-    if (role !== 'SUPERUSER' && superuserOnlyPages.includes(currentPage)) {
+    // Operator+ pages (SUPERUSER + OPERATOR, not STAFF)
+    if (role === 'STAFF' && operatorAndAbovePages.includes(currentPage)) {
       setCurrentPage('dashboard');
       return;
     }
-    // Operator+ pages (not STAFF)
-    if (role === 'STAFF' && operatorOrAbovePages.includes(currentPage)) {
-      setCurrentPage('dashboard');
-      return;
-    }
-    // Operator-only pages (not SUPERUSER - guest operations)
+    // Operator-only pages (OPERATOR only, not SUPERUSER or STAFF without permission)
     if (role === 'SUPERUSER' && operatorOnlyPages.includes(currentPage)) {
       setCurrentPage('dashboard');
       return;
+    }
+    if (role === 'STAFF' && operatorOnlyPages.includes(currentPage)) {
+      // STAFF needs permission for operator-only pages
+      let perms: string[] = [];
+      try { perms = JSON.parse(currentUser.permissions || '[]'); } catch { perms = []; }
+      if (!perms.includes(currentPage)) {
+        setCurrentPage('dashboard');
+        return;
+      }
+    }
+    // Staff-only pages (guest operations - only STAFF with permission)
+    if (role !== 'STAFF' && staffOnlyPages.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      return;
+    }
+    if (role === 'STAFF' && staffOnlyPages.includes(currentPage)) {
+      let perms: string[] = [];
+      try { perms = JSON.parse(currentUser.permissions || '[]'); } catch { perms = []; }
+      if (!perms.includes(currentPage)) {
+        setCurrentPage('dashboard');
+        return;
+      }
     }
   }, [currentUser, currentPage, setCurrentPage]);
 

@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       user: {
         ...userWithoutPassword,
+        permissions: userWithoutPassword.permissions || undefined,
         provider: provider || null,
       },
     });

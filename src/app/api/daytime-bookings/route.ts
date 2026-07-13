@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST");
+    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT");
+    const denied = checkWritePermission(request, "PUT", { staffOnlyWrite: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -121,7 +121,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "DELETE");
+    const denied = checkWritePermission(request, "DELETE", { staffOnlyWrite: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);

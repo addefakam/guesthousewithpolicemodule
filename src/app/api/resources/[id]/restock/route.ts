@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const denied = checkWritePermission(request, "POST");
+    const denied = checkWritePermission(request, "POST", { blockSuperuser: true });
     if (denied) return denied;
     const { id } = await params;
     const body = await request.json();

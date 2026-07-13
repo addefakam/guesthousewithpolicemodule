@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
         username: true,
         role: true,
         name: true,
+        permissions: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -29,11 +30,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { requireSuperuser: true });
+    const denied = checkWritePermission(request, "POST", { requireSuperuserOrOperator: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
-    const { username, password, role, name } = body;
+    const { username, password, role, name, permissions } = body;
 
     if (!username || !password || !name) {
       return NextResponse.json({ error: "Username, password, and name are required" }, { status: 400 });
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await db.user.create({
-      data: { username, password, role: role || "STAFF", name, providerId: providerId || "" },
+      data: { username, password, role: role || "STAFF", name, providerId: providerId || "", permissions: permissions || undefined },
     });
 
     const { password: _, ...userWithoutPassword } = user;
@@ -58,11 +59,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT", { requireSuperuser: true });
+    const denied = checkWritePermission(request, "PUT", { requireSuperuserOrOperator: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
-    const { id, username, password, role, name } = body;
+    const { id, username, password, role, name, permissions } = body;
 
     if (!id) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -73,6 +74,7 @@ export async function PUT(request: NextRequest) {
     if (password !== undefined) data.password = password;
     if (role !== undefined) data.role = role;
     if (name !== undefined) data.name = name;
+    if (permissions !== undefined) data.permissions = permissions;
 
     const user = await db.user.update({
       where: { id, ...(providerId ? { providerId } : {}) },
@@ -96,7 +98,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "DELETE", { requireSuperuser: true });
+    const denied = checkWritePermission(request, "DELETE", { requireSuperuserOrOperator: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);

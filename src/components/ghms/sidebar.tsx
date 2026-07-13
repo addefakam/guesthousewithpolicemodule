@@ -35,7 +35,8 @@ interface NavGroup {
     icon: React.ReactNode;
     superuserOnly?: boolean;
     operatorAndAbove?: boolean;  // SUPERUSER + OPERATOR, not STAFF
-    operatorOnly?: boolean;      // OPERATOR only, not SUPERUSER (guest ops)
+    operatorOnly?: boolean;      // OPERATOR only, not SUPERUSER (operational tasks)
+    staffOnly?: boolean;         // STAFF only (guest operations)
     badge?: React.ReactNode;
   }[];
 }
@@ -51,31 +52,31 @@ const providerNavGroups: NavGroup[] = [
     label: 'Operations',
     items: [
       { page: 'rooms', label: 'Rooms', icon: <BedDouble className="h-4 w-4" /> },
-      { page: 'reservations', label: 'Reservations', icon: <CalendarDays className="h-4 w-4" />, operatorOnly: true },
-      { page: 'daytime', label: 'Daytime Services', icon: <Sun className="h-4 w-4" />, operatorOnly: true },
-      { page: 'housekeeping', label: 'Housekeeping', icon: <Sparkles className="h-4 w-4" /> },
+      { page: 'reservations', label: 'Reservations', icon: <CalendarDays className="h-4 w-4" />, staffOnly: true },
+      { page: 'daytime', label: 'Daytime Services', icon: <Sun className="h-4 w-4" />, staffOnly: true },
+      { page: 'housekeeping', label: 'Housekeeping', icon: <Sparkles className="h-4 w-4" />, operatorOnly: true },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { page: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, operatorAndAbove: true },
-      { page: 'resources', label: 'Resources', icon: <Package className="h-4 w-4" />, operatorAndAbove: true },
+      { page: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, operatorOnly: true },
+      { page: 'resources', label: 'Resources', icon: <Package className="h-4 w-4" />, operatorOnly: true },
       { page: 'reports', label: 'Reports', icon: <BarChart3 className="h-4 w-4" />, operatorAndAbove: true },
     ],
   },
   {
     label: 'Management',
     items: [
-      { page: 'guests', label: 'Guests', icon: <Users className="h-4 w-4" />, operatorOnly: true },
-      { page: 'users', label: 'Users', icon: <UserCog className="h-4 w-4" />, superuserOnly: true },
+      { page: 'guests', label: 'Guests', icon: <Users className="h-4 w-4" />, staffOnly: true },
+      { page: 'users', label: 'Users', icon: <UserCog className="h-4 w-4" />, operatorAndAbove: true },
       { page: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
     ],
   },
   {
     label: 'System',
     items: [
-      { page: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" />, superuserOnly: true },
+      { page: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" />, operatorAndAbove: true },
     ],
   },
 ];
@@ -208,11 +209,26 @@ export default function Sidebar() {
       <ScrollArea className="flex-1 px-3 py-3">
         <nav className="space-y-6">
           {navGroups.map((group) => {
+            // Parse STAFF user permissions
+            let staffPermissions: string[] = [];
+            if (isStaff && currentUser?.permissions) {
+              try { staffPermissions = JSON.parse(currentUser.permissions); } catch { staffPermissions = []; }
+            }
+
             const visibleItems = group.items.filter(
-              (item) =>
-                (!item.superuserOnly || isSuperuser) &&
-                (!item.operatorAndAbove || isSuperuser || isOperator) &&
-                (!item.operatorOnly || isOperator || isStaff)
+              (item) => {
+                if (item.superuserOnly && !isSuperuser) return false;
+                if (item.operatorAndAbove && !isSuperuser && !isOperator) return false;
+                if (item.operatorOnly && !isOperator) return false;
+                if (item.staffOnly) {
+                  if (!isStaff) return false;
+                  // STAFF must have this page in their permissions
+                  if (!staffPermissions.includes(item.page)) return false;
+                  return true;
+                }
+                // No flag = visible to all provider roles
+                return true;
+              }
             );
             if (visibleItems.length === 0) return null;
 

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST");
+    const denied = checkWritePermission(request, "POST", { blockSuperuser: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT");
+    const denied = checkWritePermission(request, "PUT", { blockSuperuser: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "DELETE");
+    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const { searchParams } = new URL(request.url);

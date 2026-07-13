@@ -38,6 +38,7 @@ interface UserRecord {
   username: string;
   role: string;
   name: string;
+  permissions?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +49,17 @@ const ROLE_STYLES: Record<string, string> = {
   STAFF: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
 };
 
+const STAFF_PERMISSION_OPTIONS = [
+  { key: 'reservations', label: 'Reservations' },
+  { key: 'guests', label: 'Guests' },
+  { key: 'daytime', label: 'Daytime Services' },
+  { key: 'rooms', label: 'Rooms' },
+  { key: 'housekeeping', label: 'Housekeeping' },
+  { key: 'expenses', label: 'Expenses' },
+  { key: 'resources', label: 'Resources' },
+  { key: 'reports', label: 'Reports' },
+];
+
 export default function UsersPage() {
   const { currentUser } = useAppStore();
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -56,6 +68,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', role: 'STAFF', name: '' });
+  const [staffPerms, setStaffPerms] = useState<string[]>(['reservations', 'guests']);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -69,20 +82,31 @@ export default function UsersPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const parsePerms = (permStr?: string): string[] => {
+    if (!permStr) return [];
+    try { return JSON.parse(permStr); } catch { return []; }
+  };
 
   const openCreate = () => {
     setEditingUser(null);
     setForm({ username: '', password: '', role: 'STAFF', name: '' });
+    setStaffPerms(['reservations', 'guests']);
     setDialogOpen(true);
   };
 
   const openEdit = (user: UserRecord) => {
     setEditingUser(user);
     setForm({ username: user.username, password: '', role: user.role, name: user.name });
+    setStaffPerms(parsePerms(user.permissions));
     setDialogOpen(true);
+  };
+
+  const togglePerm = (key: string) => {
+    setStaffPerms(prev =>
+      prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]
+    );
   };
 
   const handleSave = async () => {
@@ -105,10 +129,13 @@ export default function UsersPage() {
           name: form.name,
         };
         if (form.password.trim()) data.password = form.password;
+        if (form.role === 'STAFF') data.permissions = JSON.stringify(staffPerms);
         await updateUser(editingUser.id, data);
         toast.success('User updated');
       } else {
-        await createUser(form);
+        const payload: Record<string, string> = { ...form };
+        if (form.role === 'STAFF') payload.permissions = JSON.stringify(staffPerms);
+        await createUser(payload);
         toast.success('User created');
       }
       setDialogOpen(false);
@@ -134,22 +161,6 @@ export default function UsersPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to delete user');
     }
   };
-
-  if (currentUser?.role !== 'SUPERUSER') {
-    return (
-      <div className="space-y-6">
-        <Card className="border-border/50">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold text-foreground">Access Denied</h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-              Only superusers can manage user accounts.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -181,7 +192,7 @@ export default function UsersPage() {
                     <TableHead className="text-muted-foreground">Name</TableHead>
                     <TableHead className="text-muted-foreground">Username</TableHead>
                     <TableHead className="text-muted-foreground">Role</TableHead>
-                    <TableHead className="text-muted-foreground">Created Date</TableHead>
+                    <TableHead className="text-muted-foreground hidden md:table-cell">Permissions</TableHead>
                     <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -195,8 +206,18 @@ export default function UsersPage() {
                           {user.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(user.createdAt).toLocaleDateString()}
+                      <TableCell className="hidden md:table-cell">
+                        {user.role === 'STAFF' ? (
+                          <div className="flex flex-wrap gap-1">
+                            {parsePerms(user.permissions).map(p => (
+                              <Badge key={p} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                {p}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Full access</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -274,6 +295,41 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* STAFF permission toggles */}
+            {form.role === 'STAFF' && (
+              <div className="space-y-3 rounded-lg border border-border/50 p-4 bg-muted/30">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Staff Permissions</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Select which pages this staff member can access</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {STAFF_PERMISSION_OPTIONS.map(opt => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => togglePerm(opt.key)}
+                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                        staffPerms.includes(opt.key)
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-muted-foreground hover:border-border/80'
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border flex items-center justify-center ${
+                        staffPerms.includes(opt.key) ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                      }`}>
+                        {staffPerms.includes(opt.key) && (
+                          <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>

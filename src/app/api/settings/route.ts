@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT", { requireSuperuser: true });
+    const denied = checkWritePermission(request, "PUT", { requireSuperuserOrOperator: true });
     if (denied) return denied;
     const { providerId } = getProviderFilter(request);
     const body = await request.json();
