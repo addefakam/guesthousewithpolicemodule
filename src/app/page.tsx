@@ -55,9 +55,15 @@ export default function AppPage() {
 
   // Role-based page access guard
   const policeOnlyPages: Page[] = ['police-dashboard', 'police-guests', 'providers'];
-  const operatorAndAbovePages: Page[] = ['users', 'settings', 'reports']; // SUPERUSER + OPERATOR
-  const operatorOnlyPages: Page[] = ['housekeeping', 'expenses', 'resources']; // OPERATOR only, not SUPERUSER
+  const operatorAndAbovePages: Page[] = ['users', 'settings', 'reports']; // SUPERUSER + OPERATOR + STAFF with perm
+  const operatorOnlyPages: Page[] = ['housekeeping', 'expenses', 'resources']; // OPERATOR + STAFF with perm, not SUPERUSER
   const staffOnlyPages: Page[] = ['reservations', 'guests', 'daytime']; // STAFF only (guest operations)
+
+  // Helper to parse STAFF permissions
+  const getStaffPerms = (): string[] => {
+    if (currentUser?.role !== 'STAFF') return [];
+    try { return JSON.parse(currentUser.permissions || '[]'); } catch { return []; }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -73,21 +79,23 @@ export default function AppPage() {
       setCurrentPage('police-dashboard');
       return;
     }
-    // Operator+ pages (SUPERUSER + OPERATOR, not STAFF)
+
+    const staffPerms = getStaffPerms();
+
+    // Operator+ pages (SUPERUSER + OPERATOR, STAFF only with permission)
     if (role === 'STAFF' && operatorAndAbovePages.includes(currentPage)) {
-      setCurrentPage('dashboard');
-      return;
+      if (!staffPerms.includes(currentPage)) {
+        setCurrentPage('dashboard');
+        return;
+      }
     }
-    // Operator-only pages (OPERATOR only, not SUPERUSER or STAFF without permission)
+    // Operator-only pages (OPERATOR + STAFF with perm, not SUPERUSER)
     if (role === 'SUPERUSER' && operatorOnlyPages.includes(currentPage)) {
       setCurrentPage('dashboard');
       return;
     }
     if (role === 'STAFF' && operatorOnlyPages.includes(currentPage)) {
-      // STAFF needs permission for operator-only pages
-      let perms: string[] = [];
-      try { perms = JSON.parse(currentUser.permissions || '[]'); } catch { perms = []; }
-      if (!perms.includes(currentPage)) {
+      if (!staffPerms.includes(currentPage)) {
         setCurrentPage('dashboard');
         return;
       }
@@ -98,9 +106,7 @@ export default function AppPage() {
       return;
     }
     if (role === 'STAFF' && staffOnlyPages.includes(currentPage)) {
-      let perms: string[] = [];
-      try { perms = JSON.parse(currentUser.permissions || '[]'); } catch { perms = []; }
-      if (!perms.includes(currentPage)) {
+      if (!staffPerms.includes(currentPage)) {
         setCurrentPage('dashboard');
         return;
       }

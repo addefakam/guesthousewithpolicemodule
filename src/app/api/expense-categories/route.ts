@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { blockSuperuser: true });
+    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffPermissionKey: "expenses" });
     if (denied) return denied;
     const body = await request.json();
     const { name, nameAm, color, icon } = body;
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true });
+    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true, staffPermissionKey: "expenses" });
     if (denied) return denied;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

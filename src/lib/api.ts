@@ -12,11 +12,15 @@ async function fetchAPI<T = any>(
     'Content-Type': 'application/json',
   };
 
-  // Pass role and providerId for tenant isolation
+  // Pass role, providerId, and staff permissions for tenant isolation & RBAC
   if (currentUser) {
     headers['x-user-role'] = currentUser.role;
     if (currentUser.providerId) {
       headers['x-provider-id'] = currentUser.providerId;
+    }
+    // Send STAFF permissions so API can enforce per-page access
+    if (currentUser.role === 'STAFF' && currentUser.permissions) {
+      headers['x-user-permissions'] = currentUser.permissions;
     }
   }
 

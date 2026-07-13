@@ -215,8 +215,10 @@ export default function UsersPage() {
                               </Badge>
                             ))}
                           </div>
+                        ) : user.role === 'SUPERUSER' ? (
+                          <span className="text-xs text-muted-foreground">Users & Reports</span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Full access</span>
+                          <span className="text-xs text-muted-foreground">Full Operations</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -289,9 +291,15 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SUPERUSER">SUPERUSER</SelectItem>
-                  <SelectItem value="OPERATOR">OPERATOR</SelectItem>
-                  <SelectItem value="STAFF">STAFF</SelectItem>
+                  {currentUser?.role === 'OPERATOR' ? (
+                    <SelectItem value="STAFF">STAFF</SelectItem>
+                  ) : (
+                    <>
+                      <SelectItem value="SUPERUSER">SUPERUSER</SelectItem>
+                      <SelectItem value="OPERATOR">OPERATOR</SelectItem>
+                      <SelectItem value="STAFF">STAFF</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

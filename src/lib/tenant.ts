@@ -124,7 +124,11 @@ export function blockPoliceWrites(request: Request, method: string): NextRespons
  *   requireSuperuserOrOperator — only SUPERUSER or OPERATOR can do this (users, settings)
  *   blockSuperuser             — SUPERUSER cannot access (housekeeping, expenses, resources)
  *   staffOnlyWrite             — only STAFF can write (guest operations: reservations, guests, payments)
- *   staffCanCreate             — STAFF can also POST on this route
+ *   staffCanCreate             — STAFF can also POST on this route (legacy)
+ *   staffPermissionKey         — permission key to check for STAFF users (e.g. "housekeeping")
+ *                                When set, STAFF with this permission in x-user-permissions header
+ *                                can do full CRUD on the route (applies to both blockSuperuser
+ *                                and staffOnlyWrite routes).
  */
 export function checkWritePermission(
   request: Request,
@@ -134,6 +138,7 @@ export function checkWritePermission(
     blockSuperuser?: boolean;
     staffOnlyWrite?: boolean;
     staffCanCreate?: boolean;
+    staffPermissionKey?: string;
   }
 ): NextResponse | null {
   if (method === "GET") return null;
@@ -148,16 +153,18 @@ export function checkWritePermission(
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
-  // ── Block SUPERUSER from operational routes (housekeeping, expenses, resources) ──
-  if (options?.blockSuperuser && ctx.isSuperuser) {
-    return NextResponse.json(
-      { error: "Access denied. Admins cannot perform this operation. Assign this task to an Operator or Staff member." },
-      { status: 403 }
-    );
+  // ── Parse STAFF permissions from header ──
+  let staffPermissions: string[] = [];
+  if (ctx.isStaff) {
+    const permHeader = request.headers.get("x-user-permissions") || "[]";
+    try { staffPermissions = JSON.parse(permHeader); } catch { staffPermissions = []; }
   }
+  const staffHasPerm = options?.staffPermissionKey
+    ? staffPermissions.includes(options.staffPermissionKey)
+    : false;
 
   // ── Staff-only write routes (guest operations: reservations, guests, payments, checkin/out) ──
-  // Both SUPERUSER and OPERATOR are blocked; only STAFF can write
+  // Both SUPERUSER and OPERATOR are blocked; only STAFF with permission can write
   if (options?.staffOnlyWrite) {
     if (ctx.isSuperuser) {
       return NextResponse.json(
@@ -171,15 +178,25 @@ export function checkWritePermission(
         { status: 403 }
       );
     }
-    // STAFF can create on these routes
-    if (ctx.isStaff && method === "POST") return null;
-    // STAFF cannot update/delete on guest ops (unless staffCanCreate is also set for PUT)
+    // STAFF with matching permission: allow full CRUD
+    if (ctx.isStaff && staffHasPerm) return null;
+    // STAFF with legacy staffCanCreate: allow POST only
+    if (ctx.isStaff && options?.staffCanCreate && method === "POST") return null;
+    // STAFF without permission: blocked
     if (ctx.isStaff) {
       return NextResponse.json(
-        { error: "Access denied. Staff users have limited permissions." },
+        { error: "Access denied. You do not have permission for this action." },
         { status: 403 }
       );
     }
+  }
+
+  // ── Block SUPERUSER from operational routes (housekeeping, expenses, resources) ──
+  if (options?.blockSuperuser && ctx.isSuperuser) {
+    return NextResponse.json(
+      { error: "Access denied. Admins cannot perform this operation. Assign this task to an Operator or Staff member." },
+      { status: 403 }
+    );
   }
 
   // ── Superuser-or-Operator-only actions (user management, settings) ──
@@ -190,7 +207,7 @@ export function checkWritePermission(
     );
   }
 
-  // ── Legacy: requireSuperuser (kept for backward compat, maps to requireSuperuserOrOperator) ──
+  // ── Legacy: requireSuperuser (kept for backward compat) ──
   if (options?.requireSuperuser && !ctx.isSuperuser) {
     return NextResponse.json(
       { error: "Access denied. Only the primary admin can perform this action." },
@@ -198,15 +215,14 @@ export function checkWritePermission(
     );
   }
 
-  // ── Staff create permission on specific routes ──
-  if (ctx.isStaff && options?.staffCanCreate && method === "POST") {
-    return null;
-  }
-
-  // ── Staff: all other writes blocked ──
+  // ── STAFF on operational routes (blockSuperuser): need permission for full CRUD ──
   if (ctx.isStaff) {
+    if (staffHasPerm) return null;
+    // Legacy: staffCanCreate allows POST without specific permission
+    if (options?.staffCanCreate && method === "POST") return null;
+    // All other STAFF writes blocked
     return NextResponse.json(
-      { error: "Access denied. Staff users have limited permissions." },
+      { error: "Access denied. You do not have permission for this action." },
       { status: 403 }
     );
   }

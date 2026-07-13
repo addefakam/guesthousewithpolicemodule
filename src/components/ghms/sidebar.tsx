@@ -218,8 +218,18 @@ export default function Sidebar() {
             const visibleItems = group.items.filter(
               (item) => {
                 if (item.superuserOnly && !isSuperuser) return false;
-                if (item.operatorAndAbove && !isSuperuser && !isOperator) return false;
-                if (item.operatorOnly && !isOperator) return false;
+                // operatorAndAbove: SUPERUSER + OPERATOR, and STAFF with matching permission
+                if (item.operatorAndAbove) {
+                  if (isSuperuser || isOperator) return true;
+                  if (isStaff && staffPermissions.includes(item.page)) return true;
+                  return false;
+                }
+                // operatorOnly: OPERATOR, and STAFF with matching permission (not SUPERUSER)
+                if (item.operatorOnly) {
+                  if (isOperator) return true;
+                  if (isStaff && staffPermissions.includes(item.page)) return true;
+                  return false;
+                }
                 if (item.staffOnly) {
                   if (!isStaff) return false;
                   // STAFF must have this page in their permissions
