@@ -127,7 +127,9 @@ Stage Summary:
 - Fix: Replaced with pure CSS media query rule — no Tailwind arbitrary values, no CSS variables
 - Dialog centering still works: CSS selector targets `[data-slot="dialog-content"]` when `.has-sidebar` is on `:root`
 - Fixed files: dialog.tsx, globals.css, page.tsx, error.tsx (new)
-- Build: Successful, zero errors, zero warnings---
+- Build: Successful, zero errors, zero warnings
+
+---
 Task ID: 1
 Agent: main
 Task: Fix dialog modal overlay not covering page - dialogs float on top instead of proper modal
@@ -202,3 +204,22 @@ Stage Summary:
 - STAFF: Configurable permissions — OPERATOR selects which activities from their own capabilities to assign
 - All API routes enforce permissions via `staffPermissionKey` option + `x-user-permissions` header
 - Build successful, RBAC verified via automated test suite
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Fix deployment failure — Caddyfile port conflict with platform Caddy
+
+Work Log:
+- Diagnosed deployment failure: platform's Caddy (PID 2) already binds port 81 from `/app/Caddyfile`
+- Build's `start.sh` tries `exec caddy run --config Caddyfile` which fails with "bind: permission denied" on port 81
+- Platform detects non-zero exit from start.sh and reports "problem deploying the code"
+- Fix: Changed project Caddyfile from `:81` to `:3099` to avoid conflict
+- Platform's Caddy handles port 81 → 3000 proxying; build's Caddy becomes harmless on 3099
+- Verified Next.js build succeeds with zero errors after the change
+
+Stage Summary:
+- Root cause: Dual Caddy instances competing for port 81
+- Fix: Project Caddyfile now uses port 3099 instead of 81
+- Platform Caddy (port 81) continues to proxy to Next.js (port 3000)
+- Build clean, ready for redeployment
