@@ -14,44 +14,15 @@ if [ ! -f "$DB_PATH" ]; then
 fi
 
 export NODE_ENV=production
-export PORT=4000
+export PORT=3000
 export HOSTNAME=0.0.0.0
 
-# Overwrite the .env inside next-service-dist with the ABSOLUTE database path.
-# The standalone build copies the source .env (which has a relative path that
-# breaks after chdir).  Prisma loads .env automatically and it OVERRIDES
-# shell exports, so we must write the correct value into the file itself.
+# Overwrite .env inside next-service-dist with ABSOLUTE database path.
+# Prisma loads .env automatically and it OVERRIDES shell exports,
+# so the relative path from build time would break after chdir.
 echo "DATABASE_URL=file:$DB_PATH" > next-service-dist/.env
 
 cd next-service-dist/ || exit 1
 
-# Start Next.js in background
-echo "Starting Next.js standalone server on port 4000..."
-node server.js &
-NEXT_PID=$!
-
-# Wait for Next.js to be ready (max 30 seconds)
-attempt=0
-while [ $attempt -lt 30 ]; do
-    if curl -s --max-time 2 http://localhost:4000/ > /dev/null 2>&1; then
-        echo "Next.js is ready (PID: $NEXT_PID)"
-        break
-    fi
-    if ! kill -0 "$NEXT_PID" 2>/dev/null; then
-        echo "ERROR: Next.js process died"
-        exit 1
-    fi
-    sleep 1
-    attempt=$((attempt + 1))
-done
-
-if [ $attempt -ge 30 ]; then
-    echo "ERROR: Next.js failed to start within 30 seconds"
-    exit 1
-fi
-
-# Start Caddy on port 81 (platform health check port)
-# In the publish container there is no pre-existing Caddy, so no conflict
-cd "$BUILD_DIR" || exit 1
-echo "Starting Caddy on port 81..."
-exec caddy run --config Caddyfile --adapter caddyfile
+echo "Starting Next.js on port $PORT..."
+exec node server.js
