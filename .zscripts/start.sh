@@ -15,20 +15,20 @@ if [ ! -f "$DB_PATH" ]; then
 fi
 
 export NODE_ENV=production
-export PORT=3000
+export PORT=4000
 export HOSTNAME=0.0.0.0
 
 cd next-service-dist/ || exit 1
 
 # Start Next.js in background
-echo "Starting Next.js standalone server on port 3000..."
+echo "Starting Next.js standalone server on port 4000..."
 node server.js &
 NEXT_PID=$!
 
 # Wait for Next.js to be ready (max 30 seconds)
 attempt=0
 while [ $attempt -lt 30 ]; do
-    if curl -s --max-time 2 http://localhost:3000/ > /dev/null 2>&1; then
+    if curl -s --max-time 2 http://localhost:4000/ > /dev/null 2>&1; then
         echo "Next.js is ready (PID: $NEXT_PID)"
         break
     fi
