@@ -1,22 +1,21 @@
 ---
-Task ID: 1
+Task ID: 2
 Agent: Main Agent
-Task: Redevelop GHMS project from scratch
+Task: Fix production deployment 500 errors
 
 Work Log:
-- Cleaned old source code, kept Prisma schema, shadcn/ui components, and database
-- Rebuilt core lib files: db.ts, tenant.ts (RBAC), store.ts (Zustand), api.ts (frontend API client)
-- Rebuilt all 24+ API routes with full RBAC (auth, dashboard, rooms, guests, reservations, payments, expenses, resources, housekeeping, users, settings, notifications, activity, reports, data export/import, providers, police-dashboard, police-guests, daytime-services, daytime-bookings, reviews)
-- Rebuilt all 16 page components: login, dashboard, rooms, guests, reservations, daytime, expenses, resources, housekeeping, users, reports, settings, notifications, providers, police-dashboard, police-guests, reviews
-- Rebuilt core shell: layout.tsx, page.tsx, globals.css, sidebar, page-renderer, error boundary
-- Fixed deployment: start.sh runs `node server.js` directly on PORT=81 with HOSTNAME=0.0.0.0 (no Caddy needed)
-- Fixed login bug: API response destructuring (resp.user vs treating entire response as user)
-- Verified all APIs return correct data
-- Browser verified: login flow, dashboard with KPIs/charts, rooms page, reservations page
+- Diagnosed that the old approach (writing absolute DB path to .env at runtime) could fail in publish container
+- Restructured build: database now copied INSIDE next-service-dist/db/custom.db
+- .env now uses RELATIVE path (file:db/custom.db) — no runtime write needed
+- server.js does process.chdir(__dirname), so relative path resolves correctly
+- Simplified start.sh: no .env writing, no SCRIPT_DIR calculation, just cd + run
+- Added runtime auto-detection (node vs bun) in start.sh
+- Added images.unoptimized: true to next.config.ts (eliminates sharp native dependency)
+- Tested production build with BOTH node and bun — all 200s
+- Tested: root page 200, favicon 200, auth API works, dashboard API works
 
 Stage Summary:
-- Full project rebuilt from scratch in /home/z/my-project/src/
-- All 24+ API routes functional with RBAC
-- All 16 page components rendering correctly
-- Deployment scripts simplified: no Caddy dependency, direct port 81 binding
-- Browser-verified login → dashboard → rooms → reservations flow
+- Key fix: DB path is now relative, .env is baked into build, no runtime filesystem writes needed
+- start.sh simplified from 60 lines to 30 lines
+- build.sh restructured to put db/ inside next-service-dist/
+- Production build verified: page 200, favicon 200, all APIs functional
