@@ -92,11 +92,17 @@ else
     exit 1
 fi
 
-# next-service-dist/.env 的 DATABASE_URL 会在 start.sh 启动时
-# 用绝对路径覆写，此处无需设置
+# 删除 next-service-dist/.env（start.sh 会在运行时用绝对路径重新生成）
 rm -f "$BUILD_DIR/next-service-dist/.env"
 
-# 不再复制 Caddyfile — 平台 Caddy 已负责端口 81 -> 3000 反向代理
+# 复制 Caddyfile（发布容器需要 Caddy 监听端口 81 并代理到 3000）
+if [ -f "Caddyfile" ]; then
+    echo "  - 复制 Caddyfile"
+    cp Caddyfile "$BUILD_DIR/"
+else
+    echo "❌ Caddyfile 不存在"
+    exit 1
+fi
 
 # 复制 start.sh 脚本
 echo "  - 复制 start.sh 到 $BUILD_DIR"
