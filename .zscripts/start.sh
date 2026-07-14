@@ -7,7 +7,6 @@ cd "$BUILD_DIR" || exit 1
 
 # Database is packaged alongside the build artifacts
 DB_PATH="$BUILD_DIR/db/custom.db"
-export DATABASE_URL="file:$DB_PATH"
 
 if [ ! -f "$DB_PATH" ]; then
     echo "ERROR: Database not found: $DB_PATH"
@@ -17,6 +16,12 @@ fi
 export NODE_ENV=production
 export PORT=4000
 export HOSTNAME=0.0.0.0
+
+# Overwrite the .env inside next-service-dist with the ABSOLUTE database path.
+# The standalone build copies the source .env (which has a relative path that
+# breaks after chdir).  Prisma loads .env automatically and it OVERRIDES
+# shell exports, so we must write the correct value into the file itself.
+echo "DATABASE_URL=file:$DB_PATH" > next-service-dist/.env
 
 cd next-service-dist/ || exit 1
 
