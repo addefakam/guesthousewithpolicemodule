@@ -92,17 +92,10 @@ else
     exit 1
 fi
 
-# 删除 next-service-dist/.env（start.sh 会在运行时用绝对路径重新生成）
+# 删除 next-service-dist/.env（start.sh 在运行时写入绝对路径）
 rm -f "$BUILD_DIR/next-service-dist/.env"
 
-# 复制 Caddyfile（发布容器需要 Caddy 监听端口 81 并代理到 3000）
-if [ -f "Caddyfile" ]; then
-    echo "  - 复制 Caddyfile"
-    cp Caddyfile "$BUILD_DIR/"
-else
-    echo "❌ Caddyfile 不存在"
-    exit 1
-fi
+# 不再需要 Caddyfile — Next.js 直接监听端口 81
 
 # 复制 start.sh 脚本
 echo "  - 复制 start.sh 到 $BUILD_DIR"
