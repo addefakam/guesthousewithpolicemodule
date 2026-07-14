@@ -82,10 +82,12 @@ echo "DATABASE_URL=file:db/custom.db" > "$BUILD_DIR/next-service-dist/.env"
 echo "✅ .env 已写入（相对路径，无需运行时修改）"
 cat "$BUILD_DIR/next-service-dist/.env"
 
-# 复制 start.sh 脚本
+# 复制 start.sh 和 diag.sh
 echo "  - 复制 start.sh 到 $BUILD_DIR"
 cp "$SCRIPT_DIR/start.sh" "$BUILD_DIR/start.sh"
 chmod +x "$BUILD_DIR/start.sh"
+cp "$SCRIPT_DIR/diag.sh" "$BUILD_DIR/diag.sh"
+chmod +x "$BUILD_DIR/diag.sh"
 
 # 打包
 PACKAGE_FILE="${BUILD_DIR}.tar.gz"

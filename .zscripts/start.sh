@@ -1,37 +1,41 @@
 #!/bin/sh
-# ─── GHMS Production Start Script ───
-# The database is INSIDE next-service-dist/db/custom.db
-# The .env uses a RELATIVE path (file:db/custom.db)
-# server.js does process.chdir(__dirname), so relative paths just work.
+# ─── GHMS Production Entry Point ───
+# Listens on port 81. Tries node first, then bun.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR/next-service-dist"
 
-echo "=== GHMS start ==="
-echo "DIR=$SCRIPT_DIR"
+echo "[start] begin"
+echo "[start] SCRIPT_DIR=$SCRIPT_DIR"
+echo "[start] PATH=$PATH"
 
-# Verify app exists
+# Verify
 if [ ! -f "$APP_DIR/server.js" ]; then
-  echo "ERROR: server.js not found at $APP_DIR/server.js"
+  echo "[start] ERROR: server.js missing at $APP_DIR/server.js"
+  ls -la "$SCRIPT_DIR/" 2>/dev/null
   exit 1
 fi
-
-# Verify database
 if [ ! -f "$APP_DIR/db/custom.db" ]; then
-  echo "ERROR: db not found at $APP_DIR/db/custom.db"
+  echo "[start] ERROR: db missing at $APP_DIR/db/custom.db"
   exit 1
 fi
 
 cd "$APP_DIR" || exit 1
 
-# Detect runtime: prefer node, fall back to bun
+echo "[start] CWD=$(pwd)"
+echo "[start] env file:"
+cat .env 2>/dev/null
+
+# Detect runtime
 RUNTIME=""
 if command -v node >/dev/null 2>&1; then
-  RUNTIME="node"
+  RUNTIME=node
+  echo "[start] using node $(node --version 2>&1)"
 elif command -v bun >/dev/null 2>&1; then
-  RUNTIME="bun"
+  RUNTIME=bun
+  echo "[start] using bun $(bun --version 2>&1)"
 else
-  echo "ERROR: no node or bun found. PATH=$PATH"
+  echo "[start] ERROR: no node or bun. PATH=$PATH"
   exit 1
 fi
 
@@ -39,7 +43,7 @@ export NODE_ENV=production
 export PORT=81
 export HOSTNAME=0.0.0.0
 
-echo "Runtime: $RUNTIME | Port: $PORT | CWD: $(pwd)"
-echo "Files: $(ls server.js .env db/custom.db 2>&1)"
+echo "[start] launching $RUNTIME on port $PORT ..."
 
-exec $RUNTIME server.js
+# Run with stderr merged to stdout so all logs are visible
+exec $RUNTIME server.js 2>&1
