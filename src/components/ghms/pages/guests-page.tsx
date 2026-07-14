@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetGuests,
@@ -256,9 +256,8 @@ export default function GuestsPage() {
             </TableRow>
           ) : (
             filteredGuests.map((guest) => (
-              <>
+              <Fragment key={guest.id}>
                 <TableRow
-                  key={guest.id}
                   className="cursor-pointer"
                   onClick={() => toggleExpand(guest.id)}
                 >
@@ -341,7 +340,7 @@ export default function GuestsPage() {
                 </TableRow>
                 {/* Expanded details row */}
                 {expandedId === guest.id && (
-                  <TableRow key={`${guest.id}-detail`} className="bg-gray-50/50">
+                  <TableRow className="bg-gray-50/50">
                     <TableCell colSpan={9}>
                       <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
                         <div className="flex items-start gap-2">
@@ -390,7 +389,7 @@ export default function GuestsPage() {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             ))
           )}
         </TableBody>

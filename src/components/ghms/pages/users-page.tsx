@@ -60,8 +60,6 @@ const PERMISSION_OPTIONS = [
   { value: "reservations", label: "Reservations" },
   { value: "guests", label: "Guests" },
   { value: "rooms", label: "Rooms" },
-  { value: "expenses", label: "Expenses" },
-  { value: "resources", label: "Resources" },
   { value: "housekeeping", label: "Housekeeping" },
   { value: "daytime", label: "Daytime Services" },
 ];
@@ -93,7 +91,7 @@ const emptyForm = {
 };
 
 export default function UsersPage() {
-  const { refreshKey } = useAppStore();
+  const { refreshKey, currentUser } = useAppStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -102,6 +100,10 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const visibleUsers = users.filter(
+    (u) => currentUser?.role !== "OPERATOR" || u.role === "STAFF"
+  );
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -155,12 +157,13 @@ export default function UsersPage() {
 
     setSaving(true);
     try {
+      const targetRole = currentUser?.role === "OPERATOR" ? "STAFF" : form.role;
       const payload: Record<string, unknown> = {
         username: form.username.trim(),
         name: form.name.trim(),
-        role: form.role,
+        role: targetRole,
       };
-      if (form.role === "STAFF") {
+      if (targetRole === "STAFF") {
         payload.permissions = form.permissions;
       } else {
         payload.permissions = [];
@@ -230,7 +233,7 @@ export default function UsersPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : users.length === 0 ? (
+        ) : visibleUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Users className="mb-3 h-10 w-10 opacity-40" />
             <p className="font-medium">No users found</p>
@@ -250,7 +253,7 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => {
+                {visibleUsers.map((user) => {
                   let perms: string[] = [];
                   try {
                     perms = user.permissions ? JSON.parse(user.permissions) : [];
@@ -362,21 +365,30 @@ export default function UsersPage() {
                 placeholder="Full name"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPERATOR">Operator</SelectItem>
-                  <SelectItem value="STAFF">Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {currentUser?.role === "SUPERUSER" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={form.role}
+                  onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPERATOR">Operator</SelectItem>
+                    <SelectItem value="STAFF">Staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label>Role</Label>
+                <div className="flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm shadow-sm items-center text-muted-foreground">
+                  Staff
+                </div>
+              </div>
+            )}
             {form.role === "STAFF" && (
               <div className="grid gap-2">
                 <Label>Permissions</Label>

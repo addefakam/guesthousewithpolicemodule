@@ -55,6 +55,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (auth.role === "OPERATOR" && role !== "STAFF") {
+      return NextResponse.json(
+        { error: "Operators are only permitted to manage and create Staff accounts" },
+        { status: 403 }
+      );
+    }
+
     const targetProviderId = bodyProviderId || providerId;
 
     const user = await db.user.create({

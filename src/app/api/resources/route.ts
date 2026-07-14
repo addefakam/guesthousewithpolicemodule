@@ -9,6 +9,9 @@ import {
 export async function GET(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
+    if (auth.role !== "SUPERUSER" && auth.role !== "OPERATOR" && auth.role !== "POLICE") {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
     const filter = getProviderFilter(auth);
 
     const where: Record<string, unknown> = filter.isPolice
@@ -44,10 +47,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
-    checkWritePermission(auth, {
-      blockSuperuser: true,
-      staffPermissionKey: "resources",
-    });
+    checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
     const body = await req.json();
     const {

@@ -12,10 +12,7 @@ export async function PUT(
 ) {
   try {
     const auth = getAuthContext(req);
-    checkWritePermission(auth, {
-      blockSuperuser: true,
-      staffPermissionKey: "resources",
-    });
+    checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
     const { id } = await params;
     const body = await req.json();
@@ -71,10 +68,7 @@ export async function DELETE(
 ) {
   try {
     const auth = getAuthContext(req);
-    checkWritePermission(auth, {
-      blockSuperuser: true,
-      staffPermissionKey: "resources",
-    });
+    checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
     const { id } = await params;
 

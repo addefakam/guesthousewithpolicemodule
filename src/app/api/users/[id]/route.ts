@@ -18,6 +18,21 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (auth.role === "OPERATOR") {
+      if (existing.role !== "STAFF") {
+        return NextResponse.json(
+          { error: "Operators are only permitted to manage Staff accounts" },
+          { status: 403 }
+        );
+      }
+      if (body.role && body.role !== "STAFF") {
+        return NextResponse.json(
+          { error: "Operators cannot change user roles to non-Staff" },
+          { status: 403 }
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
     if (body.username !== undefined) updateData.username = body.username;
     if (body.password) updateData.password = body.password;
@@ -68,6 +83,13 @@ export async function DELETE(
     const existing = await db.user.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (auth.role === "OPERATOR" && existing.role !== "STAFF") {
+      return NextResponse.json(
+        { error: "Operators are only permitted to delete Staff accounts" },
+        { status: 403 }
+      );
     }
 
     await db.user.delete({ where: { id } });

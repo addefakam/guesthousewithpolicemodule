@@ -77,7 +77,7 @@ const POLICE_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const OPERATOR_EXCLUDED = new Set(["users"]);
+const OPERATOR_EXCLUDED = new Set<string>([]);
 
 // ── Permission → page mapping for STAFF role ──
 const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
@@ -89,8 +89,6 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
     icon: CalendarCheck,
   },
   daytime_view: { page: "daytime", label: "Daytime", icon: Sun },
-  expenses_view: { page: "expenses", label: "Expenses", icon: Receipt },
-  resources_view: { page: "resources", label: "Resources", icon: Package },
   housekeeping_view: {
     page: "housekeeping",
     label: "Housekeeping",
@@ -263,9 +261,18 @@ function SidebarContent({
           </Avatar>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-900">
-                {user.name}
-              </p>
+              <div className="flex items-center justify-between gap-1">
+                <p className="truncate text-sm font-semibold text-slate-900">
+                  {user.name}
+                </p>
+                <button
+                  onClick={onLogout}
+                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="size-4 shrink-0" />
+                </button>
+              </div>
               <div className="mt-0.5 flex items-center gap-2">
                 <Badge
                   variant="outline"
@@ -397,7 +404,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
+      className={`relative flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
         collapsed ? "w-[68px]" : "w-64"
       }`}
     >
