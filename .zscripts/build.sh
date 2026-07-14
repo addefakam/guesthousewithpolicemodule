@@ -97,8 +97,14 @@ fi
 echo "  - 覆写 next-service-dist/.env 中的 DATABASE_URL"
 echo "DATABASE_URL=file:../db/custom.db" > "$BUILD_DIR/next-service-dist/.env"
 
-# Caddyfile 不再需要 — 平台 Caddy 已负责反向代理
-echo "ℹ️  跳过 Caddyfile（平台已内置 Caddy 反向代理）"
+# 复制 Caddyfile（发布容器需要 Caddy 在端口 81 上监听并代理到 3000）
+if [ -f "Caddyfile" ]; then
+    echo "  - 复制 Caddyfile"
+    cp Caddyfile "$BUILD_DIR/"
+else
+    echo "❌ Caddyfile 不存在，发布部署需要它来监听端口 81"
+    exit 1
+fi
 
 # 复制 start.sh 脚本
 echo "  - 复制 start.sh 到 $BUILD_DIR"
