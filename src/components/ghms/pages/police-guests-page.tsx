@@ -1,410 +1,300 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Search,
-  Eye,
-  Loader2,
-  User,
-  Phone,
-  CreditCard,
-  Globe,
-  MapPin,
-  Mail,
-  Building2,
-  BedDouble,
-  CalendarDays,
-  Hash,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/lib/store";
+import { apiPoliceGuests } from "@/lib/api";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-} from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { getPoliceGuests } from '@/lib/api';
-import { useAppStore } from '@/lib/store';
-import { toast } from 'sonner';
+  Search,
+  Phone,
+  Mail,
+  MapPin,
+  Globe,
+  CreditCard,
+  Calendar,
+  Star,
+  UserCircle,
+} from "lucide-react";
+
+interface Guest {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  idNumber: string;
+  idType: string;
+  nationality: string;
+  address: string;
+  notes: string;
+  vip: boolean;
+  totalSpent: number;
+  totalStays: number;
+  providerId: string;
+  createdAt: string;
+  updatedAt: string;
+  provider: { id: string; name: string } | null;
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", minimumFractionDigits: 0 }).format(amount);
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function PoliceGuestsPage() {
-  const { currentUser } = useAppStore();
-  const [guests, setGuests] = useState<any[]>([]);
+  const { refreshKey } = useAppStore();
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [providerFilter, setProviderFilter] = useState<string>('all');
-  const [providers, setProviders] = useState<{ id: string; name: string }[]>([]);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [detailGuest, setDetailGuest] = useState<any>(null);
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  const loadGuests = useCallback(async () => {
+  const fetchGuests = useCallback(async () => {
     try {
       setLoading(true);
-      const pId = providerFilter === 'all' ? undefined : providerFilter;
-      const data = await getPoliceGuests(search || undefined, pId);
+      const data = await apiPoliceGuests(search);
       setGuests(Array.isArray(data) ? data : []);
-      // Extract unique providers from results for filter
-      if (Array.isArray(data)) {
-        const uniqueProviders = data
-          .map((g: any) => g.provider)
-          .filter(Boolean)
-          .filter(
-            (p: any, i: number, arr: any[]) =>
-              arr.findIndex((a: any) => a.id === p.id) === i
-          );
-        setProviders(uniqueProviders);
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to load guests');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to search guests";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [search, providerFilter]);
+  }, [search]);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      loadGuests();
-    }
-  }, [currentUser?.id, loadGuests]);
+    const timer = setTimeout(() => fetchGuests(), 300);
+    return () => clearTimeout(timer);
+  }, [fetchGuests, refreshKey]);
 
-  const handleViewDetails = (guest: any) => {
-    setDetailGuest(guest);
-    setDetailDialogOpen(true);
+  const openDetail = (guest: Guest) => {
+    setSelectedGuest(guest);
+    setDetailOpen(true);
   };
-
-  const getActiveStay = (guest: any) => {
-    if (!guest.reservations || guest.reservations.length === 0) return null;
-    const now = new Date();
-    const active = guest.reservations.find((r: any) => {
-      if (!r.checkIn) return false;
-      const checkIn = new Date(r.checkIn);
-      const checkOut = r.checkOut ? new Date(r.checkOut) : null;
-      return checkIn <= now && (!checkOut || checkOut >= now);
-    });
-    return active || null;
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Skeleton className="h-10 flex-1" />
-          <Skeleton className="h-10 w-64" />
-        </div>
-        <Skeleton className="h-96 rounded-xl" />
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-4">
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-6">
+      {/* Search Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Guest Registry</h2>
+          <p className="text-sm text-muted-foreground">Search guests across all providers by name, phone, or ID number</p>
+        </div>
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by guest name, phone, or ID number..."
+            placeholder="Search guests..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 pl-8 text-sm"
+            className="pl-9"
           />
         </div>
-        <Select value={providerFilter} onValueChange={setProviderFilter}>
-          <SelectTrigger className="h-9 w-full sm:w-64 text-sm">
-            <SelectValue placeholder="All Providers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Providers</SelectItem>
-            {providers.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Guests Table */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="space-y-3 p-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : guests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <UserCircle className="mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-muted-foreground">{search ? "No guests match your search" : "No guests registered yet"}</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Guest Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    ID Number
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden xl:table-cell">
-                    ID Type
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    Nationality
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Provider
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right hidden sm:table-cell">
-                    Total Stays
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Current Stay
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right">
-                    Actions
-                  </TableHead>
+                <TableRow>
+                  <TableHead>Guest Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>ID Number</TableHead>
+                  <TableHead>ID Type</TableHead>
+                  <TableHead>Nationality</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead className="text-right">Total Spent</TableHead>
+                  <TableHead className="text-center">Stays</TableHead>
+                  <TableHead className="text-center">VIP</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {guests.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={9}
-                      className="text-center py-8 text-muted-foreground text-sm"
-                    >
-                      No guests found
+                {guests.map((guest) => (
+                  <TableRow
+                    key={guest.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => openDetail(guest)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {guest.name}
+                        {guest.vip && (
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{guest.phone}</TableCell>
+                    <TableCell className="font-mono text-sm">{guest.idNumber || "—"}</TableCell>
+                    <TableCell>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium">
+                        {guest.idType || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {guest.nationality ? (
+                          <>
+                            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">{guest.nationality}</span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-normal">
+                        {guest.provider?.name || "Unknown"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(guest.totalSpent)}</TableCell>
+                    <TableCell className="text-center">{guest.totalStays}</TableCell>
+                    <TableCell className="text-center">
+                      {guest.vip ? (
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">
+                          VIP
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  guests.map((g) => {
-                    const activeStay = getActiveStay(g);
-                    return (
-                      <TableRow key={g.id} className="border-border/50">
-                        <TableCell className="font-medium text-sm">
-                          {g.name}
-                        </TableCell>
-                        <TableCell className="text-sm hidden md:table-cell">
-                          {g.phone || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm hidden lg:table-cell">
-                          {g.idNumber || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm hidden xl:table-cell">
-                          {g.idType || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm hidden lg:table-cell">
-                          {g.nationality || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {g.provider?.name || '-'}
-                        </TableCell>
-                        <TableCell className="text-sm text-right hidden sm:table-cell">
-                          {g._count?.reservations ?? g.reservations?.length ?? 0}
-                        </TableCell>
-                        <TableCell className="text-sm hidden md:table-cell">
-                          {activeStay ? (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                              Room {activeStay.room?.number || activeStay.room?.name || 'N/A'}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={() => handleViewDetails(g)}
-                            title="View details"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
 
-      {/* Guest Details Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+      {/* Guest Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-500" />
-              Guest Details
-            </DialogTitle>
-          </DialogHeader>
-          {detailGuest && (
-            <div className="space-y-4 py-2">
-              {/* Guest Info */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{detailGuest.name}</h3>
-                <Badge
-                  className={
-                    getActiveStay(detailGuest)
-                      ? 'bg-green-100 text-green-700 hover:bg-green-100'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-100'
-                  }
-                >
-                  {getActiveStay(detailGuest) ? 'Currently Staying' : 'Not Staying'}
+              <UserCircle className="h-5 w-5" />
+              {selectedGuest?.name}
+              {selectedGuest?.vip && (
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">
+                  VIP
                 </Badge>
+              )}
+            </DialogTitle>
+            <DialogDescription>Guest details from {selectedGuest?.provider?.name || "Unknown Provider"}</DialogDescription>
+          </DialogHeader>
+          {selectedGuest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Phone</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedGuest.phone}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedGuest.email || "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">ID Number</Label>
+                  <p className="font-mono font-medium">{selectedGuest.idNumber || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">ID Type</Label>
+                  <p className="font-medium">{selectedGuest.idType || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Nationality</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedGuest.nationality || "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Registered</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    {formatDate(selectedGuest.createdAt)}
+                  </p>
+                </div>
               </div>
+
+              {selectedGuest.address && (
+                <div className="space-y-1 text-sm">
+                  <Label className="text-muted-foreground">Address</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    {selectedGuest.address}
+                  </p>
+                </div>
+              )}
 
               <Separator />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> Phone
-                  </p>
-                  <p className="text-sm">{detailGuest.phone || '-'}</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                  <CreditCard className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
+                  <p className="text-lg font-bold">{formatCurrency(selectedGuest.totalSpent)}</p>
+                  <p className="text-xs text-muted-foreground">Total Spent</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Mail className="h-3 w-3" /> Email
-                  </p>
-                  <p className="text-sm">{detailGuest.email || '-'}</p>
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                  <p className="text-lg font-bold">{selectedGuest.totalStays}</p>
+                  <p className="text-xs text-muted-foreground">Total Stays</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <CreditCard className="h-3 w-3" /> ID Number
-                  </p>
-                  <p className="text-sm">{detailGuest.idNumber || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Hash className="h-3 w-3" /> ID Type
-                  </p>
-                  <p className="text-sm">{detailGuest.idType || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Globe className="h-3 w-3" /> Nationality
-                  </p>
-                  <p className="text-sm">{detailGuest.nationality || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> Address
-                  </p>
-                  <p className="text-sm">{detailGuest.address || '-'}</p>
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Building2 className="h-3 w-3" /> Provider
-                  </p>
-                  <p className="text-sm">
-                    {detailGuest.provider?.name || '-'}
-                    {detailGuest.provider?.type && (
-                      <span className="text-muted-foreground ml-1">
-                        ({detailGuest.provider.type})
-                      </span>
-                    )}
-                  </p>
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                  <p className="text-lg font-bold">{selectedGuest.vip ? "⭐ Yes" : "—"} </p>
+                  <p className="text-xs text-muted-foreground">VIP Status</p>
                 </div>
               </div>
 
-              {/* Reservation History */}
-              {detailGuest.reservations && detailGuest.reservations.length > 0 && (
+              {selectedGuest.notes && (
                 <>
                   <Separator />
-                  <div>
-                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                      <CalendarDays className="h-4 w-4 text-blue-500" />
-                      Reservation History
-                    </h4>
-                    <div className="rounded-lg border border-border/50 overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                              Room
-                            </TableHead>
-                            <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden sm:table-cell">
-                              Check-in
-                            </TableHead>
-                            <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden sm:table-cell">
-                              Check-out
-                            </TableHead>
-                            <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                              Status
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {detailGuest.reservations.map((r: any, idx: number) => {
-                            const now = new Date();
-                            const checkIn = r.checkIn ? new Date(r.checkIn) : null;
-                            const checkOut = r.checkOut ? new Date(r.checkOut) : null;
-                            const isActive =
-                              checkIn &&
-                              checkIn <= now &&
-                              (!checkOut || checkOut >= now);
-                            const isPast = checkOut && checkOut < now;
-
-                            return (
-                              <TableRow key={idx} className="border-border/50">
-                                <TableCell className="text-sm">
-                                  <div className="flex items-center gap-1.5">
-                                    <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
-                                    {r.room?.number || r.room?.name || '-'}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-sm hidden sm:table-cell">
-                                  {checkIn
-                                    ? checkIn.toLocaleDateString()
-                                    : '-'}
-                                </TableCell>
-                                <TableCell className="text-sm hidden sm:table-cell">
-                                  {checkOut
-                                    ? checkOut.toLocaleDateString()
-                                    : '-'}
-                                </TableCell>
-                                <TableCell>
-                                  {isActive ? (
-                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
-                                      Active
-                                    </Badge>
-                                  ) : isPast ? (
-                                    <Badge variant="outline" className="text-xs">
-                                      Completed
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-xs">
-                                      Upcoming
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                  <div className="space-y-1 text-sm">
+                    <Label className="text-muted-foreground">Notes</Label>
+                    <p className="rounded-lg bg-muted/50 p-3">{selectedGuest.notes}</p>
                   </div>
                 </>
               )}

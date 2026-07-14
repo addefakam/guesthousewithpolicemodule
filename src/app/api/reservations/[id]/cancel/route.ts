@@ -1,32 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, checkWritePermission } from "@/lib/tenant";
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, { staffOnlyWrite: true });
+
     const { id } = await params;
 
     const reservation = await db.reservation.findUnique({
       where: { id },
-      include: { guest: true, room: true },
+      include: { room: { select: { id: true, status: true } } },
     });
-
     if (!reservation) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
+    if (reservation.status === "COMPLETED" || reservation.status === "CANCELLED") {
+      return NextResponse.json(
+        { error: `Cannot cancel a reservation with status '${reservation.status}'` },
+        { status: 409 }
+      );
+    }
+
+    // Update reservation status to CANCELLED
     const updated = await db.reservation.update({
       where: { id },
-      data: { status: "CANCELLED" },
-      include: { guest: true, room: true },
+      data: {
+        status: "CANCELLED",
+      },
+      include: {
+        guest: { select: { id: true, name: true, phone: true } },
+        room: { select: { id: true, number: true, name: true, type: true } },
+      },
     });
 
-    // If room was RESERVED for this reservation, free it
+    // If room was RESERVED, set it back to AVAILABLE
     if (reservation.room.status === "RESERVED") {
       await db.room.update({
         where: { id: reservation.roomId },
@@ -34,16 +47,10 @@ export async function POST(
       });
     }
 
-    await db.activityLog.create({
-      data: {
-        message: `Reservation cancelled: ${reservation.guest.name} - Room ${reservation.room.number}`,
-        type: "WARNING",
-      },
-    });
-
     return NextResponse.json(updated);
-  } catch (error) {
-    console.error("Cancel reservation error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to cancel reservation";
+    const status = message.includes("not found") ? 404 : message.includes("Cannot cancel") ? 409 : message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

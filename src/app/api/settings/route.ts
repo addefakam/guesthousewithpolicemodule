@@ -1,57 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+const DEFAULT_SETTINGS = {
+  guestHouseName: "Guest House",
+  ownerName: "",
+  address: "",
+  phone: "",
+  email: "",
+  currency: "ETB",
+  taxRate: 0,
+  language: "en",
+  logo: null,
+  checkInTime: "14:00",
+  checkOutTime: "12:00",
+};
+
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
 
-    let settings = await db.settings.findFirst({
-      where: { providerId: providerId || "" },
+    const settings = await db.settings.findFirst({
+      where: { providerId },
     });
 
     if (!settings) {
-      settings = await db.settings.create({
-        data: { providerId: providerId || "" },
-      });
+      return NextResponse.json({ ...DEFAULT_SETTINGS, providerId, id: null });
     }
 
     return NextResponse.json(settings);
-  } catch (error) {
-    console.error("Settings GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch settings";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "PUT", { requireSuperuserOrOperator: true });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
-    const pid = providerId || "";
+    const body = await req.json();
 
-    // Find existing settings for this provider, or create new
     const existing = await db.settings.findFirst({
-      where: { providerId: pid },
+      where: { providerId },
     });
+
+    const data = {
+      guestHouseName: body.guestHouseName ?? DEFAULT_SETTINGS.guestHouseName,
+      ownerName: body.ownerName ?? DEFAULT_SETTINGS.ownerName,
+      address: body.address ?? DEFAULT_SETTINGS.address,
+      phone: body.phone ?? DEFAULT_SETTINGS.phone,
+      email: body.email ?? DEFAULT_SETTINGS.email,
+      currency: body.currency ?? DEFAULT_SETTINGS.currency,
+      taxRate: body.taxRate ?? DEFAULT_SETTINGS.taxRate,
+      language: body.language ?? DEFAULT_SETTINGS.language,
+      logo: body.logo ?? DEFAULT_SETTINGS.logo,
+      checkInTime: body.checkInTime ?? DEFAULT_SETTINGS.checkInTime,
+      checkOutTime: body.checkOutTime ?? DEFAULT_SETTINGS.checkOutTime,
+      providerId,
+    };
 
     let settings;
     if (existing) {
       settings = await db.settings.update({
         where: { id: existing.id },
-        data: body,
+        data,
       });
     } else {
-      settings = await db.settings.create({
-        data: { providerId: pid, ...body },
-      });
+      settings = await db.settings.create({ data });
     }
 
     return NextResponse.json(settings);
-  } catch (error) {
-    console.error("Settings PUT error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to save settings";
+    const status =
+      message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

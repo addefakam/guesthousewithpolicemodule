@@ -1,35 +1,122 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import { Loader2 } from 'lucide-react';
-import { useAppStore, type Page } from '@/lib/store';
+import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { useAppStore } from "@/lib/store";
 
-const loadingFallback = (
-  <div className="flex items-center justify-center h-64">
-    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-  </div>
+// ── Loading fallback ──
+function PageLoader() {
+  return (
+    <div className="flex h-full min-h-[60vh] w-full items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="size-8 animate-spin text-primary/60" />
+        <p className="text-sm font-medium text-slate-400">Loading page...</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Fallback for missing pages ──
+function PageNotFound({ page }: { page: string }) {
+  return (
+    <div className="flex h-full min-h-[60vh] w-full items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+          <span className="text-2xl font-bold text-slate-300">?</span>
+        </div>
+        <h2 className="text-lg font-semibold text-slate-700">Page Not Found</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          The page &quot;{page}&quot; has not been implemented yet.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Lazy-loaded page components ──
+const lazyPage = (importFn: () => Promise<{ default: React.ComponentType }>) =>
+  lazy(importFn);
+
+const DashboardPage = lazyPage(
+  () => import("@/components/ghms/pages/dashboard-page")
+);
+const RoomsPage = lazyPage(() => import("@/components/ghms/pages/rooms-page"));
+const GuestsPage = lazyPage(() => import("@/components/ghms/pages/guests-page"));
+const ReservationsPage = lazyPage(
+  () => import("@/components/ghms/pages/reservations-page")
+);
+const DaytimePage = lazyPage(
+  () => import("@/components/ghms/pages/daytime-page")
+);
+const ExpensesPage = lazyPage(
+  () => import("@/components/ghms/pages/expenses-page")
+);
+const ResourcesPage = lazyPage(
+  () => import("@/components/ghms/pages/resources-page")
+);
+const HousekeepingPage = lazyPage(
+  () => import("@/components/ghms/pages/housekeeping-page")
+);
+const UsersPage = lazyPage(() => import("@/components/ghms/pages/users-page"));
+const ReportsPage = lazyPage(
+  () => import("@/components/ghms/pages/reports-page")
+);
+const SettingsPage = lazyPage(
+  () => import("@/components/ghms/pages/settings-page")
+);
+const NotificationsPage = lazyPage(
+  () => import("@/components/ghms/pages/notifications-page")
+);
+const ProvidersPage = lazyPage(
+  () => import("@/components/ghms/pages/providers-page")
+);
+const PoliceDashboardPage = lazyPage(
+  () => import("@/components/ghms/pages/police-dashboard-page")
+);
+const PoliceGuestsPage = lazyPage(
+  () => import("@/components/ghms/pages/police-guests-page")
+);
+const ReviewsPage = lazyPage(
+  () => import("@/components/ghms/pages/reviews-page")
 );
 
-const pageComponents: Record<Page, React.ComponentType> = {
-  dashboard: dynamic(() => import('./pages/dashboard-page'), { loading: () => loadingFallback }),
-  rooms: dynamic(() => import('./pages/rooms-page'), { loading: () => loadingFallback }),
-  guests: dynamic(() => import('./pages/guests-page'), { loading: () => loadingFallback }),
-  reservations: dynamic(() => import('./pages/reservations-page'), { loading: () => loadingFallback }),
-  daytime: dynamic(() => import('./pages/daytime-page'), { loading: () => loadingFallback }),
-  expenses: dynamic(() => import('./pages/expenses-page'), { loading: () => loadingFallback }),
-  resources: dynamic(() => import('./pages/resources-page'), { loading: () => loadingFallback }),
-  reports: dynamic(() => import('./pages/reports-page'), { loading: () => loadingFallback }),
-  housekeeping: dynamic(() => import('./pages/housekeeping-page'), { loading: () => loadingFallback }),
-  users: dynamic(() => import('./pages/users-page'), { loading: () => loadingFallback }),
-  notifications: dynamic(() => import('./pages/notifications-page'), { loading: () => loadingFallback }),
-  settings: dynamic(() => import('./pages/settings-page'), { loading: () => loadingFallback }),
-  providers: dynamic(() => import('./pages/providers-page'), { loading: () => loadingFallback }),
-  'police-guests': dynamic(() => import('./pages/police-guests-page'), { loading: () => loadingFallback }),
-  'police-dashboard': dynamic(() => import('./pages/police-dashboard-page'), { loading: () => loadingFallback }),
-};
+// ── Page registry: maps page key → lazy component ──
+const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
+  {
+    dashboard: DashboardPage,
+    rooms: RoomsPage,
+    guests: GuestsPage,
+    reservations: ReservationsPage,
+    daytime: DaytimePage,
+    expenses: ExpensesPage,
+    resources: ResourcesPage,
+    housekeeping: HousekeepingPage,
+    users: UsersPage,
+    reports: ReportsPage,
+    settings: SettingsPage,
+    notifications: NotificationsPage,
+    providers: ProvidersPage,
+    "police-dashboard": PoliceDashboardPage,
+    "police-guests": PoliceGuestsPage,
+    reviews: ReviewsPage,
+  };
 
+// ── Page Renderer ──
 export default function PageRenderer() {
-  const { currentPage } = useAppStore();
-  const PageComponent = pageComponents[currentPage];
-  return <PageComponent />;
+  const currentPage = useAppStore((s) => s.currentPage);
+
+  // If on the login page, don't render anything here — LoginPage handles its own layout
+  if (currentPage === "login") return null;
+
+  const PageComponent = PAGE_MAP[currentPage];
+
+  if (!PageComponent) {
+    return <PageNotFound page={currentPage} />;
+  }
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <PageComponent />
+    </Suspense>
+  );
 }

@@ -1,45 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkWritePermission } from "@/lib/tenant";
+import {
+  getAuthContext,
+  getProviderFilter,
+  checkWritePermission,
+} from "@/lib/tenant";
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffPermissionKey: "resources" });
-    if (denied) return denied;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, {
+      blockSuperuser: true,
+      staffPermissionKey: "resources",
+    });
+
     const { id } = await params;
-    const body = await request.json();
-    const { qty } = body;
+    const body = await req.json();
+    const { quantity } = body;
 
-    if (!qty || qty <= 0) {
-      return NextResponse.json({ error: "Quantity must be positive" }, { status: 400 });
+    if (quantity == null || Number(quantity) <= 0) {
+      return NextResponse.json(
+        { error: "A positive quantity is required" },
+        { status: 400 }
+      );
     }
 
-    const resource = await db.resource.findUnique({ where: { id } });
-    if (!resource) {
-      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+    const filter = getProviderFilter(auth);
+    const where: Record<string, unknown> = filter.isPolice
+      ? { id }
+      : { id, providerId: filter.providerId };
+
+    const existing = await db.resource.findFirst({ where });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Resource not found" },
+        { status: 404 }
+      );
     }
 
-    const updated = await db.resource.update({
+    const resource = await db.resource.update({
       where: { id },
       data: {
-        quantity: { increment: parseFloat(qty) },
+        quantity: existing.quantity + Number(quantity),
         lastRestocked: new Date(),
       },
     });
 
-    await db.activityLog.create({
-      data: {
-        message: `Restocked ${resource.name}: +${qty} ${resource.unit} (now ${updated.quantity})`,
-        type: "INFO",
-      },
-    });
-
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error("Restock error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ resource });
+  } catch (error: unknown) {
+    console.error("Restock resource error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    const status =
+      message.includes("permission") || message.includes("cannot")
+        ? 403
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

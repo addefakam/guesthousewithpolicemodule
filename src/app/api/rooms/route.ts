@@ -1,46 +1,86 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import {
+  getAuthContext,
+  getProviderFilter,
+  checkWritePermission,
+} from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const type = searchParams.get("type");
+    const auth = getAuthContext(req);
+    const filter = getProviderFilter(auth);
 
-    const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (status) where.status = status;
-    if (type) where.type = type;
+    const where: Record<string, unknown> = filter.isPolice
+      ? {}
+      : { providerId: filter.providerId };
+
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get("q");
+
+    if (q) {
+      where.OR = [
+        { number: { contains: q } },
+        { name: { contains: q } },
+      ];
+    }
 
     const rooms = await db.room.findMany({
       where,
-      orderBy: { number: "asc" },
+      orderBy: { floor: "asc" },
     });
-    return NextResponse.json(rooms);
+
+    return NextResponse.json({ rooms });
   } catch (error) {
-    console.error("Rooms GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("List rooms error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffPermissionKey: "rooms" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { number, name, type, pricePerNight, floor, capacity, amenities, description, image, status } = body;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, { staffPermissionKey: "rooms" });
 
-    if (!number || !name || !type || pricePerNight === undefined) {
-      return NextResponse.json({ error: "Number, name, type, and pricePerNight are required" }, { status: 400 });
+    const body = await req.json();
+    const {
+      number,
+      name,
+      type,
+      pricePerNight,
+      floor,
+      capacity,
+      amenities,
+      description,
+      image,
+    } = body;
+
+    if (!number || !name || !type || pricePerNight == null || floor == null || capacity == null) {
+      return NextResponse.json(
+        { error: "Missing required fields: number, name, type, pricePerNight, floor, capacity" },
+        { status: 400 }
+      );
     }
 
-    // Check uniqueness scoped to provider (@@unique [number, providerId])
-    const existing = await db.room.findFirst({ where: { number, providerId: providerId || "" } });
+    if (!auth.providerId) {
+      return NextResponse.json(
+        { error: "No provider assigned to this user" },
+        { status: 403 }
+      );
+    }
+
+    // Check for duplicate room number within the same provider
+    const existing = await db.room.findFirst({
+      where: { number, providerId: auth.providerId },
+    });
     if (existing) {
-      return NextResponse.json({ error: "Room number already exists for this provider" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Room number already exists for this provider" },
+        { status: 409 }
+      );
     }
 
     const room = await db.room.create({
@@ -48,85 +88,24 @@ export async function POST(request: NextRequest) {
         number,
         name,
         type,
-        pricePerNight: parseFloat(pricePerNight),
-        floor: floor || 1,
-        capacity: capacity || 1,
-        amenities: amenities || "",
+        pricePerNight: Number(pricePerNight),
+        floor: Number(floor),
+        capacity: Number(capacity),
+        amenities: amenities || "[]",
         description: description || "",
         image: image || null,
-        status: status || "AVAILABLE",
-        providerId: providerId || "",
+        providerId: auth.providerId,
       },
     });
 
-    return NextResponse.json(room, { status: 201 });
-  } catch (error) {
-    console.error("Rooms POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { staffPermissionKey: "rooms" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, ...data } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Room ID is required" }, { status: 400 });
-    }
-
-    if (data.pricePerNight !== undefined) {
-      data.pricePerNight = parseFloat(data.pricePerNight);
-    }
-    if (data.floor !== undefined) {
-      data.floor = parseInt(data.floor);
-    }
-    if (data.capacity !== undefined) {
-      data.capacity = parseInt(data.capacity);
-    }
-
-    const room = await db.room.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-    });
-
-    return NextResponse.json(room);
+    return NextResponse.json({ room }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Rooms PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    }
-    if (prismaError.code === "P2002") {
-      return NextResponse.json({ error: "Room number already exists" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { staffPermissionKey: "rooms" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Room ID is required" }, { status: 400 });
-    }
-
-    await db.room.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Rooms DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Create room error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    const status = message.includes("permission") || message.includes("cannot")
+      ? 403
+      : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

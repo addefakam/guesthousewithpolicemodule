@@ -1,561 +1,490 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Building2,
-  Search,
-  Check,
-  X,
-  Eye,
-  Ban,
-  RotateCcw,
-  Loader2,
-  Phone,
-  MapPin,
-  FileText,
-  User,
-  Calendar,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/lib/store";
+import { apiGetProviders, apiUpdateProvider } from "@/lib/api";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-} from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+} from "@/components/ui/dialog";
 import {
-  getProviders,
-  approveProvider,
-  rejectProvider,
-  suspendProvider,
-} from '@/lib/api';
-import { useAppStore } from '@/lib/store';
-import { toast } from 'sonner';
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
+  Building2,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Eye,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  Calendar,
+  ShieldCheck,
+} from "lucide-react";
 
-type StatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+interface Provider {
+  id: string;
+  name: string;
+  ownerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  type: string;
+  licenseNo: string;
+  licenseFile: string;
+  status: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectionReason: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-const statusFilters: { label: string; value: StatusFilter }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Approved', value: 'APPROVED' },
-  { label: 'Rejected', value: 'REJECTED' },
-  { label: 'Suspended', value: 'SUSPENDED' },
-];
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  PENDING: { label: "Pending", variant: "secondary" },
+  APPROVED: { label: "Approved", variant: "default" },
+  REJECTED: { label: "Rejected", variant: "destructive" },
+  SUSPENDED: { label: "Suspended", variant: "outline" },
+};
 
-function statusBadge(status: string) {
-  switch (status) {
-    case 'APPROVED':
-      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">{status}</Badge>;
-    case 'PENDING':
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">{status}</Badge>;
-    case 'REJECTED':
-      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{status}</Badge>;
-    case 'SUSPENDED':
-      return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{status}</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200",
+  APPROVED: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200",
+  REJECTED: "bg-red-100 text-red-800 hover:bg-red-100 border-red-200",
+  SUSPENDED: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status] || { label: status, variant: "secondary" as const };
+  return (
+    <Badge variant={cfg.variant} className={STATUS_BADGE_CLASS[status] || ""}>
+      {cfg.label}
+    </Badge>
+  );
 }
 
 export default function ProvidersPage() {
-  const { currentUser } = useAppStore();
-  const [providers, setProviders] = useState<any[]>([]);
+  const { refreshKey, triggerRefresh } = useAppStore();
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<StatusFilter>('ALL');
-  const [search, setSearch] = useState('');
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectId, setRejectId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejecting, setRejecting] = useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [detailProvider, setDetailProvider] = useState<any>(null);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  const loadProviders = useCallback(async () => {
+  // Action dialogs
+  const [rejectDialog, setRejectDialog] = useState<Provider | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [confirmAction, setConfirmAction] = useState<{ provider: Provider; action: string } | null>(null);
+  const [actioning, setActioning] = useState(false);
+
+  const fetchProviders = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getProviders();
+      const data = await apiGetProviders();
       setProviders(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to load providers');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load providers";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      loadProviders();
-    }
-  }, [currentUser?.id, loadProviders]);
+    fetchProviders();
+  }, [fetchProviders, refreshKey]);
 
-  const handleApprove = async (id: string) => {
-    try {
-      await approveProvider(id);
-      toast.success('Provider approved');
-      loadProviders();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to approve provider');
-    }
+  const openDetail = (provider: Provider) => {
+    setSelectedProvider(provider);
+    setDetailOpen(true);
   };
 
-  const handleSuspend = async (id: string) => {
-    try {
-      await suspendProvider(id);
-      toast.success('Provider suspended');
-      loadProviders();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to suspend provider');
-    }
+  const openReject = (provider: Provider) => {
+    setRejectDialog(provider);
+    setRejectReason("");
   };
 
-  const handleReactivate = async (id: string) => {
-    try {
-      await approveProvider(id);
-      toast.success('Provider reactivated');
-      loadProviders();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to reactivate provider');
-    }
-  };
-
-  const handleRejectClick = (id: string) => {
-    setRejectId(id);
-    setRejectReason('');
-    setRejectDialogOpen(true);
-  };
-
-  const handleRejectConfirm = async () => {
-    if (!rejectId) return;
-    if (!rejectReason.trim()) {
-      toast.error('Please provide a rejection reason');
+  const handleReject = async () => {
+    if (!rejectDialog || !rejectReason.trim()) {
+      toast.error("Rejection reason is required");
       return;
     }
     try {
-      setRejecting(true);
-      await rejectProvider(rejectId, rejectReason.trim());
-      toast.success('Provider rejected');
-      setRejectDialogOpen(false);
-      setRejectId(null);
-      setRejectReason('');
-      loadProviders();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to reject provider');
+      setActioning(true);
+      await apiUpdateProvider(rejectDialog.id, { status: "REJECTED", rejectionReason: rejectReason.trim() });
+      toast.success("Provider rejected");
+      setRejectDialog(null);
+      setRejectReason("");
+      triggerRefresh();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to reject provider";
+      toast.error(message);
     } finally {
-      setRejecting(false);
+      setActioning(false);
     }
   };
 
-  const handleViewDetails = (provider: any) => {
-    setDetailProvider(provider);
-    setDetailDialogOpen(true);
+  const handleStatusAction = async (provider: Provider, status: string) => {
+    try {
+      setActioning(true);
+      await apiUpdateProvider(provider.id, { status });
+      toast.success(`Provider ${status.toLowerCase()}`);
+      setConfirmAction(null);
+      triggerRefresh();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update provider";
+      toast.error(message);
+    } finally {
+      setActioning(false);
+    }
   };
 
-  const filteredProviders = providers.filter((p) => {
-    const matchesStatus = activeFilter === 'ALL' || p.status === activeFilter;
-    const matchesSearch =
-      !search ||
-      p.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.ownerName?.toLowerCase().includes(search.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Skeleton className="h-10 flex-1" />
-          <Skeleton className="h-10 w-64" />
-        </div>
-        <Skeleton className="h-96 rounded-xl" />
-      </div>
-    );
-  }
+  const approvedCount = providers.filter((p) => p.status === "APPROVED").length;
+  const pendingCount = providers.filter((p) => p.status === "PENDING").length;
 
   return (
-    <div className="space-y-4">
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          {statusFilters.map((f) => (
-            <Button
-              key={f.value}
-              variant={activeFilter === f.value ? 'default' : 'outline'}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => setActiveFilter(f.value)}
-            >
-              {f.label}
-              {f.value !== 'ALL' && (
-                <span className="ml-1.5 text-[10px] opacity-70">
-                  ({providers.filter((p) => p.status === f.value).length})
-                </span>
-              )}
-            </Button>
-          ))}
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+              <Building2 className="h-5 w-5 text-slate-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Providers</p>
+              <p className="text-2xl font-bold">{providers.length}</p>
+            </div>
+          </div>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 pl-8 text-sm"
-          />
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50">
+              <ShieldCheck className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pending Review</p>
+              <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Providers Table */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="border-b px-6 py-4">
+          <h2 className="text-lg font-semibold">Provider Applications</h2>
+          <p className="text-sm text-muted-foreground">Manage guest house registrations and licensing</p>
+        </div>
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="space-y-3 p-6">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : providers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Building2 className="mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-muted-foreground">No providers registered yet</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Owner
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    Address
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden xl:table-cell">
-                    License
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Status
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right hidden sm:table-cell">
-                    Rooms
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right hidden md:table-cell">
-                    Guests
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    Created
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right">
-                    Actions
-                  </TableHead>
+                <TableRow>
+                  <TableHead>Provider Name</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>License No</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProviders.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={11}
-                      className="text-center py-8 text-muted-foreground text-sm"
-                    >
-                      No providers found
+                {providers.map((provider) => (
+                  <TableRow
+                    key={provider.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => openDetail(provider)}
+                  >
+                    <TableCell className="font-medium">{provider.name}</TableCell>
+                    <TableCell>{provider.ownerName}</TableCell>
+                    <TableCell>{provider.phone}</TableCell>
+                    <TableCell className="max-w-[180px] truncate">{provider.email || "—"}</TableCell>
+                    <TableCell>
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium">
+                        {provider.type.replace(/_/g, " ")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{provider.licenseNo || "—"}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={provider.status} />
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {provider.status !== "APPROVED" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                            onClick={() => setConfirmAction({ provider, action: "APPROVED" })}
+                          >
+                            <CheckCircle2 className="mr-1 h-4 w-4" />
+                            <span className="hidden sm:inline">Approve</span>
+                          </Button>
+                        )}
+                        {provider.status !== "REJECTED" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => openReject(provider)}
+                          >
+                            <XCircle className="mr-1 h-4 w-4" />
+                            <span className="hidden sm:inline">Reject</span>
+                          </Button>
+                        )}
+                        {provider.status === "APPROVED" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                            onClick={() => setConfirmAction({ provider, action: "SUSPENDED" })}
+                          >
+                            <Ban className="mr-1 h-4 w-4" />
+                            <span className="hidden sm:inline">Suspend</span>
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredProviders.map((p) => (
-                    <TableRow key={p.id} className="border-border/50">
-                      <TableCell className="font-medium text-sm">
-                        {p.name}
-                      </TableCell>
-                      <TableCell className="text-sm">{p.type || '-'}</TableCell>
-                      <TableCell className="text-sm hidden md:table-cell">
-                        {p.ownerName || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell">
-                        {p.phone || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell max-w-[200px] truncate">
-                        {p.address || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm hidden xl:table-cell">
-                        {p.licenseNo || '-'}
-                        {p.licenseFile && (
-                          <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 font-medium">
-                            Doc
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{statusBadge(p.status)}</TableCell>
-                      <TableCell className="text-sm text-right hidden sm:table-cell">
-                        {p._count?.rooms ?? p.totalRooms ?? 0}
-                      </TableCell>
-                      <TableCell className="text-sm text-right hidden md:table-cell">
-                        {p._count?.guests ?? p.totalGuests ?? 0}
-                      </TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell">
-                        {p.createdAt
-                          ? new Date(p.createdAt).toLocaleDateString()
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={() => handleViewDetails(p)}
-                            title="View details"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          {p.status === 'PENDING' && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleApprove(p.id)}
-                              >
-                                <Check className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => handleRejectClick(p.id)}
-                              >
-                                <X className="h-3 w-3 mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          {p.status === 'APPROVED' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
-                              onClick={() => handleSuspend(p.id)}
-                            >
-                              <Ban className="h-3 w-3 mr-1" />
-                              Suspend
-                            </Button>
-                          )}
-                          {(p.status === 'REJECTED' || p.status === 'SUSPENDED') && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                              onClick={() => handleReactivate(p.id)}
-                            >
-                              <RotateCcw className="h-3 w-3 mr-1" />
-                              Reactivate
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
 
-      {/* Rejection Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Provider Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <X className="h-5 w-5 text-red-500" />
-              Reject Provider
+              <Building2 className="h-5 w-5" />
+              {selectedProvider?.name}
             </DialogTitle>
+            <DialogDescription>Provider registration details</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="reject-reason">
-                Please provide a reason for rejection
-              </Label>
-              <Textarea
-                id="reject-reason"
-                placeholder="Enter rejection reason..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setRejectDialogOpen(false)}
-              disabled={rejecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={handleRejectConfirm}
-              disabled={rejecting}
-            >
-              {rejecting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Reject Provider
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Provider Details Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-blue-500" />
-              Provider Details
-            </DialogTitle>
-          </DialogHeader>
-          {detailProvider && (
-            <div className="space-y-4 py-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                  {detailProvider.name}
-                </h3>
-                {statusBadge(detailProvider.status)}
-              </div>
-              <Separator />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {selectedProvider && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Type
-                  </p>
-                  <p className="text-sm">{detailProvider.type || '-'}</p>
+                  <Label className="text-muted-foreground">Owner Name</Label>
+                  <p className="font-medium">{selectedProvider.ownerName}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Owner
-                  </p>
-                  <p className="text-sm">{detailProvider.ownerName || '-'}</p>
+                  <Label className="text-muted-foreground">Status</Label>
+                  <div>
+                    <StatusBadge status={selectedProvider.status} />
+                  </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> Phone
-                  </p>
-                  <p className="text-sm">{detailProvider.phone || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Email
-                  </p>
-                  <p className="text-sm">{detailProvider.email || '-'}</p>
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> Address
-                  </p>
-                  <p className="text-sm">{detailProvider.address || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> License No.
-                  </p>
-                  <p className="text-sm">{detailProvider.licenseNo || '-'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Created
-                  </p>
-                  <p className="text-sm">
-                    {detailProvider.createdAt
-                      ? new Date(detailProvider.createdAt).toLocaleDateString()
-                      : '-'}
+                  <Label className="text-muted-foreground">Phone</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedProvider.phone}
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <Building2 className="h-3 w-3" /> Rooms
-                  </p>
-                  <p className="text-sm">
-                    {detailProvider._count?.rooms ?? detailProvider.totalRooms ?? 0}
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedProvider.email || "—"}
                   </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                    <User className="h-3 w-3" /> Guests
-                  </p>
-                  <p className="text-sm">
-                    {detailProvider._count?.guests ?? detailProvider.totalGuests ?? 0}
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-muted-foreground">Address</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedProvider.address || "—"}
                   </p>
                 </div>
               </div>
-              {detailProvider.licenseFile && (
+              <Separator />
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Type</Label>
+                  <p className="font-medium">{selectedProvider.type.replace(/_/g, " ")}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">License No</Label>
+                  <p className="font-mono font-medium">{selectedProvider.licenseNo || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-muted-foreground">Registered</Label>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    {formatDate(selectedProvider.createdAt)}
+                  </p>
+                </div>
+                {selectedProvider.approvedAt && (
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Approved At</Label>
+                    <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
+                  </div>
+                )}
+                {selectedProvider.approvedBy && (
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Approved By</Label>
+                    <p className="font-medium">{selectedProvider.approvedBy}</p>
+                  </div>
+                )}
+              </div>
+              {selectedProvider.rejectionReason && (
                 <>
                   <Separator />
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase flex items-center gap-1">
-                      <FileText className="h-3 w-3" /> Attached License Document
-                    </p>
-                    <div className="rounded-lg border border-border/50 overflow-hidden">
-                      {detailProvider.licenseFile.startsWith('data:image/') ? (
-                        <img
-                          src={detailProvider.licenseFile}
-                          alt="License document"
-                          className="max-h-64 w-full object-contain bg-gray-50"
-                        />
-                      ) : (
-                        <div className="p-4 bg-gray-50 flex items-center gap-3">
-                          <FileText className="h-10 w-10 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">License Document</p>
-                            <p className="text-xs text-muted-foreground">PDF file - Click to view</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <a
-                      href={detailProvider.licenseFile}
-                      download={`license_${detailProvider.name.replace(/\s+/g, '_')}.${detailProvider.licenseFile.includes('pdf') ? 'pdf' : 'jpg'}`}
-                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                    >
-                      <FileText className="h-3 w-3" />
-                      Download License
-                    </a>
+                  <div className="space-y-1 text-sm">
+                    <Label className="text-red-600">Rejection Reason</Label>
+                    <p className="rounded-lg bg-red-50 p-3 text-red-800">{selectedProvider.rejectionReason}</p>
                   </div>
                 </>
               )}
-              {detailProvider.rejectionReason && (
-                <>
-                  <Separator />
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-red-500 uppercase">
-                      Rejection Reason
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {detailProvider.rejectionReason}
-                    </p>
-                  </div>
-                </>
+              {selectedProvider.licenseFile && (
+                <div className="space-y-1 text-sm">
+                  <Label className="text-muted-foreground">License Document</Label>
+                  <a
+                    href={selectedProvider.licenseFile}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View License File
+                  </a>
+                </div>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-5 w-5" />
+              Reject Provider
+            </DialogTitle>
+            <DialogDescription>
+              Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-reason">Rejection Reason *</Label>
+            <Textarea
+              id="reject-reason"
+              placeholder="Enter the reason for rejection..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReject}
+              disabled={actioning || !rejectReason.trim()}
+            >
+              {actioning ? "Rejecting..." : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Approve/Suspend Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.action === "APPROVED" ? "Approve Provider" : "Suspend Provider"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.action === "APPROVED"
+                ? `Are you sure you want to approve "${confirmAction?.provider.name}"? The provider will be able to operate.`
+                : `Are you sure you want to suspend "${confirmAction?.provider.name}"? The provider will lose access until re-approved.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actioning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)
+              }
+              disabled={actioning}
+              className={
+                confirmAction?.action === "APPROVED"
+                  ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
+                  : "bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
+              }
+            >
+              {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : "Suspend"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

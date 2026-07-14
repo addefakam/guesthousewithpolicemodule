@@ -1,26 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Shield, Loader2, UserCog } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/lib/store";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  apiGetUsers,
+  apiCreateUser,
+  apiUpdateUser,
+  apiDeleteUser,
+} from "@/lib/api";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -28,312 +22,376 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { getUsers, createUser, updateUser, deleteUser } from '@/lib/api';
-import { useAppStore } from '@/lib/store';
-import { toast } from 'sonner';
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, MoreVertical, Pencil, Trash2, Users } from "lucide-react";
 
-interface UserRecord {
+const PERMISSION_OPTIONS = [
+  { value: "reservations", label: "Reservations" },
+  { value: "guests", label: "Guests" },
+  { value: "rooms", label: "Rooms" },
+  { value: "expenses", label: "Expenses" },
+  { value: "resources", label: "Resources" },
+  { value: "housekeeping", label: "Housekeeping" },
+  { value: "daytime", label: "Daytime Services" },
+];
+
+const ROLE_COLORS: Record<string, string> = {
+  SUPERUSER: "bg-purple-100 text-purple-700 border-purple-200",
+  OPERATOR: "bg-blue-100 text-blue-700 border-blue-200",
+  STAFF: "bg-green-100 text-green-700 border-green-200",
+  POLICE: "bg-red-100 text-red-700 border-red-200",
+};
+
+interface User {
   id: string;
   username: string;
-  role: string;
   name: string;
-  permissions?: string;
+  role: string;
+  permissions: string;
+  providerId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-const ROLE_STYLES: Record<string, string> = {
-  SUPERUSER: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  OPERATOR: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  STAFF: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+const emptyForm = {
+  username: "",
+  password: "",
+  name: "",
+  role: "STAFF",
+  permissions: [] as string[],
 };
 
-const STAFF_PERMISSION_OPTIONS = [
-  { key: 'reservations', label: 'Reservations' },
-  { key: 'guests', label: 'Guests' },
-  { key: 'daytime', label: 'Daytime Services' },
-  { key: 'rooms', label: 'Rooms' },
-  { key: 'housekeeping', label: 'Housekeeping' },
-  { key: 'expenses', label: 'Expenses' },
-  { key: 'resources', label: 'Resources' },
-  { key: 'reports', label: 'Reports' },
-];
-
 export default function UsersPage() {
-  const { currentUser } = useAppStore();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+  const { refreshKey } = useAppStore();
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ username: '', password: '', role: 'STAFF', name: '' });
-  const [staffPerms, setStaffPerms] = useState<string[]>(['reservations', 'guests']);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getUsers();
+      const data = await apiGetUsers();
       setUsers(data);
     } catch {
-      toast.error('Failed to load users');
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
-
-  const parsePerms = (permStr?: string): string[] => {
-    if (!permStr) return [];
-    try { return JSON.parse(permStr); } catch { return []; }
-  };
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers, refreshKey]);
 
   const openCreate = () => {
     setEditingUser(null);
-    setForm({ username: '', password: '', role: 'STAFF', name: '' });
-    setStaffPerms(['reservations', 'guests']);
+    setForm(emptyForm);
     setDialogOpen(true);
   };
 
-  const openEdit = (user: UserRecord) => {
+  const openEdit = (user: User) => {
     setEditingUser(user);
-    setForm({ username: user.username, password: '', role: user.role, name: user.name });
-    setStaffPerms(parsePerms(user.permissions));
+    let perms: string[] = [];
+    try {
+      perms = user.permissions ? JSON.parse(user.permissions) : [];
+    } catch {
+      perms = [];
+    }
+    setForm({
+      username: user.username,
+      password: "",
+      name: user.name,
+      role: user.role,
+      permissions: perms,
+    });
     setDialogOpen(true);
-  };
-
-  const togglePerm = (key: string) => {
-    setStaffPerms(prev =>
-      prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]
-    );
   };
 
   const handleSave = async () => {
-    if (!form.username.trim() || !form.name.trim()) {
-      toast.error('Username and Name are required');
+    if (!form.username.trim() || !form.name.trim() || !form.role) {
+      toast.error("Username, name, and role are required");
       return;
     }
-    if (!editingUser && !form.password.trim()) {
-      toast.error('Password is required for new users');
+    if (!editingUser && !form.password) {
+      toast.error("Password is required for new users");
       return;
     }
 
     setSaving(true);
     try {
-      if (editingUser) {
-        const data: Record<string, string> = {
-          id: editingUser.id,
-          username: form.username,
-          role: form.role,
-          name: form.name,
-        };
-        if (form.password.trim()) data.password = form.password;
-        if (form.role === 'STAFF') data.permissions = JSON.stringify(staffPerms);
-        await updateUser(editingUser.id, data);
-        toast.success('User updated');
+      const payload: Record<string, unknown> = {
+        username: form.username.trim(),
+        name: form.name.trim(),
+        role: form.role,
+      };
+      if (form.role === "STAFF") {
+        payload.permissions = form.permissions;
       } else {
-        const payload: Record<string, string> = { ...form };
-        if (form.role === 'STAFF') payload.permissions = JSON.stringify(staffPerms);
-        await createUser(payload);
-        toast.success('User created');
+        payload.permissions = [];
+      }
+      if (form.password) payload.password = form.password;
+
+      if (editingUser) {
+        await apiUpdateUser(editingUser.id, payload);
+        toast.success("User updated");
+      } else {
+        await apiCreateUser(payload);
+        toast.success("User created");
       }
       setDialogOpen(false);
       fetchUsers();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save user');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save user";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (user: UserRecord) => {
-    if (user.id === currentUser?.id) {
-      toast.error('Cannot delete your own account');
-      return;
-    }
-    if (!confirm(`Delete user "${user.name}" (${user.username})?`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteUser(user.id);
-      toast.success('User deleted');
+      await apiDeleteUser(deleteTarget.id);
+      toast.success("User deleted");
+      setDeleteTarget(null);
       fetchUsers();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete user');
+    } catch {
+      toast.error("Failed to delete user");
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const togglePermission = (perm: string) => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: prev.permissions.includes(perm)
+        ? prev.permissions.filter((p) => p !== perm)
+        : [...prev.permissions, perm],
+    }));
   };
 
   return (
     <div className="space-y-6">
-      <Card className="border-border/50">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <UserCog className="h-5 w-5 text-primary" />
-              User Management
-            </CardTitle>
-            <Button onClick={openCreate} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add User
-            </Button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage user accounts, roles, and permissions.
+          </p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
+
+      <div className="rounded-lg border bg-card">
+        {loading ? (
+          <div className="p-6 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : users.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">No users found</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/50 hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">Name</TableHead>
-                    <TableHead className="text-muted-foreground">Username</TableHead>
-                    <TableHead className="text-muted-foreground">Role</TableHead>
-                    <TableHead className="text-muted-foreground hidden md:table-cell">Permissions</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id} className="border-border/50">
-                      <TableCell className="font-medium text-foreground">{user.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{user.username}</TableCell>
+        ) : users.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Users className="mb-3 h-10 w-10 opacity-40" />
+            <p className="font-medium">No users found</p>
+            <p className="text-sm">Create a user to get started.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto max-h-[calc(100vh-220px)] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead className="w-[60px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => {
+                  let perms: string[] = [];
+                  try {
+                    perms = user.permissions ? JSON.parse(user.permissions) : [];
+                  } catch {
+                    perms = [];
+                  }
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell>{user.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={ROLE_STYLES[user.role] || ''}>
+                        <Badge
+                          variant="outline"
+                          className={ROLE_COLORS[user.role] || ""}
+                        >
                           {user.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {user.role === 'STAFF' ? (
+                      <TableCell className="text-muted-foreground text-sm">
+                        {user.providerId ? user.providerId.slice(0, 8) + "..." : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {user.role === "STAFF" ? (
                           <div className="flex flex-wrap gap-1">
-                            {parsePerms(user.permissions).map(p => (
-                              <Badge key={p} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                {p}
-                              </Badge>
-                            ))}
+                            {perms.length > 0 ? (
+                              perms.map((p) => (
+                                <Badge key={p} variant="secondary" className="text-xs">
+                                  {p}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None</span>
+                            )}
                           </div>
-                        ) : user.role === 'SUPERUSER' ? (
-                          <span className="text-xs text-muted-foreground">Users & Reports</span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">Full Operations</span>
+                          <span className="text-xs text-muted-foreground">All access</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Edit">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(user)}
-                            disabled={user.id === currentUser?.id}
-                            title={user.id === currentUser?.id ? 'Cannot delete yourself' : 'Delete'}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(user)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteTarget(user)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
-      {/* Add/Edit Dialog */}
+      {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="border-border/50 bg-card sm:max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit User' : 'Add New User'}</DialogTitle>
+            <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
+            <DialogDescription>
+              {editingUser
+                ? "Update user details. Leave password blank to keep unchanged."
+                : "Create a new user account."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="user-name">Name *</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="user-name"
-                placeholder="Full name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="user-username">Username *</Label>
-              <Input
-                id="user-username"
-                placeholder="Username"
+                id="username"
                 value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                placeholder="Enter username"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="user-password">
-                Password {editingUser ? '(leave blank to keep)' : '*'}
+              <Label htmlFor="password">
+                Password {editingUser && <span className="text-muted-foreground">(optional)</span>}
               </Label>
               <Input
-                id="user-password"
+                id="password"
                 type="password"
-                placeholder={editingUser ? 'New password (optional)' : 'Password'}
                 value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder={editingUser ? "Leave blank to keep current" : "Enter password"}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="user-role">Role *</Label>
-              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                <SelectTrigger id="user-role">
-                  <SelectValue />
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={form.role}
+                onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currentUser?.role === 'OPERATOR' ? (
-                    <SelectItem value="STAFF">STAFF</SelectItem>
-                  ) : (
-                    <>
-                      <SelectItem value="SUPERUSER">SUPERUSER</SelectItem>
-                      <SelectItem value="OPERATOR">OPERATOR</SelectItem>
-                      <SelectItem value="STAFF">STAFF</SelectItem>
-                    </>
-                  )}
+                  <SelectItem value="OPERATOR">Operator</SelectItem>
+                  <SelectItem value="STAFF">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {/* STAFF permission toggles */}
-            {form.role === 'STAFF' && (
-              <div className="space-y-3 rounded-lg border border-border/50 p-4 bg-muted/30">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Staff Permissions</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Select which pages this staff member can access</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {STAFF_PERMISSION_OPTIONS.map(opt => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => togglePerm(opt.key)}
-                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                        staffPerms.includes(opt.key)
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-background text-muted-foreground hover:border-border/80'
-                      }`}
+            {form.role === "STAFF" && (
+              <div className="grid gap-2">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {PERMISSION_OPTIONS.map((perm) => (
+                    <label
+                      key={perm.value}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
                     >
-                      <div className={`h-4 w-4 rounded border flex items-center justify-center ${
-                        staffPerms.includes(opt.key) ? 'bg-primary border-primary' : 'border-muted-foreground/40'
-                      }`}>
-                        {staffPerms.includes(opt.key) && (
-                          <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      {opt.label}
-                    </button>
+                      <Checkbox
+                        checked={form.permissions.includes(perm.value)}
+                        onCheckedChange={() => togglePermission(perm.value)}
+                      />
+                      {perm.label}
+                    </label>
                   ))}
                 </div>
               </div>
@@ -344,12 +402,34 @@ export default function UsersPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingUser ? 'Update' : 'Create'}
+              {saving ? "Saving..." : editingUser ? "Update" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

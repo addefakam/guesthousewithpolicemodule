@@ -1,161 +1,287 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, getProviderFilter } from "@/lib/tenant";
+import { getAuthContext } from "@/lib/tenant";
+import { Prisma } from "@prisma/client";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const ctx = getAuthContext(request);
-    if (!ctx.isSuperuser) {
-      return NextResponse.json({ error: "Access denied. Only the primary admin can export data." }, { status: 403 });
+    const auth = getAuthContext(req);
+    if (auth.role !== "SUPERUSER") {
+      return NextResponse.json({ error: "Superuser access required" }, { status: 403 });
     }
-    const { providerId } = getProviderFilter(request);
-    const [
-      users,
-      rooms,
-      guests,
-      reservations,
-      daytimeServices,
-      daytimeBookings,
-      expenses,
-      expenseCategories,
-      resources,
-      payments,
-      notifications,
-      housekeepingTasks,
-      reviews,
-      activityLogs,
-      settings,
-    ] = await Promise.all([
-      db.user.findMany({ where: providerId ? { providerId } : undefined, select: { id: true, username: true, role: true, name: true, createdAt: true, updatedAt: true } }),
-      db.room.findMany({ where: providerId ? { providerId } : undefined }),
-      db.guest.findMany({ where: providerId ? { providerId } : undefined }),
-      db.reservation.findMany({ where: providerId ? { providerId } : undefined, include: { guest: true, room: true } }),
-      db.daytimeService.findMany({ where: providerId ? { providerId } : undefined }),
-      db.daytimeBooking.findMany({ where: providerId ? { providerId } : undefined, include: { service: true } }),
-      db.expense.findMany({ where: providerId ? { providerId } : undefined }),
-      db.expenseCategory.findMany(),
-      db.resource.findMany({ where: providerId ? { providerId } : undefined }),
-      db.payment.findMany({ where: providerId ? { providerId } : undefined }),
-      db.notification.findMany({ where: providerId ? { providerId } : undefined }),
-      db.housekeepingTask.findMany({ where: providerId ? { providerId } : undefined, include: { room: true } }),
-      db.review.findMany({ where: providerId ? { guest: { providerId } } : undefined, include: { guest: true } }),
-      db.activityLog.findMany({ where: providerId ? { providerId } : undefined }),
-      db.settings.findMany({ where: providerId ? { providerId } : undefined }),
-    ]);
+
+    const { searchParams } = req.nextUrl;
+    const providerId = searchParams.get("providerId");
+
+    const providerFilter: Prisma.ProviderWhereInput = providerId
+      ? { id: providerId }
+      : {};
+
+    const providers = await db.provider.findMany({ where: providerFilter });
+
+    const users = await db.user.findMany({
+      where: providerId ? { providerId } : undefined,
+      select: { id: true, username: true, role: true, name: true, permissions: true, providerId: true, createdAt: true, updatedAt: true },
+    });
+
+    const rooms = await db.room.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const guests = await db.guest.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const reservations = await db.reservation.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const expenses = await db.expense.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const payments = await db.payment.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const settings = await db.settings.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const notifications = await db.notification.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const activityLogs = await db.activityLog.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const daytimeServices = await db.daytimeService.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const daytimeBookings = await db.daytimeBooking.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const resources = await db.resource.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const housekeepingTasks = await db.housekeepingTask.findMany({
+      where: providerId ? { providerId } : undefined,
+    });
+
+    const reviews = await db.review.findMany();
+
+    const expenseCategories = await db.expenseCategory.findMany();
 
     return NextResponse.json({
+      providers,
       users,
       rooms,
       guests,
       reservations,
+      expenses,
+      payments,
+      settings,
+      notifications,
+      activityLogs,
       daytimeServices,
       daytimeBookings,
-      expenses,
-      expenseCategories,
       resources,
-      payments,
-      notifications,
       housekeepingTasks,
       reviews,
-      activityLogs,
-      settings,
-      exportedAt: new Date().toISOString(),
+      expenseCategories,
     });
-  } catch (error) {
-    console.error("Data export error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to export data";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const ctx = getAuthContext(request);
-    if (!ctx.isSuperuser) {
-      return NextResponse.json({ error: "Access denied. Only the primary admin can import data." }, { status: 403 });
-    }
-    const data = await request.json();
-
-    if (!data || typeof data !== "object") {
-      return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
+    const auth = getAuthContext(req);
+    if (auth.role !== "SUPERUSER") {
+      return NextResponse.json({ error: "Superuser access required" }, { status: 403 });
     }
 
-    let imported = 0;
+    const body = await req.json();
 
-    // Import settings
-    if (data.settings && Array.isArray(data.settings) && data.settings.length > 0) {
-      const s = data.settings[0];
-      const { id, createdAt, updatedAt, ...settingsData } = s;
-      await db.settings.upsert({
-        where: { id: "main" },
-        update: settingsData,
-        create: { id: "main", ...settingsData },
-      });
-      imported++;
-    }
-
-    // Import users
-    if (data.users && Array.isArray(data.users)) {
-      for (const u of data.users) {
-        const { id, createdAt, updatedAt, ...userData } = u;
-        await db.user.upsert({
-          where: { username: u.username },
-          update: { ...userData, password: userData.password || "password123" },
-          create: { ...userData, password: userData.password || "password123" },
-        });
-        imported++;
+    // Upsert providers
+    if (body.providers?.length) {
+      for (const p of body.providers) {
+        if (p.id) {
+          await db.provider.upsert({
+            where: { id: p.id },
+            update: p,
+            create: p,
+          });
+        }
       }
     }
 
-    // Import rooms
-    if (data.rooms && Array.isArray(data.rooms)) {
-      for (const r of data.rooms) {
-        const { id, createdAt, updatedAt, ...roomData } = r;
-        await db.room.upsert({
-          where: { number: r.number },
-          update: roomData,
-          create: roomData,
-        });
-        imported++;
+    // Upsert users
+    if (body.users?.length) {
+      for (const u of body.users) {
+        if (u.id) {
+          await db.user.upsert({
+            where: { id: u.id },
+            update: u,
+            create: u,
+          });
+        }
       }
     }
 
-    // Import guests
-    if (data.guests && Array.isArray(data.guests)) {
-      for (const g of data.guests) {
-        const { id, createdAt, updatedAt, ...guestData } = g;
-        await db.guest.create({ data: guestData });
-        imported++;
+    // Upsert rooms
+    if (body.rooms?.length) {
+      for (const r of body.rooms) {
+        if (r.id) {
+          await db.room.upsert({
+            where: { id: r.id },
+            update: r,
+            create: r,
+          });
+        }
       }
     }
 
-    // Import expense categories
-    if (data.expenseCategories && Array.isArray(data.expenseCategories)) {
-      for (const ec of data.expenseCategories) {
-        const { id, createdAt, ...ecData } = ec;
-        await db.expenseCategory.create({ data: ecData });
-        imported++;
+    // Upsert guests
+    if (body.guests?.length) {
+      for (const g of body.guests) {
+        if (g.id) {
+          await db.guest.upsert({
+            where: { id: g.id },
+            update: g,
+            create: g,
+          });
+        }
       }
     }
 
-    // Import daytime services
-    if (data.daytimeServices && Array.isArray(data.daytimeServices)) {
-      for (const ds of data.daytimeServices) {
-        const { id, createdAt, updatedAt, ...dsData } = ds;
-        await db.daytimeService.create({ data: dsData });
-        imported++;
+    // Upsert reservations
+    if (body.reservations?.length) {
+      for (const r of body.reservations) {
+        if (r.id) {
+          await db.reservation.upsert({
+            where: { id: r.id },
+            update: r,
+            create: r,
+          });
+        }
       }
     }
 
-    await db.activityLog.create({
-      data: {
-        message: `Data imported: ${imported} records processed`,
-        type: "INFO",
-      },
-    });
+    // Upsert expenses
+    if (body.expenses?.length) {
+      for (const e of body.expenses) {
+        if (e.id) {
+          await db.expense.upsert({
+            where: { id: e.id },
+            update: e,
+            create: e,
+          });
+        }
+      }
+    }
 
-    return NextResponse.json({ success: true, imported });
-  } catch (error) {
-    console.error("Data import error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    // Upsert settings
+    if (body.settings?.length) {
+      for (const s of body.settings) {
+        if (s.id) {
+          await db.settings.upsert({
+            where: { id: s.id },
+            update: s,
+            create: s,
+          });
+        }
+      }
+    }
+
+    // Upsert daytime services
+    if (body.daytimeServices?.length) {
+      for (const s of body.daytimeServices) {
+        if (s.id) {
+          await db.daytimeService.upsert({
+            where: { id: s.id },
+            update: s,
+            create: s,
+          });
+        }
+      }
+    }
+
+    // Upsert daytime bookings
+    if (body.daytimeBookings?.length) {
+      for (const b of body.daytimeBookings) {
+        if (b.id) {
+          await db.daytimeBooking.upsert({
+            where: { id: b.id },
+            update: b,
+            create: b,
+          });
+        }
+      }
+    }
+
+    // Upsert resources
+    if (body.resources?.length) {
+      for (const r of body.resources) {
+        if (r.id) {
+          await db.resource.upsert({
+            where: { id: r.id },
+            update: r,
+            create: r,
+          });
+        }
+      }
+    }
+
+    // Upsert housekeeping tasks
+    if (body.housekeepingTasks?.length) {
+      for (const t of body.housekeepingTasks) {
+        if (t.id) {
+          await db.housekeepingTask.upsert({
+            where: { id: t.id },
+            update: t,
+            create: t,
+          });
+        }
+      }
+    }
+
+    // Upsert reviews
+    if (body.reviews?.length) {
+      for (const r of body.reviews) {
+        if (r.id) {
+          await db.review.upsert({
+            where: { id: r.id },
+            update: r,
+            create: r,
+          });
+        }
+      }
+    }
+
+    // Upsert expense categories
+    if (body.expenseCategories?.length) {
+      for (const c of body.expenseCategories) {
+        if (c.id) {
+          await db.expenseCategory.upsert({
+            where: { id: c.id },
+            update: c,
+            create: c,
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, message: "Data imported successfully" });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to import data";
+    const status = message.includes("permission") || message.includes("required") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

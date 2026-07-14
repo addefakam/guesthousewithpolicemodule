@@ -1,44 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requirePolice } from "@/lib/tenant";
+import { getAuthContext, requirePolice } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const denied = requirePolice(request);
-    if (denied) return denied;
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const providerId = searchParams.get("providerId") || "";
+    const auth = getAuthContext(req);
+    requirePolice(auth);
 
-    const where: any = {};
-    if (search) {
+    const { searchParams } = req.nextUrl;
+    const q = searchParams.get("q") || "";
+
+    const where: Record<string, unknown> = {};
+    if (q) {
       where.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-        { idNumber: { contains: search } },
+        { name: { contains: q } },
+        { phone: { contains: q } },
+        { idNumber: { contains: q } },
       ];
-    }
-    if (providerId) {
-      where.providerId = providerId;
     }
 
     const guests = await db.guest.findMany({
       where,
       include: {
-        provider: { select: { name: true, type: true } },
-        _count: { select: { reservations: true } },
-        reservations: {
-          where: { status: "ACTIVE" },
-          select: { id: true, checkIn: true, checkOut: true, room: { select: { number: true, name: true } } },
+        provider: {
+          select: { id: true, name: true },
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
     return NextResponse.json(guests);
-  } catch (error) {
-    console.error("Police Guests error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to search guests";
+    const status = message.includes("Police") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

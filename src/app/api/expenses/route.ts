@@ -1,46 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import {
+  getAuthContext,
+  getProviderFilter,
+  checkWritePermission,
+} from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
+    const auth = getAuthContext(req);
+    const filter = getProviderFilter(auth);
 
-    const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (category) where.category = category;
-    if (from || to) {
-      const dateFilter: Record<string, unknown> = {};
-      if (from) dateFilter.gte = from;
-      if (to) dateFilter.lte = to;
-      where.date = dateFilter;
+    const where: Record<string, unknown> = filter.isPolice
+      ? {}
+      : { providerId: filter.providerId };
+
+    const { searchParams } = new URL(req.url);
+    const category = searchParams.get("category");
+    if (category) {
+      where.category = category;
     }
 
     const expenses = await db.expense.findMany({
       where,
       orderBy: { date: "desc" },
     });
-    return NextResponse.json(expenses);
+
+    return NextResponse.json({ expenses });
   } catch (error) {
-    console.error("Expenses GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("List expenses error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffPermissionKey: "expenses" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { date, category, description, amount, vendor, paymentMethod, receiptNo, taxAmount } = body;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, {
+      blockSuperuser: true,
+      staffPermissionKey: "expenses",
+    });
 
-    if (!date || !category || !description || amount === undefined) {
-      return NextResponse.json({ error: "Date, category, description, and amount are required" }, { status: 400 });
+    const body = await req.json();
+    const {
+      date,
+      category,
+      description,
+      amount,
+      vendor,
+      paymentMethod,
+      receiptNo,
+      taxAmount,
+    } = body;
+
+    if (!date || !category || !description || amount == null || !paymentMethod) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: date, category, description, amount, paymentMethod",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!auth.providerId) {
+      return NextResponse.json(
+        { error: "No provider assigned to this user" },
+        { status: 403 }
+      );
     }
 
     const expense = await db.expense.create({
@@ -48,73 +78,24 @@ export async function POST(request: NextRequest) {
         date,
         category,
         description,
-        amount: parseFloat(amount),
+        amount: Number(amount),
         vendor: vendor || "",
-        paymentMethod: paymentMethod || "CASH",
+        paymentMethod,
         receiptNo: receiptNo || "",
-        taxAmount: parseFloat(taxAmount) || 0,
-        providerId: providerId || "",
+        taxAmount: taxAmount != null ? Number(taxAmount) : 0,
+        providerId: auth.providerId,
       },
     });
 
-    return NextResponse.json(expense, { status: 201 });
-  } catch (error) {
-    console.error("Expenses POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { blockSuperuser: true, staffPermissionKey: "expenses" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, amount, taxAmount, ...data } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
-    }
-
-    if (amount !== undefined) data.amount = parseFloat(amount);
-    if (taxAmount !== undefined) data.taxAmount = parseFloat(taxAmount);
-
-    const expense = await db.expense.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-    });
-
-    return NextResponse.json(expense);
+    return NextResponse.json({ expense }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Expenses PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Expense not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true, staffPermissionKey: "expenses" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Expense ID is required" }, { status: 400 });
-    }
-
-    await db.expense.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Expenses DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Expense not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Create expense error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    const status =
+      message.includes("permission") || message.includes("cannot")
+        ? 403
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

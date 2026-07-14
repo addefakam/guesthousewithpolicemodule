@@ -1,113 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const active = searchParams.get("active");
-
-    const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (active !== null) {
-      where.active = active === "true";
-    }
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
 
     const services = await db.daytimeService.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
+      where: { providerId },
+      orderBy: { name: "asc" },
     });
+
     return NextResponse.json(services);
-  } catch (error) {
-    console.error("Daytime services GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch daytime services";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "daytime" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+
+    if (!providerId) {
+      return NextResponse.json({ error: "No provider assigned" }, { status: 403 });
+    }
+
+    const body = await req.json();
     const { name, price, category, duration, description, active } = body;
 
-    if (!name || price === undefined || !category) {
-      return NextResponse.json({ error: "Name, price, and category are required" }, { status: 400 });
+    if (!name || price == null) {
+      return NextResponse.json(
+        { error: "name and price are required" },
+        { status: 400 }
+      );
     }
 
     const service = await db.daytimeService.create({
       data: {
         name,
-        price: parseFloat(price),
-        category,
+        price: Number(price),
+        category: category || "",
         duration: duration || "",
         description: description || "",
-        active: active !== undefined ? active : true,
-        providerId: providerId || "",
+        active: active !== false,
+        providerId,
       },
     });
 
     return NextResponse.json(service, { status: 201 });
-  } catch (error) {
-    console.error("Daytime services POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { staffOnlyWrite: true, staffPermissionKey: "daytime" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, ...data } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Service ID is required" }, { status: 400 });
-    }
-
-    if (data.price !== undefined) {
-      data.price = parseFloat(data.price);
-    }
-
-    const service = await db.daytimeService.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-    });
-
-    return NextResponse.json(service);
   } catch (error: unknown) {
-    console.error("Daytime services PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Service not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { staffOnlyWrite: true, staffPermissionKey: "daytime" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Service ID is required" }, { status: 400 });
-    }
-
-    await db.daytimeService.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Daytime services DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Service not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to create daytime service";
+    const status =
+      message.includes("required") ? 400 :
+      message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

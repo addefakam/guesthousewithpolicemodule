@@ -1,77 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-function calculateNights(checkIn: string, checkOut: string): number {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diff = end.getTime() - start.getTime();
-  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
-
-function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
+    const auth = getAuthContext(req);
+    const { isPolice, providerId } = getProviderFilter(auth);
+
+    const { searchParams } = req.nextUrl;
+    const status = searchParams.get("status") || "";
+    const dateFrom = searchParams.get("dateFrom") || "";
+    const dateTo = searchParams.get("dateTo") || "";
 
     const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (status) where.status = status;
-    if (from || to) {
-      const dateFilter: Record<string, unknown> = {};
-      if (from) dateFilter.gte = from;
-      if (to) dateFilter.lte = to;
-      where.checkIn = dateFilter;
+    if (!isPolice) {
+      where.providerId = providerId;
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (dateFrom || dateTo) {
+      const checkInFilter: Record<string, unknown> = {};
+      if (dateFrom) checkInFilter.gte = dateFrom;
+      if (dateTo) checkInFilter.lte = dateTo;
+      where.checkIn = checkInFilter;
     }
 
     const reservations = await db.reservation.findMany({
       where,
-      include: { guest: true, room: true },
+      include: {
+        guest: { select: { id: true, name: true, phone: true } },
+        room: { select: { id: true, number: true, name: true, type: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(reservations);
-  } catch (error) {
-    console.error("Reservations GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch reservations";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { guestId, roomId, checkIn, checkOut, notes, paymentMethod, discountAmount, taxAmount } = body;
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+
+    const body = await req.json();
+    const { guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount, paymentMethod, notes } = body;
 
     if (!guestId || !roomId || !checkIn || !checkOut) {
-      return NextResponse.json({ error: "Guest, room, check-in, and check-out are required" }, { status: 400 });
+      return NextResponse.json({ error: "guestId, roomId, checkIn, and checkOut are required" }, { status: 400 });
     }
 
-    const room = await db.room.findUnique({ where: { id: roomId } });
-    if (!room) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    // Calculate nights
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const nights = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+    // Get room rate if not provided
+    let rate = roomRate;
+    if (!rate) {
+      const room = await db.room.findUnique({ where: { id: roomId } });
+      if (!room) {
+        return NextResponse.json({ error: "Room not found" }, { status: 404 });
+      }
+      rate = room.pricePerNight;
     }
 
-    const nights = calculateNights(checkIn, checkOut);
-    const roomRate = room.pricePerNight;
-    const discount = parseFloat(discountAmount) || 0;
-    const tax = parseFloat(taxAmount) || 0;
-    const totalCost = roomRate * nights - discount + tax;
-    const paymentStatus: string = totalCost <= 0 ? "PAID" : "PENDING";
-
-    const today = todayStr();
-    let status: string = "UPCOMING";
-    if (checkIn <= today && checkOut > today) {
-      status = "ACTIVE";
-    }
+    const tax = taxAmount || 0;
+    const discount = discountAmount || 0;
+    const subtotal = rate * nights;
+    const totalCost = subtotal + tax - discount;
+    const paidAmount = 0;
+    const balance = totalCost - paidAmount;
 
     const reservation = await db.reservation.create({
       data: {
@@ -80,117 +85,34 @@ export async function POST(request: NextRequest) {
         checkIn,
         checkOut,
         nights,
-        roomRate,
+        roomRate: rate,
         totalCost,
-        paidAmount: 0,
-        balance: totalCost,
-        paymentStatus,
+        paidAmount,
+        balance,
+        paymentStatus: "PENDING",
         paymentMethod: paymentMethod || null,
-        status,
+        status: "UPCOMING",
         notes: notes || "",
-        discountAmount: discount,
         taxAmount: tax,
-        providerId: providerId || "",
+        discountAmount: discount,
+        providerId,
       },
-      include: { guest: true, room: true },
+      include: {
+        guest: { select: { id: true, name: true, phone: true } },
+        room: { select: { id: true, number: true, name: true, type: true } },
+      },
     });
 
-    // If auto-checkin, update room status
-    if (status === "ACTIVE") {
-      await db.room.update({
-        where: { id: roomId },
-        data: { status: "OCCUPIED" },
-      });
-      await db.activityLog.create({
-        data: {
-          message: `Reservation #${reservation.id.slice(-6)} auto-checked in for ${reservation.guest.name} in Room ${room.number}`,
-          type: "INFO",
-        },
-      });
-    }
-
-    await db.activityLog.create({
-      data: {
-        message: `New reservation created for ${reservation.guest.name} in Room ${room.number} (${nights} nights)`,
-        type: "INFO",
-      },
+    // Update room status to RESERVED
+    await db.room.update({
+      where: { id: roomId },
+      data: { status: "RESERVED" },
     });
 
     return NextResponse.json(reservation, { status: 201 });
-  } catch (error) {
-    console.error("Reservations POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, guestId, roomId, checkIn, checkOut, notes, paymentMethod, discountAmount, taxAmount, paidAmount, balance, paymentStatus, status } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Reservation ID is required" }, { status: 400 });
-    }
-
-    const data: Record<string, unknown> = {};
-    if (guestId !== undefined) data.guestId = guestId;
-    if (roomId !== undefined) data.roomId = roomId;
-    if (checkIn !== undefined) data.checkIn = checkIn;
-    if (checkOut !== undefined) data.checkOut = checkOut;
-    if (notes !== undefined) data.notes = notes;
-    if (paymentMethod !== undefined) data.paymentMethod = paymentMethod;
-    if (discountAmount !== undefined) data.discountAmount = parseFloat(discountAmount);
-    if (taxAmount !== undefined) data.taxAmount = parseFloat(taxAmount);
-    if (paidAmount !== undefined) data.paidAmount = parseFloat(paidAmount);
-    if (balance !== undefined) data.balance = parseFloat(balance);
-    if (paymentStatus !== undefined) data.paymentStatus = paymentStatus;
-    if (status !== undefined) data.status = status;
-
-    // Recalculate nights if dates changed
-    if (checkIn && checkOut) {
-      data.nights = calculateNights(checkIn, checkOut);
-    }
-
-    const reservation = await db.reservation.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-      include: { guest: true, room: true },
-    });
-
-    return NextResponse.json(reservation);
   } catch (error: unknown) {
-    console.error("Reservations PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Reservation ID is required" }, { status: 400 });
-    }
-
-    await db.reservation.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Reservations DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to create reservation";
+    const status = message.includes("required") || message.includes("not found") ? 400 : message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

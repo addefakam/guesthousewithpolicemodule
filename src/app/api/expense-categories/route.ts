@@ -1,65 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, checkWritePermission } from "@/lib/tenant";
 
-export async function GET() {
+export async function GET(_req: NextRequest) {
   try {
     const categories = await db.expenseCategory.findMany({
       orderBy: { name: "asc" },
     });
-    return NextResponse.json(categories);
+
+    return NextResponse.json({ categories });
   } catch (error) {
-    console.error("Expense categories GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("List expense categories error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffPermissionKey: "expenses" });
-    if (denied) return denied;
-    const body = await request.json();
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, {
+      blockSuperuser: true,
+      staffPermissionKey: "expenses",
+    });
+
+    const body = await req.json();
     const { name, nameAm, color, icon } = body;
 
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    if (!name || !color || !icon) {
+      return NextResponse.json(
+        { error: "Missing required fields: name, color, icon" },
+        { status: 400 }
+      );
     }
 
     const category = await db.expenseCategory.create({
       data: {
         name,
         nameAm: nameAm || "",
-        color: color || "#6b7280",
-        icon: icon || "circle",
+        color,
+        icon,
       },
     });
 
-    return NextResponse.json(category, { status: 201 });
-  } catch (error) {
-    console.error("Expense categories POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true, staffPermissionKey: "expenses" });
-    if (denied) return denied;
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Category ID is required" }, { status: 400 });
-    }
-
-    await db.expenseCategory.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ category }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Expense categories DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Category not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Create expense category error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    const status =
+      message.includes("permission") || message.includes("cannot")
+        ? 403
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

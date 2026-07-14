@@ -1,57 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, checkWritePermission } from "@/lib/tenant";
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, { staffOnlyWrite: true });
+
     const { id } = await params;
 
-    const reservation = await db.reservation.findUnique({
-      where: { id },
-      include: { guest: true, room: true },
-    });
-
+    const reservation = await db.reservation.findUnique({ where: { id } });
     if (!reservation) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
+    if (reservation.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: `Cannot check out a reservation with status '${reservation.status}'` },
+        { status: 409 }
+      );
+    }
+
+    const now = new Date();
+
+    // Update reservation status and actual check-out time
     const updated = await db.reservation.update({
       where: { id },
       data: {
         status: "COMPLETED",
-        actualCheckOut: new Date(),
+        actualCheckOut: now,
       },
-      include: { guest: true, room: true },
+      include: {
+        guest: { select: { id: true, name: true, phone: true } },
+        room: { select: { id: true, number: true, name: true, type: true } },
+      },
     });
 
+    // Update room status to AVAILABLE
     await db.room.update({
       where: { id: reservation.roomId },
       data: { status: "AVAILABLE" },
     });
 
+    // Update guest stats
     await db.guest.update({
       where: { id: reservation.guestId },
       data: {
-        totalSpent: { increment: reservation.totalCost },
         totalStays: { increment: 1 },
-      },
-    });
-
-    await db.activityLog.create({
-      data: {
-        message: `Check-out: ${reservation.guest.name} from Room ${reservation.room.number}`,
-        type: "SUCCESS",
+        totalSpent: { increment: reservation.totalCost },
       },
     });
 
     return NextResponse.json(updated);
-  } catch (error) {
-    console.error("Check-out error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to check out";
+    const status = message.includes("not found") ? 404 : message.includes("Cannot check out") ? 409 : message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

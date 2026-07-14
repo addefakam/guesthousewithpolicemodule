@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getAuthContext, getProviderFilter } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const auth = getAuthContext(req);
+    const { isPolice, providerId } = getProviderFilter(auth);
 
-    const activities = await db.activityLog.findMany({
+    const { searchParams } = req.nextUrl;
+    const providerFilter = searchParams.get("providerId");
+
+    const where: Record<string, unknown> = {};
+    if (isPolice) {
+      if (providerFilter) where.providerId = providerFilter;
+    } else {
+      where.providerId = providerId;
+    }
+
+    const logs = await db.activityLog.findMany({
+      where,
       orderBy: { createdAt: "desc" },
-      take: Math.min(limit, 100),
+      take: 50,
     });
-    return NextResponse.json(activities);
-  } catch (error) {
-    console.error("Activity GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    return NextResponse.json(logs);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch activity logs";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

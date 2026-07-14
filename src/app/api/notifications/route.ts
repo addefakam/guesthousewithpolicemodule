@@ -1,40 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const unread = searchParams.get("unread");
-
-    const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (unread === "true") {
-      where.isRead = false;
-    }
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
 
     const notifications = await db.notification.findMany({
-      where,
+      where: { providerId },
       orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(notifications);
-  } catch (error) {
-    console.error("Notifications GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch notifications";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST");
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { title, message, type, link } = body;
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+
+    const body = await req.json();
+    const { title, message, type, link, userId } = body;
 
     if (!title || !message) {
-      return NextResponse.json({ error: "Title and message are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "title and message are required" },
+        { status: 400 }
+      );
     }
 
     const notification = await db.notification.create({
@@ -43,40 +40,15 @@ export async function POST(request: NextRequest) {
         message,
         type: type || "INFO",
         link: link || null,
-        providerId: providerId || "",
+        providerId,
+        userId: userId || null,
       },
     });
 
     return NextResponse.json(notification, { status: 201 });
-  } catch (error) {
-    console.error("Notifications POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT");
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { ids } = body;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ error: "IDs array is required" }, { status: 400 });
-    }
-
-    const updateWhere: Record<string, unknown> = { id: { in: ids } };
-    if (providerId) updateWhere.providerId = providerId;
-
-    await db.notification.updateMany({
-      where: updateWhere,
-      data: { isRead: true },
-    });
-
-    return NextResponse.json({ success: true, count: ids.length });
-  } catch (error) {
-    console.error("Notifications PUT error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create notification";
+    const status = message.includes("required") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

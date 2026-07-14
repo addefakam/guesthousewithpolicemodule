@@ -1,34 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const reservationId = searchParams.get("reservationId");
+    const auth = getAuthContext(req);
+    const { isPolice, providerId } = getProviderFilter(auth);
 
     const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (reservationId) where.reservationId = reservationId;
+    if (!isPolice) {
+      where.providerId = providerId;
+    }
 
     const payments = await db.payment.findMany({
       where,
+      include: {
+        reservation: {
+          select: {
+            id: true,
+            checkIn: true,
+            checkOut: true,
+            guest: { select: { id: true, name: true, phone: true } },
+            room: { select: { id: true, number: true, name: true } },
+          },
+        },
+        daytimeBooking: {
+          select: {
+            id: true,
+            guestName: true,
+            date: true,
+            service: { select: { id: true, name: true } },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(payments);
-  } catch (error) {
-    console.error("Payments GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch payments";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "reservations" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+
+    const body = await req.json();
     const { reservationId, daytimeBookingId, amount, method, referenceNo, notes } = body;
 
     if (!amount || !method) {
@@ -36,73 +57,81 @@ export async function POST(request: NextRequest) {
     }
 
     if (!reservationId && !daytimeBookingId) {
-      return NextResponse.json({ error: "Reservation or daytime booking ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Either reservationId or daytimeBookingId is required" },
+        { status: 400 }
+      );
     }
 
     const payment = await db.payment.create({
       data: {
         reservationId: reservationId || null,
         daytimeBookingId: daytimeBookingId || null,
-        amount: parseFloat(amount),
+        amount: Number(amount),
         method,
         referenceNo: referenceNo || "",
         notes: notes || "",
-        providerId: providerId || "",
+        providerId,
       },
     });
 
-    // Update reservation paid amount if linked
+    // Update reservation paid amount and payment status
     if (reservationId) {
-      const allPayments = await db.payment.findMany({
-        where: { reservationId },
+      const reservation = await db.reservation.findUnique({
+        where: { id: reservationId },
       });
-      const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-
-      const reservation = await db.reservation.findUnique({ where: { id: reservationId } });
       if (reservation) {
-        const balance = reservation.totalCost - totalPaid;
-        let paymentStatus: string = "PENDING";
-        if (totalPaid >= reservation.totalCost) paymentStatus = "PAID";
-        else if (totalPaid > 0) paymentStatus = "PARTIAL";
+        const newPaidAmount = reservation.paidAmount + Number(amount);
+        const newBalance = reservation.totalCost - newPaidAmount;
+
+        let paymentStatus: string = "PARTIAL";
+        if (newBalance <= 0) {
+          paymentStatus = "PAID";
+        } else if (newPaidAmount <= 0) {
+          paymentStatus = "PENDING";
+        }
 
         await db.reservation.update({
           where: { id: reservationId },
-          data: { paidAmount: totalPaid, balance, paymentStatus },
+          data: {
+            paidAmount: newPaidAmount,
+            balance: Math.max(0, newBalance),
+            paymentStatus,
+          },
         });
       }
     }
 
-    // Update daytime booking paid amount if linked
+    // Update daytime booking paid amount and payment status
     if (daytimeBookingId) {
-      const allPayments = await db.payment.findMany({
-        where: { daytimeBookingId },
+      const booking = await db.daytimeBooking.findUnique({
+        where: { id: daytimeBookingId },
       });
-      const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-
-      const booking = await db.daytimeBooking.findUnique({ where: { id: daytimeBookingId } });
       if (booking) {
-        const balance = booking.totalCost - totalPaid;
-        let paymentStatus: string = "PENDING";
-        if (totalPaid >= booking.totalCost) paymentStatus = "PAID";
-        else if (totalPaid > 0) paymentStatus = "PARTIAL";
+        const newPaidAmount = booking.paidAmount + Number(amount);
+        const newBalance = booking.totalCost - newPaidAmount;
+
+        let paymentStatus: string = "PARTIAL";
+        if (newBalance <= 0) {
+          paymentStatus = "PAID";
+        } else if (newPaidAmount <= 0) {
+          paymentStatus = "PENDING";
+        }
 
         await db.daytimeBooking.update({
           where: { id: daytimeBookingId },
-          data: { paidAmount: totalPaid, balance, paymentStatus },
+          data: {
+            paidAmount: newPaidAmount,
+            paymentStatus,
+          },
         });
       }
     }
 
-    await db.activityLog.create({
-      data: {
-        message: `Payment of ${amount} recorded (${method})`,
-        type: "SUCCESS",
-      },
-    });
-
     return NextResponse.json(payment, { status: 201 });
-  } catch (error) {
-    console.error("Payments POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create payment";
+    const status = message.includes("required") ? 400 : message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

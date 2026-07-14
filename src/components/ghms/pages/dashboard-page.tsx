@@ -1,210 +1,91 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/lib/store";
+import { apiDashboard, apiGetActivity } from "@/lib/api";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
-  BedDouble,
-  DollarSign,
-  Users,
-  Clock,
   DoorOpen,
-  TrendingDown,
-  PlusCircle,
-  UserPlus,
+  TrendingUp,
   CalendarCheck,
-  Sparkles,
-  Receipt,
-  FileBarChart,
-  Activity,
+  DollarSign,
+  Plus,
   LogIn,
-  LogOut,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
-import { getDashboard, getReservations } from '@/lib/api';
-import { useAppStore, type Page } from '@/lib/store';
-import { toast } from 'sonner';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+  Receipt,
+  ArrowUpRight,
+  ArrowDownRight,
+  Clock,
+  Activity,
+  UserCheck,
+  UserX,
+  AlertCircle,
+  Info,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 interface DashboardData {
-  occupancyRate: number;
+  roomsByStatus: Record<string, number>;
   totalRooms: number;
-  occupiedRooms: number;
-  availableRooms: number;
-  todayRevenue: number;
-  activeGuests: number;
-  pendingPaymentsAmount: number;
-  pendingPaymentsCount: number;
-  todayExpenses: number;
+  activeReservations: number;
   todayCheckins: number;
-  last7DaysRevenue: { date: string; revenue: number }[];
-  recentActivity: { id: string; message: string; type: string; createdAt: string }[];
+  todayCheckouts: number;
+  totalRevenue: number;
+  occupancyRate: number;
 }
 
-interface TodaySchedule {
+interface ActivityLog {
   id: string;
-  guest: { name: string };
-  room: { number: string };
-  checkIn: string;
-  checkOut: string;
-  status: string;
+  message: string;
+  type: string;
+  createdAt: string;
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-ET', {
-    style: 'currency',
-    currency: 'ETB',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+const STATUS_COLORS: Record<string, string> = {
+  AVAILABLE: "bg-emerald-500",
+  OCCUPIED: "bg-rose-500",
+  MAINTENANCE: "bg-amber-500",
+  RESERVED: "bg-sky-500",
+};
 
-function formatTimeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHrs = Math.floor(diffMins / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-  const diffDays = Math.floor(diffHrs / 24);
-  return `${diffDays}d ago`;
-}
+const STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: "Available",
+  OCCUPIED: "Occupied",
+  MAINTENANCE: "Maintenance",
+  RESERVED: "Reserved",
+};
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function getActivityDotColor(type: string): string {
-  switch (type) {
-    case 'SUCCESS':
-      return 'bg-emerald-500';
-    case 'WARNING':
-      return 'bg-amber-500';
-    case 'ERROR':
-      return 'bg-rose-500';
-    default:
-      return 'bg-blue-500';
-  }
-}
-
-const kpiConfigs = [
-  {
-    key: 'occupancyRate' as const,
-    label: 'Occupancy Rate',
-    subtitle: 'of rooms occupied',
-    icon: BedDouble,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
-    suffix: '%',
-  },
-  {
-    key: 'todayRevenue' as const,
-    label: "Today's Revenue",
-    subtitle: 'from rooms & services',
-    icon: DollarSign,
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10',
-    prefix: 'ETB ',
-  },
-  {
-    key: 'activeGuests' as const,
-    label: 'Active Guests',
-    subtitle: 'currently staying',
-    icon: Users,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
-  },
-  {
-    key: 'pendingPaymentsAmount' as const,
-    label: 'Pending Payments',
-    subtitle: 'p:pendingPaymentsCount unpaid',
-    icon: Clock,
-    color: 'text-rose-500',
-    bg: 'bg-rose-500/10',
-    prefix: 'ETB ',
-  },
-  {
-    key: 'availableRooms' as const,
-    label: 'Available Rooms',
-    subtitle: 'ready for booking',
-    icon: DoorOpen,
-    color: 'text-violet-500',
-    bg: 'bg-violet-500/10',
-  },
-  {
-    key: 'todayExpenses' as const,
-    label: "Today's Expenses",
-    subtitle: 'operational costs',
-    icon: TrendingDown,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/10',
-    prefix: 'ETB ',
-  },
-];
-
-const quickActions: { label: string; icon: typeof PlusCircle; page: Page }[] = [
-  { label: 'Add Room', icon: DoorOpen, page: 'rooms' },
-  { label: 'Add Guest', icon: UserPlus, page: 'guests' },
-  { label: 'New Reservation', icon: CalendarCheck, page: 'reservations' },
-  { label: 'Book Service', icon: Sparkles, page: 'daytime' },
-  { label: 'Add Expense', icon: Receipt, page: 'expenses' },
-  { label: 'Generate Report', icon: FileBarChart, page: 'reports' },
-];
-
-const PIE_COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7'];
+const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
+  INFO: <Info className="h-4 w-4 text-sky-500" />,
+  SUCCESS: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+  WARNING: <AlertCircle className="h-4 w-4 text-amber-500" />,
+  ERROR: <XCircle className="h-4 w-4 text-rose-500" />,
+};
 
 export default function DashboardPage() {
   const { refreshKey, setCurrentPage } = useAppStore();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [schedule, setSchedule] = useState<TodaySchedule[]>([]);
+  const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [dashData, reservations] = await Promise.all([
-        getDashboard(),
-        getReservations(),
+      const [dashboardData, activityData] = await Promise.all([
+        apiDashboard(),
+        apiGetActivity(),
       ]);
-      setData(dashData);
-
-      const today = new Date().toISOString().split('T')[0];
-      const todaySchedule = (reservations as TodaySchedule[]).filter(
-        (r) => r.checkIn === today || r.checkOut === today
-      );
-      setSchedule(todaySchedule);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load dashboard data');
+      setData(dashboardData);
+      setActivity(activityData.slice(0, 15));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load dashboard";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -214,321 +95,401 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData, refreshKey]);
 
-  const getKpiValue = (key: string, value: number, cfg: typeof kpiConfigs[0]) => {
-    if (cfg.prefix) return `${formatCurrency(value)}`;
-    if (cfg.suffix) return `${value}${cfg.suffix}`;
-    if (key === 'pendingPaymentsAmount') return formatCurrency(value);
-    return value.toLocaleString();
+  const revenueData = [
+    { day: "Mon", value: 2800 },
+    { day: "Tue", value: 3200 },
+    { day: "Wed", value: 1900 },
+    { day: "Thu", value: 4100 },
+    { day: "Fri", value: 3600 },
+    { day: "Sat", value: 4800 },
+    { day: "Sun", value: 2500 },
+  ];
+  const maxRevenue = Math.max(...revenueData.map((d) => d.value));
+
+  const occupancySegments = data
+    ? Object.entries(data.roomsByStatus)
+        .filter(([, count]) => count > 0)
+        .map(([status, count]) => ({
+          status,
+          count,
+          pct: data.totalRooms > 0 ? (count / data.totalRooms) * 100 : 0,
+          color: STATUS_COLORS[status] || "bg-gray-400",
+          label: STATUS_LABELS[status] || status,
+        }))
+    : [];
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(val);
+
+  const formatTimeAgo = (dateStr: string) => {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays}d ago`;
   };
 
-  if (loading && !data) {
+  const kpis = [
+    {
+      title: "Total Rooms",
+      value: data?.totalRooms ?? 0,
+      icon: <DoorOpen className="h-5 w-5" />,
+      color: "text-sky-600",
+      bg: "bg-sky-50",
+      border: "border-sky-100",
+    },
+    {
+      title: "Occupancy Rate",
+      value: `${data?.occupancyRate ?? 0}%`,
+      icon: <TrendingUp className="h-5 w-5" />,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
+      subtitle: `${data?.roomsByStatus.OCCUPIED ?? 0} of ${data?.totalRooms ?? 0} rooms`,
+    },
+    {
+      title: "Active Reservations",
+      value: data?.activeReservations ?? 0,
+      icon: <CalendarCheck className="h-5 w-5" />,
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+      border: "border-violet-100",
+      subtitle: `${data?.todayCheckins ?? 0} check-ins today`,
+    },
+    {
+      title: "Monthly Revenue",
+      value: formatCurrency(data?.totalRevenue ?? 0),
+      icon: <DollarSign className="h-5 w-5" />,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+    },
+  ];
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Skeleton className="h-72 rounded-xl" />
+          <Skeleton className="h-72 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
         </div>
       </div>
     );
   }
 
-  if (!data) return null;
-
-  // Pie chart data
-  const pieData = [
-    { name: 'Available', value: data.availableRooms },
-    { name: 'Occupied', value: data.occupiedRooms },
-    { name: 'Maintenance', value: data.totalRooms - data.availableRooms - data.occupiedRooms },
-  ].filter((d) => d.value > 0);
-
-  // Bar chart data
-  const barData = data.last7DaysRevenue.map((d) => ({
-    day: formatDate(d.date),
-    revenue: d.revenue,
-  }));
-
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const checkIns = schedule.filter((s) => s.checkIn === todayStr);
-  const checkOuts = schedule.filter((s) => s.checkOut === todayStr);
-
   return (
-    <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-        {kpiConfigs.map((cfg) => {
-          const Icon = cfg.icon;
-          const rawValue = data[cfg.key] as number;
-          let displayValue: string;
-          if (cfg.key === 'pendingPaymentsAmount') {
-            displayValue = formatCurrency(rawValue);
-          } else if (cfg.key === 'todayRevenue' || cfg.key === 'todayExpenses') {
-            displayValue = formatCurrency(rawValue);
-          } else if (cfg.suffix) {
-            displayValue = `${rawValue}${cfg.suffix}`;
-          } else {
-            displayValue = rawValue.toLocaleString();
-          }
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Page Title */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">Overview of your guest house performance</p>
+      </div>
 
-          return (
-            <Card
-              key={cfg.key}
-              className="border-border/50 transition-all duration-200 hover:border-border hover:shadow-md"
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className={`rounded-lg p-2 ${cfg.bg}`}>
-                    <Icon className={`h-4 w-4 ${cfg.color}`} />
-                  </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => (
+          <Card key={kpi.title} className="gap-0 overflow-hidden py-0">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-500">{kpi.title}</p>
+                  <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
+                  {kpi.subtitle && (
+                    <p className="text-xs text-gray-400">{kpi.subtitle}</p>
+                  )}
                 </div>
-                <div className="mt-3">
-                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    {displayValue}
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium text-foreground/80">{cfg.label}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {cfg.key === 'pendingPaymentsAmount'
-                      ? `${data.pendingPaymentsCount} unpaid`
-                      : cfg.subtitle}
-                  </p>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${kpi.bg} ${kpi.color}`}>
+                  {kpi.icon}
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Revenue Bar Chart */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Revenue Overview</CardTitle>
-            <CardDescription>Last 7 days performance</CardDescription>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DollarSign className="h-4 w-4 text-amber-500" />
+              Revenue (Last 7 Days)
+            </CardTitle>
+            <CardDescription>Estimated daily revenue</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(217.2 32.6% 17.5%)" />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fill: 'hsl(215 20.2% 65.1%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(217.2 32.6% 17.5%)' }}
-                  />
-                  <YAxis
-                    tick={{ fill: 'hsl(215 20.2% 65.1%)', fontSize: 12 }}
-                    axisLine={{ stroke: 'hsl(217.2 32.6% 17.5%)' }}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(222.2 84% 6.9%)',
-                      border: '1px solid hsl(217.2 32.6% 17.5%)',
-                      borderRadius: '8px',
-                      color: 'hsl(210 40% 98%)',
-                    }}
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                  />
-                  <Bar dataKey="revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Room Occupancy Pie Chart */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Room Occupancy</CardTitle>
-            <CardDescription>
-              {data.occupiedRooms} of {data.totalRooms} rooms in use
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(222.2 84% 6.9%)',
-                      border: '1px solid hsl(217.2 32.6% 17.5%)',
-                      borderRadius: '8px',
-                      color: 'hsl(210 40% 98%)',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-2">
-              {pieData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center gap-1.5">
-                  <div
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {entry.name} ({entry.value})
+          <CardContent>
+            <div className="flex items-end justify-between gap-2" style={{ height: 180 }}>
+              {revenueData.map((item) => (
+                <div key={item.day} className="flex flex-1 flex-col items-center gap-1">
+                  <span className="text-xs font-medium text-gray-500">
+                    {formatCurrency(item.value).replace("ETB", "")}
                   </span>
+                  <div
+                    className="w-full max-w-[48px] rounded-t-md bg-gradient-to-t from-amber-500 to-amber-300 transition-all duration-500 hover:from-amber-600 hover:to-amber-400"
+                    style={{
+                      height: `${Math.max(8, (item.value / maxRevenue) * 140)}px`,
+                    }}
+                  />
+                  <span className="text-xs text-gray-500">{item.day}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Quick Actions */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.page}
-                  variant="outline"
-                  className="h-auto flex-col gap-2 py-4 border-border/50 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all"
-                  onClick={() => setCurrentPage(action.page)}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-xs font-medium">{action.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bottom Row: Activity + Today's Schedule */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
+        {/* Occupancy Display */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              Room Occupancy
+            </CardTitle>
+            <CardDescription>Current room status distribution</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
-              {data.recentActivity.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No recent activity</p>
-              ) : (
-                data.recentActivity.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3">
-                    <div className="mt-1.5 flex-shrink-0">
-                      <div className={`h-2 w-2 rounded-full ${getActivityDotColor(item.type)}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-foreground leading-snug">{item.message}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {formatTimeAgo(item.createdAt)}
-                      </p>
-                    </div>
+          <CardContent>
+            <div className="flex flex-col items-center gap-6">
+              {/* Pie Chart (conic-gradient) */}
+              <div className="relative">
+                <div
+                  className="h-40 w-40 rounded-full"
+                  style={{
+                    background: occupancySegments.length > 0
+                      ? `conic-gradient(${occupancySegments.map((s, i) => {
+                          const start = occupancySegments.slice(0, i).reduce((acc, seg) => acc + seg.pct, 0);
+                          const end = start + s.pct;
+                          return `${s.color} ${start}% ${end}%`;
+                        }).join(", ")})`
+                      : "#e5e7eb",
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-sm">
+                    <span className="text-2xl font-bold text-gray-900">{data?.occupancyRate ?? 0}%</span>
+                    <span className="text-xs text-gray-500">Occupied</span>
                   </div>
-                ))
-              )}
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                {occupancySegments.map((seg) => (
+                  <div key={seg.status} className="flex items-center gap-2">
+                    <div className={`h-3 w-3 rounded-sm ${seg.color} shrink-0`} />
+                    <span className="text-sm text-gray-600">
+                      {seg.label}
+                    </span>
+                    <span className="ml-auto text-sm font-semibold text-gray-900">{seg.count}</span>
+                  </div>
+                ))}
+                {occupancySegments.length === 0 && (
+                  <p className="col-span-2 text-center text-sm text-gray-400">No rooms yet</p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Today's Check-ins & Check-outs */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Today&apos;s Schedule</CardTitle>
-            <CardDescription>
-              {checkIns.length} check-in{checkIns.length !== 1 ? 's' : ''} &middot;{' '}
-              {checkOuts.length} check-out{checkOuts.length !== 1 ? 's' : ''}
-            </CardDescription>
+      {/* Quick Actions & Today's Schedule */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Zap className="h-4 w-4 text-violet-500" />
+              Quick Actions
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 pt-0">
-            {schedule.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Activity className="mb-3 h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">No check-ins or check-outs today</p>
+          <CardContent className="space-y-3">
+            <Button
+              className="w-full justify-start gap-3 bg-sky-600 hover:bg-sky-700"
+              onClick={() => setCurrentPage("reservations")}
+            >
+              <Plus className="h-4 w-4" />
+              New Reservation
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => setCurrentPage("reservations")}
+            >
+              <LogIn className="h-4 w-4 text-emerald-600" />
+              Check-in Guest
+              {data && data.todayCheckins > 0 && (
+                <Badge variant="secondary" className="ml-auto bg-emerald-50 text-emerald-700">
+                  {data.todayCheckins}
+                </Badge>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => setCurrentPage("expenses")}
+            >
+              <Receipt className="h-4 w-4 text-amber-600" />
+              Add Expense
+            </Button>
+            <Separator className="my-2" />
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => setCurrentPage("rooms")}
+            >
+              <DoorOpen className="h-4 w-4 text-sky-600" />
+              View All Rooms
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={() => setCurrentPage("guests")}
+            >
+              <UserCheck className="h-4 w-4 text-violet-600" />
+              Manage Guests
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Today's Schedule */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4 text-sky-500" />
+              Today&apos;s Schedule
+            </CardTitle>
+            <CardDescription>Check-ins and check-outs for today</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Check-ins */}
+              <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-3 border border-emerald-100">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                  <ArrowDownRight className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-emerald-800">
+                    {data?.todayCheckins ?? 0} Check-ins Expected
+                  </p>
+                  <p className="text-xs text-emerald-600 mt-0.5">
+                    Guests scheduled to arrive today
+                  </p>
+                </div>
+                <Badge className="bg-emerald-600 hover:bg-emerald-700 border-0">
+                  Arrivals
+                </Badge>
               </div>
-            ) : (
-              <div className="max-h-96 overflow-x-auto overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Type</TableHead>
-                      <TableHead className="text-xs">Guest</TableHead>
-                      <TableHead className="text-xs">Room</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {checkIns.map((item) => (
-                      <TableRow key={`in-${item.id}`}>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <LogIn className="h-3.5 w-3.5 text-emerald-500" />
-                            <span className="text-xs">Check-in</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">
-                          {item.guest.name}
-                        </TableCell>
-                        <TableCell className="text-xs">{item.room.number}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-emerald-500/50 text-emerald-400"
-                          >
-                            {item.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {checkOuts.map((item) => (
-                      <TableRow key={`out-${item.id}`}>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <LogOut className="h-3.5 w-3.5 text-orange-500" />
-                            <span className="text-xs">Check-out</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-medium">
-                          {item.guest.name}
-                        </TableCell>
-                        <TableCell className="text-xs">{item.room.number}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] border-orange-500/50 text-orange-400"
-                          >
-                            {item.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+
+              {/* Check-outs */}
+              <div className="flex items-start gap-3 rounded-lg bg-rose-50 p-3 border border-rose-100">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+                  <ArrowUpRight className="h-4 w-4 text-rose-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-rose-800">
+                    {data?.todayCheckouts ?? 0} Check-outs Expected
+                  </p>
+                  <p className="text-xs text-rose-600 mt-0.5">
+                    Guests scheduled to depart today
+                  </p>
+                </div>
+                <Badge className="bg-rose-600 hover:bg-rose-700 border-0">
+                  Departures
+                </Badge>
               </div>
-            )}
+
+              {/* Room Status Summary */}
+              <Separator />
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Room Status</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <div key={key} className="text-center rounded-lg border p-2 bg-gray-50/50">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <div className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[key]}`} />
+                        <span className="text-xs text-gray-600">{label}</span>
+                      </div>
+                      <span className="text-lg font-bold text-gray-900">
+                        {data?.roomsByStatus[key] ?? 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4 text-violet-500" />
+            Recent Activity
+          </CardTitle>
+          <CardDescription>Latest actions and events</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activity.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+              <Activity className="h-8 w-8 mb-2" />
+              <p className="text-sm">No recent activity</p>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-96">
+              <div className="space-y-1">
+                {activity.map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="mt-0.5 shrink-0">
+                      {ACTIVITY_ICONS[log.type] || ACTIVITY_ICONS.INFO}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700 leading-snug">{log.message}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatTimeAgo(log.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function Zap(props: React.ComponentProps<"svg">) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+    </svg>
   );
 }

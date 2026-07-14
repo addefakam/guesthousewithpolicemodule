@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
+    const auth = getAuthContext(req);
+    const { isPolice, providerId } = getProviderFilter(auth);
+
+    const { searchParams } = req.nextUrl;
+    const q = searchParams.get("q") || "";
 
     const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-    if (search) {
+    if (!isPolice) {
+      where.providerId = providerId;
+    }
+
+    if (q) {
       where.OR = [
-        { name: { contains: search } },
-        { phone: { contains: search } },
-        { email: { contains: search } },
-        { idNumber: { contains: search } },
+        { name: { contains: q } },
+        { phone: { contains: q } },
+        { idNumber: { contains: q } },
       ];
     }
 
@@ -23,19 +27,21 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(guests);
-  } catch (error) {
-    console.error("Guests GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch guests";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { staffOnlyWrite: true, staffPermissionKey: "guests" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "guests" });
+
+    const body = await req.json();
     const { name, phone, email, idNumber, idType, nationality, address, notes, vip } = body;
 
     if (!name || !phone) {
@@ -53,65 +59,14 @@ export async function POST(request: NextRequest) {
         address: address || "",
         notes: notes || "",
         vip: vip || false,
-        providerId: providerId || "",
+        providerId,
       },
     });
 
     return NextResponse.json(guest, { status: 201 });
-  } catch (error) {
-    console.error("Guests POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { staffOnlyWrite: true, staffPermissionKey: "guests" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, ...data } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Guest ID is required" }, { status: 400 });
-    }
-
-    const guest = await db.guest.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-    });
-
-    return NextResponse.json(guest);
   } catch (error: unknown) {
-    console.error("Guests PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { staffOnlyWrite: true, staffPermissionKey: "guests" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Guest ID is required" }, { status: 400 });
-    }
-
-    await db.guest.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Guests DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to create guest";
+    const status = message.includes("required") ? 400 : message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -1,118 +1,91 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import {
+  getAuthContext,
+  getProviderFilter,
+  checkWritePermission,
+} from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
+    const auth = getAuthContext(req);
+    const filter = getProviderFilter(auth);
+
+    const where: Record<string, unknown> = filter.isPolice
+      ? {}
+      : { providerId: filter.providerId };
+
+    const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const date = searchParams.get("date");
-
-    const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
-
-    if (status) where.status = status;
-    if (date) where.scheduledDate = date;
+    if (status) {
+      where.status = status;
+    }
 
     const tasks = await db.housekeepingTask.findMany({
       where,
-      include: { room: true },
-      orderBy: { scheduledDate: "desc" },
+      orderBy: { scheduledDate: "asc" },
+      include: { room: { select: { id: true, number: true, name: true } } },
     });
-    return NextResponse.json(tasks);
+
+    return NextResponse.json({ tasks });
   } catch (error) {
-    console.error("Housekeeping GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("List housekeeping tasks error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { blockSuperuser: true, staffPermissionKey: "housekeeping" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { roomId, type, scheduledDate, assignedTo, notes } = body;
+    const auth = getAuthContext(req);
+    checkWritePermission(auth, {
+      blockSuperuser: true,
+      staffPermissionKey: "housekeeping",
+    });
+
+    const body = await req.json();
+    const { roomId, type, assignedTo, scheduledDate, notes } = body;
 
     if (!roomId || !type || !scheduledDate) {
-      return NextResponse.json({ error: "Room, type, and scheduled date are required" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: roomId, type, scheduledDate",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!auth.providerId) {
+      return NextResponse.json(
+        { error: "No provider assigned to this user" },
+        { status: 403 }
+      );
     }
 
     const task = await db.housekeepingTask.create({
       data: {
         roomId,
         type,
-        status: "PENDING",
-        scheduledDate,
         assignedTo: assignedTo || null,
+        scheduledDate,
         notes: notes || "",
-        providerId: providerId || "",
+        providerId: auth.providerId,
       },
-      include: { room: true },
+      include: { room: { select: { id: true, number: true, name: true } } },
     });
 
-    return NextResponse.json(task, { status: 201 });
-  } catch (error) {
-    console.error("Housekeeping POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { blockSuperuser: true, staffPermissionKey: "housekeeping" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, ...data } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
-
-    // If marking as completed, set completedAt
-    if (data.status === "COMPLETED") {
-      data.completedAt = new Date();
-    }
-
-    const task = await db.housekeepingTask.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-      include: { room: true },
-    });
-
-    return NextResponse.json(task);
+    return NextResponse.json({ task }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Housekeeping PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { blockSuperuser: true, staffPermissionKey: "housekeeping" });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
-    }
-
-    await db.housekeepingTask.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Housekeeping DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Create housekeeping task error:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error";
+    const status =
+      message.includes("permission") || message.includes("cannot")
+        ? 403
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

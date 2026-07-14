@@ -1,286 +1,379 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { Building2, Loader2, Shield, Upload, X, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { useAppStore } from '@/lib/store';
-import { login as apiLogin, requestProviderAccess } from '@/lib/api';
-import { toast } from 'sonner';
+import { useState, useRef, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Building2, KeyRound, UserPlus, LogIn, Upload } from "lucide-react";
+
+import { useAppStore } from "@/lib/store";
+import { apiAuth, apiRegisterProvider } from "@/lib/api";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function LoginPage() {
   const { setCurrentUser, setCurrentPage } = useAppStore();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
+
+  // ── Login state ──
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // ── Register state ──
+  const [regName, setRegName] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regGuestHouseName, setRegGuestHouseName] = useState("");
+  const [regType, setRegType] = useState("");
+  const [regLicenseNo, setRegLicenseNo] = useState("");
+  const [regLicenseFile, setRegLicenseFile] = useState<File | null>(null);
+  const [regLoading, setRegLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [licensePreview, setLicensePreview] = useState<string>('');
-  const [regForm, setRegForm] = useState({
-    name: '', ownerName: '', phone: '', email: '', address: '', type: 'GUEST_HOUSE', licenseNo: '', username: '', password: '', confirmPassword: '',
-  });
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // ── Login handler ──
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      toast.error("Please enter both username and password.");
+      return;
+    }
+    setLoginLoading(true);
     try {
-      const res = await apiLogin(username, password);
-      const user = res.user || res;
-      setCurrentUser(user);
-      setCurrentPage(user.role === 'POLICE' ? 'police-dashboard' : 'dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const resp = await apiAuth({
+        username: loginUsername.trim(),
+        password: loginPassword,
+      });
+      const userData = resp.user;
+      setCurrentUser({ ...userData, providerName: resp.providerName });
+      // Route based on role
+      const page = userData.role === "POLICE" ? "police-dashboard" : "dashboard";
+      setCurrentPage(page);
+      toast.success(`Welcome back, ${userData.name}!`);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Login failed. Please try again.";
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
-  };
+  }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-      setError('Invalid file type. Please upload a JPEG, PNG, WebP, or PDF document.');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File too large. Maximum size is 5MB.');
-      return;
-    }
-
-    setLicenseFile(file);
-    setError('');
-
-    // Create preview for images
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setLicensePreview(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setLicensePreview('');
-    }
-  };
-
-  const removeFile = () => {
-    setLicenseFile(null);
-    setLicensePreview('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
+  // ── Register handler ──
+  async function handleRegister(e: FormEvent) {
     e.preventDefault();
-    if (regForm.password !== regForm.confirmPassword) {
-      setError('Passwords do not match');
+    if (
+      !regName.trim() ||
+      !regPhone.trim() ||
+      !regEmail.trim() ||
+      !regGuestHouseName.trim() ||
+      !regType ||
+      !regLicenseNo.trim()
+    ) {
+      toast.error("Please fill in all required fields.");
       return;
     }
-    if (!regForm.licenseNo.trim()) {
-      setError('License number is required');
-      return;
-    }
-    if (!licenseFile) {
-      setError('Please attach your license document');
-      return;
-    }
-    setError('');
-    setLoading(true);
+    setRegLoading(true);
     try {
-      await requestProviderAccess(regForm, licenseFile);
-      toast.success('Registration submitted! Your request is pending police approval. You will be notified once approved.');
-      setShowRegister(false);
-      setRegForm({ name: '', ownerName: '', phone: '', email: '', address: '', type: 'GUEST_HOUSE', licenseNo: '', username: '', password: '', confirmPassword: '' });
-      removeFile();
-    } catch (err: any) {
-      setError(err.message || 'Registration failed.');
+      const formData = new FormData();
+      formData.append("name", regName.trim());
+      formData.append("phone", regPhone.trim());
+      formData.append("email", regEmail.trim());
+      formData.append("guestHouseName", regGuestHouseName.trim());
+      formData.append("type", regType);
+      formData.append("licenseNo", regLicenseNo.trim());
+      if (regLicenseFile) {
+        formData.append("licenseFile", regLicenseFile);
+      }
+
+      await apiRegisterProvider(formData);
+      toast.success(
+        "Registration submitted successfully! An admin will review and activate your account."
+      );
+      // Reset form
+      setRegName("");
+      setRegPhone("");
+      setRegEmail("");
+      setRegGuestHouseName("");
+      setRegType("");
+      setRegLicenseNo("");
+      setRegLicenseFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again.";
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setRegLoading(false);
     }
-  };
+  }
 
-  if (showRegister) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        </div>
-        <Card className="relative w-full max-w-lg border-border/50 bg-card/80 backdrop-blur-sm shadow-2xl">
-          <CardHeader className="text-center space-y-2 pb-2 pt-6">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Request System Access</h1>
-              <p className="text-sm text-muted-foreground">Register your business and attach your license for police approval</p>
-            </div>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Business Name *</Label>
-                  <Input value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} required className="h-10" placeholder="e.g. Sunrise Guest House" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Owner Name *</Label>
-                  <Input value={regForm.ownerName} onChange={e => setRegForm({...regForm, ownerName: e.target.value})} required className="h-10" placeholder="Full name" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Phone *</Label>
-                  <Input value={regForm.phone} onChange={e => setRegForm({...regForm, phone: e.target.value})} required className="h-10" placeholder="+251 9XX XXX XXX" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Email</Label>
-                  <Input type="email" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="h-10" placeholder="email@example.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Business Type</Label>
-                  <select value={regForm.type} onChange={e => setRegForm({...regForm, type: e.target.value})} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-                    <option value="GUEST_HOUSE">Guest House</option>
-                    <option value="HOTEL">Hotel</option>
-                    <option value="LODGE">Lodge</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">License No. *</Label>
-                  <Input value={regForm.licenseNo} onChange={e => setRegForm({...regForm, licenseNo: e.target.value})} required className="h-10" placeholder="License number" />
-                </div>
-              </div>
+  return (
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4 py-12">
+      {/* Subtle decorative blobs */}
+      <div className="pointer-events-none absolute -top-40 -left-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500/5 blur-3xl" />
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Address</Label>
-                <Input value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="h-10" placeholder="Full address" />
-              </div>
+      <Card className="relative z-10 w-full max-w-lg border-0 shadow-2xl">
+        <CardHeader className="space-y-2 pb-2 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
+            <Building2 className="size-7 text-white" />
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+            Guest House Management
+          </CardTitle>
+          <CardDescription className="text-slate-500">
+            Sign in to your account or register a new guest house
+          </CardDescription>
+        </CardHeader>
 
-              {/* License File Upload */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Attach License Document *</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                  {licenseFile ? (
-                    <div className="flex items-center gap-3">
-                      {licensePreview ? (
-                        <img src={licensePreview} alt="License preview" className="h-14 w-14 object-cover rounded border" />
-                      ) : (
-                        <div className="h-14 w-14 flex items-center justify-center rounded bg-primary/10">
-                          <FileText className="h-7 w-7 text-primary" />
-                        </div>
-                      )}
-                      <div className="flex-1 text-left min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{licenseFile.name}</p>
-                        <p className="text-xs text-muted-foreground">{(licenseFile.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button type="button" onClick={removeFile} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
+        <CardContent className="pt-4">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="mb-6 grid w-full grid-cols-2">
+              <TabsTrigger value="login" className="gap-1.5">
+                <LogIn className="size-3.5" />
+                Login
+              </TabsTrigger>
+              <TabsTrigger value="register" className="gap-1.5">
+                <UserPlus className="size-3.5" />
+                Register
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ─── Login Tab ─── */}
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="login-username">Username</Label>
+                  <div className="relative">
+                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="login-username"
+                      placeholder="Enter your username"
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      className="pl-9"
+                      autoComplete="username"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <div className="relative">
+                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="pl-9"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="mt-1 w-full bg-gradient-to-r from-emerald-600 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-700"
+                  disabled={loginLoading}
+                >
+                  {loginLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Signing in...
+                    </span>
                   ) : (
-                    <label className="cursor-pointer flex flex-col items-center gap-2">
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">Click to upload license</p>
-                        <p className="text-xs text-muted-foreground">JPEG, PNG, WebP, or PDF (max 5MB)</p>
+                    "Sign In"
+                  )}
+                </Button>
+              </form>
+            </TabsContent>
+
+            {/* ─── Register Tab ─── */}
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="grid gap-4">
+                {/* Contact Information */}
+                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Contact Information
+                  </p>
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="reg-name">Full Name *</Label>
+                      <Input
+                        id="reg-name"
+                        placeholder="Your full name"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="reg-phone">Phone *</Label>
+                        <Input
+                          id="reg-phone"
+                          placeholder="Phone number"
+                          value={regPhone}
+                          onChange={(e) => setRegPhone(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="reg-email">Email *</Label>
+                        <Input
+                          id="reg-email"
+                          type="email"
+                          placeholder="Email address"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guest House Details */}
+                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Guest House Details
+                  </p>
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="reg-gh-name">Guest House Name *</Label>
+                      <Input
+                        id="reg-gh-name"
+                        placeholder="Name of your guest house"
+                        value={regGuestHouseName}
+                        onChange={(e) => setRegGuestHouseName(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="reg-type">Type *</Label>
+                        <Select value={regType} onValueChange={setRegType}>
+                          <SelectTrigger id="reg-type" className="w-full">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="GUEST_HOUSE">
+                              Guest House
+                            </SelectItem>
+                            <SelectItem value="HOTEL">Hotel</SelectItem>
+                            <SelectItem value="LODGE">Lodge</SelectItem>
+                            <SelectItem value="HOMESTAY">Homestay</SelectItem>
+                            <SelectItem value="RESORT">Resort</SelectItem>
+                            <SelectItem value="DHARAMSHALA">
+                              Dharamshala
+                            </SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="reg-license">License No. *</Label>
+                        <Input
+                          id="reg-license"
+                          placeholder="License number"
+                          value={regLicenseNo}
+                          onChange={(e) => setRegLicenseNo(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="reg-license-file">
+                        Upload License Document
+                      </Label>
+                      <div
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50"
+                        onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            fileInputRef.current?.click();
+                        }}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+                          <Upload className="size-4 text-slate-500" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="truncate text-sm font-medium text-slate-700">
+                            {regLicenseFile
+                              ? regLicenseFile.name
+                              : "Click to upload license document"}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {regLicenseFile
+                              ? `${(regLicenseFile.size / 1024).toFixed(1)} KB`
+                              : "PDF, JPG, or PNG (max 5MB)"}
+                          </p>
+                        </div>
                       </div>
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".jpg,.jpeg,.png,.webp,.pdf"
-                        onChange={handleFileChange}
+                        accept=".pdf,.jpg,.jpeg,.png"
                         className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (file && file.size > 5 * 1024 * 1024) {
+                            toast.error("File size must be under 5MB.");
+                            return;
+                          }
+                          setRegLicenseFile(file);
+                        }}
                       />
-                    </label>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="mt-1 w-full bg-gradient-to-r from-emerald-600 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-700"
+                  disabled={regLoading}
+                >
+                  {regLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Submitting...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <UserPlus className="size-4" />
+                      Register Guest House
+                    </span>
                   )}
-                </div>
-              </div>
-
-              <div className="border-t pt-4 mt-2">
-                <p className="text-xs font-medium text-muted-foreground mb-3">Admin Account Credentials</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Username *</Label>
-                    <Input value={regForm.username} onChange={e => setRegForm({...regForm, username: e.target.value})} required className="h-10" placeholder="Login username" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Password *</Label>
-                    <Input type="password" value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} required className="h-10" placeholder="Password" />
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  <Label className="text-xs">Confirm Password *</Label>
-                  <Input type="password" value={regForm.confirmPassword} onChange={e => setRegForm({...regForm, confirmPassword: e.target.value})} required className="h-10" placeholder="Confirm password" />
-                </div>
-              </div>
-
-              {error && <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2 text-sm text-destructive">{error}</div>}
-
-              <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" className="flex-1 h-10" onClick={() => { setShowRegister(false); setError(''); removeFile(); }}>Back to Login</Button>
-                <Button type="submit" className="flex-1 h-10" disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Registration Request'}
                 </Button>
-              </div>
 
-              <p className="text-xs text-center text-muted-foreground">
-                Your registration will be reviewed by the police office. You will be able to log in once approved.
-              </p>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
-      <Card className="relative w-full max-w-md border-border/50 bg-card/80 backdrop-blur-sm shadow-2xl">
-        <CardHeader className="text-center space-y-4 pb-2 pt-8">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <Building2 className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">GHMS</h1>
-            <p className="text-sm text-muted-foreground mt-1">Guest House Management System</p>
-          </div>
-        </CardHeader>
-
-        <CardContent className="px-8 pb-8">
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-sm font-medium text-foreground">Username</Label>
-              <Input id="username" type="text" placeholder="Enter your username" value={username} onChange={e => setUsername(e.target.value)} required className="h-11 bg-background border-border/50" autoComplete="username" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
-              <Input id="password" type="password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required className="h-11 bg-background border-border/50" autoComplete="current-password" />
-            </div>
-            {error && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">{error}</div>
-            )}
-            <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}
-            </Button>
-          </form>
-
-          <div className="mt-6 pt-6 border-t border-border/50 space-y-3">
-            <button onClick={() => setShowRegister(true)} className="w-full text-center text-sm text-primary hover:underline font-medium">
-              Register your business for system access
-            </button>
-            <div className="text-center space-y-1">
-              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5"><Shield className="h-3 w-3" /> Police: police / 123</p>
-              <p className="text-xs text-muted-foreground">Provider: admin / 123</p>
-            </div>
-          </div>
+                <p className="text-center text-xs text-slate-400">
+                  Your registration will be reviewed by an administrator before
+                  activation.
+                </p>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

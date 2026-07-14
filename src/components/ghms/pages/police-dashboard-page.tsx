@@ -1,570 +1,307 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Building2,
-  Clock,
-  Users,
-  TrendingUp,
-  CalendarCheck,
-  DollarSign,
-  BedDouble,
-  Loader2,
-  Check,
-  X,
-  Shield,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useCallback } from "react";
+import { useAppStore } from "@/lib/store";
+import { apiPoliceDashboard, apiGetProviders } from "@/lib/api";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableRow,
-  TableHead,
   TableCell,
-} from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  getPoliceDashboard,
-  approveProvider,
-  rejectProvider,
-} from '@/lib/api';
-import { useAppStore } from '@/lib/store';
-import { toast } from 'sonner';
+  Building2,
+  CheckCircle2,
+  Clock,
+  DoorOpen,
+  Users,
+  DollarSign,
+  TrendingUp,
+  AlertCircle,
+} from "lucide-react";
 
-function statusBadge(status: string) {
-  switch (status) {
-    case 'APPROVED':
-      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">{status}</Badge>;
-    case 'PENDING':
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">{status}</Badge>;
-    case 'REJECTED':
-      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{status}</Badge>;
-    case 'SUSPENDED':
-      return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{status}</Badge>;
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
+interface DashboardData {
+  totalProviders: number;
+  totalRooms: number;
+  totalGuests: number;
+  activeReservations: number;
+  revenue: number;
+  providers: ProviderBreakdown[];
+}
+
+interface ProviderBreakdown {
+  id: string;
+  name: string;
+  status: string;
+  rooms: number;
+  guests: number;
+  totalReservations: number;
+  activeReservations: number;
+  revenue: number;
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+}
+
+interface RecentGuest {
+  id: string;
+  name: string;
+  phone: string;
+  provider: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  APPROVED: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200",
+  PENDING: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200",
+  REJECTED: "bg-red-100 text-red-800 hover:bg-red-100 border-red-200",
+  SUSPENDED: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  APPROVED: "Approved",
+  PENDING: "Pending",
+  REJECTED: "Rejected",
+  SUSPENDED: "Suspended",
+};
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", minimumFractionDigits: 0 }).format(amount);
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export default function PoliceDashboardPage() {
-  const { currentUser } = useAppStore();
-  const [data, setData] = useState<any>(null);
+  const { refreshKey } = useAppStore();
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [recentGuests, setRecentGuests] = useState<RecentGuest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectId, setRejectId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejecting, setRejecting] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const d = await getPoliceDashboard();
-      setData(d);
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to load dashboard');
+      const [dashData, provData] = await Promise.all([
+        apiPoliceDashboard(),
+        apiGetProviders(),
+      ]);
+
+      setDashboard(dashData);
+
+      // Build recent guests from all providers' guest counts
+      // Since police-guests API is available, we don't have a direct "recent registrations" endpoint
+      // from the dashboard. We'll use providers' createdAt as a proxy for registration timeline.
+      const providers: Provider[] = Array.isArray(provData) ? provData : [];
+      setRecentGuests(
+        providers.slice(0, 8).map((p) => ({
+          id: p.id,
+          name: p.name,
+          phone: "",
+          provider: { id: p.id, name: p.name },
+          createdAt: p.createdAt,
+        }))
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load dashboard";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      loadDashboard();
-    }
-  }, [currentUser?.id, loadDashboard]);
+    fetchData();
+  }, [fetchData, refreshKey]);
 
-  const handleApprove = async (id: string) => {
-    try {
-      await approveProvider(id);
-      toast.success('Provider approved');
-      loadDashboard();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to approve provider');
-    }
-  };
-
-  const handleRejectClick = (id: string) => {
-    setRejectId(id);
-    setRejectReason('');
-    setRejectDialogOpen(true);
-  };
-
-  const handleRejectConfirm = async () => {
-    if (!rejectId) return;
-    if (!rejectReason.trim()) {
-      toast.error('Please provide a rejection reason');
-      return;
-    }
-    try {
-      setRejecting(true);
-      await rejectProvider(rejectId, rejectReason.trim());
-      toast.success('Provider rejected');
-      setRejectDialogOpen(false);
-      setRejectId(null);
-      setRejectReason('');
-      loadDashboard();
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to reject provider');
-    } finally {
-      setRejecting(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
-        </div>
-        <Skeleton className="h-64 rounded-xl" />
-        <Skeleton className="h-64 rounded-xl" />
-      </div>
-    );
-  }
-
-  const pendingRequests = data?.pendingRequests || [];
-  const providerOverview = data?.providerOverview || [];
-  const currentGuests = data?.currentGuests || [];
-  const stats = data?.stats || {};
+  const kpiCards = dashboard
+    ? [
+        {
+          title: "Total Providers",
+          value: dashboard.totalProviders,
+          icon: Building2,
+          color: "text-slate-600",
+          bg: "bg-slate-100",
+        },
+        {
+          title: "Approved",
+          value: dashboard.providers.filter((p) => p.status === "APPROVED").length,
+          icon: CheckCircle2,
+          color: "text-emerald-600",
+          bg: "bg-emerald-50",
+        },
+        {
+          title: "Pending",
+          value: dashboard.providers.filter((p) => p.status === "PENDING").length,
+          icon: Clock,
+          color: "text-yellow-600",
+          bg: "bg-yellow-50",
+        },
+        {
+          title: "Total Rooms",
+          value: dashboard.totalRooms,
+          icon: DoorOpen,
+          color: "text-sky-600",
+          bg: "bg-sky-50",
+        },
+        {
+          title: "Active Guests",
+          value: dashboard.activeReservations,
+          icon: Users,
+          color: "text-violet-600",
+          bg: "bg-violet-50",
+        },
+        {
+          title: "Total Revenue",
+          value: formatCurrency(dashboard.revenue),
+          icon: DollarSign,
+          color: "text-emerald-600",
+          bg: "bg-emerald-50",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
-      {/* Top Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Approved Providers
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.totalApprovedProviders ?? 0}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                <Building2 className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Pending Requests
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.pendingRequests ?? 0}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
-                <Clock className="h-5 w-5 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Guests in City
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.totalGuestsInCity ?? 0}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-                <Users className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  City-wide Occupancy
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.cityWideOccupancyRate != null
-                    ? `${stats.cityWideOccupancyRate.toFixed(1)}%`
-                    : '0%'}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Second Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Active Reservations
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.activeReservations ?? 0}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100">
-                <CalendarCheck className="h-5 w-5 text-sky-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Revenue
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.totalRevenue != null
-                    ? `${Number(stats.totalRevenue).toLocaleString()} ETB`
-                    : '0 ETB'}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Rooms / Occupied
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">
-                  {stats.totalRooms ?? 0} / {stats.occupiedRooms ?? 0}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100">
-                <BedDouble className="h-5 w-5 text-violet-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Pending Requests Section */}
-      {pendingRequests.length > 0 && (
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-500" />
-              Pending Approval Requests
-              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 ml-1">
-                {pendingRequests.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {pendingRequests.map((p: any) => (
-              <div
-                key={p.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border/50 p-4 bg-white"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-foreground">
-                      {p.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ({p.type})
-                    </span>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        {loading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="shadow-sm">
+                <CardContent className="p-4">
+                  <Skeleton className="mb-2 h-4 w-24" />
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))
+          : kpiCards.map((kpi) => (
+              <Card key={kpi.title} className="shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${kpi.bg}`}>
+                      <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs text-muted-foreground">{kpi.title}</p>
+                      <p className={`text-lg font-bold ${kpi.color}`}>{kpi.value}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Owner: {p.ownerName} &middot; Phone: {p.phone}
-                  </p>
-                  {p.address && (
-                    <p className="text-xs text-muted-foreground">
-                      {p.address}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    className="h-8 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => handleApprove(p.id)}
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1" />
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => handleRejectClick(p.id)}
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    Reject
-                  </Button>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
-          </CardContent>
-        </Card>
-      )}
+      </div>
 
-      {/* Provider Overview Table */}
-      <Card className="border-0 shadow-sm">
+      {/* Per-Provider Overview Table */}
+      <Card className="shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-500" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
             Provider Overview
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Owner
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right">
-                    Rooms
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right">
-                    Occupied
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right">
-                    Guests
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground text-right hidden sm:table-cell">
-                    Revenue
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {providerOverview.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 p-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : !dashboard?.providers.length ? (
+            <div className="flex flex-col items-center py-12 text-center">
+              <AlertCircle className="mb-2 h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No provider data available</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-center py-8 text-muted-foreground text-sm"
-                    >
-                      No approved providers found
-                    </TableCell>
+                    <TableHead>Provider Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Rooms</TableHead>
+                    <TableHead className="text-center">Active Reservations</TableHead>
+                    <TableHead className="text-right">Monthly Revenue</TableHead>
                   </TableRow>
-                ) : (
-                  providerOverview.map((p: any) => (
-                    <TableRow key={p.id} className="border-border/50">
-                      <TableCell className="font-medium text-sm">
-                        {p.name}
+                </TableHeader>
+                <TableBody>
+                  {dashboard.providers.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={STATUS_BADGE_CLASS[p.status] || ""}>
+                          {STATUS_LABELS[p.status] || p.status}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{p.type}</TableCell>
-                      <TableCell className="text-sm">{p.ownerName}</TableCell>
-                      <TableCell className="text-sm hidden md:table-cell">
-                        {p.phone}
+                      <TableCell className="text-center">{p.rooms}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={p.activeReservations > 0 ? "font-semibold text-emerald-600" : "text-muted-foreground"}>
+                          {p.activeReservations}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-sm text-right">
-                        {p.totalRooms ?? 0}
-                      </TableCell>
-                      <TableCell className="text-sm text-right">
-                        {p.occupiedRooms ?? 0}
-                      </TableCell>
-                      <TableCell className="text-sm text-right">
-                        {p.totalGuests ?? 0}
-                      </TableCell>
-                      <TableCell className="text-sm text-right hidden sm:table-cell">
-                        {p.revenue != null
-                          ? `${Number(p.revenue).toLocaleString()} ETB`
-                          : '-'}
-                      </TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(p.revenue)}</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Currently Checked-In Guests Table */}
-      <Card className="border-0 shadow-sm">
+      {/* Recent Registrations */}
+      <Card className="shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4 text-green-500" />
-            Currently Checked-In Guests
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="h-5 w-5 text-muted-foreground" />
+            Recent Provider Registrations
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Guest Name
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Phone
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    ID Number
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden lg:table-cell">
-                    Nationality
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground">
-                    Provider
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden sm:table-cell">
-                    Room
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Check-in
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold uppercase text-muted-foreground hidden md:table-cell">
-                    Check-out
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentGuests.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-center py-8 text-muted-foreground text-sm"
-                    >
-                      No guests currently checked in
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  currentGuests.map((g: any) => (
-                    <TableRow key={g.id} className="border-border/50">
-                      <TableCell className="font-medium text-sm">
-                        {g.guestName}
-                      </TableCell>
-                      <TableCell className="text-sm hidden md:table-cell">
-                        {g.guestPhone}
-                      </TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell">
-                        {g.guestIdNumber}
-                      </TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell">
-                        {g.guestNationality || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {g.providerName}
-                      </TableCell>
-                      <TableCell className="text-sm hidden sm:table-cell">
-                        {g.roomNumber || g.roomName || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm hidden md:table-cell">
-                        {g.checkIn
-                          ? new Date(g.checkIn).toLocaleDateString()
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-sm hidden md:table-cell">
-                        {g.checkOut
-                          ? new Date(g.checkOut).toLocaleDateString()
-                          : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : recentGuests.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No recent registrations</p>
+          ) : (
+            <ScrollArea className="max-h-96">
+              <div className="space-y-2">
+                {recentGuests.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Registered {formatDate(item.createdAt)}</p>
+                    </div>
+                    <Badge variant="secondary" className="ml-3 shrink-0">
+                      {formatDate(item.createdAt)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </CardContent>
       </Card>
-
-      {/* Rejection Dialog */}
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <X className="h-5 w-5 text-red-500" />
-              Reject Provider
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="reject-reason">
-                Please provide a reason for rejection
-              </Label>
-              <Textarea
-                id="reject-reason"
-                placeholder="Enter rejection reason..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setRejectDialogOpen(false)}
-              disabled={rejecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={handleRejectConfirm}
-              disabled={rejecting}
-            >
-              {rejecting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Reject Provider
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

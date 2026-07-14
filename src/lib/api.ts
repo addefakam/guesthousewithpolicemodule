@@ -1,251 +1,172 @@
-import { useAppStore } from '@/lib/store';
+import { useAppStore } from "./store";
 
-const BASE_URL = '';
-
-async function fetchAPI<T = any>(
-  method: string,
-  url: string,
-  data?: any
-): Promise<T> {
-  const { currentUser } = useAppStore.getState();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+function headers(): Record<string, string> {
+  const user = useAppStore.getState().currentUser;
+  return {
+    "Content-Type": "application/json",
+    ...(user
+      ? {
+          "x-user-role": user.role,
+          "x-provider-id": user.providerId || "",
+          "x-user-permissions": JSON.stringify(user.permissions),
+        }
+      : {}),
   };
+}
 
-  // Pass role, providerId, and staff permissions for tenant isolation & RBAC
-  if (currentUser) {
-    headers['x-user-role'] = currentUser.role;
-    if (currentUser.providerId) {
-      headers['x-provider-id'] = currentUser.providerId;
-    }
-    // Send STAFF permissions so API can enforce per-page access
-    if (currentUser.role === 'STAFF' && currentUser.permissions) {
-      headers['x-user-permissions'] = currentUser.permissions;
-    }
-  }
-
-  const res = await fetch(`${BASE_URL}${url}`, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-  });
-
+async function req(url: string, opts: RequestInit = {}) {
+  const res = await fetch(url, { ...opts, headers: { ...headers(), ...opts.headers } });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${res.status}`);
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `Request failed: ${res.status}`);
   }
-
   return res.json();
 }
 
 // Auth
-export const login = (username: string, password: string) =>
-  fetchAPI('POST', '/api/auth', { username, password });
+export const apiAuth = (data: { username: string; password: string }) =>
+  req("/api/auth", { method: "POST", body: JSON.stringify(data) });
 
 // Dashboard
-export const getDashboard = () => fetchAPI('GET', '/api/dashboard');
+export const apiDashboard = () => req("/api/dashboard");
 
 // Rooms
-export const getRooms = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/rooms${qs}`);
-};
-export const createRoom = (data: any) => fetchAPI('POST', '/api/rooms', data);
-export const updateRoom = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/rooms?id=${id}`, data);
-export const deleteRoom = (id: string) =>
-  fetchAPI('DELETE', `/api/rooms?id=${id}`);
-export const updateRoomStatus = (id: string, status: string) =>
-  fetchAPI('PUT', `/api/rooms/${encodeURIComponent(id)}/status`, { status });
+export const apiGetRooms = (q?: string) => req(`/api/rooms${q ? `?q=${q}` : ""}`);
+export const apiCreateRoom = (data: Record<string, unknown>) =>
+  req("/api/rooms", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateRoom = (id: string, data: Record<string, unknown>) =>
+  req(`/api/rooms/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteRoom = (id: string) =>
+  req(`/api/rooms/${id}`, { method: "DELETE" });
+export const apiUpdateRoomStatus = (id: string, status: string) =>
+  req(`/api/rooms/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) });
 
 // Guests
-export const getGuests = (search?: string) => {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-  return fetchAPI('GET', `/api/guests${qs}`);
-};
-export const createGuest = (data: any) => fetchAPI('POST', '/api/guests', data);
-export const updateGuest = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/guests?id=${id}`, data);
-export const deleteGuest = (id: string) =>
-  fetchAPI('DELETE', `/api/guests?id=${id}`);
+export const apiGetGuests = (q?: string) => req(`/api/guests${q ? `?q=${q}` : ""}`);
+export const apiCreateGuest = (data: Record<string, unknown>) =>
+  req("/api/guests", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateGuest = (id: string, data: Record<string, unknown>) =>
+  req(`/api/guests/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteGuest = (id: string) =>
+  req(`/api/guests/${id}`, { method: "DELETE" });
 
 // Reservations
-export const getReservations = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/reservations${qs}`);
-};
-export const createReservation = (data: any) =>
-  fetchAPI('POST', '/api/reservations', data);
-export const updateReservation = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/reservations?id=${id}`, data);
-export const deleteReservation = (id: string) =>
-  fetchAPI('DELETE', `/api/reservations?id=${id}`);
-export const checkinReservation = (id: string) =>
-  fetchAPI('POST', `/api/reservations/${encodeURIComponent(id)}/checkin`);
-export const checkoutReservation = (id: string) =>
-  fetchAPI('POST', `/api/reservations/${encodeURIComponent(id)}/checkout`);
-export const cancelReservation = (id: string) =>
-  fetchAPI('POST', `/api/reservations/${encodeURIComponent(id)}/cancel`);
-
-// Daytime Services
-export const getDaytimeServices = () =>
-  fetchAPI('GET', '/api/daytime-services');
-export const createDaytimeService = (data: any) =>
-  fetchAPI('POST', '/api/daytime-services', data);
-export const updateDaytimeService = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/daytime-services?id=${id}`, data);
-export const deleteDaytimeService = (id: string) =>
-  fetchAPI('DELETE', `/api/daytime-services?id=${id}`);
-
-// Daytime Bookings
-export const getDaytimeBookings = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/daytime-bookings${qs}`);
-};
-export const createDaytimeBooking = (data: any) =>
-  fetchAPI('POST', '/api/daytime-bookings', data);
-export const updateDaytimeBooking = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/daytime-bookings?id=${id}`, data);
-export const deleteDaytimeBooking = (id: string) =>
-  fetchAPI('DELETE', `/api/daytime-bookings?id=${id}`);
-
-// Expenses
-export const getExpenses = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/expenses${qs}`);
-};
-export const createExpense = (data: any) =>
-  fetchAPI('POST', '/api/expenses', data);
-export const updateExpense = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/expenses?id=${id}`, data);
-export const deleteExpense = (id: string) =>
-  fetchAPI('DELETE', `/api/expenses?id=${id}`);
-
-// Expense Categories
-export const getExpenseCategories = () =>
-  fetchAPI('GET', '/api/expense-categories');
-export const createExpenseCategory = (data: any) =>
-  fetchAPI('POST', '/api/expense-categories', data);
-export const deleteExpenseCategory = (id: string) =>
-  fetchAPI('DELETE', `/api/expense-categories?id=${id}`);
-
-// Resources
-export const getResources = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/resources${qs}`);
-};
-export const createResource = (data: any) =>
-  fetchAPI('POST', '/api/resources', data);
-export const updateResource = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/resources?id=${id}`, data);
-export const deleteResource = (id: string) =>
-  fetchAPI('DELETE', `/api/resources?id=${id}`);
-export const restockResource = (id: string, quantity: number) =>
-  fetchAPI('POST', `/api/resources/${encodeURIComponent(id)}/restock`, { quantity });
-
-// Notifications
-export const getNotifications = (unread?: boolean) => {
-  const qs = unread !== undefined ? `?unread=${unread}` : '';
-  return fetchAPI('GET', `/api/notifications${qs}`);
-};
-export const markNotificationsRead = (ids: string[]) =>
-  fetchAPI('PUT', '/api/notifications', { ids });
-
-// Housekeeping
-export const getHousekeeping = (params?: Record<string, string>) => {
-  const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-  return fetchAPI('GET', `/api/housekeeping${qs}`);
-};
-export const createHousekeepingTask = (data: any) =>
-  fetchAPI('POST', '/api/housekeeping', data);
-export const updateHousekeepingTask = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/housekeeping?id=${id}`, data);
-export const deleteHousekeepingTask = (id: string) =>
-  fetchAPI('DELETE', `/api/housekeeping?id=${id}`);
-
-// Reviews
-export const getReviews = (guestId?: string) => {
-  const qs = guestId ? `?guestId=${guestId}` : '';
-  return fetchAPI('GET', `/api/reviews${qs}`);
-};
-export const createReview = (data: any) =>
-  fetchAPI('POST', '/api/reviews', data);
-
-// Reports
-export const getReports = (from: string, to: string) =>
-  fetchAPI('GET', `/api/reports?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-
-// Settings
-export const getSettings = () => fetchAPI('GET', '/api/settings');
-export const updateSettings = (data: any) =>
-  fetchAPI('PUT', '/api/settings', data);
-
-// Users
-export const getUsers = () => fetchAPI('GET', '/api/users');
-export const createUser = (data: any) => fetchAPI('POST', '/api/users', data);
-export const updateUser = (id: string, data: any) =>
-  fetchAPI('PUT', `/api/users?id=${id}`, data);
-export const deleteUser = (id: string) =>
-  fetchAPI('DELETE', `/api/users?id=${id}`);
+export const apiGetReservations = (q?: string) => req(`/api/reservations${q ? `?${q}` : ""}`);
+export const apiCreateReservation = (data: Record<string, unknown>) =>
+  req("/api/reservations", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateReservation = (id: string, data: Record<string, unknown>) =>
+  req(`/api/reservations/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteReservation = (id: string) =>
+  req(`/api/reservations/${id}`, { method: "DELETE" });
+export const apiCheckin = (id: string) =>
+  req(`/api/reservations/${id}/checkin`, { method: "POST" });
+export const apiCheckout = (id: string, data?: Record<string, unknown>) =>
+  req(`/api/reservations/${id}/checkout`, { method: "POST", body: JSON.stringify(data || {}) });
+export const apiCancelReservation = (id: string) =>
+  req(`/api/reservations/${id}/cancel`, { method: "POST" });
 
 // Payments
-export const getPayments = (reservationId?: string) => {
-  const qs = reservationId ? `?reservationId=${reservationId}` : '';
-  return fetchAPI('GET', `/api/payments${qs}`);
-};
-export const createPayment = (data: any) =>
-  fetchAPI('POST', '/api/payments', data);
+export const apiCreatePayment = (data: Record<string, unknown>) =>
+  req("/api/payments", { method: "POST", body: JSON.stringify(data) });
 
-// Data Import/Export
-export const exportData = () => fetchAPI('GET', '/api/data');
-export const importData = (data: any) => fetchAPI('POST', '/api/data', data);
+// Expenses
+export const apiGetExpenses = (q?: string) => req(`/api/expenses${q ? `?${q}` : ""}`);
+export const apiCreateExpense = (data: Record<string, unknown>) =>
+  req("/api/expenses", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateExpense = (id: string, data: Record<string, unknown>) =>
+  req(`/api/expenses/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteExpense = (id: string) =>
+  req(`/api/expenses/${id}`, { method: "DELETE" });
 
-// Activity Log
-export const getActivity = (limit?: number) => {
-  const qs = limit ? `?limit=${limit}` : '';
-  return fetchAPI('GET', `/api/activity${qs}`);
-};
+// Expense Categories
+export const apiGetExpenseCategories = () => req("/api/expense-categories");
+export const apiCreateExpenseCategory = (data: Record<string, unknown>) =>
+  req("/api/expense-categories", { method: "POST", body: JSON.stringify(data) });
+export const apiDeleteExpenseCategory = (id: string) =>
+  req(`/api/expense-categories/${id}`, { method: "DELETE" });
 
-// ─── Police / Provider Management ──────────────────────────────────
+// Resources
+export const apiGetResources = (q?: string) => req(`/api/resources${q ? `?q=${q}` : ""}`);
+export const apiCreateResource = (data: Record<string, unknown>) =>
+  req("/api/resources", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateResource = (id: string, data: Record<string, unknown>) =>
+  req(`/api/resources/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteResource = (id: string) =>
+  req(`/api/resources/${id}`, { method: "DELETE" });
+export const apiRestockResource = (id: string, qty: number) =>
+  req(`/api/resources/${id}/restock`, { method: "POST", body: JSON.stringify({ quantity: qty }) });
 
-export const getProviders = () => fetchAPI('GET', '/api/providers');
-export const approveProvider = (id: string) =>
-  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'APPROVED' });
-export const rejectProvider = (id: string, reason: string) =>
-  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'REJECTED', rejectionReason: reason });
-export const suspendProvider = (id: string) =>
-  fetchAPI('PUT', `/api/providers?id=${id}`, { status: 'SUSPENDED' });
-export const getPoliceDashboard = () => fetchAPI('GET', '/api/police-dashboard');
-export const getPoliceGuests = (search?: string, providerId?: string) => {
-  const params = new URLSearchParams();
-  if (search) params.set('search', search);
-  if (providerId) params.set('providerId', providerId);
-  const qs = params.toString() ? `?${params}` : '';
-  return fetchAPI('GET', `/api/police-guests${qs}`);
-};
+// Housekeeping
+export const apiGetHousekeeping = (q?: string) => req(`/api/housekeeping${q ? `?${q}` : ""}`);
+export const apiCreateHousekeeping = (data: Record<string, unknown>) =>
+  req("/api/housekeeping", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateHousekeeping = (id: string, data: Record<string, unknown>) =>
+  req(`/api/housekeeping/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteHousekeeping = (id: string) =>
+  req(`/api/housekeeping/${id}`, { method: "DELETE" });
 
-// Provider Registration Request (with license file upload)
-export const requestProviderAccess = async (data: any, licenseFile?: File | null) => {
-  if (licenseFile) {
-    const { currentUser } = useAppStore.getState();
-    const formData = new FormData();
-    // Text fields
-    const textFields = ['name', 'ownerName', 'phone', 'email', 'address', 'type', 'licenseNo', 'username', 'password'];
-    textFields.forEach((key) => {
-      if (data[key] !== undefined && data[key] !== '') formData.append(key, data[key]);
-    });
-    formData.append('licenseFile', licenseFile);
+// Users
+export const apiGetUsers = () => req("/api/users");
+export const apiCreateUser = (data: Record<string, unknown>) =>
+  req("/api/users", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateUser = (id: string, data: Record<string, unknown>) =>
+  req(`/api/users/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteUser = (id: string) =>
+  req(`/api/users/${id}`, { method: "DELETE" });
 
-    const res = await fetch('/api/providers', {
-      method: 'POST',
-      body: formData,
-      // Do NOT set Content-Type — browser sets multipart boundary automatically
-    });
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || error.error || `HTTP ${res.status}`);
-    }
-    return res.json();
-  }
-  return fetchAPI('POST', '/api/providers', data);
-};
+// Settings
+export const apiGetSettings = () => req("/api/settings");
+export const apiUpdateSettings = (data: Record<string, unknown>) =>
+  req("/api/settings", { method: "PUT", body: JSON.stringify(data) });
+
+// Notifications
+export const apiGetNotifications = () => req("/api/notifications");
+export const apiCreateNotification = (data: Record<string, unknown>) =>
+  req("/api/notifications", { method: "POST", body: JSON.stringify(data) });
+export const apiMarkNotificationRead = (id: string) =>
+  req(`/api/notifications/${id}`, { method: "PUT", body: JSON.stringify({ isRead: true }) });
+
+// Activity
+export const apiGetActivity = () => req("/api/activity");
+
+// Reports
+export const apiGetReports = (q?: string) => req(`/api/reports${q ? `?${q}` : ""}`);
+
+// Data export/import
+export const apiExportData = () => req("/api/data");
+export const apiImportData = (data: Record<string, unknown>) =>
+  req("/api/data", { method: "POST", body: JSON.stringify(data) });
+
+// Providers (Police)
+export const apiGetProviders = () => req("/api/providers");
+export const apiUpdateProvider = (id: string, data: Record<string, unknown>) =>
+  req(`/api/providers/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiRegisterProvider = (data: FormData) =>
+  fetch("/api/providers", { method: "POST", body: data }).then((r) => r.json());
+
+// Police
+export const apiPoliceDashboard = () => req("/api/police-dashboard");
+export const apiPoliceGuests = (q?: string) => req(`/api/police-guests${q ? `?${q}` : ""}`);
+
+// Daytime
+export const apiGetDaytimeServices = () => req("/api/daytime-services");
+export const apiCreateDaytimeService = (data: Record<string, unknown>) =>
+  req("/api/daytime-services", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateDaytimeService = (id: string, data: Record<string, unknown>) =>
+  req(`/api/daytime-services/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteDaytimeService = (id: string) =>
+  req(`/api/daytime-services/${id}`, { method: "DELETE" });
+export const apiGetDaytimeBookings = (q?: string) => req(`/api/daytime-bookings${q ? `?${q}` : ""}`);
+export const apiCreateDaytimeBooking = (data: Record<string, unknown>) =>
+  req("/api/daytime-bookings", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateDaytimeBooking = (id: string, data: Record<string, unknown>) =>
+  req(`/api/daytime-bookings/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteDaytimeBooking = (id: string) =>
+  req(`/api/daytime-bookings/${id}`, { method: "DELETE" });
+
+// Reviews
+export const apiGetReviews = (q?: string) => req(`/api/reviews${q ? `?${q}` : ""}`);
+export const apiCreateReview = (data: Record<string, unknown>) =>
+  req("/api/reviews", { method: "POST", body: JSON.stringify(data) });
+export const apiDeleteReview = (id: string) =>
+  req(`/api/reviews/${id}`, { method: "DELETE" });

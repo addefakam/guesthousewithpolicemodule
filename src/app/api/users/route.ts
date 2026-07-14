@@ -1,126 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { providerId } = getProviderFilter(request);
+    const auth = getAuthContext(req);
+    const { isPolice, providerId } = getProviderFilter(auth);
+
+    const { searchParams } = req.nextUrl;
+    const providerFilter = searchParams.get("providerId");
+
     const where: Record<string, unknown> = {};
-    if (providerId) where.providerId = providerId;
+    if (isPolice) {
+      if (providerFilter) where.providerId = providerFilter;
+    } else {
+      where.providerId = providerId;
+    }
 
     const users = await db.user.findMany({
       where,
-      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         username: true,
         role: true,
         name: true,
         permissions: true,
+        providerId: true,
         createdAt: true,
         updatedAt: true,
       },
+      orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(users);
-  } catch (error) {
-    console.error("Users GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch users";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const denied = checkWritePermission(request, "POST", { requireSuperuserOrOperator: true });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { username, password, role, name, permissions } = body;
+    const auth = getAuthContext(req);
+    const { providerId } = getProviderFilter(auth);
+    checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
-    if (!username || !password || !name) {
-      return NextResponse.json({ error: "Username, password, and name are required" }, { status: 400 });
+    const body = await req.json();
+    const { username, password, role, name, permissions, providerId: bodyProviderId } = body;
+
+    if (!username || !password || !name || !role) {
+      return NextResponse.json(
+        { error: "username, password, name, and role are required" },
+        { status: 400 }
+      );
     }
 
-    const existing = await db.user.findUnique({ where: { username } });
-    if (existing) {
-      return NextResponse.json({ error: "Username already exists" }, { status: 400 });
-    }
+    const targetProviderId = bodyProviderId || providerId;
 
     const user = await db.user.create({
-      data: { username, password, role: role || "STAFF", name, providerId: providerId || "", permissions: permissions || undefined },
+      data: {
+        username,
+        password,
+        role,
+        name,
+        permissions: typeof permissions === "string" ? permissions : JSON.stringify(permissions || []),
+        providerId: targetProviderId,
+      },
     });
 
     const { password: _, ...userWithoutPassword } = user;
+
     return NextResponse.json(userWithoutPassword, { status: 201 });
-  } catch (error) {
-    console.error("Users POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "PUT", { requireSuperuserOrOperator: true });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const body = await request.json();
-    const { id, username, password, role, name, permissions } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
-    }
-
-    const data: Record<string, unknown> = {};
-    if (username !== undefined) data.username = username;
-    if (password !== undefined) data.password = password;
-    if (role !== undefined) data.role = role;
-    if (name !== undefined) data.name = name;
-    if (permissions !== undefined) data.permissions = permissions;
-
-    const user = await db.user.update({
-      where: { id, ...(providerId ? { providerId } : {}) },
-      data,
-    });
-
-    const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
   } catch (error: unknown) {
-    console.error("Users PUT error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    if (prismaError.code === "P2002") {
-      return NextResponse.json({ error: "Username already exists" }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const denied = checkWritePermission(request, "DELETE", { requireSuperuserOrOperator: true });
-    if (denied) return denied;
-    const { providerId } = getProviderFilter(request);
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const selfId = searchParams.get("selfId");
-
-    if (!id) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
-    }
-
-    if (id === selfId) {
-      return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
-    }
-
-    await db.user.delete({ where: { id, ...(providerId ? { providerId } : {}) } });
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    console.error("Users DELETE error:", error);
-    const prismaError = error as { code?: string };
-    if (prismaError.code === "P2025") {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to create user";
+    const status =
+      message.includes("required") ? 400 :
+      message.includes("Unique") ? 409 :
+      message.includes("permission") || message.includes("cannot") ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
