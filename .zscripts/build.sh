@@ -92,13 +92,13 @@ else
     exit 1
 fi
 
-# 复制 Caddyfile（如果存在）
-if [ -f "Caddyfile" ]; then
-    echo "  - 复制 Caddyfile"
-    cp Caddyfile "$BUILD_DIR/"
-else
-    echo "ℹ️  Caddyfile 不存在，跳过"
-fi
+# 覆写 next-service-dist/.env 中的 DATABASE_URL 为生产相对路径
+# （standalone 构建会复制源码 .env，其中路径指向源码目录，在生产环境中无效）
+echo "  - 覆写 next-service-dist/.env 中的 DATABASE_URL"
+echo "DATABASE_URL=file:../db/custom.db" > "$BUILD_DIR/next-service-dist/.env"
+
+# Caddyfile 不再需要 — 平台 Caddy 已负责反向代理
+echo "ℹ️  跳过 Caddyfile（平台已内置 Caddy 反向代理）"
 
 # 复制 start.sh 脚本
 echo "  - 复制 start.sh 到 $BUILD_DIR"
