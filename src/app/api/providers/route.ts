@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice } from "@/lib/tenant";
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 export async function GET(req: NextRequest) {
@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
       const buffer = Buffer.from(bytes);
       const ext = path.extname(licenseFile.name) || ".bin";
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      const filepath = path.join(process.cwd(), "public", "uploads", filename);
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadsDir, { recursive: true }); // ensure directory exists
+      const filepath = path.join(uploadsDir, filename);
       await writeFile(filepath, buffer);
       licenseFilePath = `/uploads/${filename}`;
     }
