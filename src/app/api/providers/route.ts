@@ -34,11 +34,23 @@ export async function POST(req: NextRequest) {
     const type = (formData.get("type") as string) || "GUEST_HOUSE";
     const licenseNo = (formData.get("licenseNo") as string) || "";
     const licenseFile = formData.get("licenseFile") as File | null;
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
 
-    if (!name || !ownerName || !phone) {
+    if (!name || !ownerName || !phone || !username || !password) {
       return NextResponse.json(
-        { error: "name, ownerName, and phone are required" },
+        { error: "name, ownerName, phone, username, and password are required" },
         { status: 400 }
+      );
+    }
+
+    const existingUser = await db.user.findUnique({
+      where: { username: username.trim() },
+    });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "Username is already taken" },
+        { status: 409 }
       );
     }
 
@@ -53,18 +65,32 @@ export async function POST(req: NextRequest) {
       licenseFilePath = `/uploads/${filename}`;
     }
 
-    const provider = await db.provider.create({
-      data: {
-        name,
-        ownerName,
-        phone,
-        email,
-        address,
-        type,
-        licenseNo,
-        licenseFile: licenseFilePath,
-        status: "PENDING",
-      },
+    const provider = await db.$transaction(async (tx) => {
+      const p = await tx.provider.create({
+        data: {
+          name,
+          ownerName,
+          phone,
+          email,
+          address,
+          type,
+          licenseNo,
+          licenseFile: licenseFilePath,
+          status: "PENDING",
+        },
+      });
+
+      await tx.user.create({
+        data: {
+          username: username.trim(),
+          password,
+          role: "SUPERUSER",
+          name: ownerName,
+          providerId: p.id,
+        },
+      });
+
+      return p;
     });
 
     return NextResponse.json(provider, { status: 201 });

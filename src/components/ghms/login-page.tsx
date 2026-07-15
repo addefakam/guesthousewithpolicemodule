@@ -47,6 +47,8 @@ export default function LoginPage() {
   const [regType, setRegType] = useState("");
   const [regLicenseNo, setRegLicenseNo] = useState("");
   const [regLicenseFile, setRegLicenseFile] = useState<File | null>(null);
+  const [regUsername, setRegUsername] = useState("");
+  const [regPassword, setRegPassword] = useState("");
   const [regLoading, setRegLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,7 +89,9 @@ export default function LoginPage() {
       !regEmail.trim() ||
       !regGuestHouseName.trim() ||
       !regType ||
-      !regLicenseNo.trim()
+      !regLicenseNo.trim() ||
+      !regUsername.trim() ||
+      !regPassword.trim()
     ) {
       toast.error("Please fill in all required fields.");
       return;
@@ -101,6 +105,8 @@ export default function LoginPage() {
       formData.append("guestHouseName", regGuestHouseName.trim());
       formData.append("type", regType);
       formData.append("licenseNo", regLicenseNo.trim());
+      formData.append("username", regUsername.trim());
+      formData.append("password", regPassword);
       if (regLicenseFile) {
         formData.append("licenseFile", regLicenseFile);
       }
@@ -116,6 +122,8 @@ export default function LoginPage() {
       setRegGuestHouseName("");
       setRegType("");
       setRegLicenseNo("");
+      setRegUsername("");
+      setRegPassword("");
       setRegLicenseFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err: unknown) {
@@ -344,6 +352,34 @@ export default function LoginPage() {
                           }
                           setRegLicenseFile(file);
                         }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Login Credentials */}
+                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Desired Login Credentials
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="reg-username">Username *</Label>
+                      <Input
+                        id="reg-username"
+                        placeholder="Desired username"
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="reg-password">Password *</Label>
+                      <Input
+                        id="reg-password"
+                        type="password"
+                        placeholder="Password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
                       />
                     </div>
                   </div>
