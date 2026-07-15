@@ -12,6 +12,7 @@ import {
   apiCreatePayment,
   apiGetGuests,
   apiGetRooms,
+  apiCreateGuest,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,8 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 
 interface GuestOption {
@@ -149,10 +152,26 @@ export default function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
 
-  // Create dialog
+  // Create dialog — 2-step wizard
   const [createOpen, setCreateOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+
+  // Step 1 — guest selection / creation
+  const [guestMode, setGuestMode] = useState<"existing" | "new">("existing");
+  const [selectedGuestId, setSelectedGuestId] = useState("");
+  const [newGuestForm, setNewGuestForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    idNumber: "",
+    idType: "National ID",
+    nationality: "",
+    address: "",
+    notes: "",
+  });
+
+  // Step 2 — booking details
   const [createForm, setCreateForm] = useState({
-    guestId: "",
     roomId: "",
     checkIn: "",
     checkOut: "",
@@ -281,7 +300,7 @@ export default function ReservationsPage() {
   };
 
   const handleCreate = async () => {
-    if (!createForm.guestId || !createForm.roomId || !createForm.checkIn || !createForm.checkOut) {
+    if (!createForm.roomId || !createForm.checkIn || !createForm.checkOut) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -291,16 +310,33 @@ export default function ReservationsPage() {
     }
     try {
       setCreating(true);
+
+      // Determine guestId: use existing or create new
+      let guestId = selectedGuestId;
+      if (guestMode === "new") {
+        if (!newGuestForm.name || !newGuestForm.phone) {
+          toast.error("Guest name and phone are required");
+          return;
+        }
+        const created = await apiCreateGuest(newGuestForm);
+        guestId = created.id;
+      }
+
+      if (!guestId) {
+        toast.error("Please select or create a guest");
+        return;
+      }
+
       await apiCreateReservation({
-        guestId: createForm.guestId,
+        guestId,
         roomId: createForm.roomId,
         checkIn: createForm.checkIn,
         checkOut: createForm.checkOut,
         notes: createForm.notes,
       });
-      toast.success("Reservation created successfully");
-      setCreateOpen(false);
-      setCreateForm({ guestId: "", roomId: "", checkIn: "", checkOut: "", notes: "" });
+
+      toast.success("Guest and reservation created successfully");
+      closeCreateDialog();
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to create reservation";
@@ -308,6 +344,15 @@ export default function ReservationsPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const closeCreateDialog = () => {
+    setCreateOpen(false);
+    setWizardStep(1);
+    setGuestMode("existing");
+    setSelectedGuestId("");
+    setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", address: "", notes: "" });
+    setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "" });
   };
 
   const handleDelete = async () => {
@@ -767,134 +812,218 @@ export default function ReservationsPage() {
         )}
       </div>
 
-      {/* New Reservation Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
+      {/* New Reservation Wizard Dialog */}
+      <Dialog open={createOpen} onOpenChange={closeCreateDialog}>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Reservation</DialogTitle>
-            <DialogDescription>Create a new room reservation for a guest.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              {wizardStep === 1 ? (
+                <><User className="h-5 w-5 text-violet-500" /> Step 1 of 2 — Guest Information</>
+              ) : (
+                <><BedDouble className="h-5 w-5 text-emerald-500" /> Step 2 of 2 — Booking Details</>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {wizardStep === 1
+                ? "Select an existing guest or register a new one."
+                : "Choose a room and set the dates for this reservation."}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
-            <div className="space-y-2">
-              <Label>Guest <span className="text-rose-500">*</span></Label>
-              <Select
-                value={createForm.guestId}
-                onValueChange={(v) => setCreateForm({ ...createForm, guestId: v })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a guest..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allGuests.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      <span className="flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-gray-400" />
-                        {g.name} — {g.phone}
-                      </span>
-                    </SelectItem>
-                  ))}
-                  {allGuests.length === 0 && (
-                    <SelectItem value="__none" disabled>
-                      No guests available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Room <span className="text-rose-500">*</span></Label>
-              <Select
-                value={createForm.roomId}
-                onValueChange={(v) => setCreateForm({ ...createForm, roomId: v })}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an available room..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRooms.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      <span className="flex items-center gap-2">
-                        <BedDouble className="h-3.5 w-3.5 text-gray-400" />
-                        Room {r.number} — {r.name} ({r.type}) — {formatCurrency(r.pricePerNight)}/night
-                      </span>
-                    </SelectItem>
-                  ))}
-                  {availableRooms.length === 0 && (
-                    <SelectItem value="__none" disabled>
-                      No available rooms
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="check-in">
-                  Check-in <span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  id="check-in"
-                  type="date"
-                  value={createForm.checkIn}
-                  onChange={(e) => setCreateForm({ ...createForm, checkIn: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="check-out">
-                  Check-out <span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  id="check-out"
-                  type="date"
-                  value={createForm.checkOut}
-                  min={createForm.checkIn}
-                  onChange={(e) => setCreateForm({ ...createForm, checkOut: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Price Summary */}
-            {(createNights > 0 || createForm.roomId) && (
-              <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Price Summary</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Room Rate</span>
-                  <span className="font-medium">{formatCurrency(createRate)}/night</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Nights</span>
-                  <span className="font-medium">{createNights}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-gray-900">Total</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(createTotal)}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="res-notes">Notes</Label>
-              <Textarea
-                id="res-notes"
-                placeholder="Special requests, preferences..."
-                rows={3}
-                value={createForm.notes}
-                onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-              />
-            </div>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 py-1">
+            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ wizardStep === 1 ? "bg-violet-600 text-white" : "bg-emerald-100 text-emerald-700" }`}>1</div>
+            <div className={`h-0.5 flex-1 rounded ${ wizardStep === 2 ? "bg-emerald-400" : "bg-gray-200" }`} />
+            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ wizardStep === 2 ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-400" }`}>2</div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={creating}>
-              {creating ? "Creating..." : "Create Reservation"}
-            </Button>
+          {/* ── STEP 1: Guest ── */}
+          {wizardStep === 1 && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Mode toggle */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setGuestMode("existing")}
+                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${ guestMode === "existing" ? "border-violet-400 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:bg-gray-50" }`}
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Existing Guest
+                </button>
+                <button
+                  onClick={() => setGuestMode("new")}
+                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${ guestMode === "new" ? "border-violet-400 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:bg-gray-50" }`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  New Guest
+                </button>
+              </div>
+
+              {guestMode === "existing" ? (
+                <div className="space-y-2">
+                  <Label>Select Guest <span className="text-rose-500">*</span></Label>
+                  <Select value={selectedGuestId} onValueChange={setSelectedGuestId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Search and select a guest..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allGuests.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          <span className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-gray-400" />
+                            {g.name} — {g.phone}
+                          </span>
+                        </SelectItem>
+                      ))}
+                      {allGuests.length === 0 && (
+                        <SelectItem value="__none" disabled>No guests found — create a new one</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Full Name <span className="text-rose-500">*</span></Label>
+                      <Input placeholder="John Doe" value={newGuestForm.name} onChange={(e) => setNewGuestForm({ ...newGuestForm, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Phone <span className="text-rose-500">*</span></Label>
+                      <Input placeholder="+251 9XX XXX XXX" value={newGuestForm.phone} onChange={(e) => setNewGuestForm({ ...newGuestForm, phone: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Email</Label>
+                      <Input type="email" placeholder="guest@email.com" value={newGuestForm.email} onChange={(e) => setNewGuestForm({ ...newGuestForm, email: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Nationality</Label>
+                      <Input placeholder="Ethiopian" value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>ID Type</Label>
+                      <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["National ID", "Passport", "Driver's License", "Other"].map((t) => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>ID Number</Label>
+                      <Input placeholder="ID / Passport number" value={newGuestForm.idNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, idNumber: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Address</Label>
+                    <Input placeholder="Guest address" value={newGuestForm.address} onChange={(e) => setNewGuestForm({ ...newGuestForm, address: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── STEP 2: Booking ── */}
+          {wizardStep === 2 && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Selected guest preview */}
+              {(() => {
+                const g = guestMode === "existing" ? allGuests.find((x) => x.id === selectedGuestId) : null;
+                return (
+                  <div className="flex items-center gap-2 rounded-lg bg-violet-50 border border-violet-100 px-3 py-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-200 text-violet-700 text-xs font-bold">
+                      {guestMode === "new" ? newGuestForm.name.charAt(0).toUpperCase() || "N" : g?.name.charAt(0).toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-violet-900">
+                        {guestMode === "new" ? newGuestForm.name : g?.name}
+                      </p>
+                      <p className="text-xs text-violet-600">
+                        {guestMode === "new" ? newGuestForm.phone : g?.phone}
+                        {guestMode === "new" && " · New guest (will be created)"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-2">
+                <Label>Room <span className="text-rose-500">*</span></Label>
+                <Select value={createForm.roomId} onValueChange={(v) => setCreateForm({ ...createForm, roomId: v })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an available room..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRooms.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        <span className="flex items-center gap-2">
+                          <BedDouble className="h-3.5 w-3.5 text-gray-400" />
+                          Room {r.number} — {r.type} — {formatCurrency(r.pricePerNight)}/night
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {availableRooms.length === 0 && (
+                      <SelectItem value="__none" disabled>No available rooms</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="check-in">Check-in <span className="text-rose-500">*</span></Label>
+                  <Input id="check-in" type="date" value={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkIn: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="check-out">Check-out <span className="text-rose-500">*</span></Label>
+                  <Input id="check-out" type="date" value={createForm.checkOut} min={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkOut: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Price summary */}
+              {(createNights > 0 || createForm.roomId) && (
+                <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Price Summary</p>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">Room Rate</span><span className="font-medium">{formatCurrency(createRate)}/night</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">Nights</span><span className="font-medium">{createNights}</span></div>
+                  <Separator />
+                  <div className="flex justify-between text-sm"><span className="font-semibold text-gray-900">Total</span><span className="font-bold text-gray-900">{formatCurrency(createTotal)}</span></div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="res-notes">Notes</Label>
+                <Textarea id="res-notes" placeholder="Special requests, preferences..." rows={2} value={createForm.notes} onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })} />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-row gap-2">
+            {wizardStep === 1 ? (
+              <>
+                <Button variant="outline" onClick={closeCreateDialog}>Cancel</Button>
+                <Button onClick={() => setWizardStep(2)} disabled={!step1Valid} className="gap-1.5">
+                  Next — Booking Details
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setWizardStep(1)} className="gap-1.5">
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button onClick={handleCreate} disabled={creating} className="gap-1.5">
+                  {creating ? "Creating..." : "Create Reservation"}
+                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
