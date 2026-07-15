@@ -141,8 +141,14 @@ export const apiImportData = (data: Record<string, unknown>) =>
 export const apiGetProviders = () => req("/api/providers");
 export const apiUpdateProvider = (id: string, data: Record<string, unknown>) =>
   req(`/api/providers/${id}`, { method: "PUT", body: JSON.stringify(data) });
-export const apiRegisterProvider = (data: FormData) =>
-  fetch("/api/providers", { method: "POST", body: data }).then((r) => r.json());
+export const apiRegisterProvider = async (data: FormData) => {
+  const res = await fetch("/api/providers", { method: "POST", body: data });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(json.error || `Registration failed: ${res.status}`);
+  }
+  return json;
+};
 
 // Police
 export const apiPoliceDashboard = () => req("/api/police-dashboard");

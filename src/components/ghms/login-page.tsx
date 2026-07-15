@@ -34,6 +34,8 @@ import {
 export default function LoginPage() {
   const { setCurrentUser, setCurrentPage } = useAppStore();
 
+  const [activeTab, setActiveTab] = useState("login");
+
   // ── Login state ──
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -126,6 +128,7 @@ export default function LoginPage() {
       setRegPassword("");
       setRegLicenseFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setActiveTab("login");
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -158,7 +161,7 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent className="pt-4">
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-6 grid w-full grid-cols-2">
               <TabsTrigger value="login" className="gap-1.5">
                 <LogIn className="size-3.5" />
