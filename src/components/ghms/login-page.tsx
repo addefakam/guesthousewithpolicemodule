@@ -101,10 +101,10 @@ export default function LoginPage() {
     setRegLoading(true);
     try {
       const formData = new FormData();
-      formData.append("name", regName.trim());
+      formData.append("name", regGuestHouseName.trim());   // backend 'name' = guest house name
+      formData.append("ownerName", regName.trim());         // backend 'ownerName' = owner full name
       formData.append("phone", regPhone.trim());
       formData.append("email", regEmail.trim());
-      formData.append("guestHouseName", regGuestHouseName.trim());
       formData.append("type", regType);
       formData.append("licenseNo", regLicenseNo.trim());
       formData.append("username", regUsername.trim());
