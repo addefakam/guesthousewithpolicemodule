@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetRooms,
@@ -8,6 +9,7 @@ import {
   apiUpdateRoom,
   apiDeleteRoom,
   apiUpdateRoomStatus,
+  apiImportRooms,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +73,12 @@ import {
   ShowerHead,
   Car,
   DollarSign,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 
 interface Room {
@@ -85,6 +93,12 @@ interface Room {
   amenities: string;
   description: string;
   image: string | null;
+}
+
+interface ImportResult {
+  number: string;
+  status: string;
+  error?: string;
 }
 
 const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
@@ -130,7 +144,6 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
 
 const emptyForm = {
   number: "",
-  name: "",
   type: "SINGLE",
   pricePerNight: "",
   floor: "",
@@ -139,17 +152,43 @@ const emptyForm = {
   description: "",
 };
 
+// ── Excel template columns ───────────────────────────────────────────────────
+const TEMPLATE_COLUMNS = ["number", "type", "pricePerNight", "floor", "capacity", "amenities", "description"];
+const TEMPLATE_EXAMPLE = [
+  { number: "101", type: "SINGLE", pricePerNight: 500, floor: 1, capacity: 1, amenities: "WiFi, TV", description: "Standard single room" },
+  { number: "102", type: "DOUBLE", pricePerNight: 900, floor: 1, capacity: 2, amenities: "WiFi, TV, AC", description: "Comfortable double room" },
+  { number: "201", type: "SUITE",  pricePerNight: 1800, floor: 2, capacity: 3, amenities: "WiFi, TV, AC, Mini Bar", description: "Luxury suite" },
+];
+
+function downloadTemplate() {
+  const ws = XLSX.utils.json_to_sheet(TEMPLATE_EXAMPLE, { header: TEMPLATE_COLUMNS });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rooms");
+  XLSX.writeFile(wb, "rooms_import_template.xlsx");
+}
+
 export default function RoomsPage() {
   const { refreshKey, triggerRefresh } = useAppStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // single-room dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  // delete
   const [deleteDialog, setDeleteDialog] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // excel import
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -179,7 +218,6 @@ export default function RoomsPage() {
     setEditingRoom(room);
     setForm({
       number: room.number,
-      name: room.name,
       type: room.type,
       pricePerNight: String(room.pricePerNight),
       floor: String(room.floor),
@@ -191,7 +229,7 @@ export default function RoomsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.number || !form.name || !form.pricePerNight || !form.floor || !form.capacity) {
+    if (!form.number || !form.pricePerNight || !form.floor || !form.capacity) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -200,7 +238,6 @@ export default function RoomsPage() {
       setSaving(true);
       const payload = {
         number: form.number,
-        name: form.name,
         type: form.type,
         pricePerNight: Number(form.pricePerNight),
         floor: Number(form.floor),
@@ -252,6 +289,42 @@ export default function RoomsPage() {
       const message = err instanceof Error ? err.message : "Failed to update status";
       toast.error(message);
     }
+  };
+
+  // ── Excel import ────────────────────────────────────────────────────────────
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportFile(e.target.files?.[0] ?? null);
+    setImportResults(null);
+  };
+
+  const handleImport = async () => {
+    if (!importFile) { toast.error("Please select an Excel file first"); return; }
+    setImportLoading(true);
+    try {
+      const buffer = await importFile.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+      if (rows.length === 0) { toast.error("No data rows found in the file"); return; }
+
+      const result = await apiImportRooms(rows as Record<string, unknown>[]);
+      setImportResults(result.results);
+      toast.success(`Import complete: ${result.imported} created, ${result.skipped} skipped`);
+      triggerRefresh();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Import failed";
+      toast.error(message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const closeImportDialog = () => {
+    setImportDialogOpen(false);
+    setImportFile(null);
+    setImportResults(null);
+    if (importFileRef.current) importFileRef.current.value = "";
   };
 
   const parseAmenities = (amenitiesStr: string): string[] => {
@@ -306,10 +379,16 @@ export default function RoomsPage() {
             Manage your {rooms.length} room{rooms.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Room
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Room
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -332,10 +411,16 @@ export default function RoomsPage() {
             {search ? "Try a different search term" : "Get started by adding your first room"}
           </p>
           {!search && (
-            <Button onClick={openCreate} variant="outline" className="mt-4 gap-2">
-              <Plus className="h-4 w-4" />
-              Add Room
-            </Button>
+            <div className="mt-4 flex gap-2">
+              <Button onClick={openCreate} variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Room
+              </Button>
+              <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Import Excel
+              </Button>
+            </div>
           )}
         </div>
       ) : (
@@ -358,7 +443,7 @@ export default function RoomsPage() {
                         <h3 className="font-semibold text-gray-900 leading-tight">
                           Room {room.number}
                         </h3>
-                        <p className="text-sm text-gray-500">{room.name}</p>
+                        <p className="text-sm text-gray-500">{room.type}</p>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -451,7 +536,7 @@ export default function RoomsPage() {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
+      {/* Create/Edit Dialog — no Room Name field */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -477,20 +562,6 @@ export default function RoomsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="room-name">
-                  Room Name <span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  id="room-name"
-                  placeholder="e.g. Ocean View"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
                 <Label htmlFor="room-type">Room Type</Label>
                 <Select
                   value={form.type}
@@ -511,6 +582,9 @@ export default function RoomsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-price">
                   Price/Night <span className="text-rose-500">*</span>
@@ -523,9 +597,6 @@ export default function RoomsPage() {
                   onChange={(e) => setForm({ ...form, pricePerNight: e.target.value })}
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-floor">
                   Floor <span className="text-rose-500">*</span>
@@ -600,6 +671,94 @@ export default function RoomsPage() {
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : editingRoom ? "Update Room" : "Create Room"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Excel Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={closeImportDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+              Import Rooms from Excel
+            </DialogTitle>
+            <DialogDescription>
+              Upload an Excel file (.xlsx / .xls) with room data. Download the
+              template below for the correct column format.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Template download */}
+            <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
+              <p className="text-sm font-medium text-emerald-800 mb-1">Required columns:</p>
+              <p className="text-xs text-emerald-700 mb-3 font-mono">
+                number · type · pricePerNight · floor · capacity · amenities · description
+              </p>
+              <p className="text-xs text-emerald-600 mb-3">
+                <strong>type</strong> must be one of: SINGLE, DOUBLE, TWIN, SUITE, DELUXE<br />
+                <strong>amenities</strong> — comma-separated, e.g. <em>WiFi, TV, AC</em>
+              </p>
+              <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-100">
+                <Download className="h-3.5 w-3.5" />
+                Download Template
+              </Button>
+            </div>
+
+            {/* File picker */}
+            <div className="space-y-2">
+              <Label htmlFor="excel-file">Select Excel File</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="excel-file"
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  ref={importFileRef}
+                  onChange={handleImportFileChange}
+                  className="flex-1"
+                />
+              </div>
+              {importFile && (
+                <p className="text-xs text-gray-500">
+                  Selected: <strong>{importFile.name}</strong> ({(importFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
+
+            {/* Import results */}
+            {importResults && (
+              <div className="rounded-lg border bg-gray-50 p-3 max-h-48 overflow-y-auto space-y-1">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Import Results:</p>
+                {importResults.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    {r.status === "created" ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    ) : r.status === "skipped" ? (
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    )}
+                    <span className="font-medium">Room {r.number}</span>
+                    <span className={r.status === "created" ? "text-emerald-600" : "text-amber-600"}>
+                      {r.status === "created" ? "Created" : r.error}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeImportDialog}>
+              {importResults ? "Close" : "Cancel"}
+            </Button>
+            {!importResults && (
+              <Button onClick={handleImport} disabled={importLoading || !importFile} className="gap-2">
+                <Upload className="h-4 w-4" />
+                {importLoading ? "Importing..." : "Import Rooms"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

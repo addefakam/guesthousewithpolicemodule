@@ -45,7 +45,56 @@ export async function POST(req: NextRequest) {
     const auth = getAuthContext(req);
     checkWritePermission(auth, { staffPermissionKey: "rooms" });
 
+    if (!auth.providerId) {
+      return NextResponse.json(
+        { error: "No provider assigned to this user" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
+
+    // ── Bulk import ──────────────────────────────────────────────────────────
+    if (Array.isArray(body.bulk)) {
+      const results: { number: string; status: string; error?: string }[] = [];
+
+      for (const row of body.bulk) {
+        const { number, type, pricePerNight, floor, capacity, amenities, description, name } = row;
+        if (!number || !type || pricePerNight == null || floor == null || capacity == null) {
+          results.push({ number: String(number ?? "?"), status: "skipped", error: "Missing required fields" });
+          continue;
+        }
+        try {
+          const existing = await db.room.findFirst({ where: { number: String(number), providerId: auth.providerId } });
+          if (existing) {
+            results.push({ number: String(number), status: "skipped", error: "Room number already exists" });
+            continue;
+          }
+          await db.room.create({
+            data: {
+              number: String(number),
+              name: name ? String(name) : `Room ${number}`,
+              type: String(type).toUpperCase(),
+              pricePerNight: Number(pricePerNight),
+              floor: Number(floor),
+              capacity: Number(capacity),
+              amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
+              description: description ? String(description) : "",
+              providerId: auth.providerId,
+            },
+          });
+          results.push({ number: String(number), status: "created" });
+        } catch {
+          results.push({ number: String(number), status: "error", error: "Database error" });
+        }
+      }
+
+      const created = results.filter((r) => r.status === "created").length;
+      const skipped = results.filter((r) => r.status !== "created").length;
+      return NextResponse.json({ imported: created, skipped, results }, { status: 200 });
+    }
+
+    // ── Single room create ───────────────────────────────────────────────────
     const {
       number,
       name,
@@ -58,17 +107,10 @@ export async function POST(req: NextRequest) {
       image,
     } = body;
 
-    if (!number || !name || !type || pricePerNight == null || floor == null || capacity == null) {
+    if (!number || !type || pricePerNight == null || floor == null || capacity == null) {
       return NextResponse.json(
-        { error: "Missing required fields: number, name, type, pricePerNight, floor, capacity" },
+        { error: "Missing required fields: number, type, pricePerNight, floor, capacity" },
         { status: 400 }
-      );
-    }
-
-    if (!auth.providerId) {
-      return NextResponse.json(
-        { error: "No provider assigned to this user" },
-        { status: 403 }
       );
     }
 
@@ -86,7 +128,7 @@ export async function POST(req: NextRequest) {
     const room = await db.room.create({
       data: {
         number,
-        name,
+        name: name || `Room ${number}`,   // auto-generate name if omitted
         type,
         pricePerNight: Number(pricePerNight),
         floor: Number(floor),

@@ -40,6 +40,8 @@ export const apiDeleteRoom = (id: string) =>
   req(`/api/rooms/${id}`, { method: "DELETE" });
 export const apiUpdateRoomStatus = (id: string, status: string) =>
   req(`/api/rooms/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) });
+export const apiImportRooms = (rooms: Record<string, unknown>[]) =>
+  req("/api/rooms", { method: "POST", body: JSON.stringify({ bulk: rooms }) });
 
 // Guests
 export const apiGetGuests = (q?: string) => req(`/api/guests${q ? `?q=${q}` : ""}`);

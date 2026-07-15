@@ -45,6 +45,9 @@ const GuestsPage = lazyPage(() => import("@/components/ghms/pages/guests-page"))
 const ReservationsPage = lazyPage(
   () => import("@/components/ghms/pages/reservations-page")
 );
+const GuestsReservationsPage = lazyPage(
+  () => import("@/components/ghms/pages/guests-reservations-page")
+);
 const DaytimePage = lazyPage(
   () => import("@/components/ghms/pages/daytime-page")
 );
@@ -85,8 +88,9 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
   {
     dashboard: DashboardPage,
     rooms: RoomsPage,
-    guests: GuestsPage,
-    reservations: ReservationsPage,
+    "guests-reservations": GuestsReservationsPage,
+    guests: GuestsPage,             // keep for direct links / staff permissions
+    reservations: ReservationsPage, // keep for direct links / staff permissions
     daytime: DaytimePage,
     expenses: ExpensesPage,
     resources: ResourcesPage,
