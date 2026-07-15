@@ -179,7 +179,7 @@ export default function ProvidersPage() {
   const pendingCount = providers.filter((p) => p.status === "PENDING").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4 shadow-sm">

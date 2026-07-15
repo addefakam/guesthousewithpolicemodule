@@ -112,7 +112,7 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Skeleton className="h-8 w-48" />
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
