@@ -2,46 +2,49 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
 
-type PrismaClientWithDisconnect = PrismaClient & { $disconnect: () => Promise<void> };
+type PrismaClientInstance = PrismaClient & { $disconnect: () => Promise<void> };
 
-let _db: PrismaClientWithDisconnect | null = null;
+let _db: PrismaClientInstance | null = null;
 
-function createPrismaClient(): PrismaClientWithDisconnect {
-  // Read env vars inside the function (called at runtime, not build time)
+function createPrismaClient(): PrismaClientInstance {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
   if (tursoUrl && tursoUrl.trim().length > 0) {
     console.log("[db] Connecting to Turso cloud database");
-    const libsql = createClient({ url: tursoUrl.trim(), authToken: authToken?.trim() || undefined });
+    // Prisma still reads DATABASE_URL from schema internally.
+    // Override it so Prisma's internal URL parsing gets a valid value.
+    // The adapter handles the actual connection regardless.
+    process.env.DATABASE_URL = tursoUrl.trim();
+
+    const libsql = createClient({
+      url: tursoUrl.trim(),
+      authToken: authToken?.trim() || undefined,
+    });
     const adapter = new PrismaLibSQL(libsql);
-    return new PrismaClient({ adapter }) as PrismaClientWithDisconnect;
+    return new PrismaClient({ adapter }) as PrismaClientInstance;
   }
 
-  // In production (Vercel), Turso URL MUST be set — local SQLite won't work
   if (process.env.NODE_ENV === "production") {
     throw new Error(
       "[db] TURSO_DATABASE_URL is not set. " +
-      "Please add it in Vercel Dashboard > Settings > Environment Variables."
+      "Add it in Vercel Dashboard > Settings > Environment Variables."
     );
   }
 
-  // Local development: fall back to local SQLite
   console.log("[db] TURSO_DATABASE_URL not set — using local SQLite");
-  return new PrismaClient() as PrismaClientWithDisconnect;
+  return new PrismaClient() as PrismaClientInstance;
 }
 
-// Lazy singleton — created on first access, not at module load time
-function getDb(): PrismaClientWithDisconnect {
+function getDb(): PrismaClientInstance {
   if (!_db) {
     _db = createPrismaClient();
   }
   return _db;
 }
 
-// Proxy that delegates all property access to the real client,
-// initializing it lazily on first use (at request time, not build time)
-export const db = new Proxy({} as PrismaClientWithDisconnect, {
+// Lazy Proxy — PrismaClient is created on first use (request time), not at module load time
+export const db = new Proxy({} as PrismaClientInstance, {
   get(_target, prop, receiver) {
     const client = getDb();
     const value = Reflect.get(client, prop, receiver);
