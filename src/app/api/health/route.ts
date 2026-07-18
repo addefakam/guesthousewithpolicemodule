@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
   const info: Record<string, string> = {
     status: "ok",
     timestamp: new Date().toISOString(),
     nodeVersion: process.version,
-    cwd: process.cwd(),
     env: process.env.NODE_ENV || "unknown",
+    tursoUrlSet: tursoUrl ? "YES (" + tursoUrl.replace(/\/\/.*@/, "//***@") + ")" : "NO — TURSO_DATABASE_URL is not set in Vercel env vars!",
+    tursoTokenSet: process.env.TURSO_AUTH_TOKEN ? "YES" : "NO — TURSO_AUTH_TOKEN is not set in Vercel env vars!",
     databaseUrl: process.env.DATABASE_URL
       ? process.env.DATABASE_URL.replace(/file:.*/, "file:***")
       : "NOT SET",
@@ -16,22 +19,15 @@ export async function GET() {
     arch: process.arch,
   };
 
-  // Test Prisma
+  // Test DB connection using our shared db module
   try {
-    const { PrismaClient } = require("@prisma/client");
-    info.prisma = "module_loaded";
-    try {
-      const prisma = new PrismaClient();
-      await prisma.$connect();
-      info.db = "connected";
-      const result = await prisma.$queryRaw`SELECT count(*) as c FROM sqlite_master`;
-      info.dbTables = String((result as Array<{ c: number }>)[0]?.c ?? "?");
-      await prisma.$disconnect();
-    } catch (dbErr: unknown) {
-      info.db = "FAILED: " + (dbErr instanceof Error ? dbErr.message : String(dbErr));
-    }
-  } catch (err: unknown) {
-    info.prisma = "FAILED: " + (err instanceof Error ? err.message : String(err));
+    await db.$connect();
+    info.db = "connected";
+    const result = await db.$queryRaw`SELECT count(*) as c FROM sqlite_master`;
+    info.dbTables = String((result as Array<{ c: number }>)[0]?.c ?? "?");
+    await db.$disconnect();
+  } catch (dbErr: unknown) {
+    info.db = "FAILED: " + (dbErr instanceof Error ? dbErr.message : String(dbErr));
   }
 
   return NextResponse.json(info);
