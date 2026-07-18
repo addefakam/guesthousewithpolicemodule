@@ -1,27 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
-import { createClient } from "@libsql/client";
 
 type PrismaClientInstance = PrismaClient & { $disconnect: () => Promise<void> };
 
 let _db: PrismaClientInstance | null = null;
 
 function createPrismaClient(): PrismaClientInstance {
-  const tursoUrl = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
+  const tursoUrl = process.env.TURSO_DATABASE_URL?.trim();
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
 
-  if (tursoUrl && tursoUrl.trim().length > 0) {
+  if (tursoUrl && tursoUrl.length > 0) {
     console.log("[db] Connecting to Turso cloud database");
-    // Prisma still reads DATABASE_URL from schema internally.
-    // Override it so Prisma's internal URL parsing gets a valid value.
-    // The adapter handles the actual connection regardless.
-    process.env.DATABASE_URL = tursoUrl.trim();
-
-    const libsql = createClient({
-      url: tursoUrl.trim(),
-      authToken: authToken?.trim() || undefined,
-    });
-    const adapter = new PrismaLibSQL(libsql);
+    const adapter = new PrismaLibSQL({ url: tursoUrl, authToken: authToken || undefined });
     return new PrismaClient({ adapter }) as PrismaClientInstance;
   }
 
