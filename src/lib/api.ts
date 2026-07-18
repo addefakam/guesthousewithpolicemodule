@@ -156,6 +156,20 @@ export const apiRegisterProvider = async (data: FormData) => {
 export const apiPoliceDashboard = () => req("/api/police-dashboard");
 export const apiPoliceGuests = (q?: string) => req(`/api/police-guests${q ? `?${q}` : ""}`);
 
+// Suspected Persons (Police only)
+export const apiGetSuspectedPersons = (q?: string) => req(`/api/suspected-persons${q ? `?${q}` : ""}`);
+export const apiCreateSuspectedPerson = (data: Record<string, unknown>) =>
+  req("/api/suspected-persons", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateSuspectedPerson = (id: string, data: Record<string, unknown>) =>
+  req(`/api/suspected-persons/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteSuspectedPerson = (id: string) =>
+  req(`/api/suspected-persons/${id}`, { method: "DELETE" });
+
+// Suspect Matches / Alerts (Police only)
+export const apiGetSuspectMatches = (q?: string) => req(`/api/suspect-matches${q ? `?${q}` : ""}`);
+export const apiMarkMatchesRead = (data: Record<string, unknown>) =>
+  req("/api/suspect-matches", { method: "PUT", body: JSON.stringify(data) });
+
 // Daytime
 export const apiGetDaytimeServices = () => req("/api/daytime-services");
 export const apiCreateDaytimeService = (data: Record<string, unknown>) =>

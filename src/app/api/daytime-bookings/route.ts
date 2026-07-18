@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { checkSuspectMatch } from "@/lib/suspect-check";
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,6 +73,22 @@ export async function POST(req: NextRequest) {
         service: { select: { id: true, name: true, category: true } },
       },
     });
+
+    // Background: check if guest matches any suspected person (fire-and-forget)
+    checkSuspectMatch({
+      name: guestName,
+      phone: guestPhone || "",
+      matchType: "DAYTIME_BOOKING",
+      providerId,
+      daytimeBookingId: booking.id,
+      extraDetails: {
+        date,
+        time,
+        quantity,
+        serviceName: booking.service.name,
+        totalCost,
+      },
+    }).catch(() => {});
 
     return NextResponse.json(booking, { status: 201 });
   } catch (error: unknown) {

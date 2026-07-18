@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
-import { apiPoliceDashboard, apiGetProviders } from "@/lib/api";
+import { apiPoliceDashboard, apiGetProviders, apiGetSuspectMatches } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +25,7 @@ import {
   DollarSign,
   TrendingUp,
   AlertCircle,
+  ShieldAlert,
 } from "lucide-react";
 
 interface DashboardData {
@@ -92,17 +93,20 @@ export default function PoliceDashboardPage() {
   const { refreshKey } = useAppStore();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [recentGuests, setRecentGuests] = useState<RecentGuest[]>([]);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [dashData, provData] = await Promise.all([
+      const [dashData, provData, alertData] = await Promise.all([
         apiPoliceDashboard(),
         apiGetProviders(),
+        apiGetSuspectMatches("unread=true").catch(() => ({ unreadCount: 0 })),
       ]);
 
       setDashboard(dashData);
+      setUnreadAlerts(alertData?.unreadCount || 0);
 
       const providers: Provider[] = Array.isArray(provData) ? provData : [];
       setRecentGuests(
@@ -170,15 +174,22 @@ export default function PoliceDashboardPage() {
           color: "text-emerald-600",
           bg: "bg-emerald-50",
         },
+        {
+          title: "Suspect Alerts",
+          value: unreadAlerts,
+          icon: ShieldAlert,
+          color: unreadAlerts > 0 ? "text-red-600" : "text-slate-600",
+          bg: unreadAlerts > 0 ? "bg-red-50" : "bg-slate-100",
+        },
       ]
     : [];
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       {/* KPI Cards — 2 cols on mobile, 3 on tablet, 6 on desktop */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-7">
         {loading
-          ? Array.from({ length: 6 }).map((_, i) => (
+          ? Array.from({ length: 7 }).map((_, i) => (
               <Card key={i} className="shadow-sm">
                 <CardContent className="p-3 sm:p-4">
                   <Skeleton className="mb-2 h-3 w-16" />

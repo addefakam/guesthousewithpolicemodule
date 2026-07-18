@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { checkSuspectMatch } from "@/lib/suspect-check";
 
 export async function GET(req: NextRequest) {
   try {
@@ -108,6 +109,23 @@ export async function POST(req: NextRequest) {
       where: { id: roomId },
       data: { status: "RESERVED" },
     });
+
+    // Background: check if guest matches any suspected person (fire-and-forget)
+    checkSuspectMatch({
+      name: reservation.guest.name,
+      phone: reservation.guest.phone,
+      matchType: "RESERVATION",
+      providerId,
+      reservationId: reservation.id,
+      extraDetails: {
+        checkIn,
+        checkOut,
+        nights,
+        roomNumber: reservation.room.number,
+        roomName: reservation.room.name,
+        totalCost,
+      },
+    }).catch(() => {});
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error: unknown) {

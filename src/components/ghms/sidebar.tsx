@@ -22,6 +22,8 @@ import {
   ChevronLeft,
   Menu,
   UsersRound,
+  ShieldAlert,
+  UserX,
 } from "lucide-react";
 
 import { useAppStore, type CurrentUser } from "@/lib/store";
@@ -74,6 +76,17 @@ const POLICE_NAV_ITEMS: NavItem[] = [
     page: "police-guests",
     label: "Guests Search",
     icon: Search,
+  },
+  {
+    page: "suspect-alerts",
+    label: "Suspect Alerts",
+    icon: ShieldAlert,
+    badge: "new",
+  },
+  {
+    page: "suspected-persons",
+    label: "Suspected Persons",
+    icon: UserX,
   },
 ];
 

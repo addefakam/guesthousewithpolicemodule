@@ -77,6 +77,13 @@ enum HousekeepingTaskStatus {
   COMPLETED
 }
 
+enum SuspectSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Provider {
@@ -364,4 +371,42 @@ model Settings {
   updatedAt       DateTime @updatedAt
 
   provider Provider? @relation(fields: [providerId], references: [id])
+}
+
+// ─── Suspected Persons (Police-only) ─────────────────────────────────────────
+
+model SuspectedPerson {
+  id            String           @id @default(cuid())
+  name          String
+  phone         String           @default("")
+  idNumber      String           @default("")
+  idType        String           @default("")
+  nationality   String           @default("")
+  address       String           @default("")
+  description   String           @default("")
+  severity      SuspectSeverity  @default(MEDIUM)
+  is_active     Boolean          @default(true)
+  registeredBy  String           @default("")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  matches       SuspectMatch[]
+}
+
+model SuspectMatch {
+  id              String           @id @default(cuid())
+  suspectedPersonId String
+  matchType       String           // "RESERVATION", "DAYTIME_BOOKING", "GUEST_CHECKIN"
+  guestName       String
+  guestPhone      String           @default("")
+  guestIdNumber   String           @default("")
+  providerName    String           @default("")
+  providerId      String           @default("")
+  reservationId   String?
+  daytimeBookingId String?
+  details         String           @default("")  // Full JSON details about the booking
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  suspectedPerson SuspectedPerson @relation(fields: [suspectedPersonId], references: [id])
 }
