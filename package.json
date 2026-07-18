@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "NODE_ENV=production HOSTNAME=0.0.0.0 DATABASE_URL=\"file:/home/z/my-project/db/custom.db\" node .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push",
@@ -19,7 +20,7 @@
     "@hookform/resolvers": "^5.1.1",
     "@libsql/client": "^0.17.4",
     "@mdxeditor/editor": "^3.39.1",
-    "@prisma/adapter-libsql": "^7.8.0",
+    "@prisma/adapter-libsql": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
