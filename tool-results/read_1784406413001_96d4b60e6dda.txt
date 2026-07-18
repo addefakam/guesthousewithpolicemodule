@@ -1,0 +1,807 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback } from "react";
+     4→import { useAppStore } from "@/lib/store";
+     5→import {
+     6→  apiGetDaytimeServices,
+     7→  apiCreateDaytimeService,
+     8→  apiUpdateDaytimeService,
+     9→  apiDeleteDaytimeService,
+    10→  apiGetDaytimeBookings,
+    11→  apiCreateDaytimeBooking,
+    12→  apiUpdateDaytimeBooking,
+    13→  apiDeleteDaytimeBooking,
+    14→  apiCreatePayment,
+    15→} from "@/lib/api";
+    16→import { toast } from "sonner";
+    17→import { Card, CardContent } from "@/components/ui/card";
+    18→import { Button } from "@/components/ui/button";
+    19→import { Badge } from "@/components/ui/badge";
+    20→import { Input } from "@/components/ui/input";
+    21→import { Label } from "@/components/ui/label";
+    22→import { Textarea } from "@/components/ui/textarea";
+    23→import { Skeleton } from "@/components/ui/skeleton";
+    24→import { Switch } from "@/components/ui/switch";
+    25→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    26→import {
+    27→  Dialog,
+    28→  DialogContent,
+    29→  DialogHeader,
+    30→  DialogTitle,
+    31→  DialogDescription,
+    32→  DialogFooter,
+    33→} from "@/components/ui/dialog";
+    34→import {
+    35→  AlertDialog,
+    36→  AlertDialogContent,
+    37→  AlertDialogHeader,
+    38→  AlertDialogTitle,
+    39→  AlertDialogDescription,
+    40→  AlertDialogFooter,
+    41→  AlertDialogAction,
+    42→  AlertDialogCancel,
+    43→} from "@/components/ui/alert-dialog";
+    44→import {
+    45→  Select,
+    46→  SelectContent,
+    47→  SelectItem,
+    48→  SelectTrigger,
+    49→  SelectValue,
+    50→} from "@/components/ui/select";
+    51→import {
+    52→  Table,
+    53→  TableBody,
+    54→  TableCell,
+    55→  TableHead,
+    56→  TableHeader,
+    57→  TableRow,
+    58→} from "@/components/ui/table";
+    59→import {
+    60→  DropdownMenu,
+    61→  DropdownMenuContent,
+    62→  DropdownMenuItem,
+    63→  DropdownMenuSeparator,
+    64→  DropdownMenuTrigger,
+    65→} from "@/components/ui/dropdown-menu";
+    66→import {
+    67→  Sun,
+    68→  Plus,
+    69→  MoreVertical,
+    70→  Pencil,
+    71→  Trash2,
+    72→  DollarSign,
+    73→  Clock,
+    74→  CreditCard,
+    75→  CalendarDays,
+    76→  Tag,
+    77→} from "lucide-react";
+    78→
+    79→// ─── Types ─────────────────────────────────────────────────────────────────
+    80→
+    81→interface Service {
+    82→  id: string;
+    83→  name: string;
+    84→  price: number;
+    85→  category: string;
+    86→  duration: string;
+    87→  description: string;
+    88→  active: boolean;
+    89→}
+    90→
+    91→interface Booking {
+    92→  id: string;
+    93→  serviceId: string;
+    94→  guestName: string;
+    95→  guestPhone: string;
+    96→  date: string;
+    97→  time: string;
+    98→  quantity: number;
+    99→  unitPrice: number;
+   100→  totalCost: number;
+   101→  paidAmount: number;
+   102→  paymentStatus: string;
+   103→  paymentMethod: string | null;
+   104→  notes: string;
+   105→  service?: { id: string; name: string; category: string };
+   106→}
+   107→
+   108→// ─── Helpers ───────────────────────────────────────────────────────────────
+   109→
+   110→const formatPrice = (price: number) =>
+   111→  new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
+   112→
+   113→const PAYMENT_STYLES: Record<string, string> = {
+   114→  PAID: "bg-emerald-100 text-emerald-800 border-emerald-200",
+   115→  PARTIAL: "bg-amber-100 text-amber-800 border-amber-200",
+   116→  PENDING: "bg-rose-100 text-rose-800 border-rose-200",
+   117→};
+   118→
+   119→const CATEGORY_COLORS: Record<string, string> = {
+   120→  SPA: "bg-purple-50 text-purple-700 border-purple-200",
+   121→  FOOD: "bg-orange-50 text-orange-700 border-orange-200",
+   122→  LAUNDRY: "bg-sky-50 text-sky-700 border-sky-200",
+   123→  TOUR: "bg-teal-50 text-teal-700 border-teal-200",
+   124→  TRANSPORT: "bg-slate-50 text-slate-700 border-slate-200",
+   125→  GYM: "bg-rose-50 text-rose-700 border-rose-200",
+   126→  POOL: "bg-cyan-50 text-cyan-700 border-cyan-200",
+   127→  EVENT: "bg-amber-50 text-amber-700 border-amber-200",
+   128→  OTHER: "bg-gray-50 text-gray-700 border-gray-200",
+   129→};
+   130→
+   131→// ─── Component ─────────────────────────────────────────────────────────────
+   132→
+   133→export default function DaytimePage() {
+   134→  const { refreshKey, triggerRefresh } = useAppStore();
+   135→  const [activeTab, setActiveTab] = useState("services");
+   136→
+   137→  // Services state
+   138→  const [services, setServices] = useState<Service[]>([]);
+   139→  const [svcLoading, setSvcLoading] = useState(true);
+   140→  const [svcDialogOpen, setSvcDialogOpen] = useState(false);
+   141→  const [editingSvc, setEditingSvc] = useState<Service | null>(null);
+   142→  const [svcForm, setSvcForm] = useState({ name: "", price: "", category: "", duration: "", description: "" });
+   143→  const [svcSaving, setSvcSaving] = useState(false);
+   144→  const [svcDeleteTarget, setSvcDeleteTarget] = useState<Service | null>(null);
+   145→  const [svcDeleting, setSvcDeleting] = useState(false);
+   146→
+   147→  // Bookings state
+   148→  const [bookings, setBookings] = useState<Booking[]>([]);
+   149→  const [bkLoading, setBkLoading] = useState(true);
+   150→  const [bkDialogOpen, setBkDialogOpen] = useState(false);
+   151→  const [editingBk, setEditingBk] = useState<Booking | null>(null);
+   152→  const [bkForm, setBkForm] = useState({
+   153→    serviceId: "", guestName: "", guestPhone: "", date: "", time: "", quantity: "1",
+   154→  });
+   155→  const [bkSaving, setBkSaving] = useState(false);
+   156→  const [bkDeleteTarget, setBkDeleteTarget] = useState<Booking | null>(null);
+   157→  const [bkDeleting, setBkDeleting] = useState(false);
+   158→
+   159→  // Payment dialog
+   160→  const [payDialogOpen, setPayDialogOpen] = useState(false);
+   161→  const [payTarget, setPayTarget] = useState<Booking | null>(null);
+   162→  const [payForm, setPayForm] = useState({ amount: "", method: "CASH" });
+   163→  const [paySaving, setPaySaving] = useState(false);
+   164→
+   165→  // ─── Data Fetching ────────────────────────────────────────────────────────
+   166→
+   167→  const fetchServices = useCallback(async () => {
+   168→    try {
+   169→      setSvcLoading(true);
+   170→      const data = await apiGetDaytimeServices();
+   171→      setServices(Array.isArray(data) ? data : []);
+   172→    } catch (err: unknown) {
+   173→      const msg = err instanceof Error ? err.message : "Failed to load services";
+   174→      toast.error(msg);
+   175→    } finally {
+   176→      setSvcLoading(false);
+   177→    }
+   178→  }, []);
+   179→
+   180→  const fetchBookings = useCallback(async () => {
+   181→    try {
+   182→      setBkLoading(true);
+   183→      const data = await apiGetDaytimeBookings();
+   184→      setBookings(Array.isArray(data) ? data : []);
+   185→    } catch (err: unknown) {
+   186→      const msg = err instanceof Error ? err.message : "Failed to load bookings";
+   187→      toast.error(msg);
+   188→    } finally {
+   189→      setBkLoading(false);
+   190→    }
+   191→  }, []);
+   192→
+   193→  useEffect(() => { fetchServices(); }, [fetchServices, refreshKey]);
+   194→  useEffect(() => { fetchBookings(); }, [fetchBookings, refreshKey]);
+   195→
+   196→  // ─── Service CRUD ─────────────────────────────────────────────────────────
+   197→
+   198→  const openCreateSvc = () => {
+   199→    setEditingSvc(null);
+   200→    setSvcForm({ name: "", price: "", category: "", duration: "", description: "" });
+   201→    setSvcDialogOpen(true);
+   202→  };
+   203→
+   204→  const openEditSvc = (svc: Service) => {
+   205→    setEditingSvc(svc);
+   206→    setSvcForm({
+   207→      name: svc.name,
+   208→      price: String(svc.price),
+   209→      category: svc.category,
+   210→      duration: svc.duration,
+   211→      description: svc.description,
+   212→    });
+   213→    setSvcDialogOpen(true);
+   214→  };
+   215→
+   216→  const handleSaveSvc = async () => {
+   217→    if (!svcForm.name || !svcForm.price) {
+   218→      toast.error("Name and price are required");
+   219→      return;
+   220→    }
+   221→    try {
+   222→      setSvcSaving(true);
+   223→      const payload = {
+   224→        name: svcForm.name,
+   225→        price: Number(svcForm.price),
+   226→        category: svcForm.category,
+   227→        duration: svcForm.duration,
+   228→        description: svcForm.description,
+   229→        active: editingSvc ? editingSvc.active : true,
+   230→      };
+   231→      if (editingSvc) {
+   232→        await apiUpdateDaytimeService(editingSvc.id, payload);
+   233→        toast.success("Service updated");
+   234→      } else {
+   235→        await apiCreateDaytimeService(payload);
+   236→        toast.success("Service created");
+   237→      }
+   238→      setSvcDialogOpen(false);
+   239→      triggerRefresh();
+   240→    } catch (err: unknown) {
+   241→      toast.error(err instanceof Error ? err.message : "Failed to save service");
+   242→    } finally {
+   243→      setSvcSaving(false);
+   244→    }
+   245→  };
+   246→
+   247→  const handleDeleteSvc = async () => {
+   248→    if (!svcDeleteTarget) return;
+   249→    try {
+   250→      setSvcDeleting(true);
+   251→      await apiDeleteDaytimeService(svcDeleteTarget.id);
+   252→      toast.success("Service deleted");
+   253→      setSvcDeleteTarget(null);
+   254→      triggerRefresh();
+   255→    } catch (err: unknown) {
+   256→      toast.error(err instanceof Error ? err.message : "Failed to delete service");
+   257→    } finally {
+   258→      setSvcDeleting(false);
+   259→    }
+   260→  };
+   261→
+   262→  const handleToggleActive = async (svc: Service) => {
+   263→    try {
+   264→      await apiUpdateDaytimeService(svc.id, { active: !svc.active });
+   265→      toast.success(`Service ${svc.active ? "deactivated" : "activated"}`);
+   266→      triggerRefresh();
+   267→    } catch (err: unknown) {
+   268→      toast.error(err instanceof Error ? err.message : "Failed to toggle service");
+   269→    }
+   270→  };
+   271→
+   272→  // ─── Booking CRUD ─────────────────────────────────────────────────────────
+   273→
+   274→  const selectedService = services.find((s) => s.id === bkForm.serviceId);
+   275→
+   276→  const openCreateBk = () => {
+   277→    setEditingBk(null);
+   278→    setBkForm({ serviceId: "", guestName: "", guestPhone: "", date: "", time: "", quantity: "1" });
+   279→    setBkDialogOpen(true);
+   280→  };
+   281→
+   282→  const openEditBk = (bk: Booking) => {
+   283→    setEditingBk(bk);
+   284→    setBkForm({
+   285→      serviceId: bk.serviceId,
+   286→      guestName: bk.guestName,
+   287→      guestPhone: bk.guestPhone,
+   288→      date: bk.date,
+   289→      time: bk.time,
+   290→      quantity: String(bk.quantity),
+   291→    });
+   292→    setBkDialogOpen(true);
+   293→  };
+   294→
+   295→  const handleSaveBk = async () => {
+   296→    if (!bkForm.serviceId || !bkForm.guestName || !bkForm.date || !bkForm.time) {
+   297→      toast.error("Service, guest name, date, and time are required");
+   298→      return;
+   299→    }
+   300→    const svc = services.find((s) => s.id === bkForm.serviceId);
+   301→    if (!svc) { toast.error("Selected service not found"); return; }
+   302→
+   303→    try {
+   304→      setBkSaving(true);
+   305→      const qty = Number(bkForm.quantity) || 1;
+   306→      const unitPrice = editingBk ? editingBk.unitPrice : svc.price;
+   307→      const payload = {
+   308→        serviceId: bkForm.serviceId,
+   309→        guestName: bkForm.guestName,
+   310→        guestPhone: bkForm.guestPhone,
+   311→        date: bkForm.date,
+   312→        time: bkForm.time,
+   313→        quantity: qty,
+   314→        unitPrice,
+   315→        totalCost: unitPrice * qty,
+   316→      };
+   317→      if (editingBk) {
+   318→        await apiUpdateDaytimeBooking(editingBk.id, payload);
+   319→        toast.success("Booking updated");
+   320→      } else {
+   321→        await apiCreateDaytimeBooking(payload);
+   322→        toast.success("Booking created");
+   323→      }
+   324→      setBkDialogOpen(false);
+   325→      triggerRefresh();
+   326→    } catch (err: unknown) {
+   327→      toast.error(err instanceof Error ? err.message : "Failed to save booking");
+   328→    } finally {
+   329→      setBkSaving(false);
+   330→    }
+   331→  };
+   332→
+   333→  const handleDeleteBk = async () => {
+   334→    if (!bkDeleteTarget) return;
+   335→    try {
+   336→      setBkDeleting(true);
+   337→      await apiDeleteDaytimeBooking(bkDeleteTarget.id);
+   338→      toast.success("Booking deleted");
+   339→      setBkDeleteTarget(null);
+   340→      triggerRefresh();
+   341→    } catch (err: unknown) {
+   342→      toast.error(err instanceof Error ? err.message : "Failed to delete booking");
+   343→    } finally {
+   344→      setBkDeleting(false);
+   345→    }
+   346→  };
+   347→
+   348→  // ─── Payment Recording ────────────────────────────────────────────────────
+   349→
+   350→  const openPayDialog = (bk: Booking) => {
+   351→    setPayTarget(bk);
+   352→    const remaining = bk.totalCost - bk.paidAmount;
+   353→    setPayForm({ amount: String(remaining), method: "CASH" });
+   354→    setPayDialogOpen(true);
+   355→  };
+   356→
+   357→  const handleRecordPayment = async () => {
+   358→    if (!payTarget || !payForm.amount || Number(payForm.amount) <= 0) {
+   359→      toast.error("Enter a valid amount");
+   360→      return;
+   361→    }
+   362→    try {
+   363→      setPaySaving(true);
+   364→      const amount = Number(payForm.amount);
+   365→      const newPaid = payTarget.paidAmount + amount;
+   366→      const newStatus = newPaid >= payTarget.totalCost ? "PAID" : "PARTIAL";
+   367→
+   368→      await apiCreatePayment({
+   369→        daytimeBookingId: payTarget.id,
+   370→        amount,
+   371→        method: payForm.method,
+   372→      });
+   373→
+   374→      await apiUpdateDaytimeBooking(payTarget.id, {
+   375→        paidAmount: newPaid,
+   376→        paymentStatus: newStatus,
+   377→        paymentMethod: payForm.method,
+   378→      });
+   379→
+   380→      toast.success(`Payment of ${formatPrice(amount)} recorded`);
+   381→      setPayDialogOpen(false);
+   382→      setPayTarget(null);
+   383→      triggerRefresh();
+   384→    } catch (err: unknown) {
+   385→      toast.error(err instanceof Error ? err.message : "Failed to record payment");
+   386→    } finally {
+   387→      setPaySaving(false);
+   388→    }
+   389→  };
+   390→
+   391→  // ─── Render ───────────────────────────────────────────────────────────────
+   392→
+   393→  return (
+   394→    <div className="space-y-6 p-4 md:p-6">
+   395→      {/* Header */}
+   396→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   397→        <div>
+   398→          <h1 className="text-2xl font-bold text-gray-900">Daytime Services</h1>
+   399→          <p className="mt-1 text-sm text-gray-500">
+   400→            Manage services and bookings for day guests
+   401→          </p>
+   402→        </div>
+   403→        <Button
+   404→          onClick={activeTab === "services" ? openCreateSvc : openCreateBk}
+   405→          className="gap-2"
+   406→        >
+   407→          <Plus className="h-4 w-4" />
+   408→          {activeTab === "services" ? "Add Service" : "New Booking"}
+   409→        </Button>
+   410→      </div>
+   411→
+   412→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   413→        <TabsList>
+   414→          <TabsTrigger value="services" className="gap-2">
+   415→            <Sun className="h-4 w-4" />
+   416→            Services ({services.length})
+   417→          </TabsTrigger>
+   418→          <TabsTrigger value="bookings" className="gap-2">
+   419→            <CalendarDays className="h-4 w-4" />
+   420→            Bookings ({bookings.length})
+   421→          </TabsTrigger>
+   422→        </TabsList>
+   423→
+   424→        {/* ─── Services Tab ────────────────────────────────────────────────── */}
+   425→        <TabsContent value="services">
+   426→          {svcLoading ? (
+   427→            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+   428→              {Array.from({ length: 6 }).map((_, i) => (
+   429→                <Skeleton key={i} className="h-52 rounded-xl" />
+   430→              ))}
+   431→            </div>
+   432→          ) : services.length === 0 ? (
+   433→            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+   434→              <Sun className="h-12 w-12 text-gray-300 mb-3" />
+   435→              <p className="text-lg font-medium text-gray-500">No services yet</p>
+   436→              <p className="mt-1 text-sm text-gray-400">Get started by adding your first daytime service</p>
+   437→              <Button onClick={openCreateSvc} variant="outline" className="mt-4 gap-2">
+   438→                <Plus className="h-4 w-4" /> Add Service
+   439→              </Button>
+   440→            </div>
+   441→          ) : (
+   442→            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+   443→              {services.map((svc) => {
+   444→                const catColor = CATEGORY_COLORS[svc.category.toUpperCase()] || CATEGORY_COLORS.OTHER;
+   445→                return (
+   446→                  <Card key={svc.id} className={`gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md ${!svc.active ? "opacity-60" : ""}`}>
+   447→                    <CardContent className="p-4">
+   448→                      <div className="flex items-start justify-between mb-3">
+   449→                        <div className="flex items-center gap-2.5">
+   450→                          <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${catColor}`}>
+   451→                            <Sun className="h-5 w-5" />
+   452→                          </div>
+   453→                          <div>
+   454→                            <h3 className="font-semibold text-gray-900 leading-tight">{svc.name}</h3>
+   455→                            {svc.category && (
+   456→                              <Badge variant="outline" className={`mt-1 text-xs ${catColor}`}>{svc.category}</Badge>
+   457→                            )}
+   458→                          </div>
+   459→                        </div>
+   460→                        <DropdownMenu>
+   461→                          <DropdownMenuTrigger asChild>
+   462→                            <Button variant="ghost" size="icon" className="h-8 w-8">
+   463→                              <MoreVertical className="h-4 w-4" />
+   464→                            </Button>
+   465→                          </DropdownMenuTrigger>
+   466→                          <DropdownMenuContent align="end">
+   467→                            <DropdownMenuItem onClick={() => openEditSvc(svc)}>
+   468→                              <Pencil className="mr-2 h-4 w-4" /> Edit
+   469→                            </DropdownMenuItem>
+   470→                            <DropdownMenuItem onClick={() => handleToggleActive(svc)}>
+   471→                              {svc.active ? "Deactivate" : "Activate"}
+   472→                            </DropdownMenuItem>
+   473→                            <DropdownMenuSeparator />
+   474→                            <DropdownMenuItem
+   475→                              className="text-rose-600 focus:text-rose-600"
+   476→                              onClick={() => setSvcDeleteTarget(svc)}
+   477→                            >
+   478→                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+   479→                            </DropdownMenuItem>
+   480→                          </DropdownMenuContent>
+   481→                        </DropdownMenu>
+   482→                      </div>
+   483→
+   484→                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+   485→                        <div className="flex items-center gap-1.5 text-gray-600">
+   486→                          <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+   487→                          {formatPrice(svc.price)}
+   488→                        </div>
+   489→                        {svc.duration && (
+   490→                          <div className="flex items-center gap-1.5 text-gray-600">
+   491→                            <Clock className="h-3.5 w-3.5 text-gray-400" />
+   492→                            {svc.duration}
+   493→                          </div>
+   494→                        )}
+   495→                      </div>
+   496→
+   497→                      {svc.description && (
+   498→                        <p className="text-xs text-gray-500 line-clamp-2">{svc.description}</p>
+   499→                      )}
+   500→
+   501→                      <div className="mt-3 flex items-center justify-between">
+   502→                        <Badge
+   503→                          variant="outline"
+   504→                          className={svc.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}
+   505→                        >
+   506→                          {svc.active ? "Active" : "Inactive"}
+   507→                        </Badge>
+   508→                        <Switch
+   509→                          checked={svc.active}
+   510→                          onCheckedChange={() => handleToggleActive(svc)}
+   511→                        />
+   512→                      </div>
+   513→                    </CardContent>
+   514→                  </Card>
+   515→                );
+   516→              })}
+   517→            </div>
+   518→          )}
+   519→        </TabsContent>
+   520→
+   521→        {/* ─── Bookings Tab ────────────────────────────────────────────────── */}
+   522→        <TabsContent value="bookings">
+   523→          {bkLoading ? (
+   524→            <div className="space-y-3">
+   525→              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+   526→            </div>
+   527→          ) : bookings.length === 0 ? (
+   528→            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+   529→              <CalendarDays className="h-12 w-12 text-gray-300 mb-3" />
+   530→              <p className="text-lg font-medium text-gray-500">No bookings yet</p>
+   531→              <p className="mt-1 text-sm text-gray-400">Create a booking when a day guest uses a service</p>
+   532→              <Button onClick={openCreateBk} variant="outline" className="mt-4 gap-2">
+   533→                <Plus className="h-4 w-4" /> New Booking
+   534→              </Button>
+   535→            </div>
+   536→          ) : (
+   537→            <div className="rounded-xl border bg-white overflow-hidden">
+   538→              <div className="max-h-[480px] overflow-y-auto">
+   539→                <Table>
+   540→                  <TableHeader>
+   541→                    <TableRow>
+   542→                      <TableHead>Guest</TableHead>
+   543→                      <TableHead>Service</TableHead>
+   544→                      <TableHead>Date</TableHead>
+   545→                      <TableHead>Time</TableHead>
+   546→                      <TableHead className="text-right">Qty</TableHead>
+   547→                      <TableHead className="text-right">Total</TableHead>
+   548→                      <TableHead>Payment</TableHead>
+   549→                      <TableHead className="text-right">Actions</TableHead>
+   550→                    </TableRow>
+   551→                  </TableHeader>
+   552→                  <TableBody>
+   553→                    {bookings.map((bk) => (
+   554→                      <TableRow key={bk.id}>
+   555→                        <TableCell>
+   556→                          <div>
+   557→                            <p className="font-medium text-gray-900">{bk.guestName}</p>
+   558→                            {bk.guestPhone && (
+   559→                              <p className="text-xs text-gray-500">{bk.guestPhone}</p>
+   560→                            )}
+   561→                          </div>
+   562→                        </TableCell>
+   563→                        <TableCell>
+   564→                          <span className="text-sm text-gray-700">{bk.service?.name || "—"}</span>
+   565→                        </TableCell>
+   566→                        <TableCell className="text-sm">{bk.date}</TableCell>
+   567→                        <TableCell className="text-sm">{bk.time}</TableCell>
+   568→                        <TableCell className="text-right text-sm">{bk.quantity}</TableCell>
+   569→                        <TableCell className="text-right font-medium text-sm">{formatPrice(bk.totalCost)}</TableCell>
+   570→                        <TableCell>
+   571→                          <Badge variant="outline" className={PAYMENT_STYLES[bk.paymentStatus] || PAYMENT_STYLES.PENDING}>
+   572→                            {bk.paymentStatus}
+   573→                            {bk.paymentStatus === "PARTIAL" && (
+   574→                              <span className="ml-1 text-xs">({formatPrice(bk.paidAmount)})</span>
+   575→                            )}
+   576→                          </Badge>
+   577→                        </TableCell>
+   578→                        <TableCell className="text-right">
+   579→                          <DropdownMenu>
+   580→                            <DropdownMenuTrigger asChild>
+   581→                              <Button variant="ghost" size="icon" className="h-8 w-8">
+   582→                                <MoreVertical className="h-4 w-4" />
+   583→                              </Button>
+   584→                            </DropdownMenuTrigger>
+   585→                            <DropdownMenuContent align="end">
+   586→                              <DropdownMenuItem onClick={() => openEditBk(bk)}>
+   587→                                <Pencil className="mr-2 h-4 w-4" /> Edit
+   588→                              </DropdownMenuItem>
+   589→                              {bk.paymentStatus !== "PAID" && (
+   590→                                <DropdownMenuItem onClick={() => openPayDialog(bk)}>
+   591→                                  <CreditCard className="mr-2 h-4 w-4" /> Record Payment
+   592→                                </DropdownMenuItem>
+   593→                              )}
+   594→                              <DropdownMenuSeparator />
+   595→                              <DropdownMenuItem
+   596→                                className="text-rose-600 focus:text-rose-600"
+   597→                                onClick={() => setBkDeleteTarget(bk)}
+   598→                              >
+   599→                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+   600→                              </DropdownMenuItem>
+   601→                            </DropdownMenuContent>
+   602→                          </DropdownMenu>
+   603→                        </TableCell>
+   604→                      </TableRow>
+   605→                    ))}
+   606→                  </TableBody>
+   607→                </Table>
+   608→              </div>
+   609→            </div>
+   610→          )}
+   611→        </TabsContent>
+   612→      </Tabs>
+   613→
+   614→      {/* ─── Service Create/Edit Dialog ────────────────────────────────────── */}
+   615→      <Dialog open={svcDialogOpen} onOpenChange={setSvcDialogOpen}>
+   616→        <DialogContent className="sm:max-w-lg">
+   617→          <DialogHeader>
+   618→            <DialogTitle>{editingSvc ? "Edit Service" : "Add New Service"}</DialogTitle>
+   619→            <DialogDescription>
+   620→              {editingSvc ? "Update service details." : "Fill in details to create a new daytime service."}
+   621→            </DialogDescription>
+   622→          </DialogHeader>
+   623→          <div className="grid gap-4 py-2">
+   624→            <div className="space-y-2">
+   625→              <Label>Service Name <span className="text-rose-500">*</span></Label>
+   626→              <Input placeholder="e.g. Spa Treatment" value={svcForm.name} onChange={(e) => setSvcForm({ ...svcForm, name: e.target.value })} />
+   627→            </div>
+   628→            <div className="grid grid-cols-2 gap-4">
+   629→              <div className="space-y-2">
+   630→                <Label>Price <span className="text-rose-500">*</span></Label>
+   631→                <Input type="number" placeholder="0" value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })} />
+   632→              </div>
+   633→              <div className="space-y-2">
+   634→                <Label>Category</Label>
+   635→                <Select value={svcForm.category} onValueChange={(v) => setSvcForm({ ...svcForm, category: v })}>
+   636→                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+   637→                  <SelectContent>
+   638→                    {["SPA", "FOOD", "LAUNDRY", "TOUR", "TRANSPORT", "GYM", "POOL", "EVENT", "OTHER"].map((c) => (
+   639→                      <SelectItem key={c} value={c}>{c}</SelectItem>
+   640→                    ))}
+   641→                  </SelectContent>
+   642→                </Select>
+   643→              </div>
+   644→            </div>
+   645→            <div className="space-y-2">
+   646→              <Label>Duration</Label>
+   647→              <Input placeholder="e.g. 1 hour, 30 mins" value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} />
+   648→            </div>
+   649→            <div className="space-y-2">
+   650→              <Label>Description</Label>
+   651→              <Textarea placeholder="Describe the service..." rows={3} value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
+   652→            </div>
+   653→          </div>
+   654→          <DialogFooter>
+   655→            <Button variant="outline" onClick={() => setSvcDialogOpen(false)}>Cancel</Button>
+   656→            <Button onClick={handleSaveSvc} disabled={svcSaving}>
+   657→              {svcSaving ? "Saving..." : editingSvc ? "Update Service" : "Create Service"}
+   658→            </Button>
+   659→          </DialogFooter>
+   660→        </DialogContent>
+   661→      </Dialog>
+   662→
+   663→      {/* ─── Booking Create/Edit Dialog ────────────────────────────────────── */}
+   664→      <Dialog open={bkDialogOpen} onOpenChange={setBkDialogOpen}>
+   665→        <DialogContent className="sm:max-w-lg">
+   666→          <DialogHeader>
+   667→            <DialogTitle>{editingBk ? "Edit Booking" : "New Booking"}</DialogTitle>
+   668→            <DialogDescription>
+   669→              {editingBk ? "Update booking details." : "Create a new daytime service booking."}
+   670→            </DialogDescription>
+   671→          </DialogHeader>
+   672→          <div className="grid gap-4 py-2">
+   673→            <div className="space-y-2">
+   674→              <Label>Service <span className="text-rose-500">*</span></Label>
+   675→              <Select value={bkForm.serviceId} onValueChange={(v) => setBkForm({ ...bkForm, serviceId: v })}>
+   676→                <SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger>
+   677→                <SelectContent>
+   678→                  {services.filter((s) => s.active).map((s) => (
+   679→                    <SelectItem key={s.id} value={s.id}>
+   680→                      {s.name} — {formatPrice(s.price)}
+   681→                    </SelectItem>
+   682→                  ))}
+   683→                </SelectContent>
+   684→              </Select>
+   685→            </div>
+   686→            <div className="grid grid-cols-2 gap-4">
+   687→              <div className="space-y-2">
+   688→                <Label>Guest Name <span className="text-rose-500">*</span></Label>
+   689→                <Input placeholder="Guest name" value={bkForm.guestName} onChange={(e) => setBkForm({ ...bkForm, guestName: e.target.value })} />
+   690→              </div>
+   691→              <div className="space-y-2">
+   692→                <Label>Phone</Label>
+   693→                <Input placeholder="Phone number" value={bkForm.guestPhone} onChange={(e) => setBkForm({ ...bkForm, guestPhone: e.target.value })} />
+   694→              </div>
+   695→            </div>
+   696→            <div className="grid grid-cols-3 gap-4">
+   697→              <div className="space-y-2">
+   698→                <Label>Date <span className="text-rose-500">*</span></Label>
+   699→                <Input type="date" value={bkForm.date} onChange={(e) => setBkForm({ ...bkForm, date: e.target.value })} />
+   700→              </div>
+   701→              <div className="space-y-2">
+   702→                <Label>Time <span className="text-rose-500">*</span></Label>
+   703→                <Input type="time" value={bkForm.time} onChange={(e) => setBkForm({ ...bkForm, time: e.target.value })} />
+   704→              </div>
+   705→              <div className="space-y-2">
+   706→                <Label>Quantity</Label>
+   707→                <Input type="number" min="1" value={bkForm.quantity} onChange={(e) => setBkForm({ ...bkForm, quantity: e.target.value })} />
+   708→              </div>
+   709→            </div>
+   710→            {selectedService && !editingBk && (
+   711→              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+   712→                <span className="font-medium text-gray-900">Estimated Total: </span>
+   713→                {formatPrice(selectedService.price * (Number(bkForm.quantity) || 1))}
+   714→                <span className="text-gray-400 ml-1">({formatPrice(selectedService.price)} × {bkForm.quantity || 1})</span>
+   715→              </div>
+   716→            )}
+   717→          </div>
+   718→          <DialogFooter>
+   719→            <Button variant="outline" onClick={() => setBkDialogOpen(false)}>Cancel</Button>
+   720→            <Button onClick={handleSaveBk} disabled={bkSaving}>
+   721→              {bkSaving ? "Saving..." : editingBk ? "Update Booking" : "Create Booking"}
+   722→            </Button>
+   723→          </DialogFooter>
+   724→        </DialogContent>
+   725→      </Dialog>
+   726→
+   727→      {/* ─── Payment Dialog ────────────────────────────────────────────────── */}
+   728→      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+   729→        <DialogContent className="sm:max-w-md">
+   730→          <DialogHeader>
+   731→            <DialogTitle>Record Payment</DialogTitle>
+   732→            <DialogDescription>
+   733→              {payTarget && (
+   734→                <span>For {payTarget.guestName} — {payTarget.service?.name}. Balance: <strong>{formatPrice(payTarget.totalCost - payTarget.paidAmount)}</strong></span>
+   735→              )}
+   736→            </DialogDescription>
+   737→          </DialogHeader>
+   738→          <div className="grid gap-4 py-2">
+   739→            <div className="space-y-2">
+   740→              <Label>Amount <span className="text-rose-500">*</span></Label>
+   741→              <Input
+   742→                type="number"
+   743→                placeholder="Amount to pay"
+   744→                value={payForm.amount}
+   745→                onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
+   746→              />
+   747→            </div>
+   748→            <div className="space-y-2">
+   749→              <Label>Payment Method</Label>
+   750→              <Select value={payForm.method} onValueChange={(v) => setPayForm({ ...payForm, method: v })}>
+   751→                <SelectTrigger><SelectValue /></SelectTrigger>
+   752→                <SelectContent>
+   753→                  <SelectItem value="CASH">Cash</SelectItem>
+   754→                  <SelectItem value="TRANSFER">Transfer</SelectItem>
+   755→                  <SelectItem value="CARD">Card</SelectItem>
+   756→                  <SelectItem value="MOBILE">Mobile</SelectItem>
+   757→                </SelectContent>
+   758→              </Select>
+   759→            </div>
+   760→          </div>
+   761→          <DialogFooter>
+   762→            <Button variant="outline" onClick={() => setPayDialogOpen(false)}>Cancel</Button>
+   763→            <Button onClick={handleRecordPayment} disabled={paySaving}>
+   764→              {paySaving ? "Recording..." : "Record Payment"}
+   765→            </Button>
+   766→          </DialogFooter>
+   767→        </DialogContent>
+   768→      </Dialog>
+   769→
+   770→      {/* ─── Delete Service Alert ──────────────────────────────────────────── */}
+   771→      <AlertDialog open={!!svcDeleteTarget} onOpenChange={() => setSvcDeleteTarget(null)}>
+   772→        <AlertDialogContent>
+   773→          <AlertDialogHeader>
+   774→            <AlertDialogTitle>Delete &quot;{svcDeleteTarget?.name}&quot;?</AlertDialogTitle>
+   775→            <AlertDialogDescription>
+   776→              This will permanently delete this service. Services with existing bookings cannot be deleted.
+   777→            </AlertDialogDescription>
+   778→          </AlertDialogHeader>
+   779→          <AlertDialogFooter>
+   780→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   781→            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteSvc} disabled={svcDeleting}>
+   782→              {svcDeleting ? "Deleting..." : "Delete"}
+   783→            </AlertDialogAction>
+   784→          </AlertDialogFooter>
+   785→        </AlertDialogContent>
+   786→      </AlertDialog>
+   787→
+   788→      {/* ─── Delete Booking Alert ──────────────────────────────────────────── */}
+   789→      <AlertDialog open={!!bkDeleteTarget} onOpenChange={() => setBkDeleteTarget(null)}>
+   790→        <AlertDialogContent>
+   791→          <AlertDialogHeader>
+   792→            <AlertDialogTitle>Delete booking for &quot;{bkDeleteTarget?.guestName}&quot;?</AlertDialogTitle>
+   793→            <AlertDialogDescription>
+   794→              This will permanently delete this booking and cannot be undone.
+   795→            </AlertDialogDescription>
+   796→          </AlertDialogHeader>
+   797→          <AlertDialogFooter>
+   798→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   799→            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteBk} disabled={bkDeleting}>
+   800→              {bkDeleting ? "Deleting..." : "Delete"}
+   801→            </AlertDialogAction>
+   802→          </AlertDialogFooter>
+   803→        </AlertDialogContent>
+   804→      </AlertDialog>
+   805→    </div>
+   806→  );
+   807→}
