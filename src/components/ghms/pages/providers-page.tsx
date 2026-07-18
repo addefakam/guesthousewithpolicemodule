@@ -48,6 +48,7 @@ import {
   FileText,
   Calendar,
   ShieldCheck,
+  User,
 } from "lucide-react";
 
 interface Provider {
@@ -179,274 +180,361 @@ export default function ProvidersPage() {
   const pendingCount = providers.filter((p) => p.status === "PENDING").length;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-4 p-3 sm:p-4 md:p-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
-              <Building2 className="h-5 w-5 text-slate-600" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-3">
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-slate-100">
+              <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Providers</p>
-              <p className="text-2xl font-bold">{providers.length}</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">Total</p>
+              <p className="text-lg sm:text-2xl font-bold">{providers.length}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-50">
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Approved</p>
-              <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">Approved</p>
+              <p className="text-lg sm:text-2xl font-bold text-emerald-600">{approvedCount}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50">
-              <ShieldCheck className="h-5 w-5 text-yellow-600" />
+        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-yellow-50">
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Pending Review</p>
-              <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">Pending</p>
+              <p className="text-lg sm:text-2xl font-bold text-yellow-600">{pendingCount}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Providers Table */}
+      {/* Providers — Cards on mobile, Table on lg+ */}
       <div className="rounded-xl border bg-card shadow-sm">
-        <div className="border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">Provider Applications</h2>
-          <p className="text-sm text-muted-foreground">Manage guest house registrations and licensing</p>
+        <div className="border-b px-4 py-3 sm:px-6 sm:py-4">
+          <h2 className="text-base sm:text-lg font-semibold">Provider Applications</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Manage registrations and licensing
+          </p>
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="space-y-3 p-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : providers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Building2 className="mb-3 h-12 w-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground">No providers registered yet</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Provider Name</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>License No</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {providers.map((provider) => (
-                  <TableRow
-                    key={provider.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => openDetail(provider)}
-                  >
-                    <TableCell className="font-medium">{provider.name}</TableCell>
-                    <TableCell>{provider.ownerName}</TableCell>
-                    <TableCell>{provider.phone}</TableCell>
-                    <TableCell className="max-w-[180px] truncate">{provider.email || "—"}</TableCell>
-                    <TableCell>
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium">
-                        {provider.type.replace(/_/g, " ")}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{provider.licenseNo || "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={provider.status} />
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
-                        {provider.status !== "APPROVED" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                            onClick={() => setConfirmAction({ provider, action: "APPROVED" })}
-                          >
-                            <CheckCircle2 className="mr-1 h-4 w-4" />
-                            <span className="hidden sm:inline">Approve</span>
-                          </Button>
-                        )}
-                        {provider.status !== "REJECTED" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => openReject(provider)}
-                          >
-                            <XCircle className="mr-1 h-4 w-4" />
-                            <span className="hidden sm:inline">Reject</span>
-                          </Button>
-                        )}
-                        {provider.status === "APPROVED" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                            onClick={() => setConfirmAction({ provider, action: "SUSPENDED" })}
-                          >
-                            <Ban className="mr-1 h-4 w-4" />
-                            <span className="hidden sm:inline">Suspend</span>
-                          </Button>
+
+        {loading ? (
+          <div className="space-y-3 p-4 sm:p-6">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full sm:h-12" />
+            ))}
+          </div>
+        ) : providers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+            <Building2 className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+            <p className="text-xs sm:text-sm text-muted-foreground">No providers registered yet</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile/Tablet: Card layout */}
+            <div className="divide-y lg:hidden">
+              {providers.map((provider) => (
+                <div key={provider.id} className="p-3 sm:p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => openDetail(provider)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium">{provider.name}</p>
+                        <StatusBadge status={provider.status} />
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" /> {provider.ownerName}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {provider.phone}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">
+                          {provider.type.replace(/_/g, " ")}
+                        </span>
+                        {provider.licenseNo && (
+                          <span className="font-mono">Lic: {provider.licenseNo}</span>
                         )}
                       </div>
-                    </TableCell>
+                    </button>
+                  </div>
+
+                  {/* Action buttons — always visible on mobile */}
+                  <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5">
+                    <button
+                      className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 active:bg-slate-200 sm:hidden"
+                      onClick={() => openDetail(provider)}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Details
+                    </button>
+                    {provider.status !== "APPROVED" && (
+                      <button
+                        className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100"
+                        onClick={() => setConfirmAction({ provider, action: "APPROVED" })}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className="hidden xs:inline">Approve</span>
+                      </button>
+                    )}
+                    {provider.status !== "REJECTED" && (
+                      <button
+                        className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 active:bg-red-100"
+                        onClick={() => openReject(provider)}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span className="hidden xs:inline">Reject</span>
+                      </button>
+                    )}
+                    {provider.status === "APPROVED" && (
+                      <button
+                        className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50 active:bg-orange-100"
+                        onClick={() => setConfirmAction({ provider, action: "SUSPENDED" })}
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                        Suspend
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: Table layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Provider Name</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>License No</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {providers.map((provider) => (
+                    <TableRow
+                      key={provider.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => openDetail(provider)}
+                    >
+                      <TableCell className="font-medium">{provider.name}</TableCell>
+                      <TableCell>{provider.ownerName}</TableCell>
+                      <TableCell>{provider.phone}</TableCell>
+                      <TableCell className="max-w-[180px] truncate">{provider.email || "—"}</TableCell>
+                      <TableCell>
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium">
+                          {provider.type.replace(/_/g, " ")}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{provider.licenseNo || "—"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={provider.status} />
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          {provider.status !== "APPROVED" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                              onClick={() => setConfirmAction({ provider, action: "APPROVED" })}
+                            >
+                              <CheckCircle2 className="mr-1 h-4 w-4" />
+                              Approve
+                            </Button>
+                          )}
+                          {provider.status !== "REJECTED" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => openReject(provider)}
+                            >
+                              <XCircle className="mr-1 h-4 w-4" />
+                              Reject
+                            </Button>
+                          )}
+                          {provider.status === "APPROVED" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                              onClick={() => setConfirmAction({ provider, action: "SUSPENDED" })}
+                            >
+                              <Ban className="mr-1 h-4 w-4" />
+                              Suspend
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Provider Detail Dialog */}
+      {/* Provider Detail Dialog — mobile optimized */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
               <Building2 className="h-5 w-5" />
               {selectedProvider?.name}
             </DialogTitle>
-            <DialogDescription>Provider registration details</DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">Registration details</DialogDescription>
           </DialogHeader>
           {selectedProvider && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Owner Name</Label>
-                  <p className="font-medium">{selectedProvider.ownerName}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Status</Label>
+              <div className="flex items-center gap-3">
+                <StatusBadge status={selectedProvider.status} />
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">
+                  {selectedProvider.type.replace(/_/g, " ")}
+                </span>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2.5">
+                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
-                    <StatusBadge status={selectedProvider.status} />
+                    <p className="text-[10px] text-muted-foreground">Owner</p>
+                    <p className="font-medium">{selectedProvider.ownerName}</p>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Phone</Label>
-                  <p className="flex items-center gap-1.5 font-medium">
-                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                    {selectedProvider.phone}
-                  </p>
+                <div className="flex items-center gap-2.5">
+                  <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Phone</p>
+                    <p className="font-medium">{selectedProvider.phone}</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Email</Label>
-                  <p className="flex items-center gap-1.5 font-medium">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                    {selectedProvider.email || "—"}
-                  </p>
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <Label className="text-muted-foreground">Address</Label>
-                  <p className="flex items-center gap-1.5 font-medium">
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                    {selectedProvider.address || "—"}
-                  </p>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Type</Label>
-                  <p className="font-medium">{selectedProvider.type.replace(/_/g, " ")}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">License No</Label>
-                  <p className="font-mono font-medium">{selectedProvider.licenseNo || "—"}</p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-muted-foreground">Registered</Label>
-                  <p className="flex items-center gap-1.5 font-medium">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    {formatDate(selectedProvider.createdAt)}
-                  </p>
+                {selectedProvider.email && (
+                  <div className="flex items-center gap-2.5">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Email</p>
+                      <p className="font-medium">{selectedProvider.email}</p>
+                    </div>
+                  </div>
+                )}
+                {selectedProvider.address && (
+                  <div className="flex items-start gap-2.5">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Address</p>
+                      <p className="font-medium">{selectedProvider.address}</p>
+                    </div>
+                  </div>
+                )}
+                {selectedProvider.licenseNo && (
+                  <div className="flex items-center gap-2.5">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">License No</p>
+                      <p className="font-mono font-medium">{selectedProvider.licenseNo}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Registered</p>
+                    <p className="font-medium">{formatDate(selectedProvider.createdAt)}</p>
+                  </div>
                 </div>
                 {selectedProvider.approvedAt && (
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Approved At</Label>
-                    <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
-                  </div>
-                )}
-                {selectedProvider.approvedBy && (
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Approved By</Label>
-                    <p className="font-medium">{selectedProvider.approvedBy}</p>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Approved {selectedProvider.approvedBy ? `by ${selectedProvider.approvedBy}` : ""}</p>
+                      <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
+                    </div>
                   </div>
                 )}
               </div>
+
+              {selectedProvider.licenseFile && (
+                <a
+                  href={selectedProvider.licenseFile}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs sm:text-sm font-medium text-primary hover:bg-muted transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  View License File
+                </a>
+              )}
+
               {selectedProvider.rejectionReason && (
                 <>
                   <Separator />
-                  <div className="space-y-1 text-sm">
-                    <Label className="text-red-600">Rejection Reason</Label>
-                    <p className="rounded-lg bg-red-50 p-3 text-red-800">{selectedProvider.rejectionReason}</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-red-600 text-xs">Rejection Reason</Label>
+                    <p className="rounded-lg bg-red-50 p-3 text-xs sm:text-sm text-red-800">
+                      {selectedProvider.rejectionReason}
+                    </p>
                   </div>
                 </>
-              )}
-              {selectedProvider.licenseFile && (
-                <div className="space-y-1 text-sm">
-                  <Label className="text-muted-foreground">License Document</Label>
-                  <a
-                    href={selectedProvider.licenseFile}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium text-primary hover:bg-muted transition-colors"
-                  >
-                    <FileText className="h-4 w-4" />
-                    View License File
-                  </a>
-                </div>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Reject Dialog */}
+      {/* Reject Dialog — mobile optimized */}
       <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
               <XCircle className="h-5 w-5" />
               Reject Provider
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="reject-reason">Rejection Reason *</Label>
+            <Label htmlFor="reject-reason" className="text-xs sm:text-sm">Rejection Reason *</Label>
             <Textarea
               id="reject-reason"
               placeholder="Enter the reason for rejection..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
+              rows={3}
+              className="text-sm"
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning}>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleReject}
               disabled={actioning || !rejectReason.trim()}
+              className="w-full sm:w-auto"
             >
               {actioning ? "Rejecting..." : "Confirm Rejection"}
             </Button>
@@ -456,19 +544,19 @@ export default function ProvidersPage() {
 
       {/* Confirm Approve/Suspend Dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="text-base sm:text-lg">
               {confirmAction?.action === "APPROVED" ? "Approve Provider" : "Suspend Provider"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               {confirmAction?.action === "APPROVED"
-                ? `Are you sure you want to approve "${confirmAction?.provider.name}"? The provider will be able to operate.`
-                : `Are you sure you want to suspend "${confirmAction?.provider.name}"? The provider will lose access until re-approved.`}
+                ? `Are you sure you want to approve "${confirmAction?.provider.name}"?`
+                : `Are you sure you want to suspend "${confirmAction?.provider.name}"?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={actioning}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
                 confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)
@@ -476,8 +564,8 @@ export default function ProvidersPage() {
               disabled={actioning}
               className={
                 confirmAction?.action === "APPROVED"
-                  ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
-                  : "bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
+                  ? "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
+                  : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
               }
             >
               {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : "Suspend"}
