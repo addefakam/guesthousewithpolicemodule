@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+const STORAGE_KEY = "ghms_session";
+
 export interface CurrentUser {
   id: string;
   username: string;
@@ -21,11 +23,70 @@ interface AppState {
   triggerRefresh: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentPage: "login",
-  setCurrentPage: (p) => set({ currentPage: p }),
-  currentUser: null,
-  setCurrentUser: (u) => set({ currentUser: u }),
+// ── localStorage helpers (SSR-safe) ──
+function loadSession(): {
+  currentUser: CurrentUser | null;
+  currentPage: string;
+} | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data && data.currentUser) return data;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(user: CurrentUser | null, page?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (user) {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          currentUser: user,
+          currentPage: page || useAppStore.getState().currentPage,
+        }),
+      );
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // localStorage may be full or blocked — silently ignore
+  }
+}
+
+// ── Load persisted session at store creation (runs once on client) ──
+const initialSession = loadSession();
+
+export const useAppStore = create<AppState>((set, get) => ({
+  currentPage: initialSession?.currentPage || "login",
+  setCurrentPage: (p) => {
+    const user = get().currentUser;
+    if (user) {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ currentUser: user, currentPage: p }),
+          );
+        } catch {}
+      }
+    }
+    set({ currentPage: p });
+  },
+  currentUser: initialSession?.currentUser ?? null,
+  setCurrentUser: (u) => {
+    persistSession(u);
+    if (!u) {
+      set({ currentUser: null, currentPage: "login" });
+    } else {
+      set({ currentUser: u });
+    }
+  },
   sidebarOpen: true,
   setSidebarOpen: (o) => set({ sidebarOpen: o }),
   refreshKey: 0,
