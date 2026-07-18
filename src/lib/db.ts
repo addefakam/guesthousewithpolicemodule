@@ -1,27 +1,21 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { createClient } from "@libsql/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  // Log DATABASE_URL status for diagnostics
-  const dbUrl = process.env.DATABASE_URL || "";
-  console.log("[db] DATABASE_URL=" + (dbUrl ? dbUrl.replace(/file:.*/, "file:***)") : "NOT SET"));
-  console.log("[db] CWD=" + process.cwd());
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  try {
-    const client = new PrismaClient({
-      log: [],
-    });
-    return client;
-  } catch (err) {
-    console.error("[db] Failed to initialize PrismaClient:", err);
-    // In production, we must not crash — return the client anyway
-    // Individual queries will fail with clear error messages
-    return new PrismaClient({ log: [] });
+  if (tursoUrl) {
+    const libsql = createClient({ url: tursoUrl, authToken: authToken });
+    const adapter = new PrismaLibSQL(libsql);
+    return new PrismaClient({ adapter });
   }
+
+  return new PrismaClient();
 }
 
-export const db =
-  globalForPrisma.prisma || createPrismaClient();
-
+export const db = globalForPrisma.prisma || createPrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
