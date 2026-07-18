@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice } from "@/lib/tenant";
+import { ensureSuspectTables } from "@/lib/suspect-check";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
     requirePolice(auth);
+    await ensureSuspectTables();
 
     const { searchParams } = req.nextUrl;
     const q = searchParams.get("q") || "";
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
     requirePolice(auth);
+    await ensureSuspectTables();
 
     const body = await req.json();
     const { name, phone, idNumber, idType, nationality, address, description, severity } = body;

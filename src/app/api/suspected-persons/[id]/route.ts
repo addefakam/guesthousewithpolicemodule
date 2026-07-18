@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice } from "@/lib/tenant";
+import { ensureSuspectTables } from "@/lib/suspect-check";
 
 export async function GET(
   req: NextRequest,
@@ -9,6 +10,7 @@ export async function GET(
   try {
     const auth = getAuthContext(req);
     requirePolice(auth);
+    await ensureSuspectTables();
 
     const { id } = await params;
     const person = await db.suspectedPerson.findUnique({

@@ -1,5 +1,65 @@
 import { db } from "./db";
 
+let tablesEnsured = false;
+
+/**
+ * Ensure the SuspectMatch and SuspectedPerson tables exist.
+ * Runs once per cold start. Uses raw SQL for Turso compatibility.
+ */
+async function ensureTables() {
+  if (tablesEnsured) return;
+  try {
+    await db.suspectedPerson.count();
+    tablesEnsured = true;
+  } catch {
+    // Table doesn't exist — create them
+    console.log("[suspect-check] Creating SuspectedPerson and SuspectMatch tables...");
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SuspectedPerson" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "phone" TEXT NOT NULL DEFAULT '',
+        "idNumber" TEXT NOT NULL DEFAULT '',
+        "idType" TEXT NOT NULL DEFAULT '',
+        "nationality" TEXT NOT NULL DEFAULT '',
+        "address" TEXT NOT NULL DEFAULT '',
+        "description" TEXT NOT NULL DEFAULT '',
+        "severity" TEXT NOT NULL DEFAULT 'MEDIUM',
+        "is_active" BOOLEAN NOT NULL DEFAULT 1,
+        "registeredBy" TEXT NOT NULL DEFAULT '',
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SuspectMatch" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "suspectedPersonId" TEXT NOT NULL,
+        "matchType" TEXT NOT NULL,
+        "guestName" TEXT NOT NULL,
+        "guestPhone" TEXT NOT NULL DEFAULT '',
+        "guestIdNumber" TEXT NOT NULL DEFAULT '',
+        "providerName" TEXT NOT NULL DEFAULT '',
+        "providerId" TEXT NOT NULL DEFAULT '',
+        "reservationId" TEXT,
+        "daytimeBookingId" TEXT,
+        "details" TEXT NOT NULL DEFAULT '',
+        "isRead" BOOLEAN NOT NULL DEFAULT 0,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("suspectedPersonId") REFERENCES "SuspectedPerson"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "SuspectMatch_suspectedPersonId_idx" ON "SuspectMatch"("suspectedPersonId");
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "SuspectMatch_isRead_idx" ON "SuspectMatch"("isRead");
+    `);
+    tablesEnsured = true;
+    console.log("[suspect-check] Tables created successfully");
+  }
+}
+
 /**
  * Check if a person (by name, phone, or ID number) matches any suspected person.
  * If matches are found, creates SuspectMatch records silently (no error thrown).
@@ -17,6 +77,8 @@ export async function checkSuspectMatch(params: {
   extraDetails?: Record<string, unknown>;
 }) {
   try {
+    await ensureTables();
+
     const { name, phone, idNumber, matchType, providerId, providerName, reservationId, daytimeBookingId, extraDetails } = params;
 
     // Build search conditions: match on name, phone, or ID number
@@ -91,4 +153,11 @@ export async function checkSuspectMatch(params: {
     // Log but never throw — suspect checking should not break normal operations
     console.error("[suspect-check] Background check failed:", error);
   }
+}
+
+/**
+ * Ensure tables exist — can be called from API routes too.
+ */
+export async function ensureSuspectTables() {
+  await ensureTables();
 }
