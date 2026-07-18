@@ -1,21 +1,28 @@
 ---
-Task ID: 2
+Task ID: 1
 Agent: Main Agent
-Task: Fix production deployment 500 errors
+Task: Add suspected persons registration and automatic alert system for police module
 
 Work Log:
-- Diagnosed that the old approach (writing absolute DB path to .env at runtime) could fail in publish container
-- Restructured build: database now copied INSIDE next-service-dist/db/custom.db
-- .env now uses RELATIVE path (file:db/custom.db) — no runtime write needed
-- server.js does process.chdir(__dirname), so relative path resolves correctly
-- Simplified start.sh: no .env writing, no SCRIPT_DIR calculation, just cd + run
-- Added runtime auto-detection (node vs bun) in start.sh
-- Added images.unoptimized: true to next.config.ts (eliminates sharp native dependency)
-- Tested production build with BOTH node and bun — all 200s
-- Tested: root page 200, favicon 200, auth API works, dashboard API works
+- Explored existing codebase: schema, API routes, tenant auth, police pages, sidebar, page renderer
+- Added SuspectSeverity enum + SuspectedPerson model + SuspectMatch model to Prisma schema
+- Ran prisma generate + db push successfully
+- Created /src/lib/suspect-check.ts - background matching utility (matches by name, last name, phone, ID number)
+- Created /api/suspected-persons/route.ts - GET (list+search) + POST (create) - police only
+- Created /api/suspected-persons/[id]/route.ts - GET (with match history) + PUT (update) + DELETE
+- Created /api/suspect-matches/route.ts - GET (list with unread count) + PUT (mark read/mark all read)
+- Injected suspect-check calls into reservation POST, guest POST, daytime-booking POST (fire-and-forget)
+- Created suspect-alerts-page.tsx - mobile-responsive alert viewer with full detail dialogs
+- Created suspected-persons-page.tsx - full CRUD management (add/edit/delete/deactivate/search/history)
+- Updated police-dashboard-page.tsx to show unread alert count KPI card
+- Updated sidebar with ShieldAlert + UserX icons and 2 new nav items for police
+- Updated page-renderer.tsx with lazy-loaded pages
+- Updated api.ts with 6 new API functions
+- Build passed, pushed to GitHub, Vercel will auto-deploy
 
 Stage Summary:
-- Key fix: DB path is now relative, .env is baked into build, no runtime filesystem writes needed
-- start.sh simplified from 60 lines to 30 lines
-- build.sh restructured to put db/ inside next-service-dist/
-- Production build verified: page 200, favicon 200, all APIs functional
+- 14 files changed, 1736 insertions
+- New features: Suspected Persons registry, automatic matching alerts, full police UI
+- All APIs are police-only (requirePolice guard)
+- Matching runs silently in background, never breaks normal operations
+- Other users (superuser/operator/staff) cannot see suspected persons or matches
