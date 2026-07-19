@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+    checkWritePermission(auth, { allowSuperuser: true });
 
     const body = await req.json();
 

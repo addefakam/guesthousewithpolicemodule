@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, getProviderFilter } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
+    // SUPERUSER can submit concerns; others blocked (notifications are system-generated)
+    checkWritePermission(auth, { allowSuperuser: true });
 
     const body = await req.json();
     const { title, message, type, link, userId } = body;
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(notification, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to create notification";
-    const status = message.includes("required") ? 400 : 500;
+    const status = message.includes("required") ? 400 : message.includes("cannot") ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -90,6 +90,13 @@ const POLICE_NAV_ITEMS: NavItem[] = [
   },
 ];
 
+// SUPERUSER (owner): limited to dashboard, settings, and notifications/concerns
+const SUPERUSER_NAV_ITEMS: NavItem[] = [
+  { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { page: "settings", label: "Settings", icon: Settings },
+  { page: "notifications", label: "Notifications", icon: Bell },
+];
+
 const OPERATOR_EXCLUDED = new Set<string>([]);
 
 // ── Permission → page mapping for STAFF role ──
@@ -120,7 +127,7 @@ function getNavItems(user: CurrentUser): NavItem[] {
       return POLICE_NAV_ITEMS;
 
     case "SUPERUSER":
-      return ALL_NAV_ITEMS;
+      return SUPERUSER_NAV_ITEMS;
 
     case "OPERATOR":
       return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));

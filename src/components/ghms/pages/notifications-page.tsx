@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useAppStore } from "@/lib/store";
-import { apiGetNotifications, apiMarkNotificationRead } from "@/lib/api";
+import {
+  apiGetNotifications,
+  apiCreateNotification,
+  apiMarkNotificationRead,
+} from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Bell,
   BellOff,
@@ -16,6 +31,7 @@ import {
   XCircle,
   Trash2,
   Eye,
+  MessageSquarePlus,
 } from "lucide-react";
 
 interface Notification {
@@ -52,6 +68,11 @@ const TYPE_CONFIG: Record<
     badge: "bg-red-100 text-red-700 border-red-200",
     label: "Error",
   },
+  CONCERN: {
+    icon: MessageSquarePlus,
+    badge: "bg-violet-100 text-violet-700 border-violet-200",
+    label: "Concern",
+  },
 };
 
 function timeAgo(dateStr: string) {
@@ -69,9 +90,16 @@ function timeAgo(dateStr: string) {
 }
 
 export default function NotificationsPage() {
-  const { refreshKey } = useAppStore();
+  const { refreshKey, currentUser } = useAppStore();
+  const isSuperuser = currentUser?.role === "SUPERUSER";
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Concern dialog
+  const [concernOpen, setConcernOpen] = useState(false);
+  const [concernTitle, setConcernTitle] = useState("");
+  const [concernMessage, setConcernMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -110,6 +138,32 @@ export default function NotificationsPage() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const handleSubmitConcern = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!concernTitle.trim() || !concernMessage.trim()) {
+      toast.error("Please fill in the subject and message");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = await apiCreateNotification({
+        title: concernTitle.trim(),
+        message: concernMessage.trim(),
+        type: "CONCERN",
+      });
+      setNotifications((prev) => [created, ...prev]);
+      toast.success("Concern submitted successfully");
+      setConcernOpen(false);
+      setConcernTitle("");
+      setConcernMessage("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit concern";
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
@@ -125,13 +179,22 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isSuperuser ? "Notifications & Concerns" : "Notifications"}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {notifications.filter((n) => !n.isRead).length} unread
           </p>
         </div>
+        {isSuperuser && (
+          <Button onClick={() => setConcernOpen(true)} className="gap-2 shrink-0">
+            <MessageSquarePlus className="h-4 w-4" />
+            Submit Concern
+          </Button>
+        )}
       </div>
 
       {notifications.length === 0 ? (
@@ -139,7 +202,9 @@ export default function NotificationsPage() {
           <BellOff className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">No notifications</p>
           <p className="text-sm mt-1">
-            You&apos;re all caught up. New notifications will appear here.
+            {isSuperuser
+              ? "Submit a concern to your operator, or check back later for updates."
+              : "You&apos;re all caught up. New notifications will appear here."}
           </p>
         </div>
       ) : (
@@ -171,7 +236,7 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3
                       className={`text-sm font-semibold ${
                         n.isRead ? "text-muted-foreground" : "text-foreground"
@@ -198,7 +263,7 @@ export default function NotificationsPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   {!n.isRead && (
                     <Button
                       variant="ghost"
@@ -231,6 +296,55 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      {/* Submit Concern Dialog (SUPERUSER only) */}
+      <Dialog open={concernOpen} onOpenChange={setConcernOpen}>
+        <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquarePlus className="h-5 w-5 text-violet-500" />
+              Submit Concern
+            </DialogTitle>
+            <DialogDescription>
+              Send a concern or request to your operator. They will be notified and can take action.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitConcern} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="concern-title">Subject *</Label>
+              <Input
+                id="concern-title"
+                placeholder="Brief subject of your concern"
+                value={concernTitle}
+                onChange={(e) => setConcernTitle(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="concern-message">Message *</Label>
+              <Textarea
+                id="concern-message"
+                placeholder="Describe your concern in detail..."
+                rows={4}
+                value={concernMessage}
+                onChange={(e) => setConcernMessage(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConcernOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting} className="gap-2">
+                {submitting ? "Submitting..." : "Submit Concern"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
