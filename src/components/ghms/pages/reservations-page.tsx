@@ -261,6 +261,11 @@ export default function ReservationsPage() {
 
   const createTotal = createNights * createRate;
 
+  const step1Valid = useMemo(() => {
+    if (guestMode === "existing") return !!selectedGuestId;
+    return !!(newGuestForm.name.trim() && newGuestForm.phone.trim());
+  }, [guestMode, selectedGuestId, newGuestForm.name, newGuestForm.phone]);
+
   // Filtered reservations
   const filtered = useMemo(() => {
     let list = reservations;
