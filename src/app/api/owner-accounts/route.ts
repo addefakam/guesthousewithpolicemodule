@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext } from "@/lib/tenant";
 
-// GET /api/owner-accounts — SUPERUSER lists all providers with their owner (SUPERUSER) user credentials
+// GET /api/owner-accounts — SUPERUSER lists providers with owner accounts + police accounts
 export async function GET(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
@@ -29,16 +29,29 @@ export async function GET(req: NextRequest) {
             role: true,
             providerId: true,
             createdAt: true,
-            // intentionally NOT selecting password
           },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(providers);
+    // Fetch all POLICE user accounts
+    const policeUsers = await db.user.findMany({
+      where: { role: "POLICE" },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true,
+        providerId: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ providers, policeUsers });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to fetch owner accounts";
+    const message = error instanceof Error ? error.message : "Failed to fetch accounts";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

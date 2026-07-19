@@ -24,18 +24,19 @@ import {
   UserCog,
   KeyRound,
   Building2,
+  Shield,
   Loader2,
   Eye,
   EyeOff,
   Search,
 } from "lucide-react";
 
-interface OwnerUser {
+interface AccountUser {
   id: string;
   username: string;
   name: string;
   role: string;
-  providerId: string;
+  providerId: string | null;
   createdAt: string;
 }
 
@@ -47,7 +48,12 @@ interface ProviderWithOwner {
   email: string;
   status: string;
   createdAt: string;
-  users: OwnerUser[];
+  users: AccountUser[];
+}
+
+interface ApiResponse {
+  providers: ProviderWithOwner[];
+  policeUsers: AccountUser[];
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -57,28 +63,34 @@ const STATUS_BADGE: Record<string, string> = {
   SUSPENDED: "bg-slate-200 text-slate-700 border-slate-300",
 };
 
+type TabType = "owners" | "police";
+
 export default function OwnerAccountsPage() {
   const { refreshKey } = useAppStore();
-  const [accounts, setAccounts] = useState<ProviderWithOwner[]>([]);
+  const [providers, setProviders] = useState<ProviderWithOwner[]>([]);
+  const [policeUsers, setPoliceUsers] = useState<AccountUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("owners");
 
   // Reset dialog
   const [resetOpen, setResetOpen] = useState(false);
-  const [resetTarget, setResetTarget] = useState<ProviderWithOwner | null>(null);
   const [resetUserId, setResetUserId] = useState("");
   const [resetUsername, setResetUsername] = useState("");
   const [resetPassword, setResetPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resetLabel, setResetLabel] = useState(""); // descriptive label for dialog
+  const [resetSublabel, setResetSublabel] = useState(""); // sub-label
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGetOwnerAccounts();
-      setAccounts(data);
+      const data: ApiResponse = await apiGetOwnerAccounts();
+      setProviders(data.providers);
+      setPoliceUsers(data.policeUsers);
     } catch {
-      toast.error("Failed to load owner accounts");
+      toast.error("Failed to load accounts");
     } finally {
       setLoading(false);
     }
@@ -88,13 +100,26 @@ export default function OwnerAccountsPage() {
     fetchAccounts();
   }, [fetchAccounts, refreshKey]);
 
-  const openReset = (provider: ProviderWithOwner) => {
+  // Open reset for an owner/provider account
+  const openOwnerReset = (provider: ProviderWithOwner) => {
     const ownerUser = provider.users[0];
-    setResetTarget(provider);
     setResetUserId(ownerUser?.id || "");
     setResetUsername(ownerUser?.username || "");
     setResetPassword("");
     setShowPassword(false);
+    setResetLabel(provider.name);
+    setResetSublabel(`${provider.ownerName}  ·  ${provider.phone}`);
+    setResetOpen(true);
+  };
+
+  // Open reset for a police account
+  const openPoliceReset = (police: AccountUser) => {
+    setResetUserId(police.id);
+    setResetUsername(police.username);
+    setResetPassword("");
+    setShowPassword(false);
+    setResetLabel("Police Account");
+    setResetSublabel(police.name);
     setResetOpen(true);
   };
 
@@ -120,7 +145,7 @@ export default function OwnerAccountsPage() {
       }
 
       await apiUpdateOwnerAccount(resetUserId, updateData);
-      toast.success("Owner credentials updated successfully");
+      toast.success("Credentials updated successfully");
       setResetOpen(false);
       fetchAccounts();
     } catch (err: unknown) {
@@ -131,13 +156,24 @@ export default function OwnerAccountsPage() {
     }
   };
 
-  const filtered = accounts.filter(
+  // Filtering
+  const filteredProviders = providers.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.ownerName.toLowerCase().includes(search.toLowerCase()) ||
       p.phone.includes(search) ||
       p.users.some((u) => u.username.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const filteredPolice = policeUsers.filter(
+    (u) =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.username.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const hasNoResults =
+    (activeTab === "owners" && filteredProviders.length === 0) ||
+    (activeTab === "police" && filteredPolice.length === 0);
 
   if (loading) {
     return (
@@ -158,152 +194,291 @@ export default function OwnerAccountsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Owner Accounts</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Account Management</h1>
           <p className="text-sm text-muted-foreground">
-            Manage service provider login credentials. Reset username or password when requested by owners.
+            Reset username or password for owner and police accounts when requested.
           </p>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-lg border bg-muted/50 p-1 w-fit">
+        <button
+          onClick={() => { setActiveTab("owners"); setSearch(""); }}
+          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "owners"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          Owners
+          <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+            {providers.length}
+          </Badge>
+        </button>
+        <button
+          onClick={() => { setActiveTab("police"); setSearch(""); }}
+          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "police"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Shield className="h-4 w-4" />
+          Police
+          <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+            {policeUsers.length}
+          </Badge>
+        </button>
       </div>
 
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by provider, owner, phone, or username..."
+          placeholder={
+            activeTab === "owners"
+              ? "Search by provider, owner, phone, or username..."
+              : "Search by name or username..."
+          }
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {hasNoResults ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <UserCog className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">
-            {search ? "No matching providers" : "No owner accounts found"}
+            {search ? "No matching accounts" : `No ${activeTab} accounts found`}
           </p>
           <p className="text-sm mt-1">
             {search
               ? "Try adjusting your search terms."
-              : "Owner accounts will appear here when providers are registered."}
+              : activeTab === "owners"
+                ? "Owner accounts will appear here when providers are registered."
+                : "Police accounts will appear here once created by an operator."}
           </p>
         </div>
       ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden md:block rounded-lg border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-semibold">Provider</th>
-                  <th className="px-4 py-3 text-left font-semibold">Owner</th>
-                  <th className="px-4 py-3 text-left font-semibold">Username</th>
-                  <th className="px-4 py-3 text-left font-semibold">Phone</th>
-                  <th className="px-4 py-3 text-left font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((provider) => {
-                  const ownerUser = provider.users[0];
-                  return (
+        activeTab === "owners" ? (
+          /* ─── Owners Section ─── */
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left font-semibold">Provider</th>
+                    <th className="px-4 py-3 text-left font-semibold">Owner</th>
+                    <th className="px-4 py-3 text-left font-semibold">Username</th>
+                    <th className="px-4 py-3 text-left font-semibold">Phone</th>
+                    <th className="px-4 py-3 text-left font-semibold">Status</th>
+                    <th className="px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProviders.map((provider) => {
+                    const ownerUser = provider.users[0];
+                    return (
+                      <tr
+                        key={provider.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                              <Building2 className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="font-medium">{provider.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {provider.ownerName}
+                        </td>
+                        <td className="px-4 py-3">
+                          <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                            {ownerUser?.username || "—"}
+                          </code>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {provider.phone}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+                            {provider.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => openOwnerReset(provider)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                            Reset Credentials
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {filteredProviders.map((provider) => {
+                const ownerUser = provider.users[0];
+                return (
+                  <div
+                    key={provider.id}
+                    className="rounded-lg border p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{provider.name}</p>
+                          <p className="text-xs text-muted-foreground">{provider.ownerName}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+                        {provider.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Username</p>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                          {ownerUser?.username || "—"}
+                        </code>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="text-sm">{provider.phone}</p>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5"
+                      onClick={() => openOwnerReset(provider)}
+                    >
+                      <KeyRound className="h-3.5 w-3.5" />
+                      Reset Credentials
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          /* ─── Police Section ─── */
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left font-semibold">Name</th>
+                    <th className="px-4 py-3 text-left font-semibold">Username</th>
+                    <th className="px-4 py-3 text-left font-semibold">Role</th>
+                    <th className="px-4 py-3 text-left font-semibold">Created</th>
+                    <th className="px-4 py-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPolice.map((police) => (
                     <tr
-                      key={provider.id}
+                      key={police.id}
                       className="border-b last:border-0 hover:bg-muted/30 transition-colors"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                            <Building2 className="h-4 w-4 text-primary" />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
+                            <Shield className="h-4 w-4 text-rose-600" />
                           </div>
-                          <span className="font-medium">{provider.name}</span>
+                          <span className="font-medium">{police.name}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {provider.ownerName}
                       </td>
                       <td className="px-4 py-3">
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                          {ownerUser?.username || "—"}
+                          {police.username}
                         </code>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {provider.phone}
-                      </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
-                          {provider.status}
+                        <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-200">
+                          POLICE
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {new Date(police.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button
                           variant="outline"
                           size="sm"
                           className="gap-1.5"
-                          onClick={() => openReset(provider)}
+                          onClick={() => openPoliceReset(police)}
                         >
                           <KeyRound className="h-3.5 w-3.5" />
                           Reset Credentials
                         </Button>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-3">
-            {filtered.map((provider) => {
-              const ownerUser = provider.users[0];
-              return (
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {filteredPolice.map((police) => (
                 <div
-                  key={provider.id}
+                  key={police.id}
                   className="rounded-lg border p-4 space-y-3"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{provider.name}</p>
-                        <p className="text-xs text-muted-foreground">{provider.ownerName}</p>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+                      <Shield className="h-4 w-4 text-rose-600" />
                     </div>
-                    <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
-                      {provider.status}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{police.name}</p>
+                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                        {police.username}
+                      </code>
+                    </div>
+                    <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-200">
+                      POLICE
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Username</p>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                        {ownerUser?.username || "—"}
-                      </code>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="text-sm">{provider.phone}</p>
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Created: {new Date(police.createdAt).toLocaleDateString()}
+                  </p>
 
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full gap-1.5"
-                    onClick={() => openReset(provider)}
+                    onClick={() => openPoliceReset(police)}
                   >
                     <KeyRound className="h-3.5 w-3.5" />
                     Reset Credentials
                   </Button>
                 </div>
-              );
-            })}
-          </div>
-        </>
+              ))}
+            </div>
+          </>
+        )
       )}
 
       {/* Reset Credentials Dialog */}
@@ -312,19 +487,14 @@ export default function OwnerAccountsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-primary" />
-              Reset Owner Credentials
+              Reset Credentials
             </DialogTitle>
             <DialogDescription>
-              Update the login credentials for <strong>{resetTarget?.name}</strong> — {resetTarget?.ownerName}.
+              Update login credentials for <strong>{resetLabel}</strong>{resetSublabel ? ` — ${resetSublabel}` : ""}.
               Leave password blank to keep the current password unchanged.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleReset} className="space-y-4">
-            <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-              <p className="text-sm font-medium">Provider: {resetTarget?.name}</p>
-              <p className="text-xs text-muted-foreground">Owner: {resetTarget?.ownerName} &middot; Phone: {resetTarget?.phone}</p>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="reset-username">Username *</Label>
               <Input
@@ -356,7 +526,7 @@ export default function OwnerAccountsPage() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Only fill this in if the owner requests a password reset.
+                Only fill this in if a password reset is requested.
               </p>
             </div>
 
@@ -388,4 +558,3 @@ export default function OwnerAccountsPage() {
     </div>
   );
 }
-

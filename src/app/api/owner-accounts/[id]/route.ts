@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext } from "@/lib/tenant";
 
-// PUT /api/owner-accounts/[id] — SUPERUSER resets username/password for an owner account
-// The [id] refers to the USER id (not provider id) of the SUPERUSER (owner) user.
+// PUT /api/owner-accounts/[id] — SUPERUSER resets username/password for owner or police accounts
+// The [id] refers to the USER id.
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,10 +31,10 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Only allow resetting credentials for SUPERUSER (owner) accounts
-    if (existing.role !== "SUPERUSER") {
+    // Only allow resetting credentials for SUPERUSER (owner) and POLICE accounts
+    if (existing.role !== "SUPERUSER" && existing.role !== "POLICE") {
       return NextResponse.json(
-        { error: "Only owner (provider) accounts can be managed here. Contact your operator for other user management." },
+        { error: "Only owner and police accounts can be managed here. Contact your operator for other user management." },
         { status: 403 }
       );
     }
@@ -70,7 +70,7 @@ export async function PUT(
 
     return NextResponse.json(user);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to update owner account";
+    const message = error instanceof Error ? error.message : "Failed to update account";
     const status =
       message.includes("not found") ? 404 :
       message.includes("taken") ? 409 :
