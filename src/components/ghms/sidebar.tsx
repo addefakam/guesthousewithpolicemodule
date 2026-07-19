@@ -90,9 +90,10 @@ const POLICE_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// SUPERUSER (owner): limited to dashboard, settings, and notifications/concerns
+// SUPERUSER: dashboard, owner accounts (credential reset), settings, notifications/concerns
 const SUPERUSER_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { page: "owner-accounts", label: "Owner Accounts", icon: UserCog },
   { page: "settings", label: "Settings", icon: Settings },
   { page: "notifications", label: "Notifications", icon: Bell },
 ];

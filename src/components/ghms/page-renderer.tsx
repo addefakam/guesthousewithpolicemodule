@@ -88,6 +88,9 @@ const SuspectedPersonsPage = lazyPage(
 const ReviewsPage = lazyPage(
   () => import("@/components/ghms/pages/reviews-page")
 );
+const OwnerAccountsPage = lazyPage(
+  () => import("@/components/ghms/pages/owner-accounts-page")
+);
 
 // ── Page registry: maps page key → lazy component ──
 const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
@@ -111,6 +114,7 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
     "suspect-alerts": SuspectAlertsPage,
     "suspected-persons": SuspectedPersonsPage,
     reviews: ReviewsPage,
+    "owner-accounts": OwnerAccountsPage,
   };
 
 // ── Page Renderer ──

@@ -5,6 +5,13 @@ import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/t
 export async function GET(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
+    // SUPERUSER cannot access the users list — use /api/owner-accounts instead
+    if (auth.role === "SUPERUSER") {
+      return NextResponse.json(
+        { error: "Access denied. Use Owner Accounts to manage provider credentials." },
+        { status: 403 }
+      );
+    }
     const { isPolice, providerId } = getProviderFilter(auth);
 
     const { searchParams } = req.nextUrl;

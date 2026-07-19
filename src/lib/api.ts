@@ -192,3 +192,8 @@ export const apiCreateReview = (data: Record<string, unknown>) =>
   req("/api/reviews", { method: "POST", body: JSON.stringify(data) });
 export const apiDeleteReview = (id: string) =>
   req(`/api/reviews/${id}`, { method: "DELETE" });
+
+// Owner Accounts (SUPERUSER: manage provider/owner credentials only)
+export const apiGetOwnerAccounts = () => req("/api/owner-accounts");
+export const apiUpdateOwnerAccount = (id: string, data: Record<string, unknown>) =>
+  req(`/api/owner-accounts/${id}`, { method: "PUT", body: JSON.stringify(data) });
