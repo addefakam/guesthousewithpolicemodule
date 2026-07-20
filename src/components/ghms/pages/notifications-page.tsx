@@ -92,6 +92,8 @@ function timeAgo(dateStr: string) {
 export default function NotificationsPage() {
   const { refreshKey, currentUser } = useAppStore();
   const isSuperuser = currentUser?.role === "SUPERUSER";
+  const isOperator = currentUser?.role === "OPERATOR";
+  const canSubmitConcern = isSuperuser || isOperator;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -183,13 +185,13 @@ export default function NotificationsPage() {
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {isSuperuser ? "Notifications & Concerns" : "Notifications"}
+            {canSubmitConcern ? "Notifications & Concerns" : "Notifications"}
           </h1>
           <p className="text-sm text-muted-foreground">
             {notifications.filter((n) => !n.isRead).length} unread
           </p>
         </div>
-        {isSuperuser && (
+        {canSubmitConcern && (
           <Button onClick={() => setConcernOpen(true)} className="gap-2 shrink-0">
             <MessageSquarePlus className="h-4 w-4" />
             Submit Concern
@@ -202,8 +204,8 @@ export default function NotificationsPage() {
           <BellOff className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">No notifications</p>
           <p className="text-sm mt-1">
-            {isSuperuser
-              ? "Submit a concern to your operator, or check back later for updates."
+            {canSubmitConcern
+              ? "Submit a concern, or check back later for updates."
               : "You&apos;re all caught up. New notifications will appear here."}
           </p>
         </div>
@@ -297,7 +299,7 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* Submit Concern Dialog (SUPERUSER only) */}
+      {/* Submit Concern Dialog */}
       <Dialog open={concernOpen} onOpenChange={setConcernOpen}>
         <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -306,7 +308,9 @@ export default function NotificationsPage() {
               Submit Concern
             </DialogTitle>
             <DialogDescription>
-              Send a concern or request to your operator. They will be notified and can take action.
+              {isOperator
+                ? "Send a concern or password issue to the system admin. They will be notified and can take action."
+                : "Send a concern or request. It will be reviewed and actioned."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitConcern} className="space-y-4">

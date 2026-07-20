@@ -60,6 +60,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { page: "resources", label: "Resources", icon: Package },
   { page: "housekeeping", label: "Housekeeping", icon: Sparkles },
   { page: "users", label: "Users", icon: UserCog },
+  { page: "owner-accounts", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
   { page: "settings", label: "Settings", icon: Settings },
   { page: "notifications", label: "Notifications", icon: Bell, badge: "new" },
@@ -90,10 +91,9 @@ const POLICE_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// SUPERUSER: dashboard, owner accounts (credential reset), settings, notifications/concerns
+// SUPERUSER (admin): dashboard, settings, notifications only
 const SUPERUSER_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { page: "owner-accounts", label: "Account Management", icon: UserCog },
   { page: "settings", label: "Settings", icon: Settings },
   { page: "notifications", label: "Notifications", icon: Bell },
 ];

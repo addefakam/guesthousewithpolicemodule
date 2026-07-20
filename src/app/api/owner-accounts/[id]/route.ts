@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext } from "@/lib/tenant";
 
-// PUT /api/owner-accounts/[id] — SUPERUSER resets username/password for owner or police accounts
+// PUT /api/owner-accounts/[id] — OPERATOR resets username/password for owner or police accounts
 // The [id] refers to the USER id.
 export async function PUT(
   req: NextRequest,
@@ -10,7 +10,7 @@ export async function PUT(
 ) {
   try {
     const auth = getAuthContext(req);
-    if (auth.role !== "SUPERUSER") {
+    if (auth.role !== "OPERATOR") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 

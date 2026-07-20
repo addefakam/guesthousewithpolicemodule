@@ -47,6 +47,17 @@ async function seed() {
   });
 
   // ── 2. Create Users ────────────────────────────────────────────────
+  // Reserved system admin SUPERUSER (no provider)
+  await db.user.create({
+    data: {
+      username: 'admin',
+      password: '123',
+      role: 'SUPERUSER',
+      name: 'System Admin',
+      // No providerId — this is the sole system-wide admin
+    },
+  });
+
   // Police officer
   await db.user.create({
     data: {
@@ -57,10 +68,10 @@ async function seed() {
     },
   });
 
-  // Provider 1 admin
+  // Provider 1 owner (SUPERUSER tied to provider)
   await db.user.create({
     data: {
-      username: 'admin',
+      username: 'sunrise-admin',
       password: '123',
       role: 'SUPERUSER',
       name: 'Abebe Kebede',
@@ -231,11 +242,12 @@ async function seed() {
 
   console.log('✅ Seed completed successfully!');
   console.log('');
-  console.log('Police login:  police / 123');
-  console.log('Provider 1:   admin / 123  (Sunrise Guest House)');
-  console.log('Provider 2:   admin2 / 123 (Blue Star Hotel)');
-  console.log('Operator:     operator / 123 (Sunrise GH)');
-  console.log('Pending req:  Provider "Ethio Comfort Lodge" awaiting approval');
+  console.log('System Admin: admin / 123  (SUPERUSER — reserved, no provider)');
+  console.log('Police:        police / 123');
+  console.log('Provider 1:    sunrise-admin / 123  (Sunrise Guest House owner)');
+  console.log('Provider 2:    admin2 / 123 (Blue Star Hotel owner)');
+  console.log('Operator:      operator / 123 (Sunrise GH)');
+  console.log('Pending req:   Provider "Ethio Comfort Lodge" awaiting approval');
 }
 
 seed()

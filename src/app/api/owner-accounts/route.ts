@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext } from "@/lib/tenant";
 
-// GET /api/owner-accounts — SUPERUSER lists providers with owner accounts + police accounts
+// GET /api/owner-accounts — OPERATOR lists providers with owner accounts + police accounts
 export async function GET(req: NextRequest) {
   try {
     const auth = getAuthContext(req);
-    if (auth.role !== "SUPERUSER") {
+    if (auth.role !== "OPERATOR") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
