@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { useAppStore } from "@/lib/store";
 import {
@@ -190,6 +190,7 @@ export default function RoomsPage() {
   const { refreshKey, triggerRefresh, setCurrentPage, setPreselectedRoom } = useAppStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
+  const [floorFilter, setFloorFilter] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // single-room dialog
@@ -400,7 +401,13 @@ export default function RoomsPage() {
     }
   };
 
+  const floors = useMemo(() => {
+    const set = new Set(rooms.map((r) => r.floor));
+    return Array.from(set).sort((a, b) => a - b);
+  }, [rooms]);
+
   const filteredRooms = rooms.filter((room) => {
+    if (floorFilter !== null && room.floor !== floorFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -465,6 +472,35 @@ export default function RoomsPage() {
           className="pl-9"
         />
       </div>
+
+      {/* Floor Filter Buttons */}
+      {floors.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
+          <div className="flex gap-1.5">
+            <Button
+              variant={floorFilter === null ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs px-3 shrink-0"
+              onClick={() => setFloorFilter(null)}
+            >
+              All
+            </Button>
+            {floors.map((f) => (
+              <Button
+                key={f}
+                variant={floorFilter === f ? "default" : "outline"}
+                size="sm"
+                className="h-8 text-xs px-3 shrink-0"
+                onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+              >
+                <Building2 className="h-3.5 w-3.5 mr-1" />
+                Floor {f}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Room Grid */}
       {filteredRooms.length === 0 ? (
