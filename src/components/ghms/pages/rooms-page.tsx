@@ -473,8 +473,8 @@ export default function RoomsPage() {
         />
       </div>
 
-      {/* Floor Filter Buttons */}
-      {floors.length > 1 && (
+      {/* Floor Filter Buttons — always visible on top of room grid */}
+      {floors.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
           <div className="flex gap-1.5">
