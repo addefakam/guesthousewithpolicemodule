@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status") || "";
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
+    const roomId = searchParams.get("roomId") || "";
 
     const where: Record<string, unknown> = {};
     if (!isPolice) {
@@ -19,6 +20,9 @@ export async function GET(req: NextRequest) {
     }
     if (status) {
       where.status = status;
+    }
+    if (roomId) {
+      where.roomId = roomId;
     }
     if (dateFrom || dateTo) {
       const checkInFilter: Record<string, unknown> = {};

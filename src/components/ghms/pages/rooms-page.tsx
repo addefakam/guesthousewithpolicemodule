@@ -10,6 +10,7 @@ import {
   apiDeleteRoom,
   apiUpdateRoomStatus,
   apiImportRooms,
+  apiGetReservations,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +58,10 @@ import {
   Plus,
   MoreVertical,
   Pencil,
+  User,
+  CalendarDays,
+  CreditCard,
+  Clock,
   Trash2,
   Users,
   BedSingle,
@@ -101,6 +106,18 @@ interface ImportResult {
   number: string;
   status: string;
   error?: string;
+}
+
+interface RoomReservation {
+  id: string;
+  status: string;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  roomRate: number;
+  totalCost: number;
+  paymentStatus: string;
+  guest: { id: string; name: string; phone: string } | null;
 }
 
 const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
@@ -187,6 +204,8 @@ export default function RoomsPage() {
 
   // room info detail
   const [infoRoom, setInfoRoom] = useState<Room | null>(null);
+  const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
+  const [roomResLoading, setRoomResLoading] = useState(false);
 
   // excel import
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -212,6 +231,25 @@ export default function RoomsPage() {
     const timer = setTimeout(() => fetchRooms(), 300);
     return () => clearTimeout(timer);
   }, [fetchRooms, refreshKey]);
+
+  // Fetch reservations for the room when info dialog opens
+  useEffect(() => {
+    if (!infoRoom) {
+      setRoomReservations([]);
+      return;
+    }
+    (async () => {
+      try {
+        setRoomResLoading(true);
+        const data = await apiGetReservations(`roomId=${infoRoom.id}`);
+        setRoomReservations(Array.isArray(data) ? data : []);
+      } catch {
+        setRoomReservations([]);
+      } finally {
+        setRoomResLoading(false);
+      }
+    })();
+  }, [infoRoom]);
 
   const openCreate = () => {
     setEditingRoom(null);
@@ -838,9 +876,13 @@ export default function RoomsPage() {
 
       {/* Room Info Detail Modal */}
       <Dialog open={!!infoRoom} onOpenChange={(open) => { if (!open) setInfoRoom(null); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           {infoRoom && (() => {
             const amenities = parseAmenities(infoRoom.amenities);
+            const activeRes = roomReservations.find((r) => r.status === "ACTIVE" || r.status === "CHECKED_IN");
+            const upcomingRes = roomReservations.filter((r) => r.status === "UPCOMING");
+            const pastRes = roomReservations.filter((r) => r.status === "COMPLETED" || r.status === "CANCELLED" || r.status === "CHECKED_OUT");
+
             return (
               <>
                 <DialogHeader>
@@ -916,6 +958,103 @@ export default function RoomsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Guest & Reservation Info */}
+                <Separator />
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" /> Reservations & Guest
+                  </p>
+
+                  {roomResLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                      <Clock className="h-4 w-4 animate-spin" /> Loading reservations...
+                    </div>
+                  ) : roomReservations.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center">
+                      <p className="text-sm text-gray-400">No reservations found for this room</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Current / Active Reservation */}
+                      {activeRes && (
+                        <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-emerald-600 text-white text-xs">Current Guest</Badge>
+                            <span className="text-xs text-emerald-600 font-medium">Active</span>
+                          </div>
+                          {activeRes.guest && (
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                                <User className="h-4 w-4 text-emerald-700" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">{activeRes.guest.name}</p>
+                                <p className="text-xs text-gray-500">{activeRes.guest.phone}</p>
+                              </div>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="h-3 w-3 text-gray-400" />
+                              {activeRes.checkIn} → {activeRes.checkOut}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-gray-400" />
+                              {activeRes.nights} night{activeRes.nights !== 1 ? "s" : ""}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CreditCard className="h-3 w-3 text-gray-400" />
+                              {activeRes.paymentStatus}
+                            </div>
+                            <div className="flex items-center gap-1 font-medium text-gray-900">
+                              {formatPrice(activeRes.totalCost)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Upcoming Reservations */}
+                      {upcomingRes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-sky-700 mb-1.5">Upcoming</p>
+                          <div className="space-y-2">
+                            {upcomingRes.slice(0, 3).map((res) => (
+                              <div key={res.id} className="rounded-lg border border-sky-200 bg-sky-50 p-2.5">
+                                <div className="flex items-center justify-between mb-1">
+                                  {res.guest && (
+                                    <div className="flex items-center gap-1.5">
+                                      <User className="h-3.5 w-3.5 text-sky-600" />
+                                      <span className="text-sm font-medium text-gray-900">{res.guest.name}</span>
+                                    </div>
+                                  )}
+                                  <Badge variant="outline" className="text-xs border-sky-300 text-sky-700">{res.paymentStatus}</Badge>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <CalendarDays className="h-3 w-3" /> {res.checkIn} → {res.checkOut}
+                                  </span>
+                                  <span>{res.nights} night{res.nights !== 1 ? "s" : ""}</span>
+                                  <span className="font-medium text-gray-700">{formatPrice(res.totalCost)}</span>
+                                </div>
+                              </div>
+                            ))}
+                            {upcomingRes.length > 3 && (
+                              <p className="text-xs text-gray-400 text-center">+{upcomingRes.length - 3} more upcoming</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Past Reservations count */}
+                      {pastRes.length > 0 && (
+                        <p className="text-xs text-gray-400 text-center">
+                          {pastRes.length} past reservation{pastRes.length !== 1 ? "s" : ""} for this room
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setInfoRoom(null)}>
