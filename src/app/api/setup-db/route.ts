@@ -50,7 +50,22 @@ export async function POST() {
       CREATE INDEX IF NOT EXISTS "SuspectMatch_isRead_idx" ON "SuspectMatch"("isRead");
     `);
 
-    return NextResponse.json({ success: true, message: "Tables created successfully" });
+    // Migrate stale data: any SUPERUSER with a providerId should be OPERATOR
+    const migrated = await db.user.updateMany({
+      where: { role: 'SUPERUSER', providerId: { not: null } },
+      data: { role: 'OPERATOR' },
+    });
+
+    const message = migrated.count > 0
+      ? `Tables created. Migrated ${migrated.count} SUPERUSER users to OPERATOR.`
+      : 'Tables created. No stale data to migrate.';
+
+    return NextResponse.json({
+      success: true,
+      tablesCreated: true,
+      migratedCount: migrated.count,
+      message,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[setup-db]", message);
