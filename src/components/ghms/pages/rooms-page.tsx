@@ -67,6 +67,8 @@ import {
   Building2,
   Layers,
   Wifi,
+  Info,
+  CalendarPlus,
   Tv,
   Wind,
   Coffee,
@@ -168,7 +170,7 @@ function downloadTemplate() {
 }
 
 export default function RoomsPage() {
-  const { refreshKey, triggerRefresh } = useAppStore();
+  const { refreshKey, triggerRefresh, setCurrentPage, setPreselectedRoom } = useAppStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -182,6 +184,9 @@ export default function RoomsPage() {
   // delete
   const [deleteDialog, setDeleteDialog] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // room info detail
+  const [infoRoom, setInfoRoom] = useState<Room | null>(null);
 
   // excel import
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -289,6 +294,18 @@ export default function RoomsPage() {
       const message = err instanceof Error ? err.message : "Failed to update status";
       toast.error(message);
     }
+  };
+
+  const handleReserveFromRoom = (room: Room) => {
+    setInfoRoom(null);
+    setPreselectedRoom({
+      id: room.id,
+      number: room.number,
+      name: room.name,
+      type: room.type,
+      pricePerNight: room.pricePerNight,
+    });
+    setCurrentPage("reservations");
   };
 
   // ── Excel import ────────────────────────────────────────────────────────────
@@ -529,6 +546,39 @@ export default function RoomsPage() {
                       </div>
                     </>
                   )}
+
+                  {/* Action Buttons */}
+                  <Separator className="my-3" />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      onClick={() => setInfoRoom(room)}
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                      Info
+                    </Button>
+                    {room.status === "AVAILABLE" || room.status === "RESERVED" ? (
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => handleReserveFromRoom(room)}
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        Reserve
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1.5 text-xs"
+                        disabled
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        Reserve
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -785,6 +835,107 @@ export default function RoomsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Room Info Detail Modal */}
+      <Dialog open={!!infoRoom} onOpenChange={(open) => { if (!open) setInfoRoom(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          {infoRoom && (() => {
+            const amenities = parseAmenities(infoRoom.amenities);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${ROOM_TYPE_COLORS[infoRoom.type]}`}>
+                      {ROOM_TYPE_ICONS[infoRoom.type]}
+                    </div>
+                    Room {infoRoom.number}
+                    <Badge variant="outline" className={STATUS_STYLES[infoRoom.status]}>
+                      <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[infoRoom.status]}`} />
+                      {infoRoom.status}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription>{infoRoom.name}</DialogDescription>
+                </DialogHeader>
+
+                {/* Room Image */}
+                {infoRoom.image && (
+                  <div className="rounded-lg overflow-hidden border">
+                    <img
+                      src={infoRoom.image}
+                      alt={`Room ${infoRoom.number}`}
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Description */}
+                {infoRoom.description && (
+                  <p className="text-sm text-gray-600 leading-relaxed">{infoRoom.description}</p>
+                )}
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500 mb-1">Room Type</p>
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                      {ROOM_TYPE_ICONS[infoRoom.type]} {infoRoom.type}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500 mb-1">Price per Night</p>
+                    <p className="text-sm font-semibold text-gray-900">{formatPrice(infoRoom.pricePerNight)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500 mb-1">Capacity</p>
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-gray-400" /> {infoRoom.capacity} guest{infoRoom.capacity !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-gray-500 mb-1">Floor</p>
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-gray-400" /> Floor {infoRoom.floor}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Amenities */}
+                {amenities.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-2">Amenities</p>
+                    <div className="flex flex-wrap gap-2">
+                      {amenities.map((amenity) => (
+                        <div
+                          key={amenity}
+                          className="flex items-center gap-1.5 rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 border border-gray-200"
+                        >
+                          {AMENITY_ICONS[amenity] || <Layers className="h-3.5 w-3.5" />}
+                          {amenity}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setInfoRoom(null)}>
+                    Close
+                  </Button>
+                  {(infoRoom.status === "AVAILABLE" || infoRoom.status === "RESERVED") && (
+                    <Button
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => handleReserveFromRoom(infoRoom)}
+                    >
+                      <CalendarPlus className="h-4 w-4" />
+                      Reserve This Room
+                    </Button>
+                  )}
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

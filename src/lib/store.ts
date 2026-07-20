@@ -12,6 +12,14 @@ export interface CurrentUser {
   providerName?: string;
 }
 
+interface PreselectedRoom {
+  id: string;
+  number: string;
+  name: string;
+  type: string;
+  pricePerNight: number;
+}
+
 interface AppState {
   currentPage: string;
   setCurrentPage: (p: string) => void;
@@ -21,6 +29,8 @@ interface AppState {
   setSidebarOpen: (o: boolean) => void;
   refreshKey: number;
   triggerRefresh: () => void;
+  preselectedRoom: PreselectedRoom | null;
+  setPreselectedRoom: (r: PreselectedRoom | null) => void;
 }
 
 // ── localStorage helpers (SSR-safe) ──
@@ -91,4 +101,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSidebarOpen: (o) => set({ sidebarOpen: o }),
   refreshKey: 0,
   triggerRefresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
+  preselectedRoom: null,
+  setPreselectedRoom: (r) => set({ preselectedRoom: r }),
 }));

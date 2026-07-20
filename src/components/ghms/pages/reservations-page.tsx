@@ -144,7 +144,7 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
 export default function ReservationsPage() {
-  const { refreshKey, triggerRefresh } = useAppStore();
+  const { refreshKey, triggerRefresh, preselectedRoom, setPreselectedRoom } = useAppStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [allGuests, setAllGuests] = useState<GuestOption[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOption[]>([]);
@@ -240,6 +240,21 @@ export default function ReservationsPage() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll, refreshKey]);
+
+  // When a room is pre-selected from the Rooms page, open create dialog at step 2
+  useEffect(() => {
+    if (preselectedRoom && allRooms.length > 0) {
+      setCreateForm({
+        roomId: preselectedRoom.id,
+        checkIn: "",
+        checkOut: "",
+        notes: "",
+      });
+      setWizardStep(2);
+      setCreateOpen(true);
+      setPreselectedRoom(null);
+    }
+  }, [preselectedRoom, allRooms.length, setPreselectedRoom]);
 
   // Available rooms for new reservation (AVAILABLE or RESERVED)
   const availableRooms = useMemo(
