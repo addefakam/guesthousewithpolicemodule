@@ -218,7 +218,16 @@ export default function RoomsPage() {
     try {
       setLoading(true);
       const data = await apiGetRooms(search);
-      setRooms(data.rooms || []);
+      const list = data.rooms || [];
+      // Sort: AVAILABLE first, then RESERVED, then others; within each group by floor
+      const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
+      list.sort((a, b) => {
+        const oa = statusOrder[a.status] ?? 9;
+        const ob = statusOrder[b.status] ?? 9;
+        if (oa !== ob) return oa - ob;
+        return (a.floor ?? 0) - (b.floor ?? 0);
+      });
+      setRooms(list);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load rooms";
       toast.error(message);
