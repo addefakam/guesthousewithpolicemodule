@@ -25,11 +25,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // POLICE users can login regardless of provider status
-    if (user.role !== "POLICE") {
+    // POLICE and system admin SUPERUSER (no provider) can login directly
+    if (user.role !== "POLICE" && user.providerId) {
       if (!user.provider || user.provider.status !== "APPROVED") {
         return NextResponse.json(
-          { error: "Provider account is not approved" },
+          { error: "Your registration is pending approval. Please wait for police to approve your account." },
           { status: 403 }
         );
       }

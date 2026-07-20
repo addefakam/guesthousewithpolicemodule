@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
         data: {
           username: username.trim(),
           password,
-          role: "SUPERUSER",
+          role: "OPERATOR",
           name: ownerName,
           providerId: p.id,
         },
