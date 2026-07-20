@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice } from "@/lib/tenant";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,17 +52,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let licenseFilePath = "";
+    let licenseFileData = "";
     if (licenseFile) {
+      // Convert file to base64 data URI for serverless-compatible storage
       const bytes = await licenseFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const ext = path.extname(licenseFile.name) || ".bin";
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      const uploadsDir = path.join(process.cwd(), "public", "uploads");
-      await mkdir(uploadsDir, { recursive: true }); // ensure directory exists
-      const filepath = path.join(uploadsDir, filename);
-      await writeFile(filepath, buffer);
-      licenseFilePath = `/uploads/${filename}`;
+      const base64 = buffer.toString("base64");
+      const mimeType = licenseFile.type || "application/octet-stream";
+      licenseFileData = `data:${mimeType};base64,${base64}`;
     }
 
     const provider = await db.$transaction(async (tx) => {
@@ -77,7 +72,7 @@ export async function POST(req: NextRequest) {
           address,
           type,
           licenseNo,
-          licenseFile: licenseFilePath,
+          licenseFile: licenseFileData,
           status: "PENDING",
         },
       });
