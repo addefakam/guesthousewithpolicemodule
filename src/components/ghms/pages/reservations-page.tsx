@@ -241,7 +241,7 @@ export default function ReservationsPage() {
     fetchAll();
   }, [fetchAll, refreshKey]);
 
-  // When a room is pre-selected from the Rooms page, open create dialog at step 2
+  // When a room is pre-selected from the Rooms page, open create dialog at step 1
   useEffect(() => {
     if (preselectedRoom && allRooms.length > 0) {
       setCreateForm({
@@ -250,7 +250,7 @@ export default function ReservationsPage() {
         checkOut: "",
         notes: "",
       });
-      setWizardStep(2);
+      setWizardStep(1);
       setCreateOpen(true);
       setPreselectedRoom(null);
     }
