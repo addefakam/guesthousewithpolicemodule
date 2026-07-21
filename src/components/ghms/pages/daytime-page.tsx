@@ -679,9 +679,9 @@ export default function DaytimePage() {
                     <div className="px-2 py-1.5 text-xs text-gray-400">No services created yet</div>
                   )}
                   {services.map((s) => (
-                    <SelectItem key={s.id} value={s.id} disabled={!s.active}>
+                    <SelectItem key={s.id} value={s.id}>
                       {s.name} — {formatPrice(s.price)}
-                      {!s.active && <span className="ml-2 text-gray-400">(inactive)</span>}
+                      {s.active === false && <span className="ml-1 text-amber-500 text-xs">(inactive)</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
