@@ -685,7 +685,7 @@ export default function RoomsPage() {
                       <Info className="h-3.5 w-3.5" />
                       Info
                     </Button>
-                    {room.status === "AVAILABLE" || room.status === "RESERVED" ? (
+                    {room.status === "AVAILABLE" ? (
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700"
@@ -1148,7 +1148,7 @@ export default function RoomsPage() {
                   <Button variant="outline" onClick={() => setInfoRoom(null)}>
                     Close
                   </Button>
-                  {(infoRoom.status === "AVAILABLE" || infoRoom.status === "RESERVED") && (
+                  {(infoRoom.status === "AVAILABLE") && (
                     <Button
                       className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => handleReserveFromRoom(infoRoom)}
