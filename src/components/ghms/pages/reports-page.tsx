@@ -26,6 +26,7 @@ import {
   Download,
   BarChart3,
   CalendarDays,
+  Users,
 } from "lucide-react";
 
 interface Reservation {
@@ -94,6 +95,7 @@ export default function ReportsPage() {
   const [to, setTo] = useState(today);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showGuests, setShowGuests] = useState(false);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -139,6 +141,22 @@ export default function ReportsPage() {
     return Math.max(...data.expenseBreakdown.map((e) => e.amount), 1);
   }, [data]);
 
+  // Unique guests served in the period
+  const servedGuests = useMemo(() => {
+    if (!data?.reservations?.length) return [];
+    const map = new Map<string, { name: string; phone: string; visits: number; totalSpent: number; lastVisit: string }>();
+    for (const r of data.reservations) {
+      const key = r.guest?.name || "Unknown";
+      const existing = map.get(key) || { name: key, phone: r.guest?.phone || "", visits: 0, totalSpent: 0, lastVisit: "" };
+      existing.visits += 1;
+      existing.totalSpent += r.paidAmount;
+      if (r.checkIn > existing.lastVisit) existing.lastVisit = r.checkIn;
+      if (r.guest?.phone) existing.phone = r.guest.phone;
+      map.set(key, existing);
+    }
+    return Array.from(map.values()).sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
+  }, [data]);
+
   const handleExport = () => {
     if (!data) return;
     const json = JSON.stringify(data, null, 2);
@@ -161,10 +179,16 @@ export default function ReportsPage() {
             View financial summaries and analytics.
           </p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={loading || !data}>
-          <Download className="mr-2 h-4 w-4" />
-          Export JSON
-        </Button>
+        <div className="flex gap-2">
+          <Button variant={showGuests ? "default" : "outline"} onClick={() => setShowGuests(!showGuests)} disabled={loading || !data}>
+            <Users className="mr-2 h-4 w-4" />
+            Served Guests ({servedGuests.length})
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={loading || !data}>
+            <Download className="mr-2 h-4 w-4" />
+            Export JSON
+          </Button>
+        </div>
       </div>
 
       {/* Date Range Picker */}
@@ -293,6 +317,76 @@ export default function ReportsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Served Guests Section */}
+          {showGuests && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Guests Served ({from} to {to})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {servedGuests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No guests served in this period.
+                  </p>
+                ) : (
+                  <>
+                    {/* Mobile cards */}
+                    <div className="md:hidden space-y-3">
+                      {servedGuests.map((g, i) => (
+                        <div key={i} className="rounded-lg border p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="font-semibold text-sm">{g.name}</p>
+                            <Badge variant="outline" className="text-xs">{g.visits} visit{g.visits !== 1 ? "s" : ""}</Badge>
+                          </div>
+                          {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Last: {g.lastVisit}</span>
+                            <span className="font-medium">{formatCurrency(g.totalSpent)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Desktop table */}
+                    <div className="hidden md:block rounded-lg border max-h-96 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Guest Name</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead className="text-center">Visits</TableHead>
+                            <TableHead>Last Visit</TableHead>
+                            <TableHead className="text-right">Total Spent</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {servedGuests.map((g, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                              <TableCell className="font-medium">{g.name}</TableCell>
+                              <TableCell>{g.phone || "—"}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="secondary" className="text-xs">{g.visits}</Badge>
+                              </TableCell>
+                              <TableCell>{g.lastVisit}</TableCell>
+                              <TableCell className="text-right font-medium">{formatCurrency(g.totalSpent)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3 text-center">
+                      {servedGuests.length} unique guest{servedGuests.length !== 1 ? "s" : ""} served · Total spent: {formatCurrency(servedGuests.reduce((s, g) => s + g.totalSpent, 0))}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Expense Breakdown + Reservation Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
