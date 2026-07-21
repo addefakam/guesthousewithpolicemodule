@@ -289,58 +289,6 @@ export default function ReportsPage() {
         </div>
       ) : data ? (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.revenue)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Expenses
-                </CardTitle>
-                <TrendingDown className="h-4 w-4 text-rose-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-rose-600">{formatCurrency(data.expenses)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Net Profit
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <p
-                  className={`text-2xl font-bold ${data.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
-                >
-                  {formatCurrency(data.profit)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg Occupancy
-                </CardTitle>
-                <Percent className="h-4 w-4 text-violet-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{data.occupancyRate}%</p>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Served Guests Section */}
           {showGuests && (
             <Card>
@@ -573,6 +521,58 @@ export default function ReportsPage() {
                 )}
               </CardContent>
             </Card>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.revenue)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Expenses
+                </CardTitle>
+                <TrendingDown className="h-4 w-4 text-rose-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-rose-600">{formatCurrency(data.expenses)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Net Profit
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <p
+                  className={`text-2xl font-bold ${data.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                >
+                  {formatCurrency(data.profit)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Avg Occupancy
+                </CardTitle>
+                <Percent className="h-4 w-4 text-violet-500" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{data.occupancyRate}%</p>
+              </CardContent>
+            </Card>
+          </div>
+
           )}
           {/* Revenue vs Expenses Bar Chart */}
           <Card>
