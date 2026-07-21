@@ -162,6 +162,12 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   Parking: <Car className="h-3 w-3" />,
 };
 
+// Derive floor from first digit of room number (e.g. "102" → 1, "201" → 2)
+const getFloorFromNumber = (num: string): number | null => {
+  const match = num.match(/^\d/);
+  return match ? parseInt(match[0], 10) : null;
+};
+
 const emptyForm = {
   number: "",
   type: "SINGLE",
@@ -227,7 +233,9 @@ export default function RoomsPage() {
         const oa = statusOrder[a.status] ?? 9;
         const ob = statusOrder[b.status] ?? 9;
         if (oa !== ob) return oa - ob;
-        return (a.floor ?? 0) - (b.floor ?? 0);
+        const fa = getFloorFromNumber(a.number) ?? a.floor ?? 0;
+        const fb = getFloorFromNumber(b.number) ?? b.floor ?? 0;
+        return fa - fb;
       });
       setRooms(list);
     } catch (err: unknown) {
@@ -403,12 +411,16 @@ export default function RoomsPage() {
   };
 
   const floors = useMemo(() => {
-    const set = new Set(rooms.map((r) => r.floor));
+    const set = new Set<number>();
+    rooms.forEach((r) => {
+      const f = getFloorFromNumber(r.number);
+      if (f !== null) set.add(f);
+    });
     return Array.from(set).sort((a, b) => a - b);
   }, [rooms]);
 
   const filteredRooms = rooms.filter((room) => {
-    if (floorFilter !== null && room.floor !== floorFilter) return false;
+    if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -634,7 +646,7 @@ export default function RoomsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-600">
                       <Building2 className="h-3.5 w-3.5 text-gray-400" />
-                      <span>Floor {room.floor}</span>
+                      <span>Floor {getFloorFromNumber(room.number) ?? room.floor}</span>
                     </div>
                   </div>
 
