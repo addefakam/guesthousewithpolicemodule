@@ -675,9 +675,13 @@ export default function DaytimePage() {
               <Select value={bkForm.serviceId} onValueChange={(v) => setBkForm({ ...bkForm, serviceId: v })}>
                 <SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger>
                 <SelectContent>
-                  {services.filter((s) => s.active).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+                  {services.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-gray-400">No services created yet</div>
+                  )}
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id} disabled={!s.active}>
                       {s.name} — {formatPrice(s.price)}
+                      {!s.active && <span className="ml-2 text-gray-400">(inactive)</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
