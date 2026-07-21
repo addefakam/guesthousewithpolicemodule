@@ -59,7 +59,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { page: "resources", label: "Resources", icon: Package },
   { page: "housekeeping", label: "Housekeeping", icon: Sparkles },
   { page: "users", label: "Users", icon: UserCog },
-  { page: "owner-accounts", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
   { page: "settings", label: "Settings", icon: Settings },
   { page: "notifications", label: "Notifications", icon: Bell, badge: "new" },
@@ -90,14 +89,15 @@ const POLICE_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// SUPERUSER (admin): dashboard, settings, notifications only
+// SUPERUSER (admin): dashboard, account management, settings, notifications
 const SUPERUSER_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { page: "owner-accounts", label: "Account Management", icon: UserCog },
   { page: "settings", label: "Settings", icon: Settings },
   { page: "notifications", label: "Notifications", icon: Bell },
 ];
 
-const OPERATOR_EXCLUDED = new Set<string>([]);
+const OPERATOR_EXCLUDED = new Set<string>(["owner-accounts"]);
 
 // ── Permission → page mapping for STAFF role ──
 const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
