@@ -57,6 +57,7 @@ import {
   Search,
   Plus,
   MoreVertical,
+  ChevronDown,
   Pencil,
   User,
   CalendarDays,
@@ -473,34 +474,64 @@ export default function RoomsPage() {
         />
       </div>
 
-      {/* Floor Filter Buttons — always visible on top of room grid */}
-      {floors.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
-          <div className="flex gap-1.5">
-            <Button
-              variant={floorFilter === null ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs px-3 shrink-0"
-              onClick={() => setFloorFilter(null)}
-            >
-              All
-            </Button>
-            {floors.map((f) => (
+      {/* Floor Filter Buttons — max 3 direct, rest in Others dropdown */}
+      {floors.length > 0 && (() => {
+        const directFloors = floors.slice(0, 3);
+        const otherFloors = floors.slice(3);
+        return (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
+            <div className="flex gap-1.5">
               <Button
-                key={f}
-                variant={floorFilter === f ? "default" : "outline"}
+                variant={floorFilter === null ? "default" : "outline"}
                 size="sm"
                 className="h-8 text-xs px-3 shrink-0"
-                onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+                onClick={() => setFloorFilter(null)}
               >
-                <Building2 className="h-3.5 w-3.5 mr-1" />
-                Floor {f}
+                All
               </Button>
-            ))}
+              {directFloors.map((f) => (
+                <Button
+                  key={f}
+                  variant={floorFilter === f ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs px-3 shrink-0"
+                  onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+                >
+                  <Building2 className="h-3.5 w-3.5 mr-1" />
+                  {f}
+                </Button>
+              ))}
+              {otherFloors.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={floorFilter !== null && otherFloors.includes(floorFilter) ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 text-xs px-3 shrink-0 gap-1"
+                    >
+                      Others
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {otherFloors.map((f) => (
+                      <DropdownMenuItem
+                        key={f}
+                        className="text-xs"
+                        onClick={() => setFloorFilter(f)}
+                      >
+                        <Building2 className="h-3.5 w-3.5 mr-2" />
+                        Floor {f}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Room Grid */}
       {filteredRooms.length === 0 ? (
