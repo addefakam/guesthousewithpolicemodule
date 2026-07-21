@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         ...(from || to ? { checkIn: dateFilter } : {}),
       },
       include: {
-        guest: { select: { name: true, phone: true } },
+        guest: { select: { id: true, name: true, phone: true, email: true, idNumber: true, idType: true, nationality: true, address: true, notes: true, vip: true, createdAt: true } },
         room: { select: { number: true, name: true, type: true } },
       },
       orderBy: { checkIn: "desc" },

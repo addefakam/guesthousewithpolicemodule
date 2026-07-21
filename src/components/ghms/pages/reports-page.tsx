@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useAppStore } from "@/lib/store";
 import { apiGetReports } from "@/lib/api";
 import { toast } from "sonner";
@@ -27,6 +27,14 @@ import {
   BarChart3,
   CalendarDays,
   Users,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  CreditCard,
+  Globe,
+  MapPin,
+  FileText,
+  Star,
 } from "lucide-react";
 
 interface Reservation {
@@ -34,7 +42,20 @@ interface Reservation {
   status: string;
   paidAmount: number;
   checkIn: string;
-  guest: { name: string; phone: string };
+  checkOut: string;
+  guest: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+    idNumber: string;
+    idType: string;
+    nationality: string;
+    address: string;
+    notes: string;
+    vip: boolean;
+    createdAt: string;
+  };
   room: { number: string; name: string; type: string };
 }
 
@@ -96,6 +117,7 @@ export default function ReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showGuests, setShowGuests] = useState(false);
+  const [expandedGuestIdx, setExpandedGuestIdx] = useState<number | null>(null);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -144,14 +166,54 @@ export default function ReportsPage() {
   // Unique guests served in the period
   const servedGuests = useMemo(() => {
     if (!data?.reservations?.length) return [];
-    const map = new Map<string, { name: string; phone: string; visits: number; totalSpent: number; lastVisit: string }>();
+    const map = new Map<string, {
+      guestId: string;
+      name: string;
+      phone: string;
+      email: string;
+      idNumber: string;
+      idType: string;
+      nationality: string;
+      address: string;
+      notes: string;
+      vip: boolean;
+      guestSince: string;
+      visits: number;
+      totalSpent: number;
+      lastVisit: string;
+      rooms: { number: string; name: string; type: string; checkIn: string; checkOut: string; status: string }[];
+    }>();
     for (const r of data.reservations) {
-      const key = r.guest?.name || "Unknown";
-      const existing = map.get(key) || { name: key, phone: r.guest?.phone || "", visits: 0, totalSpent: 0, lastVisit: "" };
+      const g = r.guest;
+      const key = g?.id || g?.name || r.guestId || "unknown";
+      const existing = map.get(key) || {
+        guestId: g?.id || "",
+        name: g?.name || "Unknown",
+        phone: g?.phone || "",
+        email: g?.email || "",
+        idNumber: g?.idNumber || "",
+        idType: g?.idType || "",
+        nationality: g?.nationality || "",
+        address: g?.address || "",
+        notes: g?.notes || "",
+        vip: g?.vip || false,
+        guestSince: g?.createdAt || "",
+        visits: 0,
+        totalSpent: 0,
+        lastVisit: "",
+        rooms: [],
+      };
       existing.visits += 1;
       existing.totalSpent += r.paidAmount;
       if (r.checkIn > existing.lastVisit) existing.lastVisit = r.checkIn;
-      if (r.guest?.phone) existing.phone = r.guest.phone;
+      existing.rooms.push({
+        number: r.room?.number || "",
+        name: r.room?.name || "",
+        type: r.room?.type || "",
+        checkIn: r.checkIn || "",
+        checkOut: r.checkOut || "",
+        status: r.status || "",
+      });
       map.set(key, existing);
     }
     return Array.from(map.values()).sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
@@ -337,27 +399,81 @@ export default function ReportsPage() {
                     {/* Mobile cards */}
                     <div className="md:hidden space-y-3">
                       {servedGuests.map((g, i) => (
-                        <div key={i} className="rounded-lg border p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="font-semibold text-sm">{g.name}</p>
-                            <Badge variant="outline" className="text-xs">{g.visits} visit{g.visits !== 1 ? "s" : ""}</Badge>
+                        <div key={i}>
+                          <div
+                            className="rounded-lg border p-3 space-y-2 cursor-pointer"
+                            onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm shrink-0">
+                                  {g.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-sm">{g.name}</p>
+                                    {g.vip && <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+                                  </div>
+                                  {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">{g.visits} visit{g.visits !== 1 ? "s" : ""}</Badge>
+                                {expandedGuestIdx === i ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Last: {g.lastVisit}</span>
+                              <span className="font-medium">{formatCurrency(g.totalSpent)}</span>
+                            </div>
                           </div>
-                          {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Last: {g.lastVisit}</span>
-                            <span className="font-medium">{formatCurrency(g.totalSpent)}</span>
-                          </div>
+                          {expandedGuestIdx === i && (
+                            <div className="mt-2 ml-4 rounded-lg border border-amber-100 bg-amber-50 p-3 space-y-2">
+                              {g.email && (
+                                <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.email}</span></div>
+                              )}
+                              {(g.idType || g.idNumber) && (
+                                <div className="flex items-center gap-2 text-xs"><CreditCard className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}</span></div>
+                              )}
+                              {g.nationality && (
+                                <div className="flex items-center gap-2 text-xs"><Globe className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.nationality}</span></div>
+                              )}
+                              {g.address && (
+                                <div className="flex items-center gap-2 text-xs"><MapPin className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.address}</span></div>
+                              )}
+                              {g.notes && (
+                                <div className="flex items-start gap-2 text-xs mt-1"><FileText className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" /><span className="text-amber-700">{g.notes}</span></div>
+                              )}
+                              {g.guestSince && (
+                                <p className="text-[10px] text-gray-400 mt-1">Guest since {new Date(g.guestSince).toLocaleDateString()}</p>
+                              )}
+                              {g.rooms.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-amber-200">
+                                  <p className="text-[10px] font-medium text-gray-500 mb-1">Room History ({g.rooms.length})</p>
+                                  {g.rooms.map((rm, ri) => (
+                                    <div key={ri} className="flex items-center justify-between text-xs py-0.5">
+                                      <span className="text-gray-600">{rm.number}{rm.name ? ` · ${rm.name}` : ""}</span>
+                                      <span className="text-gray-400">{rm.checkIn} → {rm.checkOut}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                     {/* Desktop table */}
-                    <div className="hidden md:block rounded-lg border max-h-96 overflow-y-auto">
+                    <div className="hidden md:block rounded-xl border bg-white max-h-[500px] overflow-y-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>#</TableHead>
+                          <TableRow className="bg-gray-50/80">
+                            <TableHead className="w-12"></TableHead>
                             <TableHead>Guest Name</TableHead>
                             <TableHead>Phone</TableHead>
+                            <TableHead>ID Number</TableHead>
+                            <TableHead>Nationality</TableHead>
+                            <TableHead className="text-center">VIP</TableHead>
                             <TableHead className="text-center">Visits</TableHead>
                             <TableHead>Last Visit</TableHead>
                             <TableHead className="text-right">Total Spent</TableHead>
@@ -365,16 +481,126 @@ export default function ReportsPage() {
                         </TableHeader>
                         <TableBody>
                           {servedGuests.map((g, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                              <TableCell className="font-medium">{g.name}</TableCell>
-                              <TableCell>{g.phone || "—"}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="secondary" className="text-xs">{g.visits}</Badge>
-                              </TableCell>
-                              <TableCell>{g.lastVisit}</TableCell>
-                              <TableCell className="text-right font-medium">{formatCurrency(g.totalSpent)}</TableCell>
-                            </TableRow>
+                            <Fragment key={i}>
+                              <TableRow
+                                className="cursor-pointer"
+                                onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+                              >
+                                <TableCell>
+                                  {expandedGuestIdx === i ? (
+                                    <ChevronUp className="h-4 w-4 text-gray-400" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm">
+                                      {g.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium text-gray-900">{g.name}</span>
+                                      {g.vip && (
+                                        <span className="ml-1.5">
+                                          <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-gray-600">{g.phone || "—"}</TableCell>
+                                <TableCell className="text-gray-600 text-xs">{g.idNumber || "—"}</TableCell>
+                                <TableCell className="text-gray-600">{g.nationality || "—"}</TableCell>
+                                <TableCell className="text-center">
+                                  {g.vip ? (
+                                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
+                                      <Star className="mr-1 h-3 w-3 fill-amber-500 text-amber-500" />
+                                      VIP
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="secondary" className="text-xs">{g.visits}</Badge>
+                                </TableCell>
+                                <TableCell>{g.lastVisit}</TableCell>
+                                <TableCell className="text-right font-medium">{formatCurrency(g.totalSpent)}</TableCell>
+                              </TableRow>
+                              {/* Expanded details row */}
+                              {expandedGuestIdx === i && (
+                                <TableRow className="bg-gray-50/50">
+                                  <TableCell colSpan={9}>
+                                    <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+                                      <div className="flex items-start gap-2">
+                                        <Mail className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+                                        <div>
+                                          <p className="text-xs text-gray-500">Email</p>
+                                          <p className="text-sm text-gray-900">{g.email || "—"}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <CreditCard className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+                                        <div>
+                                          <p className="text-xs text-gray-500">ID Type / Number</p>
+                                          <p className="text-sm text-gray-900">
+                                            {g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <Globe className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+                                        <div>
+                                          <p className="text-xs text-gray-500">Nationality</p>
+                                          <p className="text-sm text-gray-900">{g.nationality || "—"}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start gap-2">
+                                        <MapPin className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+                                        <div>
+                                          <p className="text-xs text-gray-500">Address</p>
+                                          <p className="text-sm text-gray-900">{g.address || "—"}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {g.notes && (
+                                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 border border-amber-100">
+                                        <FileText className="mt-0.5 h-4 w-4 text-amber-500 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-medium text-amber-800">Notes</p>
+                                          <p className="text-sm text-amber-700">{g.notes}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {g.rooms.length > 0 && (
+                                      <div className="mt-3 rounded-lg border p-3">
+                                        <p className="text-xs font-medium text-gray-500 mb-2">Room History ({g.rooms.length} stay{g.rooms.length !== 1 ? "s" : ""})</p>
+                                        <div className="space-y-1">
+                                          {g.rooms.map((rm, ri) => (
+                                            <div key={ri} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 last:border-0">
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-medium text-gray-900">{rm.number}</span>
+                                                {rm.name && <span className="text-gray-400 text-xs">{rm.name}</span>}
+                                                {rm.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{rm.type}</Badge>}
+                                              </div>
+                                              <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                <span>{rm.checkIn} → {rm.checkOut}</span>
+                                                <Badge variant="outline" className={STATUS_COLORS[rm.status] || ""}>{rm.status.replace(/_/g, " ")}</Badge>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {g.guestSince && (
+                                      <p className="mt-3 text-xs text-gray-400">
+                                        Guest since {new Date(g.guestSince).toLocaleDateString()}
+                                      </p>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
                           ))}
                         </TableBody>
                       </Table>
