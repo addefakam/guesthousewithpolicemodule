@@ -341,45 +341,6 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* Revenue vs Expenses Bar Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Revenue vs Expenses (Daily)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {data.dailyRevenue.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No daily data available for this range.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
-                  {data.dailyRevenue.map((d) => (
-                    <div key={d.date} className="flex items-center gap-3 text-sm">
-                      <span className="w-24 shrink-0 text-muted-foreground truncate">
-                        {d.date}
-                      </span>
-                      <div className="flex-1 flex items-center gap-1">
-                        <div
-                          className="h-5 rounded bg-emerald-500 transition-all"
-                          style={{
-                            width: `${Math.max((d.amount / maxDailyRevenue) * 100, 2)}%`,
-                          }}
-                          title={`Revenue: ${formatCurrency(d.amount)}`}
-                        />
-                      </div>
-                      <span className="w-20 text-right font-medium">
-                        {formatCurrency(d.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Served Guests Section */}
           {showGuests && (
             <Card>
@@ -613,6 +574,45 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
           )}
+          {/* Revenue vs Expenses Bar Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Revenue vs Expenses (Daily)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.dailyRevenue.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No daily data available for this range.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
+                  {data.dailyRevenue.map((d) => (
+                    <div key={d.date} className="flex items-center gap-3 text-sm">
+                      <span className="w-24 shrink-0 text-muted-foreground truncate">
+                        {d.date}
+                      </span>
+                      <div className="flex-1 flex items-center gap-1">
+                        <div
+                          className="h-5 rounded bg-emerald-500 transition-all"
+                          style={{
+                            width: `${Math.max((d.amount / maxDailyRevenue) * 100, 2)}%`,
+                          }}
+                          title={`Revenue: ${formatCurrency(d.amount)}`}
+                        />
+                      </div>
+                      <span className="w-20 text-right font-medium">
+                        {formatCurrency(d.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
 
           {/* Expense Breakdown + Reservation Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
