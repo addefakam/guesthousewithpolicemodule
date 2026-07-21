@@ -54,7 +54,6 @@ interface NavItem {
 const ALL_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { page: "rooms", label: "Rooms", icon: Bed },
-  { page: "guests-reservations", label: "Guests & Reservations", icon: UsersRound },
   { page: "daytime", label: "Daytime", icon: Sun },
   { page: "expenses", label: "Expenses", icon: Receipt },
   { page: "resources", label: "Resources", icon: Package },
@@ -103,8 +102,6 @@ const OPERATOR_EXCLUDED = new Set<string>([]);
 // ── Permission → page mapping for STAFF role ──
 const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   rooms_view: { page: "rooms", label: "Rooms", icon: Bed },
-  guests_view: { page: "guests-reservations", label: "Guests & Reservations", icon: UsersRound },
-  reservations_view: { page: "guests-reservations", label: "Guests & Reservations", icon: UsersRound },
   daytime_view: { page: "daytime", label: "Daytime", icon: Sun },
   housekeeping_view: {
     page: "housekeeping",
