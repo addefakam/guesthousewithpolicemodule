@@ -75,6 +75,9 @@ import {
   Wifi,
   Info,
   CalendarPlus,
+  CalendarClock,
+  LogOut,
+  ArrowRightLeft,
   Tv,
   Wind,
   Coffee,
@@ -199,6 +202,7 @@ export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
   const [floorFilter, setFloorFilter] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // single-room dialog
@@ -421,6 +425,7 @@ export default function RoomsPage() {
   }, [rooms]);
 
   const filteredRooms = rooms.filter((room) => {
+    if (statusFilter && room.status !== statusFilter) return false;
     if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -546,6 +551,48 @@ export default function RoomsPage() {
         );
       })()}
 
+      {/* Status Filter Buttons */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Status:</span>
+        <div className="flex gap-1.5">
+          <Button
+            variant={statusFilter === null ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs px-3 shrink-0"
+            onClick={() => setStatusFilter(null)}
+          >
+            All
+          </Button>
+          <Button
+            variant={statusFilter === "AVAILABLE" ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs px-3 shrink-0"
+            onClick={() => setStatusFilter(statusFilter === "AVAILABLE" ? null : "AVAILABLE")}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+            Available
+          </Button>
+          <Button
+            variant={statusFilter === "OCCUPIED" ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs px-3 shrink-0"
+            onClick={() => setStatusFilter(statusFilter === "OCCUPIED" ? null : "OCCUPIED")}
+          >
+            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+            Occupied
+          </Button>
+          <Button
+            variant={statusFilter === "RESERVED" ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs px-3 shrink-0"
+            onClick={() => setStatusFilter(statusFilter === "RESERVED" ? null : "RESERVED")}
+          >
+            <ClipboardList className="h-3.5 w-3.5 mr-1" />
+            Reserved
+          </Button>
+        </div>
+      </div>
+
       {/* Room Grid */}
       {filteredRooms.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
@@ -598,19 +645,40 @@ export default function RoomsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(room)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
-                            handleStatusChange(room, nextStatus);
-                          }}
-                        >
-                          <Layers className="mr-2 h-4 w-4" />
-                          Toggle Availability
-                        </DropdownMenuItem>
+                        {room.status === "OCCUPIED" ? (
+                          <>
+                            <DropdownMenuItem onClick={() => {
+                              setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight });
+                              setCurrentPage("reservations");
+                            }}>
+                              <CalendarClock className="mr-2 h-4 w-4" />
+                              Extend Stay / Early Checkout
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight });
+                              setCurrentPage("reservations");
+                            }}>
+                              <ArrowRightLeft className="mr-2 h-4 w-4" />
+                              Room Shift
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem onClick={() => openEdit(room)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {room.status !== "OCCUPIED" && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
+                              handleStatusChange(room, nextStatus);
+                            }}
+                          >
+                            <Layers className="mr-2 h-4 w-4" />
+                            Toggle Availability
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-rose-600 focus:text-rose-600"
@@ -1174,6 +1242,23 @@ export default function RoomsPage() {
                       <ClipboardList className="h-4 w-4" />
                       Manage Reservations
                     </Button>
+                  ) : infoRoom.status === "OCCUPIED" ? (
+                    <div className="flex gap-2">
+                      <Button
+                        className="gap-2 bg-amber-600 hover:bg-amber-700"
+                        onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setCurrentPage("reservations"); }}
+                      >
+                        <CalendarClock className="h-4 w-4" />
+                        Extend / Early Out
+                      </Button>
+                      <Button
+                        className="gap-2 bg-violet-600 hover:bg-violet-700"
+                        onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setCurrentPage("reservations"); }}
+                      >
+                        <ArrowRightLeft className="h-4 w-4" />
+                        Room Shift
+                      </Button>
+                    </div>
                   ) : null}
                 </DialogFooter>
               </>
