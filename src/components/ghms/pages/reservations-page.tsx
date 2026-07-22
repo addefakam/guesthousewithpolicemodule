@@ -247,14 +247,14 @@ export default function ReservationsPage() {
   useEffect(() => {
     if (preselectedRoom) {
       setHighlightRoomId(preselectedRoom.id);
-      // Clear highlight after 8 seconds
-      const timer = setTimeout(() => {
-        setHighlightRoomId(null);
-        setPreselectedRoom(null);
-      }, 8000);
-      return () => clearTimeout(timer);
     }
-  }, [preselectedRoom, setPreselectedRoom]);
+  }, [preselectedRoom]);
+
+  // Clear highlight on user interaction (tab change, status filter, search)
+  const clearHighlight = () => {
+    setHighlightRoomId(null);
+    setPreselectedRoom(null);
+  };
 
   // Available rooms for new reservation (AVAILABLE or RESERVED)
   const availableRooms = useMemo(
@@ -511,7 +511,7 @@ export default function ReservationsPage() {
 
       {/* Status Tabs + Search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+        <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); clearHighlight(); }}>
           <TabsList>
             {STATUS_TABS.map((tab) => (
               <TabsTrigger key={tab} value={tab} className="text-xs sm:text-sm">
@@ -533,6 +533,7 @@ export default function ReservationsPage() {
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(0);
+              clearHighlight();
             }}
             className="pl-9"
           />
