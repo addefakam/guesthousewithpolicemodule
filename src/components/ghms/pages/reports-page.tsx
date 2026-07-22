@@ -597,7 +597,6 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          )}
           {/* Revenue vs Expenses Bar Chart */}
           <Card>
             <CardHeader>
