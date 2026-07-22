@@ -185,7 +185,7 @@ export default function ReportsPage() {
       lastVisit: string;
       rooms: { number: string; name: string; type: string; checkIn: string; checkOut: string; status: string }[];
     }>();
-    for (const r of data.reservations) {
+    for (const r of data.reservations.filter((r: { status: string }) => r.status === "COMPLETED")) {
       const g = r.guest;
       const key = g?.id || g?.name || r.guestId || "unknown";
       const existing = map.get(key) || {
