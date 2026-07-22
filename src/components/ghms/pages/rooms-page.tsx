@@ -87,6 +87,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  ClipboardList,
 } from "lucide-react";
 
 interface Room {
@@ -694,6 +695,15 @@ export default function RoomsPage() {
                         <CalendarPlus className="h-3.5 w-3.5" />
                         Reserve
                       </Button>
+                    ) : room.status === "RESERVED" ? (
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"
+                        onClick={() => setCurrentPage("reservations")}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Manage Reservations
+                      </Button>
                     ) : (
                       <Button
                         size="sm"
@@ -1148,7 +1158,7 @@ export default function RoomsPage() {
                   <Button variant="outline" onClick={() => setInfoRoom(null)}>
                     Close
                   </Button>
-                  {(infoRoom.status === "AVAILABLE") && (
+                  {infoRoom.status === "AVAILABLE" ? (
                     <Button
                       className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => handleReserveFromRoom(infoRoom)}
@@ -1156,7 +1166,15 @@ export default function RoomsPage() {
                       <CalendarPlus className="h-4 w-4" />
                       Reserve This Room
                     </Button>
-                  )}
+                  ) : infoRoom.status === "RESERVED" ? (
+                    <Button
+                      className="gap-2 bg-sky-600 hover:bg-sky-700"
+                      onClick={() => { setInfoRoom(null); setCurrentPage("reservations"); }}
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      Manage Reservations
+                    </Button>
+                  ) : null}
                 </DialogFooter>
               </>
             );
