@@ -699,7 +699,7 @@ export default function RoomsPage() {
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"
-                        onClick={() => setCurrentPage("reservations")}
+                        onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight }); setCurrentPage("reservations"); }}
                       >
                         <ClipboardList className="h-3.5 w-3.5" />
                         Manage Reservations
@@ -1169,7 +1169,7 @@ export default function RoomsPage() {
                   ) : infoRoom.status === "RESERVED" ? (
                     <Button
                       className="gap-2 bg-sky-600 hover:bg-sky-700"
-                      onClick={() => { setInfoRoom(null); setCurrentPage("reservations"); }}
+                      onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setCurrentPage("reservations"); }}
                     >
                       <ClipboardList className="h-4 w-4" />
                       Manage Reservations

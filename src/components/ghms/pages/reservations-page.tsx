@@ -241,20 +241,20 @@ export default function ReservationsPage() {
     fetchAll();
   }, [fetchAll, refreshKey]);
 
-  // When a room is pre-selected from the Rooms page, open create dialog at step 1
+  // When a room is pre-selected from the Rooms page, highlight matching reservations
+  const [highlightRoomId, setHighlightRoomId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (preselectedRoom && allRooms.length > 0) {
-      setCreateForm({
-        roomId: preselectedRoom.id,
-        checkIn: "",
-        checkOut: "",
-        notes: "",
-      });
-      setWizardStep(1);
-      setCreateOpen(true);
-      setPreselectedRoom(null);
+    if (preselectedRoom) {
+      setHighlightRoomId(preselectedRoom.id);
+      // Clear highlight after 8 seconds
+      const timer = setTimeout(() => {
+        setHighlightRoomId(null);
+        setPreselectedRoom(null);
+      }, 8000);
+      return () => clearTimeout(timer);
     }
-  }, [preselectedRoom, allRooms.length, setPreselectedRoom]);
+  }, [preselectedRoom, setPreselectedRoom]);
 
   // Available rooms for new reservation (AVAILABLE or RESERVED)
   const availableRooms = useMemo(
@@ -577,7 +577,7 @@ export default function ReservationsPage() {
                 </TableRow>
               ) : (
                 paged.map((res) => (
-                  <TableRow key={res.id}>
+                  <TableRow key={res.id} className={highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-l-4 border-l-sky-500 transition-all duration-300" : ""}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 text-xs font-medium">
@@ -736,7 +736,7 @@ export default function ReservationsPage() {
           </div>
         ) : (
           paged.map((res) => (
-            <div key={res.id} className="rounded-xl border bg-white p-4 space-y-3">
+            <div key={res.id} className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-sky-400 border-l-4 shadow-md shadow-sky-100" : "bg-white"}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-semibold text-sm">
