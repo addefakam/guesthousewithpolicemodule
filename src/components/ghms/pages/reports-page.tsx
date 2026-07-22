@@ -36,6 +36,7 @@ import {
   MapPin,
   FileText,
   Star,
+  UserCheck,
 } from "lucide-react";
 
 interface Reservation {
@@ -109,7 +110,7 @@ function formatCurrency(amount: number) {
 }
 
 export default function ReportsPage() {
-  const { refreshKey } = useAppStore();
+  const { refreshKey, n } = useAppStore();
   const today = new Date().toISOString().split("T")[0];
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
 
@@ -256,6 +257,10 @@ export default function ReportsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => n("reservations")} disabled={loading}>
+            <UserCheck className="mr-2 h-4 w-4" />
+            Active Guests
+          </Button>
           <Button variant={showGuests ? "default" : "outline"} onClick={() => setShowGuests(!showGuests)} disabled={loading || !data}>
             <Users className="mr-2 h-4 w-4" />
             Served Guests ({servedGuests.length})

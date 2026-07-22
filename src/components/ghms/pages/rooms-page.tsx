@@ -492,77 +492,60 @@ export default function RoomsPage() {
         />
       </div>
 
-      {/* Floor Filter Buttons — max 3 direct, rest in Others dropdown */}
-      {floors.length > 0 && (() => {
-        const directFloors = floors.slice(0, 3);
-        const otherFloors = floors.slice(3);
-        return (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
-            <div className="flex gap-1.5">
-              <Button
-                variant={floorFilter === null ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs px-3 shrink-0"
-                onClick={() => setFloorFilter(null)}
-              >
-                All
-              </Button>
-              {directFloors.map((f) => (
-                <Button
-                  key={f}
-                  variant={floorFilter === f ? "default" : "outline"}
-                  size="sm"
-                  className="h-8 text-xs px-3 shrink-0"
-                  onClick={() => setFloorFilter(floorFilter === f ? null : f)}
-                >
-                  <Building2 className="h-3.5 w-3.5 mr-1" />
-                  {f}
-                </Button>
-              ))}
-              {otherFloors.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant={floorFilter !== null && otherFloors.includes(floorFilter) ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 text-xs px-3 shrink-0 gap-1"
-                    >
-                      Others
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {otherFloors.map((f) => (
-                      <DropdownMenuItem
-                        key={f}
-                        className="text-xs"
-                        onClick={() => setFloorFilter(f)}
-                      >
-                        <Building2 className="h-3.5 w-3.5 mr-2" />
-                        Floor {f}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Status Filter Buttons */}
+      {/* Floor & Status Filter Buttons */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Status:</span>
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
         <div className="flex gap-1.5">
           <Button
-            variant={statusFilter === null ? "default" : "outline"}
+            variant={floorFilter === null && statusFilter === null ? "default" : "outline"}
             size="sm"
             className="h-8 text-xs px-3 shrink-0"
-            onClick={() => setStatusFilter(null)}
+            onClick={() => { setFloorFilter(null); setStatusFilter(null); }}
           >
             All
           </Button>
+          {floors.slice(0, 3).map((f) => (
+            <Button
+              key={f}
+              variant={floorFilter === f ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs px-3 shrink-0"
+              onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+            >
+              <Building2 className="h-3.5 w-3.5 mr-1" />
+              {f}
+            </Button>
+          ))}
+          {floors.length > 3 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={floorFilter !== null && floors.slice(3).includes(floorFilter) ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs px-3 shrink-0 gap-1"
+                >
+                  Others
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {floors.slice(3).map((f) => (
+                  <DropdownMenuItem
+                    key={f}
+                    className="text-xs"
+                    onClick={() => setFloorFilter(f)}
+                  >
+                    <Building2 className="h-3.5 w-3.5 mr-2" />
+                    Floor {f}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        <Separator orientation="vertical" className="h-6 mx-1" />
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Status:</span>
+        <div className="flex gap-1.5">
           <Button
             variant={statusFilter === "AVAILABLE" ? "default" : "outline"}
             size="sm"
@@ -592,7 +575,6 @@ export default function RoomsPage() {
           </Button>
         </div>
       </div>
-
       {/* Room Grid */}
       {filteredRooms.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
