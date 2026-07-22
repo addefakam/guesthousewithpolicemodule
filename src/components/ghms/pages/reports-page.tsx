@@ -26,6 +26,7 @@ import {
   Download,
   BarChart3,
   CalendarDays,
+  Search,
   Users,
   ChevronDown,
   ChevronUp,
@@ -118,6 +119,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [showGuests, setShowGuests] = useState(false);
   const [expandedGuestIdx, setExpandedGuestIdx] = useState<number | null>(null);
+  const [guestSearch, setGuestSearch] = useState("");
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -218,6 +220,18 @@ export default function ReportsPage() {
     }
     return Array.from(map.values()).sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
   }, [data]);
+  const filteredServedGuests = useMemo(() => {
+    if (!guestSearch) return servedGuests;
+    const q = guestSearch.toLowerCase();
+    return servedGuests.filter((g) =>
+      g.name.toLowerCase().includes(q) ||
+      g.phone.toLowerCase().includes(q) ||
+      g.idNumber.toLowerCase().includes(q) ||
+      g.email.toLowerCase().includes(q) ||
+      g.nationality.toLowerCase().includes(q)
+    );
+  }, [servedGuests, guestSearch]);
+
 
   const handleExport = () => {
     if (!data) return;
@@ -297,9 +311,18 @@ export default function ReportsPage() {
                   <Users className="h-5 w-5" />
                   Guests Served ({from} to {to})
                 </CardTitle>
+                <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search by name, ID, phone, email..."
+                    value={guestSearch}
+                    onChange={(e) => setGuestSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
-                {servedGuests.length === 0 ? (
+                {filteredServedGuests.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
                     No guests served in this period.
                   </p>
@@ -307,7 +330,7 @@ export default function ReportsPage() {
                   <>
                     {/* Mobile cards */}
                     <div className="md:hidden space-y-3">
-                      {servedGuests.map((g, i) => (
+                      {filteredServedGuests.map((g, i) => (
                         <div key={i}>
                           <div
                             className="rounded-lg border p-3 space-y-2 cursor-pointer"
@@ -389,7 +412,7 @@ export default function ReportsPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {servedGuests.map((g, i) => (
+                          {filteredServedGuests.map((g, i) => (
                             <Fragment key={i}>
                               <TableRow
                                 className="cursor-pointer"
@@ -515,7 +538,7 @@ export default function ReportsPage() {
                       </Table>
                     </div>
                     <p className="text-xs text-muted-foreground mt-3 text-center">
-                      {servedGuests.length} unique guest{servedGuests.length !== 1 ? "s" : ""} served · Total spent: {formatCurrency(servedGuests.reduce((s, g) => s + g.totalSpent, 0))}
+                      {filteredServedGuests.length} unique guest{servedGuests.length !== 1 ? "s" : ""} served · Total spent: {formatCurrency(filteredServedGuests.reduce((s, g) => s + g.totalSpent, 0))}
                     </p>
                   </>
                 )}
