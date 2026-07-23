@@ -568,15 +568,6 @@ export default function RoomsPage() {
             <AlertCircle className="h-3.5 w-3.5 mr-1" />
             Occupied
           </Button>
-          <Button
-            variant={statusFilter === "RESERVED" ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs px-3 shrink-0"
-            onClick={() => setStatusFilter(statusFilter === "RESERVED" ? null : "RESERVED")}
-          >
-            <ClipboardList className="h-3.5 w-3.5 mr-1" />
-            Reserved
-          </Button>
         </div>
       </div>
       {/* Room Grid */}
