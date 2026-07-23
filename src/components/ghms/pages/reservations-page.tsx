@@ -297,6 +297,8 @@ export default function ReservationsPage() {
           r.id.toLowerCase().includes(q)
       );
     }
+    // Move COMPLETED to bottom, active first
+    list = [...list.filter((r) => r.status !== "COMPLETED"), ...list.filter((r) => r.status === "COMPLETED")];
     return list;
   }, [reservations, statusFilter, search]);
 
