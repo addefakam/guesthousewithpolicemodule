@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     const activeGuests = await db.reservation.findMany({
       where: {
         providerId,
-        status: { in: ["OCCUPIED", "RESERVED"] },
+        status: { in: ["ACTIVE", "UPCOMING"] },
       },
       include: {
         guest: { select: { id: true, name: true, phone: true, email: true, idNumber: true, idType: true, nationality: true, address: true, notes: true, vip: true, createdAt: true } },

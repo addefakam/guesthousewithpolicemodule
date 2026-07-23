@@ -94,11 +94,10 @@ const EXPENSE_COLORS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  CONFIRMED: "bg-blue-100 text-blue-700 border-blue-200",
-  CHECKED_IN: "bg-green-100 text-green-700 border-green-200",
-  CHECKED_OUT: "bg-slate-100 text-slate-700 border-slate-200",
+  UPCOMING: "bg-blue-100 text-blue-700 border-blue-200",
+  ACTIVE: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  COMPLETED: "bg-gray-100 text-gray-700 border-gray-200",
   CANCELLED: "bg-red-100 text-red-700 border-red-200",
-  NO_SHOW: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
 function formatCurrency(amount: number) {
@@ -264,8 +263,8 @@ export default function ReportsPage() {
       });
     }
     return Array.from(map.values()).sort((a, b) => {
-      if (a.status === "OCCUPIED" && b.status !== "OCCUPIED") return -1;
-      if (a.status !== "OCCUPIED" && b.status === "OCCUPIED") return 1;
+      if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+      if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
       return a.checkIn.localeCompare(b.checkIn);
     });
   }, [data]);
@@ -389,7 +388,7 @@ export default function ReportsPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm shrink-0 " + (g.status === "OCCUPIED" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
+                                <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm shrink-0 " + (g.status === "ACTIVE" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
                                   {g.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -456,7 +455,7 @@ export default function ReportsPage() {
                               <TableRow className="cursor-pointer" onClick={() => setExpandedActiveIdx(expandedActiveIdx === i ? null : i)}>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
-                                    <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm " + (g.status === "OCCUPIED" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
+                                    <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm " + (g.status === "ACTIVE" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
                                       {g.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
@@ -517,7 +516,7 @@ export default function ReportsPage() {
                       </Table>
                     </div>
                     <p className="text-xs text-muted-foreground mt-3 text-center">
-                      {filteredActiveGuests.length} active guest{filteredActiveGuests.length !== 1 ? "s" : ""} · {activeGuests.filter((g) => g.status === "OCCUPIED").length} currently staying · {activeGuests.filter((g) => g.status === "RESERVED").length} upcoming
+                      {filteredActiveGuests.length} active guest{filteredActiveGuests.length !== 1 ? "s" : ""} · {activeGuests.filter((g) => g.status === "ACTIVE").length} currently staying · {activeGuests.filter((g) => g.status === "UPCOMING").length} upcoming
                     </p>
                   </>
                 )}
