@@ -474,6 +474,10 @@ export default function RoomsPage() {
             <FileSpreadsheet className="h-4 w-4" />
             Import Excel
           </Button>
+          <Button variant="outline" onClick={() => setCurrentPage("reservations")} className="gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Reservations
+          </Button>
           <Button onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" />
             Add Room
