@@ -77,6 +77,7 @@ interface ReportData {
   profit: number;
   occupancyRate: number;
   reservations: Reservation[];
+  activeGuests: Reservation[];
   expenseBreakdown: ExpenseBreakdownItem[];
   dailyRevenue: DailyRevenueItem[];
 }
@@ -237,9 +238,9 @@ export default function ReportsPage() {
   }, [servedGuests, guestSearch]);
   // Active guests (OCCUPIED + RESERVED) in the period
   const activeGuests = useMemo(() => {
-    if (!data?.reservations?.length) return [];
+    if (!data?.activeGuests?.length) return [];
     const map = new Map();
-    for (const r of data.reservations.filter((r) => r.status === "OCCUPIED" || r.status === "RESERVED")) {
+    for (const r of data.activeGuests) {
       const g = r.guest;
       map.set(r.id, {
         reservationId: r.id,

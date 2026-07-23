@@ -58,6 +58,20 @@ export async function GET(req: NextRequest) {
     });
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
+
+
+    // Active guests (OCCUPIED + RESERVED) — not filtered by date range
+    const activeGuests = await db.reservation.findMany({
+      where: {
+        providerId,
+        status: { in: ["OCCUPIED", "RESERVED"] },
+      },
+      include: {
+        guest: { select: { id: true, name: true, phone: true, email: true, idNumber: true, idType: true, nationality: true, address: true, notes: true, vip: true, createdAt: true } },
+        room: { select: { number: true, name: true, type: true } },
+      },
+      orderBy: { checkIn: "desc" },
+    });
     // Expense breakdown by category
     const expenseMap = new Map<string, number>();
     for (const e of expenses) {
@@ -91,6 +105,7 @@ export async function GET(req: NextRequest) {
       profit,
       occupancyRate: Math.round(occupancyRate * 100) / 100,
       reservations,
+      activeGuests,
       expenseBreakdown,
       dailyRevenue,
     });
