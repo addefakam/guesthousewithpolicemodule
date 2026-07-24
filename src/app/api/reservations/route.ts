@@ -99,8 +99,11 @@ export async function POST(req: NextRequest) {
 
     if (overlapping) {
       const roomLabel = overlapping.room.number + (overlapping.room.name ? ` (${overlapping.room.name})` : "");
-      const conflictMsg = `Room ${roomLabel} is already reserved by ${overlapping.guest.name} from ${overlapping.checkIn} to ${overlapping.checkOut}. Please select another room, or the guest house has full right to allocate you to a free room if available.`;
-      return NextResponse.json({ error: conflictMsg, code: "ROOM_CONFLICT", conflict: { roomId, guestName: overlapping.guest.name, checkIn: overlapping.checkIn, checkOut: overlapping.checkOut, roomNumber: overlapping.room.number } }, { status: 409 });
+      return NextResponse.json({
+        error: "ROOM_CONFLICT",
+        code: "ROOM_CONFLICT",
+        conflict: { roomId, checkIn: overlapping.checkIn, checkOut: overlapping.checkOut, roomNumber: overlapping.room.number, roomName: overlapping.room.name },
+      }, { status: 409 });
     }
 
     const reservation = await db.reservation.create({

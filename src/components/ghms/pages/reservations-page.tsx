@@ -200,6 +200,9 @@ export default function ReservationsPage() {
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Room conflict dialog
+  const [conflictInfo, setConflictInfo] = useState<{ roomNumber: string; roomName: string; checkIn: string; checkOut: string } | null>(null);
+
   // Pagination
   const [page, setPage] = useState(0);
   const pageSize = 15;
@@ -369,7 +372,14 @@ export default function ReservationsPage() {
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to create reservation";
-      toast.error(message, { duration: 8000 });
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed.code === "ROOM_CONFLICT" && parsed.conflict) {
+          setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
+          return;
+        }
+      } catch {}
+      toast.error("This room is already reserved for the selected dates.");
     } finally {
       setCreating(false);
     }
@@ -1239,6 +1249,46 @@ export default function ReservationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Room Conflict Dialog */}
+      <Dialog open={!!conflictInfo} onOpenChange={(open) => { if (!open) setConflictInfo(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+              </div>
+              Room Already Reserved
+            </DialogTitle>
+            <DialogDescription />
+          </DialogHeader>
+          {conflictInfo && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <BedDouble className="h-5 w-5 text-rose-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-rose-800">Room {conflictInfo.roomNumber}{conflictInfo.roomName ? ` (${conflictInfo.roomName})` : ""}</p>
+                    <p className="text-xs text-rose-600">is already reserved for the selected dates</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-white border border-rose-100 px-3 py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-500">Reserved period:</span>
+                  </div>
+                  <span className="font-medium text-rose-700">{formatDate(conflictInfo.checkIn)} — {formatDate(conflictInfo.checkOut)}</span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Please choose a different room. If no room is available, the guest house has the right to allocate you to a free room if one becomes available.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConflictInfo(null)}>Choose Another Room</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
