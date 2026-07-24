@@ -1313,7 +1313,7 @@ export default function ReservationsPage() {
               </div>
               {/* Footer */}
               <div className="px-6 pb-6">
-                <Button className="w-full bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-medium h-11" onClick={() => setConflictInfo(null)}>
+                <Button variant="outline" onClick={() => setConflictInfo(null)}>
                   Choose Another Room
                 </Button>
               </div>
