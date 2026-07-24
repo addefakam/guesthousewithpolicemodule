@@ -258,7 +258,7 @@ export default function ReservationsPage() {
 
   // Available rooms for new reservation (AVAILABLE or RESERVED)
   const availableRooms = useMemo(
-    () => allRooms.filter((r) => r.status === "AVAILABLE" || r.status === "RESERVED"),
+    () => allRooms.filter((r) => r.status === "AVAILABLE"),
     [allRooms]
   );
 
@@ -307,6 +307,13 @@ export default function ReservationsPage() {
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(val);
+
+  const formatDateShort = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch { return dateStr; }
+  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "—";
@@ -362,7 +369,7 @@ export default function ReservationsPage() {
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to create reservation";
-      toast.error(message);
+      toast.error(message, { duration: 8000 });
     } finally {
       setCreating(false);
     }
@@ -640,9 +647,10 @@ export default function ReservationsPage() {
                             <DropdownMenuItem
                               onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
                               className="text-emerald-700 focus:text-emerald-700"
+                              disabled={new Date(res.checkIn) > new Date()}
                             >
                               <LogIn className="mr-2 h-4 w-4" />
-                              Check In
+                              Check In{new Date(res.checkIn) > new Date() ? ` (${formatDateShort(res.checkIn)})` : ""}
                             </DropdownMenuItem>
                           )}
                           {res.status === "ACTIVE" && (
@@ -765,8 +773,8 @@ export default function ReservationsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {res.status === "UPCOMING" && (
-                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
-                        <LogIn className="mr-2 h-4 w-4" /> Check In
+                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })} disabled={new Date(res.checkIn) > new Date()}>
+                        <LogIn className="mr-2 h-4 w-4" /> Check In{new Date(res.checkIn) > new Date() ? ` (${formatDateShort(res.checkIn)})` : ""}
                       </DropdownMenuItem>
                     )}
                     {res.status === "ACTIVE" && (

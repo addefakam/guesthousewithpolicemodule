@@ -83,6 +83,26 @@ export async function POST(req: NextRequest) {
     const paidAmount = 0;
     const balance = totalCost - paidAmount;
 
+    // Check for overlapping reservations on this room (double-booking prevention)
+    const overlapping = await db.reservation.findFirst({
+      where: {
+        roomId,
+        status: { in: ["UPCOMING", "ACTIVE"] },
+        checkIn: { lt: checkOut },
+        checkOut: { gt: checkIn },
+      },
+      include: {
+        guest: { select: { name: true, phone: true } },
+        room: { select: { number: true, name: true } },
+      },
+    });
+
+    if (overlapping) {
+      const roomLabel = overlapping.room.number + (overlapping.room.name ? ` (${overlapping.room.name})` : "");
+      const conflictMsg = `Room ${roomLabel} is already reserved by ${overlapping.guest.name} from ${overlapping.checkIn} to ${overlapping.checkOut}. Please select another room, or the guest house has full right to allocate you to a free room if available.`;
+      return NextResponse.json({ error: conflictMsg, code: "ROOM_CONFLICT", conflict: { roomId, guestName: overlapping.guest.name, checkIn: overlapping.checkIn, checkOut: overlapping.checkOut, roomNumber: overlapping.room.number } }, { status: 409 });
+    }
+
     const reservation = await db.reservation.create({
       data: {
         guestId,
@@ -108,11 +128,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Update room status to RESERVED
-    await db.room.update({
-      where: { id: roomId },
-      data: { status: "RESERVED" },
-    });
+    // Room stays AVAILABLE until check-in date — status will be updated by checkin API
 
     // Background: check if guest matches any suspected person (fire-and-forget)
     checkSuspectMatch({
