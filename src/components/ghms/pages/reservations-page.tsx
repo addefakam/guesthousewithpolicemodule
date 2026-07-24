@@ -83,6 +83,7 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
+  ArrowRight,
   UserPlus,
   UserCheck,
 } from "lucide-react";
@@ -371,17 +372,17 @@ export default function ReservationsPage() {
       closeCreateDialog();
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to create reservation";
-      try {
-        const parsed = JSON.parse(message);
-        if (parsed.code === "ROOM_CONFLICT" && parsed.conflict) {
-          setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
-          return;
-        }
-      } catch {}
-      toast.error("This room is already booked for these dates (or shares overlapping days).");
-    } finally {
       setCreating(false);
+      const raw = err instanceof Error ? err.message : "Failed to create reservation";
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch {}
+      if (parsed?.code === "ROOM_CONFLICT" && parsed.conflict) {
+        setCreateOpen(false);
+        setWizardStep(1);
+        setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
+        return;
+      }
+      toast.error(parsed?.error || raw || "Failed to create reservation");
     }
   };
 
@@ -1251,42 +1252,73 @@ export default function ReservationsPage() {
       </AlertDialog>
       {/* Room Conflict Dialog */}
       <Dialog open={!!conflictInfo} onOpenChange={(open) => { if (!open) setConflictInfo(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-rose-600">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
-                <AlertCircle className="h-5 w-5 text-rose-600" />
-              </div>
-              Room Already Reserved
-            </DialogTitle>
-            <DialogDescription />
-          </DialogHeader>
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
           {conflictInfo && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <BedDouble className="h-5 w-5 text-rose-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-rose-800">Room {conflictInfo.roomNumber}{conflictInfo.roomName ? ` (${conflictInfo.roomName})` : ""}</p>
-                    <p className="text-xs text-rose-600">is already booked for these dates (or shares overlapping days)</p>
+            <>
+              {/* Header with gradient */}
+              <div className="bg-gradient-to-r from-rose-500 to-amber-500 px-6 py-8 text-white text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-black/5" />
+                <div className="relative">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm ring-4 ring-white/30">
+                    <BedDouble className="h-8 w-8 text-white" />
                   </div>
-                </div>
-                <div className="flex items-center justify-between rounded-lg bg-white border border-rose-100 px-3 py-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-500">Reserved period:</span>
-                  </div>
-                  <span className="font-medium text-rose-700">{formatDate(conflictInfo.checkIn)} — {formatDate(conflictInfo.checkOut)}</span>
+                  <h2 className="text-xl font-bold">Room Already Reserved</h2>
+                  <p className="mt-1 text-sm text-white/80">The room you selected is not available for the chosen dates</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Please select a different room or different dates. The service provider has full right to make adjustments for the late comer and allocate to any available room.
-              </p>
-            </div>
+              {/* Content */}
+              <div className="px-6 py-5 space-y-4">
+                {/* Room info card */}
+                <div className="rounded-xl border-2 border-dashed border-rose-200 bg-rose-50/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600 font-bold text-lg">
+                        {conflictInfo.roomNumber}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{conflictInfo.roomName || `Room ${conflictInfo.roomNumber}`}</p>
+                        <p className="text-xs text-rose-500 font-medium">Unavailable for selected dates</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Date range display */}
+                <div className="rounded-xl bg-gray-50 border p-4">
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Reserved Period</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 text-center">
+                      <CalendarDays className="h-5 w-5 mx-auto text-rose-400 mb-1" />
+                      <p className="text-xs text-gray-500">From</p>
+                      <p className="font-semibold text-gray-900 text-sm">{formatDate(conflictInfo.checkIn)}</p>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="h-px w-8 bg-gray-300" />
+                      <ArrowRight className="h-4 w-4 text-gray-400" />
+                      <div className="h-px w-8 bg-gray-300" />
+                    </div>
+                    <div className="flex-1 text-center">
+                      <CalendarDays className="h-5 w-5 mx-auto text-rose-400 mb-1" />
+                      <p className="text-xs text-gray-500">To</p>
+                      <p className="font-semibold text-gray-900 text-sm">{formatDate(conflictInfo.checkOut)}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Info note */}
+                <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800 leading-relaxed">
+                    Please choose a different room or adjust your dates. The service provider has full right to make adjustments for the late comer and allocate to any available room.
+                  </p>
+                </div>
+              </div>
+              {/* Footer */}
+              <div className="px-6 pb-6">
+                <Button className="w-full bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-medium h-11" onClick={() => setConflictInfo(null)}>
+                  Choose Another Room
+                </Button>
+              </div>
+            </>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConflictInfo(null)}>Choose Another Room</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
