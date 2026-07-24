@@ -379,7 +379,7 @@ export default function ReservationsPage() {
           return;
         }
       } catch {}
-      toast.error("This room is already reserved for the selected dates.");
+      toast.error("This room is already booked for these dates (or shares overlapping days).");
     } finally {
       setCreating(false);
     }
@@ -1268,7 +1268,7 @@ export default function ReservationsPage() {
                   <BedDouble className="h-5 w-5 text-rose-500 shrink-0" />
                   <div>
                     <p className="text-sm font-semibold text-rose-800">Room {conflictInfo.roomNumber}{conflictInfo.roomName ? ` (${conflictInfo.roomName})` : ""}</p>
-                    <p className="text-xs text-rose-600">is already reserved for the selected dates</p>
+                    <p className="text-xs text-rose-600">is already booked for these dates (or shares overlapping days)</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-white border border-rose-100 px-3 py-2 text-sm">
@@ -1280,7 +1280,7 @@ export default function ReservationsPage() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Please choose a different room. If no room is available, the guest house has the right to allocate you to a free room if one becomes available.
+                Please select a different room or different dates. The service provider has full right to make adjustments for the late comer and allocate to any available room.
               </p>
             </div>
           )}

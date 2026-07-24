@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
       where: {
         roomId,
         status: { in: ["UPCOMING", "ACTIVE"] },
-        checkIn: { lt: checkOut },
-        checkOut: { gt: checkIn },
+        checkIn: { lte: checkOut },
+        checkOut: { gte: checkIn },
       },
       include: {
         guest: { select: { name: true, phone: true } },
