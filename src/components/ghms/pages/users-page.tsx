@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetUsers,
@@ -57,23 +58,20 @@ import {
 } from "lucide-react";
 
 // ── Permission options that OPERATOR can assign to staff ──
-const PERMISSION_OPTIONS = [
-  { value: "reservations", label: "Reservations", icon: CalendarCheck, color: "text-blue-600 bg-blue-50 border-blue-200" },
-  { value: "guests", label: "Guests", icon: Users, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-  { value: "rooms", label: "Rooms", icon: Bed, color: "text-violet-600 bg-violet-50 border-violet-200" },
-  { value: "housekeeping", label: "Housekeeping", icon: Sparkles, color: "text-amber-600 bg-amber-50 border-amber-200" },
-  { value: "daytime", label: "Daytime Services", icon: Sun, color: "text-orange-600 bg-orange-50 border-orange-200" },
-  { value: "reports", label: "Reports", icon: BarChart3, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
-  { value: "reviews", label: "Reviews", icon: Star, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
-  { value: "notifications", label: "Notifications", icon: Bell, color: "text-rose-600 bg-rose-50 border-rose-200" },
-  { value: "settings", label: "Settings", icon: Settings, color: "text-slate-600 bg-slate-50 border-slate-200" },
+// Permission options — labels will be translated dynamically via t()
+const PERMISSION_OPTIONS_RAW = [
+  { value: "reservations", tKey: "permReservations", icon: CalendarCheck, color: "text-blue-600 bg-blue-50 border-blue-200" },
+  { value: "guests", tKey: "permGuests", icon: Users, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+  { value: "rooms", tKey: "permRooms", icon: Bed, color: "text-violet-600 bg-violet-50 border-violet-200" },
+  { value: "housekeeping", tKey: "permHousekeeping", icon: Sparkles, color: "text-amber-600 bg-amber-50 border-amber-200" },
+  { value: "daytime", tKey: "permDaytime", icon: Sun, color: "text-orange-600 bg-orange-50 border-orange-200" },
+  { value: "reports", tKey: "permReports", icon: BarChart3, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
+  { value: "reviews", tKey: "permReviews", icon: Star, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
+  { value: "notifications", tKey: "permNotifications", icon: Bell, color: "text-rose-600 bg-rose-50 border-rose-200" },
+  { value: "settings", tKey: "permSettings", icon: Settings, color: "text-slate-600 bg-slate-50 border-slate-200" },
 ];
 
-// Helper to get permission display info
-const PERM_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {};
-PERMISSION_OPTIONS.forEach((p) => {
-  PERM_MAP[p.value] = { label: p.label, icon: p.icon, color: p.color };
-});
+// PERM_MAP built dynamically inside component using t()
 
 interface StaffUser {
   id: string;
@@ -95,7 +93,14 @@ const emptyForm = {
 };
 
 export default function UsersPage() {
+  const { t } = useTranslation("users");
   const { refreshKey, currentUser } = useAppStore();
+
+  // Build translated permission map
+  const PERM_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {};
+  PERMISSION_OPTIONS_RAW.forEach((p) => {
+    PERM_MAP[p.value] = { label: t(p.tKey), icon: p.icon, color: p.color };
+  });
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -125,7 +130,7 @@ export default function UsersPage() {
       const raw = await apiGetUsers();
       setStaff(Array.isArray(raw) ? raw as StaffUser[] : []);
     } catch {
-      toast.error("Failed to load staff accounts");
+      toast.error(t("toastLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -195,15 +200,15 @@ export default function UsersPage() {
   // ── Save (create or update) ──
   const handleSave = async () => {
     if (!form.username.trim() || !form.name.trim()) {
-      toast.error("Username and name are required");
+      toast.error(t("validNameUsernameReq"));
       return;
     }
     if (!editingUser && !form.password) {
-      toast.error("Password is required for new staff accounts");
+      toast.error(t("validPasswordReq"));
       return;
     }
     if (form.permissions.length === 0) {
-      toast.error("Select at least one permission/right for the staff account");
+      toast.error(t("validPermReq"));
       return;
     }
 
@@ -219,15 +224,15 @@ export default function UsersPage() {
 
       if (editingUser) {
         await apiUpdateUser(editingUser.id, payload);
-        toast.success("Staff account updated successfully");
+        toast.success(t("toastUpdated"));
       } else {
         await apiCreateUser(payload);
-        toast.success("Staff account created successfully");
+        toast.success(t("toastCreated"));
       }
       setDialogOpen(false);
       fetchStaff();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save staff account";
+      const msg = err instanceof Error ? err.message : t("toastSaveFailed");
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -238,7 +243,7 @@ export default function UsersPage() {
   const handleReset = async () => {
     if (!resetTarget) return;
     if (!resetUsername.trim()) {
-      toast.error("Username is required");
+      toast.error(t("resetValidUsername"));
       return;
     }
     setResetSaving(true);
@@ -246,11 +251,11 @@ export default function UsersPage() {
       const payload: Record<string, unknown> = { username: resetUsername.trim() };
       if (resetPassword.trim()) payload.password = resetPassword.trim();
       await apiUpdateUser(resetTarget.id, payload);
-      toast.success("Credentials updated successfully");
+      toast.success(t("resetToastSaved"));
       setResetOpen(false);
       fetchStaff();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update credentials";
+      const msg = err instanceof Error ? err.message : t("resetToastFailed");
       toast.error(msg);
     } finally {
       setResetSaving(false);
@@ -263,11 +268,11 @@ export default function UsersPage() {
     setDeleting(true);
     try {
       await apiDeleteUser(deleteTarget.id);
-      toast.success("Staff account deleted successfully");
+      toast.success(t("deleteToastDeleted"));
       setDeleteTarget(null);
       fetchStaff();
     } catch {
-      toast.error("Failed to delete staff account");
+      toast.error(t("deleteToastFailed"));
     } finally {
       setDeleting(false);
     }
@@ -293,14 +298,14 @@ export default function UsersPage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Account Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage staff accounts you created. Each staff member has access only to the rights you assign.
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Staff
+          {t("btnAddStaff")}
         </Button>
       </div>
 
@@ -308,7 +313,7 @@ export default function UsersPage() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by name or username..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -320,12 +325,12 @@ export default function UsersPage() {
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <UserCog className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">
-            {search ? "No matching staff" : "No staff accounts yet"}
+            {search ? t("emptyNoMatch") : t("emptyNoAccounts")}
           </p>
           <p className="text-sm mt-1">
             {search
-              ? "Try adjusting your search terms."
-              : "Click \"Add Staff\" to create your first staff account."}
+              ? t("emptyNoMatchHint")
+              : t("emptyNoAccountsHint")}
           </p>
         </div>
       ) : (
@@ -346,23 +351,23 @@ export default function UsersPage() {
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm truncate">{user.name}</p>
                       <Badge variant="outline" className="text-[10px] px-1.5 bg-sky-100 text-sky-700 border-sky-200">
-                        Staff
+                        {t("badgeStaff")}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{user.username}</code>
-                      <span className="ml-2">Created {new Date(user.createdAt).toLocaleDateString()}</span>
+                      <span className="ml-2">{t("createdOn", { date: new Date(user.createdAt).toLocaleDateString() })}</span>
                     </p>
                   </div>
                   {/* Action buttons */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEdit(user)}>
                       <Pencil className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Edit</span>
+                      <span className="hidden sm:inline">{t("btnEdit")}</span>
                     </Button>
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openReset(user)}>
                       <KeyRound className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Reset</span>
+                      <span className="hidden sm:inline">{t("btnReset")}</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -377,7 +382,7 @@ export default function UsersPage() {
 
                 {/* Rights/Permissions section */}
                 <div className="mt-3 pt-3 border-t">
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Assigned Rights</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">{t("assignedRights")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {perms.length > 0 ? (
                       perms.map((p) => {
@@ -396,7 +401,7 @@ export default function UsersPage() {
                         );
                       })
                     ) : (
-                      <span className="text-xs text-muted-foreground">No rights assigned</span>
+                      <span className="text-xs text-muted-foreground">{t("noRightsAssigned")}</span>
                     )}
                   </div>
                 </div>
@@ -412,24 +417,24 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCog className="h-5 w-5 text-primary" />
-              {editingUser ? "Edit Staff Account" : "Add New Staff"}
+              {editingUser ? t("dialogTitleEdit") : t("dialogTitleAdd")}
             </DialogTitle>
             <DialogDescription>
               {editingUser
-                ? "Update staff details and their access rights. Leave password blank to keep unchanged."
-                : "Create a new staff account and assign their access rights."}
+                ? t("dialogDescEdit")
+                : t("dialogDescAdd")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             {/* Username */}
             {!editingUser && (
               <div className="grid gap-2">
-                <Label htmlFor="username">Username *</Label>
+                <Label htmlFor="username">{t("labelUsername")}</Label>
                 <Input
                   id="username"
                   value={form.username}
                   onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                  placeholder="e.g. staff-abebe"
+                  placeholder={t("placeholderUsername")}
                   autoFocus
                 />
               </div>
@@ -438,7 +443,7 @@ export default function UsersPage() {
             {/* Password */}
             <div className="grid gap-2">
               <Label htmlFor="password">
-                {editingUser ? "New Password" : "Password *"}
+                {editingUser ? t("labelPasswordEdit") : t("labelPasswordNew")}
               </Label>
               <div className="relative">
                 <Input
@@ -446,7 +451,7 @@ export default function UsersPage() {
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder={editingUser ? "Leave blank to keep current" : "Enter password"}
+                  placeholder={editingUser ? t("placeholderPasswordEdit") : t("placeholderPasswordNew")}
                   className="pr-10"
                 />
                 <button
@@ -461,23 +466,23 @@ export default function UsersPage() {
 
             {/* Full Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="name">{t("labelFullName")}</Label>
               <Input
                 id="name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Abebe Kebede"
+                placeholder={t("placeholderFullName")}
               />
             </div>
 
             {/* Rights/Permissions */}
             <div className="grid gap-2">
-              <Label>Access Rights *</Label>
+              <Label>{t("labelAccessRights")}</Label>
               <p className="text-xs text-muted-foreground">
-                Select which pages and features this staff member can access.
+                {t("accessRightsHint")}
               </p>
               <div className="grid grid-cols-2 gap-2 pt-1">
-                {PERMISSION_OPTIONS.map((perm) => {
+                {PERMISSION_OPTIONS_RAW.map((perm) => {
                   const Icon = perm.icon;
                   const isChecked = form.permissions.includes(perm.value);
                   return (
@@ -490,7 +495,7 @@ export default function UsersPage() {
                         onCheckedChange={() => togglePermission(perm.value)}
                       />
                       <Icon className="h-3.5 w-3.5 shrink-0" />
-                      {perm.label}
+                      {t(perm.tKey)}
                     </label>
                   );
                 })}
@@ -499,18 +504,18 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {editingUser ? "Updating..." : "Creating..."}
+                  {editingUser ? t("btnUpdating") : t("btnCreating")}
                 </>
               ) : (
                 <>
                   <UserCog className="h-4 w-4" />
-                  {editingUser ? "Update Staff" : "Create Staff"}
+                  {editingUser ? t("btnUpdateStaff") : t("btnCreateStaff")}
                 </>
               )}
             </Button>
@@ -524,32 +529,32 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-primary" />
-              Reset Credentials
+              {t("resetTitle")}
             </DialogTitle>
             <DialogDescription>
-              Update login credentials for <strong>{resetTarget?.name}</strong>. Leave password blank to keep current password unchanged.
+              {t("resetDesc", { name: resetTarget?.name })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="reset-username">Username *</Label>
+              <Label htmlFor="reset-username">{t("resetLabelUsername")}</Label>
               <Input
                 id="reset-username"
                 value={resetUsername}
                 onChange={(e) => setResetUsername(e.target.value)}
-                placeholder="Enter new username"
+                placeholder={t("resetPlaceholderUsername")}
                 autoFocus
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="reset-password">New Password</Label>
+              <Label htmlFor="reset-password">{t("resetLabelPassword")}</Label>
               <div className="relative">
                 <Input
                   id="reset-password"
                   type={showResetPassword ? "text" : "password"}
                   value={resetPassword}
                   onChange={(e) => setResetPassword(e.target.value)}
-                  placeholder="Leave blank to keep current password"
+                  placeholder={t("resetPlaceholderPassword")}
                   className="pr-10"
                 />
                 <button
@@ -564,18 +569,18 @@ export default function UsersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetOpen(false)}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleReset} disabled={resetSaving} className="gap-2">
               {resetSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
+                  {t("resetSaving")}
                 </>
               ) : (
                 <>
                   <KeyRound className="h-4 w-4" />
-                  Save Credentials
+                  {t("resetBtnSave")}
                 </>
               )}
             </Button>
@@ -589,15 +594,14 @@ export default function UsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />
-              Delete Staff Account
+              {t("deleteTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.name}</strong> ({deleteTarget?.username})?
-              This action cannot be undone. They will lose all access to the system.
+              {t("deleteDesc", { name: deleteTarget?.name, username: deleteTarget?.username })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
@@ -606,12 +610,12 @@ export default function UsersPage() {
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
+                  {t("deleteDeleting")}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Delete Staff
+                  {t("deleteBtnDelete")}
                 </>
               )}
             </AlertDialogAction>

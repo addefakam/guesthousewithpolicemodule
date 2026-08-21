@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
             data: {
               number: String(number),
               name: name ? String(name) : `Room ${number}`,
-              type: String(type).toUpperCase(),
+              type: String(type).toUpperCase() as import("@prisma/client").RoomType,
               pricePerNight: Number(pricePerNight),
               floor: Number(floor),
               capacity: Number(capacity),

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { requirePoliceMinRank } from "@/lib/police-permissions";
 import { ensureSuspectTables } from "@/lib/suspect-check";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { isValidPhone } from "@/lib/utils";
 
 export async function GET(
@@ -35,7 +35,7 @@ export async function GET(
     const identifiers = await db.$queryRaw<
       { id: string; idType: string; idNumber: string }[]
     >(
-      sql`SELECT "idType", "idNumber", "id" FROM "SuspectId" WHERE "suspectedPersonId" = ${id} ORDER BY "createdAt" ASC`
+      Prisma.sql`SELECT "idType", "idNumber", "id" FROM "SuspectId" WHERE "suspectedPersonId" = ${id} ORDER BY "createdAt" ASC`
     );
 
     return NextResponse.json({ ...person, identifiers });
@@ -88,7 +88,7 @@ export async function PUT(
     // If identifiers array is provided, replace all IDs
     if (Array.isArray(identifiers)) {
       // Delete existing IDs
-      await db.$executeRaw(sql`DELETE FROM "SuspectId" WHERE "suspectedPersonId" = ${id}`);
+      await db.$executeRaw(Prisma.sql`DELETE FROM "SuspectId" WHERE "suspectedPersonId" = ${id}`);
 
       // Also update legacy field with first ID if provided
       if (identifiers.length > 0 && identifiers[0].idNumber) {
@@ -102,7 +102,7 @@ export async function PUT(
       for (const ident of identifiers) {
         if (ident.idNumber && ident.idNumber.trim()) {
           try {
-            await db.$executeRaw(sql`
+            await db.$executeRaw(Prisma.sql`
               INSERT INTO "SuspectId" ("id", "suspectedPersonId", "idType", "idNumber", "createdAt")
               VALUES (gen_random_uuid()::text, ${id}, ${ident.idType || "Other"}, ${ident.idNumber.trim()}, CURRENT_TIMESTAMP)
               ON CONFLICT ("idNumber", "idType") DO NOTHING
@@ -118,7 +118,7 @@ export async function PUT(
     const updatedIds = await db.$queryRaw<
       { id: string; idType: string; idNumber: string }[]
     >(
-      sql`SELECT "idType", "idNumber", "id" FROM "SuspectId" WHERE "suspectedPersonId" = ${id} ORDER BY "createdAt" ASC`
+      Prisma.sql`SELECT "idType", "idNumber", "id" FROM "SuspectId" WHERE "suspectedPersonId" = ${id} ORDER BY "createdAt" ASC`
     );
 
     return NextResponse.json({ ...person, identifiers: updatedIds });
@@ -144,7 +144,7 @@ export async function DELETE(
 
     const { id } = await params;
     // Delete IDs first, then matches, then the person (cascade should handle this but be safe)
-    await db.$executeRaw(sql`DELETE FROM "SuspectId" WHERE "suspectedPersonId" = ${id}`);
+    await db.$executeRaw(Prisma.sql`DELETE FROM "SuspectId" WHERE "suspectedPersonId" = ${id}`);
     await db.suspectMatch.deleteMany({ where: { suspectedPersonId: id } });
     await db.suspectedPerson.delete({ where: { id } });
 

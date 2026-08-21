@@ -56,7 +56,10 @@ interface DashboardStats {
 
 // ── Component ──
 
+import { useTranslation } from "react-i18next";
+
 export default function SuperAdminDashboardPage() {
+  const { t } = useTranslation("superadmin");
   const { refreshKey, setCurrentPage } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -150,7 +153,7 @@ export default function SuperAdminDashboardPage() {
 
     if (isRefresh) {
       setRefreshing(false);
-      toast.success("Dashboard refreshed successfully");
+      toast.success(t("msgRefreshSuccess"));
     } else {
       setLoading(false);
     }
@@ -167,7 +170,7 @@ export default function SuperAdminDashboardPage() {
   // ── Stat Cards ──
   const statCards = [
     {
-      label: "Total Users",
+      label: t("statTotalUsers"),
       value: stats.totalUsers,
       icon: <Users className="h-4 w-4" />,
       color: "text-sky-600",
@@ -175,7 +178,7 @@ export default function SuperAdminDashboardPage() {
       border: "border-sky-100",
     },
     {
-      label: "Active Guesthouses",
+      label: t("statActiveGuesthouses"),
       value: stats.activeGuesthouses,
       icon: <Building2 className="h-4 w-4" />,
       color: "text-emerald-600",
@@ -183,7 +186,7 @@ export default function SuperAdminDashboardPage() {
       border: "border-emerald-100",
     },
     {
-      label: "Police Officers",
+      label: t("statPoliceOfficers"),
       value: stats.policeOfficers,
       icon: <Shield className="h-4 w-4" />,
       color: "text-violet-600",
@@ -191,7 +194,7 @@ export default function SuperAdminDashboardPage() {
       border: "border-violet-100",
     },
     {
-      label: "Active Subscriptions",
+      label: t("statActiveSubscriptions"),
       value: stats.activeSubscriptions,
       icon: <CreditCard className="h-4 w-4" />,
       color: "text-amber-600",
@@ -228,18 +231,18 @@ export default function SuperAdminDashboardPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">
-              Admin Dashboard
+              {t("pageTitle")}
             </h1>
             <Badge className="gap-1.5 border-0 bg-emerald-600 hover:bg-emerald-700">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
               </span>
-              System Online
+              {t("systemOnline")}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            Guest House Management System - System Overview & Control Panel
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button
@@ -252,7 +255,7 @@ export default function SuperAdminDashboardPage() {
           <RefreshCw
             className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
           />
-          Refresh
+          {t("btnRefresh")}
         </Button>
       </div>
 
@@ -265,11 +268,11 @@ export default function SuperAdminDashboardPage() {
             </div>
             <div>
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
-                GHMS - Guest House Management System
+                {t("ghmsTitle")}
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               </CardTitle>
               <p className="mt-0.5 text-xs text-slate-500">
-                Centralized platform for guest house operations & oversight
+                {t("ghmsSubtitle")}
               </p>
             </div>
           </div>
@@ -309,7 +312,7 @@ export default function SuperAdminDashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
               <Activity className="h-4 w-4 text-slate-500" />
-              System Alerts
+              {t("sectionSystemAlerts")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -338,7 +341,7 @@ export default function SuperAdminDashboardPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-800">
-                    Pending Approvals
+                    {t("alertPendingApprovals")}
                   </p>
                   {stats.pendingApprovals > 0 && (
                     <Badge className="border-0 bg-amber-600 hover:bg-amber-700 text-white">
@@ -348,8 +351,8 @@ export default function SuperAdminDashboardPage() {
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {stats.pendingApprovals > 0
-                    ? `${stats.pendingApprovals} provider${stats.pendingApprovals !== 1 ? "s" : ""} awaiting review`
-                    : "No pending provider approvals"}
+                    ? t("descPendingApprovals", { count: stats.pendingApprovals })
+                    : t("descNoPendingApprovals")}
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
@@ -380,7 +383,7 @@ export default function SuperAdminDashboardPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-800">
-                    Expiring Subscriptions
+                    {t("alertExpiringSubscriptions")}
                   </p>
                   {stats.expiringSubscriptions > 0 && (
                     <Badge className="border-0 bg-rose-600 hover:bg-rose-700 text-white">
@@ -390,8 +393,8 @@ export default function SuperAdminDashboardPage() {
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {stats.expiringSubscriptions > 0
-                    ? `${stats.expiringSubscriptions} subscription${stats.expiringSubscriptions !== 1 ? "s" : ""} expiring soon`
-                    : "No subscriptions expiring soon"}
+                    ? t("descExpiringSubscriptions", { count: stats.expiringSubscriptions })
+                    : t("descNoExpiringSubscriptions")}
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
@@ -404,14 +407,14 @@ export default function SuperAdminDashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800">
-                  System Health
+                  {t("alertSystemHealth")}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  All services operational
+                  {t("descSystemHealth")}
                 </p>
               </div>
               <Badge className="border-0 bg-emerald-600 hover:bg-emerald-700 text-white">
-                Healthy
+                {t("statusHealthy")}
               </Badge>
             </div>
           </CardContent>
@@ -422,43 +425,34 @@ export default function SuperAdminDashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
               <Server className="h-4 w-4 text-slate-500" />
-              System Info
+              {t("sectionSystemInfo")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-0">
               {[
                 {
-                  label: "System Name",
+                  label: t("infoSystemName"),
                   value: "GHMS",
                   icon: <Globe className="h-3.5 w-3.5 text-slate-400" />,
                 },
                 {
-                  label: "Version",
+                  label: t("infoVersion"),
                   value: "1.0",
                   icon: <Settings className="h-3.5 w-3.5 text-slate-400" />,
                 },
                 {
-                  label: "Environment",
+                  label: t("infoEnvironment"),
                   value:
-                    typeof process !== "undefined" &&
-                    (process as Record<string, unknown>).env?.NODE_ENV
-                      ? String(
-                          (process as Record<string, Record<string, string>>).env
-                            .NODE_ENV
-                        )
-                          .charAt(0)
-                          .toUpperCase() +
-                        String(
-                          (process as Record<string, Record<string, string>>).env
-                            .NODE_ENV
-                        ).slice(1)
+                    typeof process !== "undefined" && process.env && process.env.NODE_ENV
+                      ? String(process.env.NODE_ENV).charAt(0).toUpperCase() +
+                        String(process.env.NODE_ENV).slice(1)
                       : "Production",
                   icon: <Server className="h-3.5 w-3.5 text-slate-400" />,
                 },
                 {
-                  label: "Status",
-                  value: "Active",
+                  label: t("infoStatus"),
+                  value: t("statusActive"),
                   icon: <Activity className="h-3.5 w-3.5 text-slate-400" />,
                   badge: true,
                 },

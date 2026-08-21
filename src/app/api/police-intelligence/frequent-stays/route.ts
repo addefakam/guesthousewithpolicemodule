@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { requirePoliceMinRank } from "@/lib/police-permissions";
 import { logAudit } from "@/lib/audit";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     // query groups by link_key and keeps only groups where the count of
     // DISTINCT providers is >= 2.
     const duplicates: DuplicateGuestRow[] = await db.$queryRaw(
-      sql`SELECT
+      Prisma.sql`SELECT
          link_key,
          link_type,
          g."id"        AS guest_id,
@@ -147,15 +147,15 @@ export async function POST(req: NextRequest) {
 
     // Buggy original query kept for fallback — fixed with sql.join for PG compatibility
     const reservations: ReservationRow[] = await db.$queryRaw(
-      sql`SELECT
+      Prisma.sql`SELECT
          CASE
-           WHEN LOWER(TRIM(g."phone")) IN (${sql.join(guestIdsToQuery.map(id => sql`${id}`), sql`, `)}) THEN LOWER(TRIM(g."phone"))
+           WHEN LOWER(TRIM(g."phone")) IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)}) THEN LOWER(TRIM(g."phone"))
            ELSE LOWER(TRIM(g."idNumber"))
          END AS link_key_dummy,
          r."checkIn", r."status", g."id" AS guest_id
        FROM "Reservation" r
        JOIN "Guest" g ON r."guestId" = g."id"
-       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => sql`${id}`), sql`, `)})
+       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)})
        ORDER BY r."checkIn" ASC`
     );
 
@@ -168,9 +168,9 @@ export async function POST(req: NextRequest) {
 
     // Simpler: fetch just checkIn + status + guestId
     const reservationRows: { guestId: string; checkIn: string; status: string }[] = await db.$queryRaw(
-      sql`SELECT r."guestId", r."checkIn", r."status"
+      Prisma.sql`SELECT r."guestId", r."checkIn", r."status"
        FROM "Reservation" r
-       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => sql`${id}`), sql`, `)})
+       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)})
        ORDER BY r."checkIn" ASC`
     );
     for (const r of reservationRows) {

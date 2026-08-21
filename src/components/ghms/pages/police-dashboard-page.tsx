@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { useAppStore } from "@/lib/store";
@@ -67,12 +68,7 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   SUSPENDED: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  APPROVED: "Approved",
-  PENDING: "Pending",
-  REJECTED: "Rejected",
-  SUSPENDED: "Suspended",
-};
+// STATUS_LABELS replaced by t() in component
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", minimumFractionDigits: 0 }).format(amount);
@@ -87,6 +83,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function PoliceDashboardPage() {
+  const { t } = useTranslation("policeDashboard");
   const { refreshKey, currentUser } = useAppStore();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
 
@@ -144,51 +141,60 @@ export default function PoliceDashboardPage() {
     fetchData();
   }, [fetchData, refreshKey]);
 
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      APPROVED: t("statusApproved"),
+      PENDING: t("statusPending"),
+      REJECTED: t("statusRejected"),
+      SUSPENDED: t("statusSuspended"),
+    };
+    return map[status] || status;
+  };
+
   const kpiCards = dashboard
     ? [
         {
-          title: "Providers",
+          title: t("kpiProviders"),
           value: dashboard.totalProviders,
           icon: Building2,
           color: "text-slate-600",
           bg: "bg-slate-100",
         },
         {
-          title: "Approved",
+          title: t("kpiApproved"),
           value: dashboard.providers.filter((p) => p.status === "APPROVED").length,
           icon: CheckCircle2,
           color: "text-emerald-600",
           bg: "bg-emerald-50",
         },
         {
-          title: "Pending",
+          title: t("kpiPending"),
           value: dashboard.providers.filter((p) => p.status === "PENDING").length,
           icon: Clock,
           color: "text-yellow-600",
           bg: "bg-yellow-50",
         },
         {
-          title: "Rooms",
+          title: t("kpiRooms"),
           value: dashboard.totalRooms,
           icon: DoorOpen,
           color: "text-sky-600",
           bg: "bg-sky-50",
         },
         {
-          title: "Active",
+          title: t("kpiActive"),
           value: dashboard.activeReservations,
           icon: Users,
           color: "text-violet-600",
           bg: "bg-violet-50",
         },
         {
-          title: "Total Revenue",
+          title: t("kpiTotalRevenue"),
           value: formatCurrency(dashboard.revenue),
           icon: Banknote,
           color: "text-emerald-600",
           bg: "bg-emerald-50",
         },
-
       ]
     : [];
 
@@ -197,8 +203,8 @@ export default function PoliceDashboardPage() {
       {/* Top bar: title + anomaly toggle */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Police Dashboard</h1>
-          <p className="text-xs sm:text-sm text-gray-500">Overview of all registered guesthouses</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
+          <p className="text-xs sm:text-sm text-gray-500">{t("pageSubtitle")}</p>
         </div>
         {/* Anomaly Detection Toggle — ADMIN only */}
         <div className="shrink-0">
@@ -210,7 +216,7 @@ export default function PoliceDashboardPage() {
                 ? "border-violet-200 bg-gradient-to-r from-violet-50 to-fuchsia-50 shadow-sm"
                 : "border-slate-200 bg-slate-50 hover:bg-slate-100"
             } ${!isAdmin ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-            title={!isAdmin ? "Only ADMIN can toggle" : anomalyEnabled ? "Click to disable detection" : "Click to enable detection"}
+            title={!isAdmin ? t("tooltipAdminOnly") : anomalyEnabled ? t("tooltipDisable") : t("tooltipEnable")}
           >
             <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
               anomalyEnabled ? "bg-violet-500 text-white" : "bg-slate-200 text-slate-400"
@@ -225,10 +231,10 @@ export default function PoliceDashboardPage() {
             </div>
             <div className="hidden sm:block text-left">
               <p className={`text-xs font-bold leading-tight ${anomalyEnabled ? "text-violet-800" : "text-slate-600"}`}>
-                Smart Detection
+                {t("smartDetection")}
               </p>
               <p className={`text-[10px] leading-tight mt-0.5 ${anomalyEnabled ? "text-violet-600" : "text-slate-400"}`}>
-                {anomalyEnabled ? "Active" : "Inactive"}
+                {anomalyEnabled ? t("active") : t("inactive")}
               </p>
             </div>
             {/* Toggle switch */}
@@ -280,7 +286,7 @@ export default function PoliceDashboardPage() {
         <CardHeader className="px-4 pb-2 sm:px-6 sm:pb-3">
           <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
             <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-            Provider Overview
+            {t("overviewTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -293,7 +299,7 @@ export default function PoliceDashboardPage() {
           ) : !dashboard?.providers.length ? (
             <div className="flex flex-col items-center py-10 sm:py-12 text-center">
               <AlertCircle className="mb-2 h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground/40" />
-              <p className="text-xs sm:text-sm text-muted-foreground">No provider data available</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t("overviewEmpty")}</p>
             </div>
           ) : (
             <>
@@ -307,19 +313,19 @@ export default function PoliceDashboardPage() {
                         <p className="truncate font-medium text-sm">{p.name}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <DoorOpen className="h-3 w-3" /> {p.rooms} rooms
+                            <DoorOpen className="h-3 w-3" /> {t("roomsCount", { count: p.rooms })}
                           </span>
                           <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" /> {p.activeReservations} active
+                            <Users className="h-3 w-3" /> {t("activeCount", { count: p.activeReservations })}
                           </span>
                         </div>
                       </div>
                       <Badge variant="secondary" className={`shrink-0 text-[10px] ${STATUS_BADGE_CLASS[p.status] || ""}`}>
-                        {STATUS_LABELS[p.status] || p.status}
+                        {getStatusLabel(p.status)}
                       </Badge>
                     </div>
                     <div className="mt-2 flex items-center justify-between border-t pt-2">
-                      <span className="text-[10px] text-muted-foreground">Monthly Revenue</span>
+                      <span className="text-[10px] text-muted-foreground">{t("monthlyRevenue")}</span>
                       <span className="text-xs font-semibold text-emerald-600">{formatCurrency(p.revenue)}</span>
                     </div>
                   </div>
@@ -331,11 +337,11 @@ export default function PoliceDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Provider Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-center">Rooms</TableHead>
-                      <TableHead className="text-center">Active Reservations</TableHead>
-                      <TableHead className="text-right">Monthly Revenue</TableHead>
+                      <TableHead>{t("colProviderName")}</TableHead>
+                      <TableHead>{t("colStatus")}</TableHead>
+                      <TableHead className="text-center">{t("colRooms")}</TableHead>
+                      <TableHead className="text-center">{t("colActiveReservations")}</TableHead>
+                      <TableHead className="text-right">{t("monthlyRevenue")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -344,7 +350,7 @@ export default function PoliceDashboardPage() {
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>
                           <Badge variant="secondary" className={STATUS_BADGE_CLASS[p.status] || ""}>
-                            {STATUS_LABELS[p.status] || p.status}
+                            {getStatusLabel(p.status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">{p.rooms}</TableCell>

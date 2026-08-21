@@ -434,9 +434,13 @@ export default function AnomaliesPage() {
       {anomalies.length > 0 && (
         <PaginationControls
           currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
           pageSize={pagination.pageSize}
-          totalItems={pagination.totalItems}
-          onPageChange={pagination.setCurrentPage}
+          pageSizeOptions={pagination.pageSizeOptions}
+          totalItems={pagination.rangeInfo.total}
+          goToPage={pagination.goToPage}
+          setPageSize={pagination.setPageSize}
+          rangeInfo={pagination.rangeInfo}
         />
       )}
 

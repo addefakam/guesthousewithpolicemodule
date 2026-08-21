@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiGetReports } from "@/lib/api";
 import { toast } from "sonner";
@@ -117,6 +118,7 @@ function formatCurrency(amount: number) {
 }
 
 export default function ReportsPage() {
+  const { t } = useTranslation("reports");
   const { refreshKey } = useAppStore();
   const today = new Date().toISOString().split("T")[0];
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
@@ -406,9 +408,9 @@ export default function ReportsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
-          <p className="text-sm text-muted-foreground">
-            View financial summaries and analytics.
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("pageSubtitle")}
           </p>
         </div>
         <div className="flex gap-2">

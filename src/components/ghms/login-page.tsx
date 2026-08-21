@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Building2, KeyRound, UserPlus, LogIn, Upload } from "lucide-react";
 
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/select";
 
 export default function LoginPage() {
+  const { t } = useTranslation("login");
   const { setCurrentUser, setCurrentPage } = useAppStore();
 
   const [activeTab, setActiveTab] = useState("login");
@@ -67,7 +69,7 @@ export default function LoginPage() {
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     if (!loginUsername.trim() || !loginPassword.trim()) {
-      toast.error("Please enter both username and password.");
+      toast.error(t("errorEmptyCredentials"));
       return;
     }
     setLoginLoading(true);
@@ -81,10 +83,10 @@ export default function LoginPage() {
       // Route based on role
       const page = userData.role === "POLICE" ? "police-dashboard" : userData.role === "SUPERUSER" ? "super-admin-dashboard" : "dashboard";
       setCurrentPage(page);
-      toast.success(`Welcome back, ${userData.name}!`);
+      toast.success(t("welcomeBack", { name: userData.name }));
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Login failed. Please try again.";
+        err instanceof Error ? err.message : t("loginFailed");
       toast.error(message);
     } finally {
       setLoginLoading(false);
@@ -106,15 +108,15 @@ export default function LoginPage() {
       !regSubCity ||
       !regWoreda
     ) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t("errorEmptyFields"));
       return;
     }
     if (!isValidPhone(regPhone)) {
-      toast.error("Invalid phone number format (7-15 digits)");
+      toast.error(t("errorInvalidPhone"));
       return;
     }
     if (!isValidEmail(regEmail)) {
-      toast.error("Invalid email address format");
+      toast.error(t("errorInvalidEmail"));
       return;
     }
     setRegLoading(true);
@@ -137,9 +139,7 @@ export default function LoginPage() {
       }
 
       await apiRegisterProvider(formData);
-      toast.success(
-        "Registration submitted successfully! An admin will review and activate your account."
-      );
+      toast.success(t("registrationSuccess"));
       // Reset form
       setRegName("");
       setRegPhone("");
@@ -158,7 +158,7 @@ export default function LoginPage() {
       const message =
         err instanceof Error
           ? err.message
-          : "Registration failed. Please try again.";
+          : t("registrationFailed");
       toast.error(message);
     } finally {
       setRegLoading(false);
@@ -178,10 +178,10 @@ export default function LoginPage() {
             <Building2 className="size-7 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-            Guest House Management
+            {t("title")}
           </CardTitle>
           <CardDescription className="text-slate-500">
-            Sign in to your account or register a new guest house
+            {t("subtitle")}
           </CardDescription>
         </CardHeader>
 
@@ -190,11 +190,11 @@ export default function LoginPage() {
             <TabsList className="mb-6 grid w-full grid-cols-2">
               <TabsTrigger value="login" className="gap-1.5">
                 <LogIn className="size-3.5" />
-                Login
+                {t("tabLogin")}
               </TabsTrigger>
               <TabsTrigger value="register" className="gap-1.5">
                 <UserPlus className="size-3.5" />
-                Register
+                {t("tabRegister")}
               </TabsTrigger>
             </TabsList>
 
@@ -202,12 +202,12 @@ export default function LoginPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="login-username">Username</Label>
+                  <Label htmlFor="login-username">{t("username")}</Label>
                   <div className="relative">
                     <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       id="login-username"
-                      placeholder="Enter your username"
+                      placeholder={t("usernamePlaceholder")}
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
                       className="pl-9"
@@ -217,13 +217,13 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password">{t("password")}</Label>
                   <div className="relative">
                     <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="Enter your password"
+                      placeholder={t("passwordPlaceholder")}
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className="pl-9"
@@ -239,10 +239,10 @@ export default function LoginPage() {
                   {loginLoading ? (
                     <span className="flex items-center gap-2">
                       <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Signing in...
+                      {t("signingIn")}
                     </span>
                   ) : (
-                    "Sign In"
+                    t("signIn")
                   )}
                 </Button>
               </form>
@@ -254,35 +254,35 @@ export default function LoginPage() {
                 {/* Contact Information */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Contact Information
+                    {t("contactInfo")}
                   </p>
                   <div className="grid gap-3">
                     <div className="grid gap-2">
-                      <Label htmlFor="reg-name">Full Name *</Label>
+                      <Label htmlFor="reg-name">{t("fullName")}</Label>
                       <Input
                         id="reg-name"
-                        placeholder="Your full name"
+                        placeholder={t("fullNamePlaceholder")}
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-phone">Phone *</Label>
+                        <Label htmlFor="reg-phone">{t("phone")}</Label>
                         <Input
                           id="reg-phone"
                           type="tel"
-                          placeholder="Phone number"
+                          placeholder={t("phonePlaceholder")}
                           value={regPhone}
                           onChange={(e) => setRegPhone(e.target.value)}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-email">Email *</Label>
+                        <Label htmlFor="reg-email">{t("email")}</Label>
                         <Input
                           id="reg-email"
                           type="email"
-                          placeholder="Email address"
+                          placeholder={t("emailPlaceholder")}
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
                         />
@@ -294,45 +294,45 @@ export default function LoginPage() {
                 {/* Guest House Details */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Guest House Details
+                    {t("guestHouseDetails")}
                   </p>
                   <div className="grid gap-3">
                     <div className="grid gap-2">
-                      <Label htmlFor="reg-gh-name">Guest House Name *</Label>
+                      <Label htmlFor="reg-gh-name">{t("guestHouseName")}</Label>
                       <Input
                         id="reg-gh-name"
-                        placeholder="Name of your guest house"
+                        placeholder={t("guestHouseNamePlaceholder")}
                         value={regGuestHouseName}
                         onChange={(e) => setRegGuestHouseName(e.target.value)}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-type">Type *</Label>
+                        <Label htmlFor="reg-type">{t("type")}</Label>
                         <Select value={regType} onValueChange={setRegType}>
                           <SelectTrigger id="reg-type" className="w-full">
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue placeholder={t("selectType")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="GUEST_HOUSE">
-                              Guest House
+                              {t("typeGuestHouse")}
                             </SelectItem>
-                            <SelectItem value="HOTEL">Hotel</SelectItem>
-                            <SelectItem value="LODGE">Lodge</SelectItem>
-                            <SelectItem value="HOMESTAY">Homestay</SelectItem>
-                            <SelectItem value="RESORT">Resort</SelectItem>
+                            <SelectItem value="HOTEL">{t("typeHotel")}</SelectItem>
+                            <SelectItem value="LODGE">{t("typeLodge")}</SelectItem>
+                            <SelectItem value="HOMESTAY">{t("typeHomestay")}</SelectItem>
+                            <SelectItem value="RESORT">{t("typeResort")}</SelectItem>
                             <SelectItem value="DHARAMSHALA">
-                              Dharamshala
+                              {t("typeDharamshala")}
                             </SelectItem>
-                            <SelectItem value="OTHER">Other</SelectItem>
+                            <SelectItem value="OTHER">{t("typeOther")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-license">License No. *</Label>
+                        <Label htmlFor="reg-license">{t("licenseNo")}</Label>
                         <Input
                           id="reg-license"
-                          placeholder="License number"
+                          placeholder={t("licensePlaceholder")}
                           value={regLicenseNo}
                           onChange={(e) => setRegLicenseNo(e.target.value)}
                         />
@@ -340,7 +340,7 @@ export default function LoginPage() {
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="reg-license-file">
-                        Upload License Document
+                        {t("uploadLicense")}
                       </Label>
                       <div
                         className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50"
@@ -359,12 +359,12 @@ export default function LoginPage() {
                           <p className="truncate text-sm font-medium text-slate-700">
                             {regLicenseFile
                               ? regLicenseFile.name
-                              : "Click to upload license document"}
+                              : t("clickToUpload")}
                           </p>
                           <p className="text-xs text-slate-400">
                             {regLicenseFile
                               ? `${(regLicenseFile.size / 1024).toFixed(1)} KB`
-                              : "PDF, JPG, or PNG (max 5MB)"}
+                              : t("uploadHint")}
                           </p>
                         </div>
                       </div>
@@ -376,7 +376,7 @@ export default function LoginPage() {
                         onChange={(e) => {
                           const file = e.target.files?.[0] ?? null;
                           if (file && file.size > 5 * 1024 * 1024) {
-                            toast.error("File size must be under 5MB.");
+                            toast.error(t("errorFileTooLarge"));
                             return;
                           }
                           setRegLicenseFile(file);
@@ -389,19 +389,19 @@ export default function LoginPage() {
                 {/* Location — Bishoftu */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Location
+                    {t("location")}
                   </p>
                   <div className="grid gap-3">
                     <div className="grid gap-2">
-                      <Label>City</Label>
+                      <Label>{t("city")}</Label>
                       <Input value="Bishoftu" disabled className="bg-slate-100" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-subcity">Sub-City *</Label>
+                        <Label htmlFor="reg-subcity">{t("subCity")}</Label>
                         <Select value={regSubCity} onValueChange={(v) => { setRegSubCity(v); setRegWoreda(""); }}>
                           <SelectTrigger id="reg-subcity" className="w-full">
-                            <SelectValue placeholder="Select sub-city" />
+                            <SelectValue placeholder={t("selectSubCity")} />
                           </SelectTrigger>
                           <SelectContent>
                             {Object.keys(SUB_CITY_WOREDAS).map((sc) => (
@@ -411,10 +411,10 @@ export default function LoginPage() {
                         </Select>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-woreda">Woreda *</Label>
+                        <Label htmlFor="reg-woreda">{t("woreda")}</Label>
                         <Select value={regWoreda} onValueChange={setRegWoreda} disabled={!regSubCity}>
                           <SelectTrigger id="reg-woreda" className="w-full">
-                            <SelectValue placeholder={regSubCity ? "Select woreda" : "Select sub-city first"} />
+                            <SelectValue placeholder={regSubCity ? t("selectWoreda") : t("selectSubCityFirst")} />
                           </SelectTrigger>
                           <SelectContent>
                             {regSubCity && SUB_CITY_WOREDAS[regSubCity]?.map((w) => (
@@ -430,24 +430,24 @@ export default function LoginPage() {
                 {/* Login Credentials */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Desired Login Credentials
+                    {t("desiredCredentials")}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-2">
-                      <Label htmlFor="reg-username">Username *</Label>
+                      <Label htmlFor="reg-username">{t("username")} *</Label>
                       <Input
                         id="reg-username"
-                        placeholder="Desired username"
+                        placeholder={t("desiredUsername")}
                         value={regUsername}
                         onChange={(e) => setRegUsername(e.target.value)}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="reg-password">Password *</Label>
+                      <Label htmlFor="reg-password">{t("password")} *</Label>
                       <Input
                         id="reg-password"
                         type="password"
-                        placeholder="Password"
+                        placeholder={t("passwordPlaceholder")}
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                       />
@@ -463,19 +463,18 @@ export default function LoginPage() {
                   {regLoading ? (
                     <span className="flex items-center gap-2">
                       <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Submitting...
+                      {t("submitting")}
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <UserPlus className="size-4" />
-                      Register Guest House
+                      {t("registerGuestHouse")}
                     </span>
                   )}
                 </Button>
 
                 <p className="text-center text-xs text-slate-400">
-                  Your registration will be reviewed by an administrator before
-                  activation.
+                  {t("reviewNotice")}
                 </p>
               </form>
             </TabsContent>

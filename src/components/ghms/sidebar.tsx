@@ -42,6 +42,8 @@ import {
   Megaphone,
 } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
+
 import { useAppStore, type CurrentUser } from "@/lib/store";
 import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -307,6 +309,7 @@ function NavItemButton({
   currentPage: string;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("sidebar");
   const Icon = item.icon;
   const isActive = currentPage === item.page;
 
@@ -327,7 +330,7 @@ function NavItemButton({
           isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
         }`}
       />
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">{t(item.label)}</span>
       {item.badge && (
         <Badge
           variant="secondary"
@@ -455,6 +458,7 @@ function SidebarContent({
   collapsed: boolean;
   onToggleCollapse: () => void;
 }) {
+  const { t } = useTranslation("sidebar");
   const { jointSession, setJointLoginDialogOpen, subscription } = useAppStore();
   const navItems = getNavItems(user);
   const roleDisplay = getRoleDisplay(user.role);
@@ -507,7 +511,7 @@ function SidebarContent({
                     onClick={() => onNavigate("settings")}
                   >
                     <UserCircle className="size-4 text-slate-500" />
-                    <span>My Profile</span>
+                    <span>{t("My Profile")}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -515,7 +519,7 @@ function SidebarContent({
                     onClick={() => onLogout()}
                   >
                     <LogOut className="size-4" />
-                    <span>Sign Out</span>
+                    <span>{t("Sign Out")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -565,7 +569,7 @@ function SidebarContent({
             <>
               <Separator className="my-2 bg-slate-200/60" />
               <p className={`px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 ${collapsed ? "text-center" : ""}`}>
-                Joint Session
+                {t("Joint Session")}
               </p>
               <NavItemButton
                 item={{ page: "joint-operations", label: "Joint Operations", icon: ShieldCheck }}
@@ -574,7 +578,7 @@ function SidebarContent({
               />
               {!collapsed && (
                 <p className="px-3 mt-2 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
-                  Police Tools
+                  {t("Police Tools")}
                 </p>
               )}
               {JOINT_SESSION_POLICE_ITEMS.map((item, idx) => {
@@ -589,7 +593,7 @@ function SidebarContent({
                       <>
                         <Separator className="my-2 bg-slate-200/60" />
                         <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                          Suspect Watch
+                          {t("Suspect Watch")}
                         </p>
                       </>
                     )}
@@ -613,7 +617,7 @@ function SidebarContent({
                 className="flex w-full items-center gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 text-sm font-medium text-amber-700 transition-all hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800 outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <ShieldCheck className="size-[18px] shrink-0" />
-                <span>Start Joint Session</span>
+                <span>{t("Start Joint Session")}</span>
               </button>
             </>
           )}
@@ -647,7 +651,7 @@ function SidebarContent({
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ChevronLeft className="size-[18px] text-slate-400" />
-            <span>Collapse</span>
+            <span>{t("Collapse")}</span>
           </button>
         )}
       </div>

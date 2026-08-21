@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetNotifications,
@@ -283,12 +284,14 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation("notifications");
   const { refreshKey, currentUser } = useAppStore();
   const isSuperuser = currentUser?.role === "SUPERUSER";
   const isOperator = currentUser?.role === "OPERATOR";
   const canSubmitConcern = isSuperuser || isOperator;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
 
   // Concern dialog
   const [concernOpen, setConcernOpen] = useState(false);
@@ -373,16 +376,24 @@ export default function NotificationsPage() {
     );
   }
 
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === "UNREAD") return !n.isRead;
+    if (filter === "POLICE") return detectBroadcastPriority(n.title) !== null;
+    if (filter === "SUSPECT") return detectSuspectSeverity(n.title) !== null;
+    if (filter === "SYSTEM") return n.type !== "CONCERN" && !detectBroadcastPriority(n.title) && !detectSuspectSeverity(n.title);
+    return true;
+  });
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {canSubmitConcern ? "Notifications & Concerns" : "Notifications"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {notifications.filter((n) => !n.isRead).length} unread
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("pageSubtitle")}
           </p>
         </div>
         {canSubmitConcern && (
@@ -393,7 +404,50 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={filter === "ALL" ? "default" : "outline"}
+          onClick={() => setFilter("ALL")}
+          className="text-xs"
+        >
+          {t("filterAll")}
+        </Button>
+        <Button
+          variant={filter === "UNREAD" ? "default" : "outline"}
+          onClick={() => setFilter("UNREAD")}
+          className="text-xs gap-1.5"
+        >
+          <Bell className="h-3.5 w-3.5" />
+          {t("filterUnread")} {unreadCount > 0 && <span className="bg-primary-foreground text-primary px-1.5 py-0.5 rounded-full text-[10px]">{unreadCount}</span>}
+        </Button>
+        <Button
+          variant={filter === "POLICE" ? "default" : "outline"}
+          onClick={() => setFilter("POLICE")}
+          className="text-xs gap-1.5"
+        >
+          <ShieldAlert className="h-3.5 w-3.5" />
+          {t("filterPolice")}
+        </Button>
+        <Button
+          variant={filter === "SUSPECT" ? "default" : "outline"}
+          onClick={() => setFilter("SUSPECT")}
+          className="text-xs gap-1.5"
+        >
+          <User className="h-3.5 w-3.5" />
+          {t("filterSuspects")}
+        </Button>
+        <Button
+          variant={filter === "SYSTEM" ? "default" : "outline"}
+          onClick={() => setFilter("SYSTEM")}
+          className="text-xs gap-1.5"
+        >
+          <Info className="h-3.5 w-3.5" />
+          {t("filterSystem")}
+        </Button>
+      </div>
+
+      {filteredNotifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <BellOff className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">No notifications</p>
@@ -405,7 +459,7 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map((n) => {
+          {filteredNotifications.map((n) => {
             const isBroadcast = detectBroadcastPriority(n.title);
             const suspectSeverity = detectSuspectSeverity(n.title);
             const priorityStyle = isBroadcast ? PRIORITY_STYLE[isBroadcast] : null;

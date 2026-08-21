@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
           const take = 500;
           while (true) {
             const rows = await db.$queryRaw<{name: string; severity: string; guestName: string; guestPhone: string; providerName: string; matchType: string; createdAt: Date}[]>(
-              sql`SELECT sp."name", sp."severity", sm."guestName", sm."guestPhone", sm."providerName", sm."matchType", sm."createdAt"
+              Prisma.sql`SELECT sp."name", sp."severity", sm."guestName", sm."guestPhone", sm."providerName", sm."matchType", sm."createdAt"
                FROM "SuspectMatch" sm
                LEFT JOIN "SuspectedPerson" sp ON sm."suspectedPersonId" = sp."id"
                ORDER BY sm."createdAt" DESC
@@ -292,7 +292,7 @@ export async function GET(req: NextRequest) {
           let first = true;
           while (skip < MAX_ROWS_PER_ENTITY) {
             const rows = await db.$queryRaw<Record<string, unknown>[]>(
-              sql`SELECT sm.*, sp."name" as "suspectName", sp."severity" as "suspectSeverity"
+              Prisma.sql`SELECT sm.*, sp."name" as "suspectName", sp."severity" as "suspectSeverity"
                FROM "SuspectMatch" sm
                LEFT JOIN "SuspectedPerson" sp ON sm."suspectedPersonId" = sp."id"
                ORDER BY sm."createdAt" DESC

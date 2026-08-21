@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiDashboard } from "@/lib/api";
 import { toast } from "sonner";
@@ -49,12 +50,8 @@ const STATUS_COLORS: Record<string, string> = {
   RESERVED: "bg-sky-500",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  AVAILABLE: "Available",
-  OCCUPIED: "Occupied",
-  MAINTENANCE: "Maintenance",
-  RESERVED: "Reserved",
-};
+// We will use t() for these dynamically in the component
+// const STATUS_LABELS: Record<string, string> = { ... }
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   INFO: <Info className="h-4 w-4 text-sky-500" />,
@@ -64,6 +61,7 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function DashboardPage() {
+  const { t } = useTranslation("dashboard");
   const { refreshKey } = useAppStore();
   const [data, setData] = useState<DashboardData | null>(null);
   const [activity, setActivity] = useState<ActivityLog[]>([]);
@@ -82,7 +80,7 @@ export default function DashboardPage() {
         useAppStore.getState().setSubscription(raw.subscription);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load dashboard";
+      const message = err instanceof Error ? err.message : t("errorLoadFailed");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -99,6 +97,11 @@ export default function DashboardPage() {
     : [];
   const maxRevenue = revenueData.length > 0 ? Math.max(...revenueData.map((d) => d.value)) : 1;
 
+  const getStatusLabel = (status: string) => {
+    const key = `status${status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}`;
+    return t(key as any, { defaultValue: status });
+  };
+
   const occupancySegments = data
     ? Object.entries(data.roomsByStatus || {})
         .filter(([, count]) => count > 0)
@@ -107,7 +110,7 @@ export default function DashboardPage() {
           count,
           pct: data.totalRooms > 0 ? (count / data.totalRooms) * 100 : 0,
           color: STATUS_COLORS[status] || "bg-gray-400",
-          label: STATUS_LABELS[status] || status,
+          label: getStatusLabel(status),
         }))
     : [];
 
@@ -119,17 +122,17 @@ export default function DashboardPage() {
     const date = new Date(dateStr);
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return t("timeJustNow");
+    if (diffMins < 60) return t("timeMinsAgo", { count: diffMins });
     const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}h ago`;
+    if (diffHrs < 24) return t("timeHrsAgo", { count: diffHrs });
     const diffDays = Math.floor(diffHrs / 24);
-    return `${diffDays}d ago`;
+    return t("timeDaysAgo", { count: diffDays });
   };
 
   const kpis = [
     {
-      title: "Total Rooms",
+      title: t("kpiTotalRooms"),
       value: data?.totalRooms ?? 0,
       icon: <DoorOpen className="h-5 w-5" />,
       color: "text-sky-600",
@@ -137,25 +140,25 @@ export default function DashboardPage() {
       border: "border-sky-100",
     },
     {
-      title: "Occupancy Rate",
+      title: t("kpiOccupancyRate"),
       value: `${data?.occupancyRate ?? 0}%`,
       icon: <TrendingUp className="h-5 w-5" />,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
       border: "border-emerald-100",
-      subtitle: `${data?.roomsByStatus.OCCUPIED ?? 0} of ${data?.totalRooms ?? 0} rooms`,
+      subtitle: t("kpiOccupiedOfTotal", { occupied: data?.roomsByStatus.OCCUPIED ?? 0, total: data?.totalRooms ?? 0 }),
     },
     {
-      title: "Active Reservations",
+      title: t("kpiActiveReservations"),
       value: data?.activeReservations ?? 0,
       icon: <CalendarCheck className="h-5 w-5" />,
       color: "text-violet-600",
       bg: "bg-violet-50",
       border: "border-violet-100",
-      subtitle: `${data?.todayCheckins ?? 0} check-ins today`,
+      subtitle: t("kpiCheckinsToday", { count: data?.todayCheckins ?? 0 }),
     },
     {
-      title: "Monthly Revenue",
+      title: t("kpiMonthlyRevenue"),
       value: formatCurrency(data?.totalRevenue ?? 0),
       icon: <DollarSign className="h-5 w-5" />,
       color: "text-amber-600",
@@ -185,8 +188,8 @@ export default function DashboardPage() {
     <div className="space-y-6 p-4 md:p-6">
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Overview of your guest house performance</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t("pageSubtitle")}</p>
       </div>
 
       {/* KPI Cards */}
@@ -218,14 +221,14 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <DollarSign className="h-4 w-4 text-amber-500" />
-              Revenue (Last 7 Days)
+              {t("chartRevenueTitle")}
             </CardTitle>
-            <CardDescription>Daily payment totals from last 7 days</CardDescription>
+            <CardDescription>{t("chartRevenueDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             {revenueData.length === 0 || revenueData.every((d) => d.value === 0) ? (
               <div className="flex items-center justify-center h-[180px] text-sm text-gray-400">
-                No payments recorded in the last 7 days
+                {t("chartRevenueEmpty")}
               </div>
             ) : (
               <div className="flex items-end justify-between gap-2" style={{ height: 180 }}>
@@ -253,9 +256,9 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
-              Room Occupancy
+              {t("chartOccupancyTitle")}
             </CardTitle>
-            <CardDescription>Current room status distribution</CardDescription>
+            <CardDescription>{t("chartOccupancyDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-6">
@@ -276,7 +279,7 @@ export default function DashboardPage() {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-sm">
                     <span className="text-2xl font-bold text-gray-900">{data?.occupancyRate ?? 0}%</span>
-                    <span className="text-xs text-gray-500">Occupied</span>
+                    <span className="text-xs text-gray-500">{t("chartOccupancyLabel")}</span>
                   </div>
                 </div>
               </div>
@@ -293,7 +296,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {occupancySegments.length === 0 && (
-                  <p className="col-span-2 text-center text-sm text-gray-400">No rooms yet</p>
+                  <p className="col-span-2 text-center text-sm text-gray-400">{t("chartOccupancyEmpty")}</p>
                 )}
               </div>
             </div>
@@ -306,9 +309,9 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Clock className="h-4 w-4 text-sky-500" />
-              Today&apos;s Schedule
+              {t("scheduleTitle")}
             </CardTitle>
-            <CardDescription>Check-ins and check-outs for today</CardDescription>
+            <CardDescription>{t("scheduleDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -319,14 +322,14 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-emerald-800">
-                    {data?.todayCheckins ?? 0} Check-ins Expected
+                    {t("scheduleCheckinsExpected", { count: data?.todayCheckins ?? 0 })}
                   </p>
                   <p className="text-xs text-emerald-600 mt-0.5">
-                    Guests scheduled to arrive today
+                    {t("scheduleCheckinsDesc")}
                   </p>
                 </div>
                 <Badge className="bg-emerald-600 hover:bg-emerald-700 border-0">
-                  Arrivals
+                  {t("scheduleArrivals")}
                 </Badge>
               </div>
 
@@ -337,27 +340,27 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-rose-800">
-                    {data?.todayCheckouts ?? 0} Check-outs Expected
+                    {t("scheduleCheckoutsExpected", { count: data?.todayCheckouts ?? 0 })}
                   </p>
                   <p className="text-xs text-rose-600 mt-0.5">
-                    Guests scheduled to depart today
+                    {t("scheduleCheckoutsDesc")}
                   </p>
                 </div>
                 <Badge className="bg-rose-600 hover:bg-rose-700 border-0">
-                  Departures
+                  {t("scheduleDepartures")}
                 </Badge>
               </div>
 
               {/* Room Status Summary */}
               <Separator />
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Room Status</p>
+                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">{t("roomStatusLabel")}</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                  {["AVAILABLE", "OCCUPIED", "MAINTENANCE", "RESERVED"].map((key) => (
                     <div key={key} className="text-center rounded-lg border p-2 bg-gray-50/50">
                       <div className="flex items-center justify-center gap-1.5 mb-1">
                         <div className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[key]}`} />
-                        <span className="text-xs text-gray-600">{label}</span>
+                        <span className="text-xs text-gray-600">{getStatusLabel(key)}</span>
                       </div>
                       <span className="text-lg font-bold text-gray-900">
                         {data?.roomsByStatus[key] ?? 0}
@@ -375,15 +378,15 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Activity className="h-4 w-4 text-violet-500" />
-            Recent Activity
+            {t("activityTitle")}
           </CardTitle>
-          <CardDescription>Latest actions and events</CardDescription>
+          <CardDescription>{t("activityDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {activity.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-400">
               <Activity className="h-8 w-8 mb-2" />
-              <p className="text-sm">No recent activity</p>
+              <p className="text-sm">{t("activityEmpty")}</p>
             </div>
           ) : (
             <ScrollArea className="max-h-96">

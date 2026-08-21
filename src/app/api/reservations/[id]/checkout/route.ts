@@ -51,7 +51,7 @@ export async function POST(
     const { userId, userName } = getLogUserInfo(req);
     logStaffActivity({
       req, userId, userName, action: "CHECKOUT", targetType: "RESERVATION", targetId: id,
-      details: { guestName: updated.guest.name, roomNumber: updated.room.number, totalCost: reservation.totalCost },
+      details: { guestName: updated.guest?.name ?? "", roomNumber: updated.room?.number ?? "", totalCost: reservation.totalCost },
       providerId,
     });
 

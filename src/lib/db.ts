@@ -134,7 +134,7 @@ function createEnsuredProxy<T>(model: T): T {
 export const db = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getClient();
-    const value = (client as Record<string, unknown>)[prop as string];
+    const value = (client as unknown as Record<string, unknown>)[prop as string];
     if (typeof value === "function") {
       // Prisma namespace methods like $queryRaw, $executeRaw, $transaction
       return async (...args: unknown[]) => {

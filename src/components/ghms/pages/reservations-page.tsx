@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetReservations,
@@ -56,6 +57,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,6 +89,8 @@ import {
   ArrowRight,
   UserPlus,
   UserCheck,
+  ChevronsUpDown,
+  CalendarPlus,
 } from "lucide-react";
 import AddressFields from "@/components/shared/address-fields";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
@@ -152,13 +157,15 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
 export default function ReservationsPage() {
+  const { t } = useTranslation("reservations");
   const { refreshKey, triggerRefresh, preselectedRoom, setPreselectedRoom } = useAppStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [allGuests, setAllGuests] = useState<GuestOption[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOption[]>([]);
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [loading, setLoading] = useState(true);
 
   // Create dialog — 2-step wizard
   const [createOpen, setCreateOpen] = useState(false);
@@ -592,14 +599,14 @@ export default function ReservationsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reservations</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {reservations.length} reservation{reservations.length !== 1 ? "s" : ""} total
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="gap-2">
           <Plus className="h-4 w-4" />
-          New Reservation
+          {t("btnNewReservation")}
         </Button>
       </div>
 
@@ -622,7 +629,7 @@ export default function ReservationsPage() {
         <div className="relative sm:w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Search reservations..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -659,13 +666,13 @@ export default function ReservationsPage() {
                   <TableCell colSpan={11} className="h-32 text-center">
                     <div className="flex flex-col items-center text-gray-400">
                       <CalendarRange className="h-8 w-8 mb-2" />
-                      <p className="text-sm font-medium">No reservations found</p>
-                      <p className="text-xs mt-0.5">
-                        {statusFilter !== "ALL"
-                          ? "Try changing the filter"
-                          : search
-                            ? "Try a different search"
-                            : "Create your first reservation"}
+                      <p className="font-medium text-lg">
+                        {search || statusFilter !== "ALL" ? t("emptyNoMatch") : t("emptyNoReservations")}
+                      </p>
+                      <p className="text-sm mt-1">
+                        {search || statusFilter !== "ALL"
+                          ? t("emptyNoMatchHint")
+                          : t("emptyNoReservationsHint")}
                       </p>
                     </div>
                   </TableCell>
@@ -957,70 +964,67 @@ export default function ReservationsPage() {
           {wizardStep === 1 && (
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {/* Mode toggle */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setGuestMode("existing")}
-                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${ guestMode === "existing" ? "border-violet-400 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:bg-gray-50" }`}
-                >
-                  <UserCheck className="h-4 w-4" />
-                  Existing Guest
-                </button>
-                <button
-                  onClick={() => setGuestMode("new")}
-                  className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${ guestMode === "new" ? "border-violet-400 bg-violet-50 text-violet-700" : "border-gray-200 text-gray-600 hover:bg-gray-50" }`}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  New Guest
-                </button>
+              <div className="flex p-1 rounded-full bg-gray-100 mb-4">
+                <Button variant={guestMode === "existing" ? "default" : "ghost"} onClick={() => setGuestMode("existing")} className="flex-1 rounded-full shadow-sm">
+                  <Search className="mr-2 h-4 w-4" />
+                  {t("btnExistingGuest")}
+                </Button>
+                <Button variant={guestMode === "new" ? "default" : "ghost"} onClick={() => setGuestMode("new")} className="flex-1 rounded-full shadow-sm">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  {t("btnNewGuest")}
+                </Button>
               </div>
 
               {guestMode === "existing" ? (
                 <div className="space-y-2">
-                  <Label>Select Guest <span className="text-rose-500">*</span></Label>
-                  <Select value={selectedGuestId} onValueChange={setSelectedGuestId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Search and select a guest..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allGuests.map((g) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          <span className="flex items-center gap-2">
-                            <User className="h-3.5 w-3.5 text-gray-400" />
-                            {g.name} — {g.phone}
-                          </span>
-                        </SelectItem>
-                      ))}
-                      {allGuests.length === 0 && (
-                        <SelectItem value="__none" disabled>No guests found — create a new one</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Label>{t("labelSearchGuest")} <span className="text-rose-500">*</span></Label>
+                  <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={comboboxOpen} className="w-full justify-between font-normal">
+                        {selectedGuestId ? allGuests.find((g) => g.id === selectedGuestId)?.name : t("placeholderSearchGuest")}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder={t("placeholderSearchGuest")} />
+                        <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
+                        <CommandGroup>
+                          {allGuests.map((g) => (
+                            <CommandItem key={g.id} value={g.name} onSelect={() => { setSelectedGuestId(g.id); setComboboxOpen(false); }}>
+                              {g.name} — {g.phone}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>Full Name <span className="text-rose-500">*</span></Label>
-                      <Input placeholder="John Doe" value={newGuestForm.name} onChange={(e) => setNewGuestForm({ ...newGuestForm, name: e.target.value })} />
+                      <Label>{t("labelFullName")} <span className="text-rose-500">*</span></Label>
+                      <Input placeholder={t("placeholderFullName")} value={newGuestForm.name} onChange={(e) => setNewGuestForm({ ...newGuestForm, name: e.target.value })} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Phone <span className="text-rose-500">*</span></Label>
-                      <Input type="tel" placeholder="+251 9XX XXX XXX" value={newGuestForm.phone} onChange={(e) => setNewGuestForm({ ...newGuestForm, phone: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Email</Label>
-                      <Input type="email" placeholder="guest@email.com" value={newGuestForm.email} onChange={(e) => setNewGuestForm({ ...newGuestForm, email: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Nationality <span className="text-rose-500">*</span></Label>
-                      <Input placeholder="Ethiopian" value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                      <Label>{t("labelPhone")} <span className="text-rose-500">*</span></Label>
+                      <Input type="tel" placeholder={t("placeholderPhone")} value={newGuestForm.phone} onChange={(e) => setNewGuestForm({ ...newGuestForm, phone: e.target.value })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>ID Type <span className="text-rose-500">*</span></Label>
+                      <Label>{t("labelEmail")}</Label>
+                      <Input type="email" placeholder={t("placeholderEmail")} value={newGuestForm.email} onChange={(e) => setNewGuestForm({ ...newGuestForm, email: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("labelNationality")} <span className="text-rose-500">*</span></Label>
+                      <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>{t("labelIdType")} <span className="text-rose-500">*</span></Label>
                       <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1031,12 +1035,12 @@ export default function ReservationsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>ID Number</Label>
-                      <Input placeholder="ID / Passport number" value={newGuestForm.idNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, idNumber: e.target.value })} />
+                      <Label>{t("labelIdNumber")}</Label>
+                      <Input placeholder={t("placeholderIdNumber")} value={newGuestForm.idNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, idNumber: e.target.value })} />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Guest Address</Label>
+                    <Label>{t("labelGuestAddress")}</Label>
                     <AddressFields
                       value={{
                         region: newGuestForm.region,
@@ -1052,12 +1056,12 @@ export default function ReservationsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>Plate Number (if has car)</Label>
-                      <Input placeholder="e.g. AA 12345 BC" value={newGuestForm.plateNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, plateNumber: e.target.value })} />
+                      <Label>{t("labelPlateNumber")}</Label>
+                      <Input placeholder={t("placeholderPlateNumber")} value={newGuestForm.plateNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, plateNumber: e.target.value })} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Security Weapon</Label>
-                      <Input placeholder="e.g. Pistol, Knife" value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
+                      <Label>{t("labelSecurityWeapon")}</Label>
+                      <Input placeholder={t("placeholderSecurityWeapon")} value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
                     </div>
                   </div>
                 </div>
@@ -1082,7 +1086,7 @@ export default function ReservationsPage() {
                       </p>
                       <p className="text-xs text-violet-600">
                         {guestMode === "new" ? newGuestForm.phone : g?.phone}
-                        {guestMode === "new" && " · New guest (will be created)"}
+                        {guestMode === "new" && ` · ${t("newGuestLabel")}`}
                       </p>
                     </div>
                   </div>
@@ -1090,22 +1094,22 @@ export default function ReservationsPage() {
               })()}
 
               <div className="space-y-2">
-                <Label>Room <span className="text-rose-500">*</span></Label>
+                <Label>{t("labelRoom")} <span className="text-rose-500">*</span></Label>
                 <Select value={createForm.roomId} onValueChange={(v) => setCreateForm({ ...createForm, roomId: v })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an available room..." />
+                    <SelectValue placeholder={t("placeholderSelectRoom")} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableRooms.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
                         <span className="flex items-center gap-2">
                           <BedDouble className="h-3.5 w-3.5 text-gray-400" />
-                          Room {r.number} — {r.type} — {formatCurrency(r.pricePerNight)}/night
+                          {t("roomLabel", { number: r.number, type: r.type, price: formatCurrency(r.pricePerNight) })}
                         </span>
                       </SelectItem>
                     ))}
                     {availableRooms.length === 0 && (
-                      <SelectItem value="__none" disabled>No available rooms</SelectItem>
+                      <SelectItem value="__none" disabled>{t("noAvailableRooms")}</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -1120,45 +1124,45 @@ export default function ReservationsPage() {
                   <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                     <div className="flex items-center gap-2 text-amber-800">
                       <BedDouble className="h-4 w-4" />
-                      <span className="text-xs font-semibold">Double Room — Second Guest Required</span>
+                      <span className="text-xs font-semibold">{t("doubleRoomLabel")}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="res-exception" checked={!createForm.exceptionallyReserved} onChange={() => setCreateForm({ ...createForm, exceptionallyReserved: false, exceptionReason: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
-                        <span className="text-xs font-medium">Two Guests</span>
+                        <span className="text-xs font-medium">{t("twoGuests")}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="res-exception" checked={createForm.exceptionallyReserved} onChange={() => setCreateForm({ ...createForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-amber-600" />
-                        <span className="text-xs font-medium text-amber-700">Exceptionally Reserved</span>
+                        <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
                       </label>
                     </div>
                     {!createForm.exceptionallyReserved ? (
                       <div className="space-y-2">
-                        <p className="text-[10px] text-muted-foreground">Enter the second guest details for this double room.</p>
+                        <p className="text-[10px] text-muted-foreground">{t("secondGuestDesc")}</p>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label>Second Guest Name <span className="text-rose-500">*</span></Label>
-                            <Input placeholder="Full name" value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
+                            <Label>{t("secondGuestName")} <span className="text-rose-500">*</span></Label>
+                            <Input placeholder={t("placeholderName")} value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
                           </div>
                           <div className="space-y-1.5">
-                            <Label>Second Guest Phone <span className="text-rose-500">*</span></Label>
-                            <Input type="tel" placeholder="Phone number" value={createForm.secondGuestPhone} onChange={(e) => setCreateForm({ ...createForm, secondGuestPhone: e.target.value })} />
+                            <Label>{t("secondGuestPhone")} <span className="text-rose-500">*</span></Label>
+                            <Input type="tel" placeholder={t("placeholderPhone")} value={createForm.secondGuestPhone} onChange={(e) => setCreateForm({ ...createForm, secondGuestPhone: e.target.value })} />
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Second Guest ID Number</Label>
-                          <Input placeholder="ID number (optional)" value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
+                          <Label>{t("secondGuestId")}</Label>
+                          <Input placeholder={t("placeholderId")} value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-amber-700">
                           <AlertCircle className="h-3.5 w-3.5" />
-                          <p className="text-[10px] font-medium">This room will be reserved for single occupancy with an exception.</p>
+                          <p className="text-[10px] font-medium">{t("exceptionWarning")}</p>
                         </div>
                         <div className="space-y-1.5">
-                          <Label>Exception Reason <span className="text-rose-500">*</span></Label>
-                          <Textarea placeholder="Explain why this double room is reserved for only one guest..." rows={2} value={createForm.exceptionReason} onChange={(e) => setCreateForm({ ...createForm, exceptionReason: e.target.value })} />
+                          <Label>{t("exceptionReason")} <span className="text-rose-500">*</span></Label>
+                          <Textarea placeholder={t("placeholderReason")} rows={2} value={createForm.exceptionReason} onChange={(e) => setCreateForm({ ...createForm, exceptionReason: e.target.value })} />
                         </div>
                       </div>
                     )}
@@ -1168,11 +1172,11 @@ export default function ReservationsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="check-in">Check-in <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="check-in">{t("labelCheckIn")} <span className="text-rose-500">*</span></Label>
                   <Input id="check-in" type="date" value={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkIn: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="check-out">Check-out <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="check-out">{t("labelCheckOut")} <span className="text-rose-500">*</span></Label>
                   <Input id="check-out" type="date" value={createForm.checkOut} min={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkOut: e.target.value })} />
                 </div>
               </div>
@@ -1180,17 +1184,17 @@ export default function ReservationsPage() {
               {/* Price summary */}
               {(createNights > 0 || createForm.roomId) && (
                 <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Price Summary</p>
-                  <div className="flex justify-between text-sm"><span className="text-gray-600">Room Rate</span><span className="font-medium">{formatCurrency(createRate)}/night</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-gray-600">Nights</span><span className="font-medium">{createNights}</span></div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t("priceSummary")}</p>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">{t("roomRate")}</span><span className="font-medium">{formatCurrency(createRate)}/night</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">{t("nights")}</span><span className="font-medium">{createNights}</span></div>
                   <Separator />
-                  <div className="flex justify-between text-sm"><span className="font-semibold text-gray-900">Total</span><span className="font-bold text-gray-900">{formatCurrency(createTotal)}</span></div>
+                  <div className="flex justify-between text-sm"><span className="font-semibold text-gray-900">{t("total")}</span><span className="font-bold text-gray-900">{formatCurrency(createTotal)}</span></div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="res-notes">Notes</Label>
-                <Textarea id="res-notes" placeholder="Special requests, preferences..." rows={2} value={createForm.notes} onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })} />
+                <Label htmlFor="res-notes">{t("labelNotes")}</Label>
+                <Textarea id="res-notes" placeholder={t("placeholderNotes")} rows={2} value={createForm.notes} onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })} />
               </div>
             </div>
           )}
@@ -1198,9 +1202,9 @@ export default function ReservationsPage() {
           <DialogFooter className="flex-row gap-2">
             {wizardStep === 1 ? (
               <>
-                <Button variant="outline" onClick={closeCreateDialog}>Cancel</Button>
+                <Button variant="outline" onClick={closeCreateDialog}>{t("btnCancel")}</Button>
                 <Button onClick={() => setWizardStep(2)} disabled={!step1Valid} className="gap-1.5">
-                  Next — Booking Details
+                  {t("btnNextBooking")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </>
@@ -1208,10 +1212,10 @@ export default function ReservationsPage() {
               <>
                 <Button variant="outline" onClick={() => setWizardStep(1)} className="gap-1.5">
                   <ChevronLeft className="h-4 w-4" />
-                  Back
+                  {t("btnBack")}
                 </Button>
                 <Button onClick={handleCreate} disabled={creating} className="gap-1.5">
-                  {creating ? "Creating..." : "Create Reservation"}
+                  {creating ? t("btnCreating") : t("btnCreateReservation")}
                   <CheckCircle2 className="h-4 w-4" />
                 </Button>
               </>
@@ -1233,13 +1237,13 @@ export default function ReservationsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={actionLoading}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className={confirmAction ? ACTION_LABELS[confirmAction.type]?.className : ""}
               onClick={handleAction}
               disabled={actionLoading}
             >
-              {actionLoading ? "Processing..." : confirmAction && ACTION_LABELS[confirmAction.type]?.label}
+              {actionLoading ? t("btnProcessing") : confirmAction && ACTION_LABELS[confirmAction.type]?.label}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1250,13 +1254,13 @@ export default function ReservationsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-amber-500" />
-              Record Payment
+              <CalendarPlus className="h-5 w-5 text-emerald-600" />
+              {t("dialogRecordPaymentTitle")}
             </DialogTitle>
             <DialogDescription>
               {paymentDialog && (
                 <>
-                  For {paymentDialog.guest?.name} — Room {paymentDialog.room?.number} · Balance:{" "}
+                  {paymentDialog.guest?.name} — {t("labelRoom")} {paymentDialog.room?.number} · {t("descPaymentBalance")}{" "}
                   <span className="font-semibold text-rose-600">
                     {formatCurrency(paymentDialog.balance)}
                   </span>
@@ -1270,22 +1274,22 @@ export default function ReservationsPage() {
               {/* Payment summary bar */}
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-gray-50 p-2 border">
-                  <p className="text-[10px] uppercase text-gray-500 tracking-wider">Total</p>
+                  <p className="text-[10px] uppercase text-gray-500 tracking-wider">{t("labelTotalUpper")}</p>
                   <p className="text-sm font-bold text-gray-900">{formatCurrency(paymentDialog.totalCost)}</p>
                 </div>
                 <div className="rounded-lg bg-emerald-50 p-2 border border-emerald-100">
-                  <p className="text-[10px] uppercase text-emerald-600 tracking-wider">Paid</p>
+                  <p className="text-[10px] uppercase text-emerald-600 tracking-wider">{t("labelPaidUpper")}</p>
                   <p className="text-sm font-bold text-emerald-700">{formatCurrency(paymentDialog.paidAmount)}</p>
                 </div>
                 <div className="rounded-lg bg-rose-50 p-2 border border-rose-100">
-                  <p className="text-[10px] uppercase text-rose-600 tracking-wider">Balance</p>
+                  <p className="text-[10px] uppercase text-rose-600 tracking-wider">{t("labelBalanceUpper")}</p>
                   <p className="text-sm font-bold text-rose-700">{formatCurrency(paymentDialog.balance)}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="pay-amount">
-                  Amount <span className="text-rose-500">*</span>
+                  {t("labelAmount")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="pay-amount"
@@ -1298,13 +1302,13 @@ export default function ReservationsPage() {
                 />
                 {paymentForm.amount && Number(paymentForm.amount) > 0 && (
                   <p className="text-xs text-gray-500">
-                    After payment: {formatCurrency(paymentDialog.balance - Number(paymentForm.amount))} remaining
+                    {t("afterPaymentRemaining", { amount: formatCurrency(paymentDialog.balance - Number(paymentForm.amount)) })}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Method</Label>
+                <Label>{t("labelPaymentMethod")}</Label>
                 <Select
                   value={paymentForm.method}
                   onValueChange={(v) => setPaymentForm({ ...paymentForm, method: v })}
@@ -1323,7 +1327,7 @@ export default function ReservationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pay-ref">Reference Number</Label>
+                <Label htmlFor="pay-ref">{t("labelRefNumber")}</Label>
                 <Input
                   id="pay-ref"
                   placeholder="Transaction reference"
@@ -1333,7 +1337,7 @@ export default function ReservationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pay-notes">Notes</Label>
+                <Label htmlFor="pay-notes">{t("labelNotes")}</Label>
                 <Textarea
                   id="pay-notes"
                   placeholder="Payment notes..."
@@ -1352,7 +1356,7 @@ export default function ReservationsPage() {
                   onClick={() => setPaymentForm({ ...paymentForm, amount: String(paymentDialog.balance) })}
                 >
                   <DollarSign className="h-3 w-3 mr-1" />
-                  Full Balance
+                  {t("btnFullBalance")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1361,7 +1365,7 @@ export default function ReservationsPage() {
                   onClick={() => setPaymentForm({ ...paymentForm, amount: String(paymentDialog.totalCost) })}
                 >
                   <DollarSign className="h-3 w-3 mr-1" />
-                  Full Total
+                  {t("btnFullTotal")}
                 </Button>
               </div>
             </div>
@@ -1369,10 +1373,10 @@ export default function ReservationsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialog(null)}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handlePayment} disabled={paying} className="bg-amber-600 hover:bg-amber-700">
-              {paying ? "Recording..." : "Record Payment"}
+              {paying ? t("btnRecording") : t("btnRecordPayment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1382,20 +1386,19 @@ export default function ReservationsPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Reservation?</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the reservation for {deleteTarget?.guest?.name} (Room{" "}
-              {deleteTarget?.room?.number}). This action cannot be undone.
+              {t("dialogDeleteDesc", { guest: deleteTarget?.guest?.name, room: deleteTarget?.room?.number })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1412,8 +1415,8 @@ export default function ReservationsPage() {
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm ring-4 ring-white/30">
                     <BedDouble className="h-8 w-8 text-white" />
                   </div>
-                  <h2 className="text-xl font-bold">Room Already Reserved</h2>
-                  <p className="mt-1 text-sm text-white/80">The room you selected is not available for the chosen dates</p>
+                  <h2 className="text-xl font-bold">{t("dialogRoomConflictTitle")}</h2>
+                  <p className="mt-1 text-sm text-white/80">{t("dialogRoomConflictDesc")}</p>
                 </div>
               </div>
               {/* Content */}
@@ -1426,19 +1429,19 @@ export default function ReservationsPage() {
                         {conflictInfo.roomNumber}
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{conflictInfo.roomName || `Room ${conflictInfo.roomNumber}`}</p>
-                        <p className="text-xs text-rose-500 font-medium">Unavailable for selected dates</p>
+                        <p className="font-semibold text-gray-900">{conflictInfo.roomName || `${t("labelRoom")} ${conflictInfo.roomNumber}`}</p>
+                        <p className="text-xs text-rose-500 font-medium">{t("unavailableForDates")}</p>
                       </div>
                     </div>
                   </div>
                 </div>
                 {/* Date range display */}
                 <div className="rounded-xl bg-gray-50 border p-4">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Reserved Period</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">{t("reservedPeriod")}</p>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 text-center">
                       <CalendarDays className="h-5 w-5 mx-auto text-rose-400 mb-1" />
-                      <p className="text-xs text-gray-500">From</p>
+                      <p className="text-xs text-gray-500">{t("from")}</p>
                       <p className="font-semibold text-gray-900 text-sm">{formatDate(conflictInfo.checkIn)}</p>
                     </div>
                     <div className="flex flex-col items-center gap-1">
@@ -1448,7 +1451,7 @@ export default function ReservationsPage() {
                     </div>
                     <div className="flex-1 text-center">
                       <CalendarDays className="h-5 w-5 mx-auto text-rose-400 mb-1" />
-                      <p className="text-xs text-gray-500">To</p>
+                      <p className="text-xs text-gray-500">{t("to")}</p>
                       <p className="font-semibold text-gray-900 text-sm">{formatDate(conflictInfo.checkOut)}</p>
                     </div>
                   </div>
@@ -1457,14 +1460,14 @@ export default function ReservationsPage() {
                 <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
                   <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-amber-800 leading-relaxed">
-                    Please choose a different room or adjust your dates. The service provider has full right to make adjustments for the late comer and allocate to any available room.
+                    {t("conflictNote")}
                   </p>
                 </div>
               </div>
               {/* Footer */}
               <div className="px-6 pb-6">
                 <Button variant="outline" onClick={() => setConflictInfo(null)}>
-                  Choose Another Room
+                  {t("btnChooseAnotherRoom")}
                 </Button>
               </div>
             </>

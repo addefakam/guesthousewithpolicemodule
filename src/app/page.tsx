@@ -5,7 +5,9 @@ import { useAppStore } from "@/lib/store";
 import LoginPage from "@/components/ghms/login-page";
 import Sidebar from "@/components/ghms/sidebar";
 import PageRenderer from "@/components/ghms/page-renderer";
+import LanguageSwitcher from "@/components/ghms/language-switcher";
 import { apiGetNotifications, apiMarkNotificationRead } from "@/lib/api";
+import { useTranslation } from "react-i18next";
 import { Bell } from "lucide-react";
 
 interface UrgentNotif {
@@ -15,6 +17,7 @@ interface UrgentNotif {
 }
 
 export default function Home() {
+  const { t } = useTranslation("common");
   const { currentUser, currentPage, setCurrentPage } = useAppStore();
   const [unreadCount, setUnreadCount] = useState(0);
   const [urgentNotifs, setUrgentNotifs] = useState<UrgentNotif[]>([]);
@@ -109,7 +112,7 @@ export default function Home() {
             <div className="flex items-center h-8">
               <span className="shrink-0 px-3 bg-red-800 text-[11px] font-bold uppercase tracking-wider h-full flex items-center gap-1.5 z-10 relative">
                 <span className="inline-block h-2 w-2 rounded-full bg-red-300 animate-pulse" />
-                URGENT
+                {t("URGENT")}
               </span>
               <div className="relative flex-1 overflow-hidden">
                 <div
@@ -122,12 +125,13 @@ export default function Home() {
                 </div>
               </div>
               <span className="shrink-0 px-3 text-[11px] text-red-200 z-10 relative">
-                Click to view →
+                {t("Click to view")}
               </span>
             </div>
           </div>
         )}
-        <header className="flex items-center justify-end px-4 md:px-6 h-12 shrink-0 bg-white border-b border-slate-100">
+        <header className="flex items-center justify-end px-4 md:px-6 h-12 shrink-0 bg-white border-b border-slate-100 gap-2">
+          <LanguageSwitcher />
           <button
             onClick={() => setCurrentPage("notifications")}
             className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"

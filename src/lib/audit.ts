@@ -18,7 +18,7 @@ export async function logAudit(
   opts: LogAuditOptions,
 ): Promise<void> {
   try {
-    const auth = getAuthContext(req);
+    const auth = await getAuthContext(req);
     const officerName = auth.role === "POLICE" ? (auth.userName || "Unknown Officer") : "System";
     const forwarded = req.headers.get("x-forwarded-for");
     const ipAddress = forwarded?.split(",")[0]?.trim() || "";

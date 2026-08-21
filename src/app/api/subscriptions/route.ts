@@ -104,14 +104,14 @@ export async function GET(req: NextRequest) {
             include: {
               payments: { select: { id: true } },
             },
-          });
+          }) as any;
         } else {
-          subscription = existing as typeof subscription;
+          subscription = existing as any;
         }
       }
 
       // Calculate dynamic status
-      const { status, daysRemaining } = calcSubscriptionStatus(subscription.endDate, {
+      const { status, daysRemaining } = calcSubscriptionStatus((subscription as any)!.endDate, {
         warningDays: paymentConfig.warningDays,
         graceDays: paymentConfig.graceDays,
       });
@@ -123,16 +123,16 @@ export async function GET(req: NextRequest) {
         ownerName: provider.ownerName,
         phone: provider.phone,
         email: provider.email,
-        subscriptionId: subscription.id,
-        cycle: subscription.cycle,
-        price: subscription.price,
+        subscriptionId: (subscription as any)!.id,
+        cycle: (subscription as any)!.cycle,
+        price: (subscription as any)!.price,
         planId: (subscription as any).planId ?? null,
         planName: (subscription as any).plan?.name ?? null,
         status,
         daysRemaining,
-        startDate: subscription.startDate.toISOString(),
-        endDate: subscription.endDate.toISOString(),
-        totalPayments: (subscription as any)._count?.payments ?? (subscription.payments as any[])?.length ?? 0,
+        startDate: (subscription as any)!.startDate.toISOString(),
+        endDate: (subscription as any)!.endDate.toISOString(),
+        totalPayments: (subscription as any)._count?.payments ?? (subscription as any).payments?.length ?? 0,
         hasPendingVerification: false,
       };
 

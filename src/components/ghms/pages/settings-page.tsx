@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiUpdateUser, apiUpdateSettings } from "@/lib/api";
 import { toast } from "sonner";
@@ -58,6 +59,7 @@ function getInitials(n: string | undefined | null) {
 // ═══════════════════════════════════════════════════════
 
 function ProviderSettings() {
+  const { t } = useTranslation("settings");
   const { currentUser, setCurrentUser, triggerRefresh, setCurrentPage } =
     useAppStore();
 
@@ -84,15 +86,15 @@ function ProviderSettings() {
   const handleProfileSave = async () => {
     if (!currentUser) return;
     if (!name.trim()) {
-      toast.error("Name is required");
+      toast.error(t("validNameRequired"));
       return;
     }
     if (!username.trim()) {
-      toast.error("Username is required");
+      toast.error(t("validUsernameRequired"));
       return;
     }
     if (username.length < 3) {
-      toast.error("Username must be at least 3 characters");
+      toast.error(t("validUsernameShort"));
       return;
     }
 
@@ -107,11 +109,11 @@ function ProviderSettings() {
         name: name.trim(),
         username: username.trim(),
       });
-      toast.success("Profile updated successfully");
+      toast.success(t("toastProfileSaved"));
       triggerRefresh();
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to update profile";
+        err instanceof Error ? err.message : t("toastProfileFailed");
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -121,23 +123,23 @@ function ProviderSettings() {
   const handlePasswordChange = async () => {
     if (!currentUser) return;
     if (!currentPassword) {
-      toast.error("Current password is required");
+      toast.error(t("validCurrentPwRequired"));
       return;
     }
     if (!newPassword) {
-      toast.error("New password is required");
+      toast.error(t("validNewPwRequired"));
       return;
     }
     if (newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters");
+      toast.error(t("validNewPwShort"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
+      toast.error(t("validPwMismatch"));
       return;
     }
     if (currentPassword === newPassword) {
-      toast.error("New password must be different from current password");
+      toast.error(t("validPwSame"));
       return;
     }
 
@@ -146,7 +148,7 @@ function ProviderSettings() {
       await apiUpdateUser(currentUser.id, {
         password: newPassword,
       });
-      toast.success("Password changed successfully");
+      toast.success(t("toastPwSaved"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -154,7 +156,7 @@ function ProviderSettings() {
       setShowNew(false);
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to change password";
+        err instanceof Error ? err.message : t("toastPwFailed");
       toast.error(msg);
     } finally {
       setChangingPassword(false);
@@ -162,7 +164,7 @@ function ProviderSettings() {
   };
 
   const roleLabel =
-    currentUser?.role === "OPERATOR" ? "Operator" : "Staff";
+    currentUser?.role === "OPERATOR" ? t("roleOperator") : t("roleStaff");
   const roleBadgeClass =
     currentUser?.role === "OPERATOR"
       ? "bg-blue-100 text-blue-700 border-blue-200"
@@ -172,9 +174,9 @@ function ProviderSettings() {
     <div className="flex justify-center p-4 md:p-6">
       <div className="w-full max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your personal account and staff accounts.
+            {t("providerSubtitle")}
           </p>
         </div>
 
@@ -183,10 +185,10 @@ function ProviderSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Profile Information
+              {t("profileInfoTitle")}
             </CardTitle>
             <CardDescription>
-              Update your personal details.
+              {t("profileInfoDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -228,25 +230,25 @@ function ProviderSettings() {
               <div className="grid gap-2">
                 <Label htmlFor="op-name">
                   <User className="inline mr-1.5 size-3.5" />
-                  Full Name
+                  {t("labelFullName")}
                 </Label>
                 <Input
                   id="op-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t("placeholderFullName")}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="op-username">
                   <BadgeCheck className="inline mr-1.5 size-3.5" />
-                  Username
+                  {t("labelUsername")}
                 </Label>
                 <Input
                   id="op-username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Username"
+                  placeholder={t("placeholderUsername")}
                 />
               </div>
             </div>
@@ -258,7 +260,7 @@ function ProviderSettings() {
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
-                Save Profile
+                {t("btnSaveProfile")}
               </Button>
             </div>
           </CardContent>
@@ -269,22 +271,22 @@ function ProviderSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              Change Password
+              {t("passwordTitle")}
             </CardTitle>
             <CardDescription>
-              Update your password to keep your account secure.
+              {t("passwordDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="op-current-pw">Current Password</Label>
+              <Label htmlFor="op-current-pw">{t("labelCurrentPw")}</Label>
               <div className="relative">
                 <Input
                   id="op-current-pw"
                   type={showCurrent ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
+                  placeholder={t("placeholderCurrentPw")}
                   className="pr-10"
                 />
                 <button
@@ -303,14 +305,14 @@ function ProviderSettings() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="op-new-pw">New Password</Label>
+                <Label htmlFor="op-new-pw">{t("labelNewPw")}</Label>
                 <div className="relative">
                   <Input
                     id="op-new-pw"
                     type={showNew ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
+                    placeholder={t("placeholderNewPw")}
                     className="pr-10"
                   />
                   <button
@@ -327,13 +329,13 @@ function ProviderSettings() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="op-confirm-pw">Confirm New Password</Label>
+                <Label htmlFor="op-confirm-pw">{t("labelConfirmPw")}</Label>
                 <Input
                   id="op-confirm-pw"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
+                  placeholder={t("placeholderConfirmPw")}
                 />
               </div>
             </div>
@@ -342,7 +344,7 @@ function ProviderSettings() {
               confirmPassword &&
               newPassword !== confirmPassword && (
                 <p className="text-xs text-rose-500 font-medium">
-                  Passwords do not match
+                  {t("pwMismatch")}
                 </p>
               )}
 
@@ -350,7 +352,7 @@ function ProviderSettings() {
               newPassword.length > 0 &&
               newPassword.length < 6 && (
                 <p className="text-xs text-rose-500 font-medium">
-                  Password must be at least 6 characters
+                  {t("pwTooShort")}
                 </p>
               )}
 
@@ -370,7 +372,7 @@ function ProviderSettings() {
                 ) : (
                   <Lock className="mr-2 h-4 w-4" />
                 )}
-                Update Password
+                {t("btnUpdatePw")}
               </Button>
             </div>
           </CardContent>
@@ -382,10 +384,10 @@ function ProviderSettings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserCog className="h-5 w-5" />
-                Staff Account Management
+                {t("staffTitle")}
               </CardTitle>
               <CardDescription>
-                Create, edit, and manage staff accounts you have created.
+                {t("staffDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -395,7 +397,7 @@ function ProviderSettings() {
                 onClick={() => setCurrentPage("users")}
               >
                 <UserCog className="mr-2 h-4 w-4" />
-                Go to Account Management
+                {t("btnGoToAccounts")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
@@ -411,6 +413,7 @@ function ProviderSettings() {
 // ═══════════════════════════════════════════════════════
 
 function SuperuserSettings() {
+  const { t } = useTranslation("settings");
   const { currentUser, setCurrentUser, triggerRefresh } = useAppStore();
 
   const [name, setName] = useState(currentUser?.name || "");
@@ -440,15 +443,15 @@ function SuperuserSettings() {
 
   const handleProfileSave = async () => {
     if (!currentUser) return;
-    if (!name.trim()) { toast.error("Name is required"); return; }
-    if (!username.trim()) { toast.error("Username is required"); return; }
-    if (username.length < 3) { toast.error("Username must be at least 3 characters"); return; }
+    if (!name.trim()) { toast.error(t("validNameRequired")); return; }
+    if (!username.trim()) { toast.error(t("validUsernameRequired")); return; }
+    if (username.length < 3) { toast.error(t("validUsernameShort")); return; }
     if (phone.trim() && !isValidPhone(phone)) {
-      toast.error("Invalid phone number format (7-15 digits)");
+      toast.error(t("validPhoneInvalid"));
       return;
     }
     if (email.trim() && !isValidEmail(email)) {
-      toast.error("Invalid email address format");
+      toast.error(t("validEmailInvalid"));
       return;
     }
 
@@ -459,10 +462,10 @@ function SuperuserSettings() {
       if (phone.trim()) data.phone = phone.trim();
       await apiUpdateUser(currentUser.id, data);
       setCurrentUser({ ...currentUser, name: name.trim(), username: username.trim() });
-      toast.success("Profile updated successfully");
+      toast.success(t("toastProfileSaved"));
       triggerRefresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update profile";
+      const msg = err instanceof Error ? err.message : t("toastProfileFailed");
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -471,20 +474,20 @@ function SuperuserSettings() {
 
   const handlePasswordChange = async () => {
     if (!currentUser) return;
-    if (!currentPassword) { toast.error("Current password is required"); return; }
-    if (!newPassword) { toast.error("New password is required"); return; }
-    if (newPassword.length < 6) { toast.error("New password must be at least 6 characters"); return; }
-    if (newPassword !== confirmPassword) { toast.error("New passwords do not match"); return; }
-    if (currentPassword === newPassword) { toast.error("New password must be different from current password"); return; }
+    if (!currentPassword) { toast.error(t("validCurrentPwRequired")); return; }
+    if (!newPassword) { toast.error(t("validNewPwRequired")); return; }
+    if (newPassword.length < 6) { toast.error(t("validNewPwShort")); return; }
+    if (newPassword !== confirmPassword) { toast.error(t("validPwMismatch")); return; }
+    if (currentPassword === newPassword) { toast.error(t("validPwSame")); return; }
 
     setChangingPassword(true);
     try {
       await apiUpdateUser(currentUser.id, { password: newPassword });
-      toast.success("Password changed successfully");
+      toast.success(t("toastPwSaved"));
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       setShowCurrent(false); setShowNew(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to change password";
+      const msg = err instanceof Error ? err.message : t("toastPwFailed");
       toast.error(msg);
     } finally {
       setChangingPassword(false);
@@ -495,10 +498,10 @@ function SuperuserSettings() {
     setSavingSystem(true);
     try {
       await apiUpdateSettings({ guestHouseName: appName, currency: defaultCurrency, language: defaultLanguage });
-      toast.success("System settings saved");
+      toast.success(t("toastSysSaved"));
       triggerRefresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save system settings";
+      const msg = err instanceof Error ? err.message : t("toastSysFailed");
       toast.error(msg);
     } finally {
       setSavingSystem(false);
@@ -509,9 +512,9 @@ function SuperuserSettings() {
     <div className="flex justify-center p-4 md:p-6">
       <div className="w-full max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your System Admin account and preferences.
+            {t("superSubtitle")}
           </p>
         </div>
 
@@ -519,9 +522,9 @@ function SuperuserSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Profile Information
+              {t("profileInfoTitle")}
             </CardTitle>
-            <CardDescription>Update your personal details and contact information.</CardDescription>
+            <CardDescription>{t("profileInfoDescSuper")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="flex items-center gap-4">
@@ -546,28 +549,28 @@ function SuperuserSettings() {
             <Separator />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="su-name"><User className="inline mr-1.5 size-3.5" />Full Name</Label>
-                <Input id="su-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+                <Label htmlFor="su-name"><User className="inline mr-1.5 size-3.5" />{t("labelFullName")}</Label>
+                <Input id="su-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("placeholderFullName")} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="su-username"><BadgeCheck className="inline mr-1.5 size-3.5" />Username</Label>
-                <Input id="su-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" />
+                <Label htmlFor="su-username"><BadgeCheck className="inline mr-1.5 size-3.5" />{t("labelUsername")}</Label>
+                <Input id="su-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("placeholderUsername")} />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="su-email"><Mail className="inline mr-1.5 size-3.5" />Email Address</Label>
-                <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" />
+                <Label htmlFor="su-email"><Mail className="inline mr-1.5 size-3.5" />{t("labelEmail")}</Label>
+                <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("placeholderEmail")} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="su-phone"><Phone className="inline mr-1.5 size-3.5" />Phone Number</Label>
-                <Input id="su-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+251..." />
+                <Label htmlFor="su-phone"><Phone className="inline mr-1.5 size-3.5" />{t("labelPhone")}</Label>
+                <Input id="su-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t("placeholderPhone")} />
               </div>
             </div>
             <div className="flex justify-end pt-1">
               <Button onClick={handleProfileSave} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Profile
+                {t("btnSaveProfile")}
               </Button>
             </div>
           </CardContent>
@@ -575,14 +578,14 @@ function SuperuserSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" />Change Password</CardTitle>
-            <CardDescription>Update your password to keep your account secure.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" />{t("passwordTitle")}</CardTitle>
+            <CardDescription>{t("passwordDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="su-current-pw">Current Password</Label>
+              <Label htmlFor="su-current-pw">{t("labelCurrentPw")}</Label>
               <div className="relative">
-                <Input id="su-current-pw" type={showCurrent ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" className="pr-10" />
+                <Input id="su-current-pw" type={showCurrent ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder={t("placeholderCurrentPw")} className="pr-10" />
                 <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -590,29 +593,29 @@ function SuperuserSettings() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="su-new-pw">New Password</Label>
+                <Label htmlFor="su-new-pw">{t("labelNewPw")}</Label>
                 <div className="relative">
-                  <Input id="su-new-pw" type={showNew ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 6 characters" className="pr-10" />
+                  <Input id="su-new-pw" type={showNew ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("placeholderNewPw")} className="pr-10" />
                   <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="su-confirm-pw">Confirm New Password</Label>
-                <Input id="su-confirm-pw" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" />
+                <Label htmlFor="su-confirm-pw">{t("labelConfirmPw")}</Label>
+                <Input id="su-confirm-pw" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t("placeholderConfirmPw")} />
               </div>
             </div>
             {newPassword && confirmPassword && newPassword !== confirmPassword && (
-              <p className="text-xs text-rose-500 font-medium">Passwords do not match</p>
+              <p className="text-xs text-rose-500 font-medium">{t("pwMismatch")}</p>
             )}
             {newPassword && newPassword.length > 0 && newPassword.length < 6 && (
-              <p className="text-xs text-rose-500 font-medium">Password must be at least 6 characters</p>
+              <p className="text-xs text-rose-500 font-medium">{t("pwTooShort")}</p>
             )}
             <div className="flex justify-end pt-1">
               <Button variant="outline" onClick={handlePasswordChange} disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}>
                 {changingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                Update Password
+                {t("btnUpdatePw")}
               </Button>
             </div>
           </CardContent>
@@ -620,18 +623,18 @@ function SuperuserSettings() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />System Preferences</CardTitle>
-            <CardDescription>Configure default settings for the entire system.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />{t("sysTitle")}</CardTitle>
+            <CardDescription>{t("sysDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="su-appname"><Building2 className="inline mr-1.5 size-3.5" />Application Name</Label>
-              <Input id="su-appname" value={appName} onChange={(e) => setAppName(e.target.value)} placeholder="GHMS" />
-              <p className="text-xs text-slate-400">Displayed in the sidebar and browser tab.</p>
+              <Label htmlFor="su-appname"><Building2 className="inline mr-1.5 size-3.5" />{t("labelAppName")}</Label>
+              <Input id="su-appname" value={appName} onChange={(e) => setAppName(e.target.value)} placeholder={t("placeholderAppName")} />
+              <p className="text-xs text-slate-400">{t("appNameHint")}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="su-currency"><Clock className="inline mr-1.5 size-3.5" />Default Currency</Label>
+                <Label htmlFor="su-currency"><Clock className="inline mr-1.5 size-3.5" />{t("labelCurrency")}</Label>
                 <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -642,7 +645,7 @@ function SuperuserSettings() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="su-language"><Globe className="inline mr-1.5 size-3.5" />Default Language</Label>
+                <Label htmlFor="su-language"><Globe className="inline mr-1.5 size-3.5" />{t("labelLanguage")}</Label>
                 <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -655,7 +658,7 @@ function SuperuserSettings() {
             <div className="flex justify-end pt-1">
               <Button onClick={handleSystemSave} disabled={savingSystem}>
                 {savingSystem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save System Settings
+                {t("btnSaveSystem")}
               </Button>
             </div>
           </CardContent>

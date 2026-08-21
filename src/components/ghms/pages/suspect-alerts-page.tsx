@@ -400,7 +400,7 @@ export default function SuspectAlertsPage() {
                     <p className="font-medium">{selectedMatch.providerName || "Unknown"}</p>
                   </div>
                 </div>
-                {details.roomNumber && (
+                {Boolean(details.roomNumber) && (
                   <div className="flex items-center gap-2.5">
                     <DoorOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
@@ -418,7 +418,7 @@ export default function SuspectAlertsPage() {
                 {/* Dynamic details based on match type */}
                 {selectedMatch.matchType === "RESERVATION" && (
                   <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3">
-                    {details.checkIn && (
+                    {Boolean(details.checkIn) && (
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -427,7 +427,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.checkOut && (
+                    {Boolean(details.checkOut) && (
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -436,7 +436,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.roomNumber && (
+                    {Boolean(details.roomNumber) && (
                       <div className="flex items-center gap-2">
                         <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -445,7 +445,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.nights && (
+                    {Boolean(details.nights) && (
                       <div className="flex items-center gap-2">
                         <Sun className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -468,7 +468,7 @@ export default function SuspectAlertsPage() {
 
                 {selectedMatch.matchType === "DAYTIME_BOOKING" && (
                   <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3">
-                    {details.date && (
+                    {Boolean(details.date) && (
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -477,7 +477,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.time && (
+                    {Boolean(details.time) && (
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -486,7 +486,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.serviceName && (
+                    {Boolean(details.serviceName) && (
                       <div className="col-span-2 flex items-center gap-2">
                         <Sun className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -509,7 +509,7 @@ export default function SuspectAlertsPage() {
 
                 {selectedMatch.matchType === "GUEST_CHECKIN" && (
                   <div className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-3">
-                    {details.nationality && (
+                    {Boolean(details.nationality) && (
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -518,7 +518,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.address && (
+                    {Boolean(details.address) && (
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
@@ -527,7 +527,7 @@ export default function SuspectAlertsPage() {
                         </div>
                       </div>
                     )}
-                    {details.email && (
+                    {Boolean(details.email) && (
                       <div className="flex items-center gap-2">
                         <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>

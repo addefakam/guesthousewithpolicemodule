@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       if (sev === "CRITICAL") entry.criticalCount++;
       if (sev === "HIGH") entry.highCount++;
       if (!entry.lastMatchDate || new Date(m.createdAt) > new Date(entry.lastMatchDate)) {
-        entry.lastMatchDate = m.createdAt;
+        entry.lastMatchDate = m.createdAt instanceof Date ? m.createdAt.toISOString() : String(m.createdAt);
       }
     }
 
@@ -93,13 +93,13 @@ export async function GET(req: NextRequest) {
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     const reservationCounts = await db.$queryRaw<{month: string; count: bigint}[]>(
-      sql`SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
+      Prisma.sql`SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
        FROM "Reservation"
        WHERE "createdAt" >= ${sixMonthsAgo.toISOString()}
        GROUP BY TO_CHAR("createdAt", 'YYYY-MM')`
     );
     const suspectMatchCounts = await db.$queryRaw<{month: string; count: bigint}[]>(
-      sql`SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
+      Prisma.sql`SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
        FROM "SuspectMatch"
        WHERE "createdAt" >= ${sixMonthsAgo.toISOString()}
        GROUP BY TO_CHAR("createdAt", 'YYYY-MM')`

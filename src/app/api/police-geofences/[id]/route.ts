@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql, raw } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { requirePoliceMinRank } from "@/lib/police-permissions";
@@ -32,8 +32,8 @@ export async function PUT(
 
     updates.push(`"updatedAt" = CURRENT_TIMESTAMP`);
 
-    await db.$executeRaw(
-      sql`UPDATE "Geofence" SET ${raw(updates.join(", "))} WHERE "id" = ${id}`
+    await db.$executePrisma.raw(
+      Prisma.sql`UPDATE "Geofence" SET ${Prisma.raw(updates.join(", "))} WHERE "id" = ${id}`
     );
 
     return NextResponse.json({ success: true });
@@ -57,7 +57,7 @@ export async function DELETE(
     requirePoliceMinRank(auth, "ADMIN");
     const { id } = await params;
 
-    await db.$executeRaw(sql`DELETE FROM "Geofence" WHERE "id" = ${id}`);
+    await db.$executePrisma.raw(Prisma.sql`DELETE FROM "Geofence" WHERE "id" = ${id}`);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

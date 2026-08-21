@@ -132,7 +132,7 @@ export default function PoliceInvestigationPage() {
     if (!config) return;
     try {
       setConfigSaving(true);
-      await apiPoliceUpdateAlertConfig(config);
+      await apiPoliceUpdateAlertConfig(config as Record<string, unknown>);
       toast.success("Alert config saved");
     } catch { toast.error("Failed to save config"); }
     finally { setConfigSaving(false); }

@@ -152,9 +152,9 @@ export async function POST(req: NextRequest) {
         totalCost,
         paidAmount,
         balance,
-        paymentStatus: "PENDING",
+        paymentStatus: "PENDING" as const,
         paymentMethod: paymentMethod || null,
-        status: "UPCOMING",
+        status: "UPCOMING" as const,
         notes: notes || "",
         taxAmount: tax,
         discountAmount: discount,
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
         secondGuestIdNumber: secondGuestIdNumber || "",
         exceptionallyReserved: exceptionallyReserved === true,
         exceptionReason: exceptionReason || "",
-        providerId,
+        providerId: providerId!,
         ...(groupBookingId ? { groupBookingId } : {}),
       },
       include: {
@@ -176,10 +176,10 @@ export async function POST(req: NextRequest) {
 
     // Background: check if guest matches any suspected person (fire-and-forget)
     checkSuspectMatch({
-      name: reservation.guest.name,
-      phone: reservation.guest.phone,
-      idNumber: reservation.guest.idNumber,
-      idType: reservation.guest.idType,
+      name: reservation.guest?.name ?? "",
+      phone: reservation.guest?.phone ?? "",
+      idNumber: reservation.guest?.idNumber ?? "",
+      idType: reservation.guest?.idType ?? "",
       matchType: "RESERVATION",
       providerId,
       reservationId: reservation.id,
@@ -187,16 +187,16 @@ export async function POST(req: NextRequest) {
         checkIn,
         checkOut,
         nights,
-        roomNumber: reservation.room.number,
-        roomName: reservation.room.name,
+        roomNumber: reservation.room?.number ?? "",
+        roomName: reservation.room?.name ?? "",
         totalCost,
       },
     }).catch(() => {});
 
     // Background: run anomaly detection (fire-and-forget)
     runAnomalyDetection({
-      guestName: reservation.guest.name,
-      guestPhone: reservation.guest.phone,
+      guestName: reservation.guest?.name ?? "",
+      guestPhone: reservation.guest?.phone ?? "",
       providerId,
       reservationId: reservation.id,
       trigger: "RESERVATION",

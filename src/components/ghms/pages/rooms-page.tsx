@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
 import {
@@ -248,6 +249,7 @@ function SubscriptionBadge() {
 }
 
 export default function RoomsPage() {
+  const { t } = useTranslation("rooms");
   const { refreshKey, triggerRefresh, setCurrentPage, setPreselectedRoom } = useAppStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
@@ -678,9 +680,9 @@ export default function RoomsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Rooms</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your {rooms.length} room{rooms.length !== 1 ? "s" : ""}
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("pageSubtitle")}
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
@@ -791,9 +793,13 @@ export default function RoomsPage() {
       {filteredRooms.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
           <Building2 className="h-12 w-12 text-gray-300 mb-3" />
-          <p className="text-lg font-medium text-gray-500">No rooms found</p>
-          <p className="mt-1 text-sm text-gray-400">
-            {search ? "Try a different search term" : "Get started by adding your first room"}
+          <p className="font-medium text-lg">
+            {search || floorFilter || statusFilter ? t("emptyNoMatch") : t("emptyNoRooms")}
+          </p>
+          <p className="text-sm mt-1 text-gray-400">
+            {search || floorFilter || statusFilter
+              ? t("emptyNoMatchHint")
+              : t("emptyNoRoomsHint")}
           </p>
           {!search && (
             <div className="mt-4 flex gap-2">
@@ -982,11 +988,11 @@ export default function RoomsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingRoom ? "Edit Room" : "Add New Room"}</DialogTitle>
+            <DialogTitle>{editingRoom ? t("dialogEditRoomTitle") : t("dialogAddRoomTitle")}</DialogTitle>
             <DialogDescription>
               {editingRoom
-                ? "Update room details below."
-                : "Fill in the details to create a new room."}
+                ? t("dialogEditRoomDesc")
+                : t("dialogAddRoomDesc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -994,7 +1000,7 @@ export default function RoomsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-number">
-                  Room Number <span className="text-rose-500">*</span>
+                  {t("labelRoomNumber")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="room-number"
@@ -1004,7 +1010,7 @@ export default function RoomsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="room-type">Room Type</Label>
+                <Label htmlFor="room-type">{t("labelRoomType")}</Label>
                 <Select
                   value={form.type}
                   onValueChange={(v) => setForm({ ...form, type: v })}
@@ -1017,7 +1023,7 @@ export default function RoomsPage() {
                       <SelectItem key={type} value={type}>
                         <span className="flex items-center gap-2">
                           {ROOM_TYPE_ICONS[type]}
-                          {type}
+                          {t("roomType" + (type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()))}
                         </span>
                       </SelectItem>
                     ))}
@@ -1029,7 +1035,7 @@ export default function RoomsPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-price">
-                  Price/Night <span className="text-rose-500">*</span>
+                  {t("labelPriceNight")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="room-price"
@@ -1041,7 +1047,7 @@ export default function RoomsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="room-floor">
-                  Floor <span className="text-rose-500">*</span>
+                  {t("labelFloor")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="room-floor"
@@ -1053,7 +1059,7 @@ export default function RoomsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="room-capacity">
-                  Capacity <span className="text-rose-500">*</span>
+                  {t("labelCapacity")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="room-capacity"
@@ -1066,7 +1072,7 @@ export default function RoomsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="room-amenities">Amenities (comma-separated)</Label>
+              <Label htmlFor="room-amenities">{t("labelAmenities")}</Label>
               <Input
                 id="room-amenities"
                 placeholder="WiFi, TV, AC, Mini Bar, Hot Water"
@@ -1095,10 +1101,10 @@ export default function RoomsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="room-description">Description</Label>
+              <Label htmlFor="room-description">{t("labelDescription")}</Label>
               <Textarea
                 id="room-description"
-                placeholder="Describe the room..."
+                placeholder={t("placeholderDescription")}
                 rows={3}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -1108,10 +1114,10 @@ export default function RoomsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editingRoom ? "Update Room" : "Create Room"}
+              {saving ? t("btnSaving") : editingRoom ? t("btnUpdateRoom") : t("btnCreateRoom")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1123,18 +1129,17 @@ export default function RoomsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              Import Rooms from Excel
+              {t("dialogImportTitle")}
             </DialogTitle>
             <DialogDescription>
-              Upload an Excel file (.xlsx / .xls) with room data. Download the
-              template below for the correct column format.
+              {t("dialogImportDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             {/* Template download */}
             <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
-              <p className="text-sm font-medium text-emerald-800 mb-1">Required columns:</p>
+              <p className="text-sm font-medium text-emerald-800 mb-1">{t("importRequiredColumns")}</p>
               <p className="text-xs text-emerald-700 mb-3 font-mono">
                 number · type · pricePerNight · floor · capacity · amenities · description
               </p>
@@ -1144,13 +1149,13 @@ export default function RoomsPage() {
               </p>
               <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-100">
                 <Download className="h-3.5 w-3.5" />
-                Download Template
+                {t("btnDownloadTemplate")}
               </Button>
             </div>
 
             {/* File picker */}
             <div className="space-y-2">
-              <Label htmlFor="excel-file">Select Excel File</Label>
+              <Label htmlFor="excel-file">{t("labelSelectExcel")}</Label>
               <div className="flex gap-2">
                 <Input
                   id="excel-file"
@@ -1171,7 +1176,7 @@ export default function RoomsPage() {
             {/* Import results */}
             {importResults && (
               <div className="rounded-lg border bg-gray-50 p-3 max-h-48 overflow-y-auto space-y-1">
-                <p className="text-xs font-semibold text-gray-600 mb-2">Import Results:</p>
+                <p className="text-xs font-semibold text-gray-600 mb-2">{t("importResults")}</p>
                 {importResults.map((r, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     {r.status === "created" ? (
@@ -1193,12 +1198,12 @@ export default function RoomsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={closeImportDialog}>
-              {importResults ? "Close" : "Cancel"}
+              {importResults ? t("btnClose") : t("btnCancel")}
             </Button>
             {!importResults && (
               <Button onClick={handleImport} disabled={importLoading || !importFile} className="gap-2">
                 <Upload className="h-4 w-4" />
-                {importLoading ? "Importing..." : "Import Rooms"}
+                {importLoading ? t("btnImporting") : t("btnImportRooms")}
               </Button>
             )}
           </DialogFooter>
@@ -1209,20 +1214,19 @@ export default function RoomsPage() {
       <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Room {deleteDialog?.number}?</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogDeleteTitle")} {deleteDialog?.number}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete room &quot;{deleteDialog?.name}&quot; and all
-              associated data.
+              {t("dialogDeleteDesc", { name: deleteDialog?.name || deleteDialog?.number })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1253,7 +1257,7 @@ export default function RoomsPage() {
                       </Badge>
                     </div>
                   </DialogTitle>
-                  <DialogDescription>Room handover and status details</DialogDescription>
+                  <DialogDescription>{t("dialogHandoverTitle")}</DialogDescription>
                 </DialogHeader>
 
                 {/* Room Image */}
@@ -1323,12 +1327,12 @@ export default function RoomsPage() {
                 {/* Current Status Section — Handover Info */}
                 <div>
                   <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
-                    <ClipboardList className="h-3.5 w-3.5" /> Current Status
+                    <ClipboardList className="h-3.5 w-3.5" /> {t("currentStatus")}
                   </p>
 
                   {roomResLoading ? (
                     <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
-                      <Clock className="h-4 w-4 animate-spin" /> Loading reservations...
+                      <Clock className="h-4 w-4 animate-spin" /> {t("loadingReservations")}
                     </div>
                   ) : infoRoom.status === "OCCUPIED" ? (
                     activeRes ? (
@@ -1339,9 +1343,9 @@ export default function RoomsPage() {
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                             </span>
-                            <Badge className="bg-emerald-600 text-white text-xs">Current Guest</Badge>
+                            <Badge className="bg-emerald-600 text-white text-xs">{t("currentGuest")}</Badge>
                           </div>
-                          <span className="text-xs text-emerald-600 font-medium">Occupied</span>
+                          <span className="text-xs text-emerald-600 font-medium">{t("occupied")}</span>
                         </div>
 
                         {activeRes.guest && (
@@ -1361,9 +1365,9 @@ export default function RoomsPage() {
                         <div className="space-y-2 text-xs sm:text-sm">
                           <div className="flex items-center gap-2 text-gray-600">
                             <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span>Check-in: <strong>{formatDate(activeRes.checkIn)}</strong></span>
+                            <span>{t("checkIn")} <strong>{formatDate(activeRes.checkIn)}</strong></span>
                             <span className="text-gray-300">→</span>
-                            <span>Check-out: <strong>{formatDate(activeRes.checkOut)}</strong></span>
+                            <span>{t("checkOut")} <strong>{formatDate(activeRes.checkOut)}</strong></span>
                           </div>
 
                           {(() => {

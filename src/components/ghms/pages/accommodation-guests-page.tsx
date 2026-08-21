@@ -533,7 +533,7 @@ export default function AccommodationGuestsPage() {
         <PaginationControls
           currentPage={pagination.currentPage} totalPages={pagination.totalPages}
           pageSize={pagination.pageSize} pageSizeOptions={pagination.pageSizeOptions}
-          totalItems={pagination.totalItems} rangeInfo={pagination.rangeInfo}
+          totalItems={pagination.rangeInfo.total} rangeInfo={pagination.rangeInfo}
           goToPage={pagination.goToPage} setPageSize={pagination.setPageSize}
         />
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetGuests,
@@ -117,11 +118,13 @@ const emptyForm = {
   kebele: "",
   houseNumber: "",
   streetName: "",
+  address: "",
   notes: "",
   vip: false,
 };
 
 export default function GuestsPage() {
+  const { t } = useTranslation("guests");
   const { refreshKey, triggerRefresh } = useAppStore();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [search, setSearch] = useState("");
@@ -167,7 +170,13 @@ export default function GuestsPage() {
       idNumber: guest.idNumber,
       idType: guest.idType || "National ID",
       nationality: guest.nationality,
-      address: guest.address,
+      region: guest.region || "",
+      zone: guest.zone || "",
+      woreda: guest.woreda || "",
+      kebele: guest.kebele || "",
+      houseNumber: guest.houseNumber || "",
+      streetName: guest.streetName || "",
+      address: guest.address || "",
       notes: guest.notes,
       vip: guest.vip,
     });
@@ -567,14 +576,13 @@ export default function GuestsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Guests</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {guests.length} guest{guests.length !== 1 ? "s" : ""} registered
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Guest
+          <Plus className="h-4 w-4" /> {t("btnAddGuest")}
         </Button>
       </div>
 
@@ -582,7 +590,7 @@ export default function GuestsPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="Search guests by name, phone, ID, email..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -600,6 +608,7 @@ export default function GuestsPage() {
           totalPages={pagination.totalPages}
           pageSize={pagination.pageSize}
           pageSizeOptions={pagination.pageSizeOptions}
+          totalItems={pagination.rangeInfo.total}
           goToPage={pagination.goToPage}
           setPageSize={pagination.setPageSize}
           rangeInfo={pagination.rangeInfo}
@@ -610,11 +619,11 @@ export default function GuestsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingGuest ? "Edit Guest" : "Add New Guest"}</DialogTitle>
+            <DialogTitle>{editingGuest ? t("dialogEditGuestTitle") : t("dialogAddGuestTitle")}</DialogTitle>
             <DialogDescription>
               {editingGuest
-                ? "Update guest information below."
-                : "Fill in the details to register a new guest."}
+                ? t("dialogEditGuestDesc")
+                : t("dialogAddGuestDesc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -622,7 +631,7 @@ export default function GuestsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="guest-name">
-                  Full Name <span className="text-rose-500">*</span>
+                  {t("labelFullName")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="guest-name"
@@ -633,7 +642,7 @@ export default function GuestsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="guest-phone">
-                  Phone <span className="text-rose-500">*</span>
+                  {t("labelPhone")} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   id="guest-phone"
@@ -646,7 +655,7 @@ export default function GuestsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest-email">Email</Label>
+              <Label htmlFor="guest-email">{t("labelEmail")}</Label>
               <Input
                 id="guest-email"
                 type="email"
@@ -658,7 +667,7 @@ export default function GuestsPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="guest-id-type">ID Type <span className="text-rose-500">*</span></Label>
+                <Label htmlFor="guest-id-type">{t("labelIdType")} <span className="text-rose-500">*</span></Label>
                 <Select
                   value={form.idType}
                   onValueChange={(v) => setForm({ ...form, idType: v })}
@@ -676,7 +685,7 @@ export default function GuestsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="guest-id-number">ID Number <span className="text-rose-500">*</span></Label>
+                <Label htmlFor="guest-id-number">{t("labelIdNumber")} <span className="text-rose-500">*</span></Label>
                 <Input
                   id="guest-id-number"
                   placeholder="Enter ID number"
@@ -687,7 +696,7 @@ export default function GuestsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest-nationality">Nationality <span className="text-rose-500">*</span></Label>
+              <Label htmlFor="guest-nationality">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
               <Input
                 id="guest-nationality"
                 placeholder="e.g. Ethiopian"
@@ -697,7 +706,7 @@ export default function GuestsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Guest Address</Label>
+              <Label>{t("labelGuestAddress")}</Label>
               <AddressFields
                 value={{
                   region: form.region,
@@ -712,7 +721,7 @@ export default function GuestsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="guest-notes">Notes</Label>
+              <Label htmlFor="guest-notes">{t("labelNotes")}</Label>
               <Textarea
                 id="guest-notes"
                 placeholder="Special requests, preferences..."
@@ -731,19 +740,19 @@ export default function GuestsPage() {
               <div className="flex items-center gap-1.5">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                 <Label htmlFor="guest-vip" className="cursor-pointer font-medium">
-                  VIP Guest
+                  {t("labelVipGuest")}
                 </Label>
               </div>
-              <p className="ml-auto text-xs text-gray-400">Priority service & perks</p>
+              <p className="ml-auto text-xs text-gray-400">{t("descVipGuest")}</p>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
+              {saving ? t("btnSaving") : editingGuest ? t("btnUpdateGuest") : t("btnAddGuest")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -753,20 +762,19 @@ export default function GuestsPage() {
       <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Guest?</AlertDialogTitle>
+            <AlertDialogTitle>{t("dialogDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &quot;{deleteDialog?.name}&quot; from your records. This action cannot
-              be undone.
+              {t("dialogDeleteDesc", { name: deleteDialog?.name || "Guest" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

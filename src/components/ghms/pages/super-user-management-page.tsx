@@ -426,9 +426,9 @@ export default function SuperUserManagementPage() {
       setPagination(usersData.pagination || null);
       setStats(usersData.stats || null);
       // Providers API returns an array directly
-      const provs = Array.isArray(provDataRaw)
+      const provs: any[] = Array.isArray(provDataRaw)
         ? provDataRaw
-        : (provDataRaw as Record<string, unknown>).providers || [];
+        : ((provDataRaw as Record<string, unknown>).providers as any[]) || [];
       setProviders(provs.map((p: Record<string, unknown>) => ({
         id: p.id as string,
         name: p.name as string,

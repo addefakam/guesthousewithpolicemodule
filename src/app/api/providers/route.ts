@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
             licenseNo: licenseNo?.trim() || "",
             licenseFile: licenseFileUrl,
             status: "APPROVED",
-            approvedBy: auth.userId || auth.username || "superuser",
+            approvedBy: auth.userId || auth.userName || "superuser",
             approvedAt: new Date(),
           },
         });

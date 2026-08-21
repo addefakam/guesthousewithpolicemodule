@@ -16,7 +16,8 @@
  */
 
 import { db } from "./db";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { sql } from "@prisma/client/sql";
 
 // ── Anomaly Detection Toggle (in-memory cache) ──
 let _cachedEnabled: boolean | null = null;
@@ -37,7 +38,7 @@ export async function isAnomalyDetectionEnabled(): Promise<boolean> {
     const config = await db.policeAlertConfig.findFirst({
       select: { anomalyDetectionEnabled: true },
     });
-    _cachedEnabled = config?.anomalyDetectionEnabled ?? false;
+    _cachedEnabled = config?.anomalyDetectionEnabled === true;
     _cacheTimestamp = now;
     return _cachedEnabled;
   } catch (e) {
@@ -133,7 +134,7 @@ async function isDuplicate(type: AnomalyType, guestPhone: string, providerId: st
     sql`SELECT COUNT(*)::bigint as c FROM "AnomalyRecord"
      WHERE "type" = ${type} AND "guestPhone" = ${guestPhone || ""} AND "providerId" = ${providerId || ""} AND "createdAt" >= ${cutoff}::timestamptz`
   );
-  return (count[0]?.c || 0n) > 0n;
+  return (count[0]?.c || BigInt(0)) > BigInt(0);
 }
 
 // ── Individual Detectors ──

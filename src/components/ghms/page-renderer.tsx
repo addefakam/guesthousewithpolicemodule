@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useCallback } from "react";
+import React, { lazy, Suspense, useEffect, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { apiSubscriptionStatus } from "@/lib/api";
@@ -113,8 +113,8 @@ const SubscriptionsPage = lazyPage(
 const SubscriptionPlansPage = lazyPage(
   () => import("@/components/ghms/pages/subscription-plans-page")
 );
-const SubscriptionLockoutPage = lazyPage(
-  () => import("@/components/ghms/pages/subscription-lockout-page")
+const SubscriptionLockoutPage = lazy(
+  () => import("@/components/ghms/pages/subscription-lockout-page") as Promise<{ default: React.ComponentType<any> }>
 );
 const PoliceRoomAvailabilityPage = lazyPage(
   () => import("@/components/ghms/pages/police-room-availability-page")
@@ -270,7 +270,7 @@ export default function PageRenderer() {
   if (currentPage === "subscription-lockout" && subscription) {
     return (
       <Suspense fallback={<PageLoader />}>
-        <SubscriptionLockoutPage info={subscription} />
+        {React.createElement(SubscriptionLockoutPage as any, { info: subscription })}
       </Suspense>
     );
   }

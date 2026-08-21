@@ -53,14 +53,14 @@ export async function POST(
     const { userId, userName } = getLogUserInfo(req);
     logStaffActivity({
       req, userId, userName, action: "CHECKIN", targetType: "RESERVATION", targetId: id,
-      details: { guestName: updated.guest.name, roomNumber: updated.room.number, checkIn: reservation.checkIn },
+      details: { guestName: updated.guest?.name ?? "", roomNumber: updated.room?.number ?? "", checkIn: reservation.checkIn },
       providerId,
     });
 
     // Background: run anomaly detection on check-in (fire-and-forget)
     runAnomalyDetection({
-      guestName: updated.guest.name,
-      guestPhone: updated.guest.phone,
+      guestName: updated.guest?.name ?? "",
+      guestPhone: updated.guest?.phone ?? "",
       providerId,
       reservationId: id,
       trigger: "CHECKIN",

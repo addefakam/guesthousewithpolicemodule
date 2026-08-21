@@ -4,7 +4,7 @@ import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { requirePoliceMinRank } from "@/lib/police-permissions";
 import { ensureSuspectTables } from "@/lib/suspect-check";
 import { Prisma } from "@prisma/client";
-import { sql } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { isValidPhone } from "@/lib/utils";
 
 const MAX_PAGE_SIZE = 100;
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     if (q) {
       // ID-only search: match against SuspectId table and legacy idNumber field
       const matchingIdPersons = await db.$queryRaw<{ suspectedPersonId: string }[]>(
-        sql`SELECT DISTINCT "suspectedPersonId" FROM "SuspectId" WHERE LOWER("idNumber") LIKE LOWER(${`%${q}%`})`
+        Prisma.sql`SELECT DISTINCT "suspectedPersonId" FROM "SuspectId" WHERE LOWER("idNumber") LIKE LOWER(${`%${q}%`})`
       );
       const idsFromIdTable = matchingIdPersons.map(r => r.suspectedPersonId);
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       const allIds = await db.$queryRaw<
         { id: string; suspectedPersonId: string; idType: string; idNumber: string; createdAt: string }[]
       >(
-        sql`SELECT * FROM "SuspectId" WHERE "suspectedPersonId" IN (${Prisma.join(personIds)}) ORDER BY "createdAt" ASC`
+        Prisma.sql`SELECT * FROM "SuspectId" WHERE "suspectedPersonId" IN (${Prisma.join(personIds)}) ORDER BY "createdAt" ASC`
       );
 
       // Group IDs by person
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     for (const sid of idsToCreate) {
       try {
-        await db.$executeRaw(sql`
+        await db.$executeRaw(Prisma.sql`
           INSERT INTO "SuspectId" ("id", "suspectedPersonId", "idType", "idNumber", "createdAt")
           VALUES (gen_random_uuid()::text, ${person.id}, ${sid.idType}, ${sid.idNumber}, CURRENT_TIMESTAMP)
           ON CONFLICT ("idNumber", "idType") DO NOTHING
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
 
     // Fetch the created IDs to return
     const createdIds = await db.$queryRaw<{ idType: string; idNumber: string }[]>(
-      sql`SELECT "idType", "idNumber" FROM "SuspectId" WHERE "suspectedPersonId" = ${person.id} ORDER BY "createdAt" ASC`
+      Prisma.sql`SELECT "idType", "idNumber" FROM "SuspectId" WHERE "suspectedPersonId" = ${person.id} ORDER BY "createdAt" ASC`
     );
 
     return NextResponse.json({

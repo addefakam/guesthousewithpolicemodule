@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sql, Prisma } from ".prisma/client";
+import { Prisma } from "@prisma/client";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
@@ -73,36 +73,36 @@ export async function GET(req: NextRequest) {
     let guestTrend: { date: string; count: number }[] = [];
     if (period === "daily") {
       // Hourly for daily view
-      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT
           TO_CHAR("createdAt", 'HH24:00') AS date,
           COUNT(*)::int AS count
         FROM "Guest"
         WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'HH24:00')
         ORDER BY date
       `);
     } else if (period === "monthly") {
-      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT
           TO_CHAR("createdAt", 'YYYY-MM-DD') AS date,
           COUNT(*)::int AS count
         FROM "Guest"
         WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD')
         ORDER BY date
       `);
     } else {
       // yearly: monthly breakdown
-      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      guestTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT
           TO_CHAR("createdAt", 'YYYY-MM') AS date,
           COUNT(*)::int AS count
         FROM "Guest"
         WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
         ORDER BY date
       `);
@@ -112,56 +112,56 @@ export async function GET(req: NextRequest) {
     let checkInTrend: { date: string; count: number }[] = [];
     let checkOutTrend: { date: string; count: number }[] = [];
     if (period === "daily") {
-      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckIn", 'HH24:00') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckIn", 'HH24:00') ORDER BY date
       `);
-      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckOut", 'HH24:00') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckOut", 'HH24:00') ORDER BY date
       `);
     } else if (period === "monthly") {
-      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckIn", 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckIn", 'YYYY-MM-DD') ORDER BY date
       `);
-      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckOut", 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckOut", 'YYYY-MM-DD') ORDER BY date
       `);
     } else {
-      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkInTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckIn", 'YYYY-MM') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckIn", 'YYYY-MM') ORDER BY date
       `);
-      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      checkOutTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("actualCheckOut", 'YYYY-MM') AS date, COUNT(*)::int AS count
         FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckOut", 'YYYY-MM') ORDER BY date
       `);
     }
 
     // ── 4. Nationality breakdown ──
-    const nationalities = await db.$queryRaw<{ name: string; count: number }[]>(sql`
+    const nationalities = await db.$queryRaw<{ name: string; count: number }[]>(Prisma.sql`
       SELECT
         CASE WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown'
              ELSE TRIM("nationality") END AS name,
         COUNT(*)::int AS count
       FROM "Guest"
       WHERE 1=1
-        ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
-        ${period !== "yearly" ? sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : sql``}
+        ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
+        ${period !== "yearly" ? Prisma.sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``}
       GROUP BY CASE WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown' ELSE TRIM("nationality") END
       ORDER BY count DESC
       LIMIT 15
@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
     // ── 5. Provider-level guest distribution ──
     const providerBreakdown = providerId
       ? []
-      : await db.$queryRaw<{ name: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number }[]>(sql`
+      : await db.$queryRaw<{ name: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number }[]>(Prisma.sql`
         SELECT
           p."name",
           COALESCE(g.c, 0)::int AS "guests",
@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
           COALESCE(sm.c, 0)::int AS "matches",
           COALESCE(r.c, 0)::int AS "rooms"
         FROM "Provider" p
-        LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Guest" ${period !== "yearly" ? sql`WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : sql``} GROUP BY "providerId") g ON g."providerId" = p."id"
+        LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Guest" ${period !== "yearly" ? Prisma.sql`WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``} GROUP BY "providerId") g ON g."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate} GROUP BY "providerId") ci ON ci."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate} GROUP BY "providerId") co ON co."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} GROUP BY "providerId") sm ON sm."providerId" = p."id"
@@ -189,12 +189,12 @@ export async function GET(req: NextRequest) {
       `);
 
     // ── 6. Suspect match severity breakdown ──
-    const suspectSeverities = await db.$queryRaw<{ severity: string; count: number }[]>(sql`
+    const suspectSeverities = await db.$queryRaw<{ severity: string; count: number }[]>(Prisma.sql`
       SELECT sp."severity", COUNT(sm."id")::int AS count
       FROM "SuspectMatch" sm
       JOIN "SuspectedPerson" sp ON sp."id" = sm."suspectedPersonId"
       WHERE sm."createdAt" >= ${startDate} AND sm."createdAt" <= ${endDate}
-        ${providerId ? sql`AND sm."providerId" = ${providerId}` : sql``}
+        ${providerId ? Prisma.sql`AND sm."providerId" = ${providerId}` : Prisma.sql``}
       GROUP BY sp."severity"
       ORDER BY count DESC
     `);
@@ -202,7 +202,7 @@ export async function GET(req: NextRequest) {
     // ── 7. Room occupancy by provider ──
     const occupancyByProvider = providerId
       ? []
-      : await db.$queryRaw<{ name: string; total: number; occupied: number; available: number; reserved: number; maintenance: number; rate: number }[]>(sql`
+      : await db.$queryRaw<{ name: string; total: number; occupied: number; available: number; reserved: number; maintenance: number; rate: number }[]>(Prisma.sql`
         SELECT
           p."name",
           COALESCE(r_total.c, 0)::int AS "total",
@@ -224,27 +224,27 @@ export async function GET(req: NextRequest) {
     // ── 8. Peak check-in hours (for daily/monthly: aggregate all check-ins by hour) ──
     const peakHours = period === "yearly"
       ? []
-      : await db.$queryRaw<{ hour: string; count: number }[]>(sql`
+      : await db.$queryRaw<{ hour: string; count: number }[]>(Prisma.sql`
         SELECT
           TO_CHAR("actualCheckIn", 'HH24:00') AS "hour",
           COUNT(*)::int AS count
         FROM "Reservation"
         WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("actualCheckIn", 'HH24:00')
         ORDER BY "hour"
       `);
 
     // ── 9. ID type distribution ──
-    const idTypes = await db.$queryRaw<{ name: string; count: number }[]>(sql`
+    const idTypes = await db.$queryRaw<{ name: string; count: number }[]>(Prisma.sql`
       SELECT
         CASE WHEN "idType" IS NULL OR TRIM("idType") = '' THEN 'Not Provided'
              ELSE TRIM("idType") END AS name,
         COUNT(*)::int AS count
       FROM "Guest"
       WHERE 1=1
-        ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
-        ${period !== "yearly" ? sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : sql``}
+        ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
+        ${period !== "yearly" ? Prisma.sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``}
       GROUP BY CASE WHEN "idType" IS NULL OR TRIM("idType") = '' THEN 'Not Provided' ELSE TRIM("idType") END
       ORDER BY count DESC
     `);
@@ -257,11 +257,11 @@ export async function GET(req: NextRequest) {
     });
 
     // ── 11. Reservation status distribution ──
-    const reservationStatuses = await db.$queryRaw<{ status: string; count: number }[]>(sql`
+    const reservationStatuses = await db.$queryRaw<{ status: string; count: number }[]>(Prisma.sql`
       SELECT "status", COUNT(*)::int AS count
       FROM "Reservation"
       WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-        ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+        ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
       GROUP BY "status"
       ORDER BY count DESC
     `);
@@ -269,24 +269,24 @@ export async function GET(req: NextRequest) {
     // ── 12. Suspect match trend (time series, same grain as check-in trend) ──
     let suspectTrend: { date: string; count: number }[] = [];
     if (period === "daily") {
-      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("createdAt", 'HH24:00') AS date, COUNT(*)::int AS count
         FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'HH24:00') ORDER BY date
       `);
     } else if (period === "monthly") {
-      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
         FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD') ORDER BY date
       `);
     } else {
-      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(sql`
+      suspectTrend = await db.$queryRaw<{ date: string; count: number }[]>(Prisma.sql`
         SELECT TO_CHAR("createdAt", 'YYYY-MM') AS date, COUNT(*)::int AS count
         FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}
-          ${providerId ? sql`AND "providerId" = ${providerId}` : sql``}
+          ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         GROUP BY TO_CHAR("createdAt", 'YYYY-MM') ORDER BY date
       `);
     }
