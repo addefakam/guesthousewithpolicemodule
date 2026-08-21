@@ -22,7 +22,16 @@ export default function LanguageSwitcher() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    const savedLng = localStorage.getItem("i18nextLng");
+    if (savedLng && ["en", "am", "om"].includes(savedLng)) {
+      i18n.changeLanguage(savedLng);
+    }
+  }, [i18n]);
+
+  const changeLang = (code: string) => {
+    i18n.changeLanguage(code);
+    localStorage.setItem("i18nextLng", code);
+  };
 
   if (!mounted) return null;
 
@@ -35,7 +44,7 @@ export default function LanguageSwitcher() {
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => i18n.changeLanguage(lang.code)}
+            onClick={() => changeLang(lang.code)}
             className={`cursor-pointer ${i18n.language === lang.code ? "bg-slate-100 font-bold" : ""}`}
           >
             {lang.label}
