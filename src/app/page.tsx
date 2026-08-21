@@ -1,5 +1,7 @@
 "use client";
 
+import "@/i18n/config";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import LoginPage from "@/components/ghms/login-page";

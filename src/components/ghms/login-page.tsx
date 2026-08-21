@@ -8,6 +8,7 @@ import { Building2, KeyRound, UserPlus, LogIn, Upload } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import LanguageSwitcher from "@/components/ghms/language-switcher";
 
 import {
   Card,
@@ -171,6 +172,10 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl" />
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500/5 blur-3xl" />
+
+      <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-sm">
+        <LanguageSwitcher />
+      </div>
 
       <Card className="relative z-10 w-full max-w-lg border-0 shadow-2xl">
         <CardHeader className="space-y-2 pb-2 text-center">
