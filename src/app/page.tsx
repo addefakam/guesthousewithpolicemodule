@@ -9,7 +9,8 @@ import Sidebar from "@/components/ghms/sidebar";
 import PageRenderer from "@/components/ghms/page-renderer";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
 import { apiGetNotifications, apiMarkNotificationRead } from "@/lib/api";
-import { useTranslation } from "react-i18next";
+import { useTranslation, I18nextProvider } from "react-i18next";
+import i18n from "@/i18n/config";
 import { Bell } from "lucide-react";
 
 interface UrgentNotif {
@@ -19,6 +20,14 @@ interface UrgentNotif {
 }
 
 export default function Home() {
+  return (
+    <I18nextProvider i18n={i18n}>
+      <HomeContent />
+    </I18nextProvider>
+  );
+}
+
+function HomeContent() {
   const { t } = useTranslation("common");
   const { currentUser, currentPage, setCurrentPage } = useAppStore();
   const [unreadCount, setUnreadCount] = useState(0);
