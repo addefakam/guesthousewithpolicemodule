@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 import { Globe } from "lucide-react";
 import {
   DropdownMenu,
@@ -17,7 +18,6 @@ const languages = [
 ];
 
 export default function LanguageSwitcher() {
-  const { i18n } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function LanguageSwitcher() {
     if (savedLng && ["en", "am", "om"].includes(savedLng)) {
       i18n.changeLanguage(savedLng);
     }
-  }, [i18n]);
+  }, []);
 
   const changeLang = (code: string) => {
     i18n.changeLanguage(code);

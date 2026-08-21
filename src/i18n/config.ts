@@ -7,13 +7,15 @@ import en from "./locales/en.json";
 import am from "./locales/am.json";
 import om from "./locales/om.json";
 
+console.log("Initializing i18n with resources:", { en, am, om });
+
 i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { ...en },
-      am: { ...am },
-      om: { ...om },
+      en: en,
+      am: am,
+      om: om,
     },
     fallbackLng: "en",
     defaultNS: "common",
