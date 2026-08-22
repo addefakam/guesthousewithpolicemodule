@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 "use client";
+import { useTranslation } from "react-i18next";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
 import { toast } from "sonner";

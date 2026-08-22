@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 "use client";
+import { useTranslation } from "react-i18next";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePagination } from "@/hooks/use-pagination";

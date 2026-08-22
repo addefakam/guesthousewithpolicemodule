@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 "use client";
+import { useTranslation } from "react-i18next";
 
 import { useState } from "react";
 import { Building2, Users, Hotel } from "lucide-react";

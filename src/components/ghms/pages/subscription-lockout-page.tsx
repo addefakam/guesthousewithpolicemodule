@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 "use client";
+import { useTranslation } from "react-i18next";
 
 import { Lock, Clock, Phone, CreditCard, AlertTriangle, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
