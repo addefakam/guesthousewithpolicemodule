@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { Prisma } from "@prisma/client";
-import { sql } from "@prisma/client/sql";
+const sql = Prisma.sql;
 import { dispatchAlertForMatch } from "./alert-dispatcher";
 
 let tablesEnsured = false;

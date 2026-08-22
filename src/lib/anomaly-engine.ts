@@ -17,7 +17,7 @@
 
 import { db } from "./db";
 import { Prisma } from "@prisma/client";
-import { sql } from "@prisma/client/sql";
+const sql = Prisma.sql;
 
 // ── Anomaly Detection Toggle (in-memory cache) ──
 let _cachedEnabled: boolean | null = null;
