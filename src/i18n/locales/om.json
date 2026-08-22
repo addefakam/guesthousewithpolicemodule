@@ -36,7 +36,7 @@
   },
   "common": {
     "URGENT": "ARIFATISAA",
-    "Click to view": "Ilaaluuf tuqi \u2192"
+    "Click to view": "Ilaaluuf tuqi →"
   },
   "login": {
     "errorEmptyCredentials": "Maaloo maqaa fayyadamaa fi jecha iccitii galchaa.",
@@ -294,7 +294,7 @@
     "pageSubtitle": "Kutaawwan dhaabbata keessanii fi haala isaanii ammaa bulchi.",
     "btnAddRoom": "Kutaa Dabali",
     "btnImport": "Galgali (Import)",
-    "btnDownloadTemplate": "Fakkeenya Buufadhu",
+    "btnDownloadTemplate": "Unkaa Buufadhu",
     "searchPlaceholder": "Lakkoofsa kutaa ykn gosaan barbaadi...",
     "tabAll": "Hunda",
     "tabAvailable": "Duwwaa",
@@ -339,7 +339,6 @@
     "dialogImportTitle": "Excel irraa Kutaawwan Galchi",
     "dialogImportDesc": "Faayila Excel (.xlsx / .xls) deetaa kutaa qabu ol fe'i. Unkaa sirrii ta'eef gadi buusi.",
     "importRequiredColumns": "Utubaawwan barbaachisan:",
-    "btnDownloadTemplate": "Unkaa Buufadhu",
     "labelSelectExcel": "Faayila Excel Filadhu",
     "importResults": "Bu'aa Galchuu:",
     "btnClose": "Cufi",
@@ -348,7 +347,6 @@
     "dialogDeleteTitle": "Kutaa Haqi",
     "dialogDeleteDesc": "Tarkaanfiin kun deebi'uu hin danda'u. Kun kutaa \"{{name}}\" fi deetaa walqabatu hunda haqa.",
     "btnDeleting": "Haqaa jira...",
-    "btnDelete": "Haqi",
     "dialogHandoverTitle": "Dabarsa kutaa fi odeeffannoo haalaa",
     "currentStatus": "Haala Ammaa",
     "loadingReservations": "Beellama fe'aa jira...",
@@ -385,7 +383,6 @@
     "btnCancel": "Haqi",
     "btnSaving": "Olkaahaa jira...",
     "btnUpdateGuest": "Keessummaa Fooyyessi",
-    "btnAddGuest": "Keessummaa Dabali",
     "dialogDeleteTitle": "Keessummaa Haqi?",
     "dialogDeleteDesc": "Tarkaanfiin kun deebi'uu hin danda'u. Kun keessummaa \"{{name}}\" fi galmeewwan walqabatan hunda haqa.",
     "btnDeleting": "Haqaa jira..."
@@ -517,5 +514,41 @@
     "infoStatus": "Haala",
     "statusActive": "Hojjechaa jira",
     "msgRefreshSuccess": "Daashboordiin milkiin haaromfameera"
+  },
+  "accommodation": {
+    "title": "Qubsumsa / Teessuma",
+    "subtitle": "Keessummoota, kutawwan fi tajaajila guyyaa bulchi.",
+    "guestsTab": "Keessummoota",
+    "roomsTab": "Kutawwan",
+    "daytimeTab": "Tajaajila Guyyaa",
+    "manageGuests": "Keessummoota Bulchuu",
+    "manageGuestsDesc": "Seensa, ba'iinsa fi qabannaa keessummootaa bulchuu",
+    "newReservation": "Qabannaa Haaraa",
+    "totalGuests": "Ida'ama Keessummootaa",
+    "checkedIn": "Kan Seenan",
+    "upcoming": "Kan Dhufan",
+    "availableRooms": "Kutawwan Duwwaa",
+    "searchGuests": "Maqaadhaan, bilbilaan ykn eenyummeessaadhaan barbaadi...",
+    "allGuests": "Keessummoota Hunda",
+    "noReservation": "Qabannaa Kan Hin Qabne",
+    "noGuestsFound": "Keessummaan Hin Argamne",
+    "thGuest": "Keessummaa",
+    "thPhoneId": "Bilbila / Eenyummeessaa",
+    "thStatus": "Haala",
+    "thRoom": "Kutaa",
+    "thSecondGuest": "Keessummaa Lammaffaa",
+    "thStayPeriod": "Yeroo Turti",
+    "thAmount": "Kaffaltii",
+    "thActions": "Tarkaanfiilee",
+    "btnCheckIn": "Galchuu",
+    "btnCheckOut": "Baasuu",
+    "vip": "VIP"
+  },
+  "operations": {
+    "title": "Hojiiwwan",
+    "subtitle": "Baasiiwwan, qabeenya fi tajaajila qulqullinaa bulchi.",
+    "expensesTab": "Baasii",
+    "resourcesTab": "Qabeenya",
+    "housekeepingTab": "Qulqullina"
   }
 }

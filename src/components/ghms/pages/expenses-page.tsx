@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetExpenses,
@@ -123,6 +124,7 @@ const CATEGORY_PRESETS: { name: string; color: string; icon: string }[] = [
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
+  const { t } = useTranslation("operations");
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -346,16 +348,16 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-          <p className="mt-1 text-sm text-gray-500">Track and manage all business expenses</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("expensesTitle", "Expenses")}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t("expensesDesc", "Track and manage all business expenses")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowCatMgmt(!showCatMgmt)} className="gap-2">
             <FolderPlus className="h-4 w-4" />
-            {showCatMgmt ? "Hide Categories" : "Manage Categories"}
+            {showCatMgmt ? t("hideCategories", "Hide Categories") : t("manageCategories", "Manage Categories")}
           </Button>
           <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Expense
+            <Plus className="h-4 w-4" /> {t("addExpense", "Add Expense")}
           </Button>
         </div>
       </div>

@@ -36,7 +36,7 @@
   },
   "common": {
     "URGENT": "URGENT",
-    "Click to view": "Click to view \u2192"
+    "Click to view": "Click to view →"
   },
   "login": {
     "errorEmptyCredentials": "Please enter both username and password.",
@@ -339,7 +339,6 @@
     "dialogImportTitle": "Import Rooms from Excel",
     "dialogImportDesc": "Upload an Excel file (.xlsx / .xls) with room data. Download the template below for the correct column format.",
     "importRequiredColumns": "Required columns:",
-    "btnDownloadTemplate": "Download Template",
     "labelSelectExcel": "Select Excel File",
     "importResults": "Import Results:",
     "btnClose": "Close",
@@ -348,7 +347,6 @@
     "dialogDeleteTitle": "Delete Room",
     "dialogDeleteDesc": "This action cannot be undone. This will permanently delete room \"{{name}}\" and all associated data.",
     "btnDeleting": "Deleting...",
-    "btnDelete": "Delete",
     "dialogHandoverTitle": "Room handover and status details",
     "currentStatus": "Current Status",
     "loadingReservations": "Loading reservations...",
@@ -385,7 +383,6 @@
     "btnCancel": "Cancel",
     "btnSaving": "Saving...",
     "btnUpdateGuest": "Update Guest",
-    "btnAddGuest": "Add Guest",
     "dialogDeleteTitle": "Delete Guest?",
     "dialogDeleteDesc": "This will permanently delete \"{{name}}\" from your records. This action cannot be undone.",
     "btnDeleting": "Deleting..."
@@ -517,5 +514,41 @@
     "infoStatus": "Status",
     "statusActive": "Active",
     "msgRefreshSuccess": "Dashboard refreshed successfully"
+  },
+  "accommodation": {
+    "title": "Accommodation",
+    "subtitle": "Manage guests, room inventory and daytime service bookings.",
+    "guestsTab": "Guests",
+    "roomsTab": "Rooms",
+    "daytimeTab": "Daytime Services",
+    "manageGuests": "Manage Guests",
+    "manageGuestsDesc": "Manage guest check-in & check-out and reservations",
+    "newReservation": "New Reservation",
+    "totalGuests": "Total Guests",
+    "checkedIn": "Checked In",
+    "upcoming": "Upcoming",
+    "availableRooms": "Available Rooms",
+    "searchGuests": "Search by name, phone, or ID...",
+    "allGuests": "All Guests",
+    "noReservation": "No Reservation",
+    "noGuestsFound": "No guests found",
+    "thGuest": "Guest",
+    "thPhoneId": "Phone / ID",
+    "thStatus": "Status",
+    "thRoom": "Room",
+    "thSecondGuest": "Second Guest",
+    "thStayPeriod": "Stay Period",
+    "thAmount": "Amount",
+    "thActions": "Actions",
+    "btnCheckIn": "Check In",
+    "btnCheckOut": "Check Out",
+    "vip": "VIP"
+  },
+  "operations": {
+    "title": "Operations",
+    "subtitle": "Manage expenses, resources, and housekeeping tasks.",
+    "expensesTab": "Expenses",
+    "resourcesTab": "Resources",
+    "housekeepingTab": "Housekeeping"
   }
 }

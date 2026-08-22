@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetGuests,
@@ -99,6 +100,7 @@ function addDays(d: string, n: number) {
 
 // ── Component ──
 export default function AccommodationGuestsPage() {
+  const { t } = useTranslation("accommodation");
   const { refreshKey, triggerRefresh } = useAppStore();
 
   // Data
@@ -317,12 +319,12 @@ export default function AccommodationGuestsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Manage Guests</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Manage guest check-in & check-out and reservations</p>
+          <h2 className="text-base sm:text-lg font-semibold">{t("manageGuests", "Manage Guests")}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t("manageGuestsDesc", "Manage guest check-in & check-out and reservations")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setResDialogOpen(true)} className="h-8 text-xs gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" /> New Reservation
+            <CalendarDays className="h-3.5 w-3.5" /> {t("newReservation", "New Reservation")}
           </Button>
         </div>
       </div>
@@ -330,10 +332,10 @@ export default function AccommodationGuestsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Guests", value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50" },
-          { label: "Checked In", value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50" },
-          { label: "Upcoming", value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50" },
-          { label: "Available Rooms", value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50" },
+          { label: t("totalGuests", "Total Guests"), value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50" },
+          { label: t("checkedIn", "Checked In"), value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50" },
+          { label: t("upcoming", "Upcoming"), value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50" },
+          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50" },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border p-3">
             <div className="flex items-center gap-2">
@@ -351,15 +353,15 @@ export default function AccommodationGuestsPage() {
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by name, phone, or ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-8 text-sm" />
+          <Input placeholder={t("searchGuests", "Search by name, phone, or ID...")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-8 text-sm" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetToFirst(); }}>
           <SelectTrigger className="h-9 w-full sm:w-44 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Guests</SelectItem>
-            <SelectItem value="CHECKED_IN">Checked In</SelectItem>
-            <SelectItem value="UPCOMING">Upcoming</SelectItem>
-            <SelectItem value="NO_RESERVATION">No Reservation</SelectItem>
+            <SelectItem value="ALL">{t("allGuests", "All Guests")}</SelectItem>
+            <SelectItem value="CHECKED_IN">{t("checkedIn", "Checked In")}</SelectItem>
+            <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
+            <SelectItem value="NO_RESERVATION">{t("noReservation", "No Reservation")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -435,14 +437,14 @@ export default function AccommodationGuestsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Guest</TableHead>
-                    <TableHead>Phone / ID</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Second Guest</TableHead>
-                    <TableHead>Stay Period</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("thGuest", "Guest")}</TableHead>
+                    <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
+                    <TableHead>{t("thStatus", "Status")}</TableHead>
+                    <TableHead>{t("thRoom", "Room")}</TableHead>
+                    <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
+                    <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
+                    <TableHead>{t("thAmount", "Amount")}</TableHead>
+                    <TableHead className="text-right">{t("thActions", "Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -504,12 +506,12 @@ export default function AccommodationGuestsPage() {
                         <div className="flex items-center justify-end gap-1">
                           {g.activeReservation?.status === "UPCOMING" && (
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(g.activeReservation!)}>
-                              <LogIn className="h-3 w-3" /> Check In
+                              <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
                             </Button>
                           )}
                           {g.activeReservation?.status === "ACTIVE" && (
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
-                              <LogOut className="h-3 w-3" /> Check Out
+                              <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
                             </Button>
                           )}
                           {!g.activeReservation && (

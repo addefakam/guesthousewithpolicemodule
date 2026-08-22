@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetHousekeeping,
@@ -111,6 +112,7 @@ const STATUS_TABS = ["all", "PENDING", "IN_PROGRESS", "COMPLETED"] as const;
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function HousekeepingPage() {
+  const { t } = useTranslation("operations");
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -266,13 +268,13 @@ export default function HousekeepingPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Housekeeping</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("housekeepingTitle", "Housekeeping")}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage cleaning, maintenance, and inspection tasks
+            {t("housekeepingDesc", "Manage cleaning, maintenance, and inspection tasks")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Task
+          <Plus className="h-4 w-4" /> {t("addTask", "Add Task")}
         </Button>
       </div>
 

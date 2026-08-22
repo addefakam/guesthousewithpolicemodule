@@ -36,7 +36,7 @@
   },
   "common": {
     "URGENT": "አስቸኳይ",
-    "Click to view": "ለማየት ጠቅ ያድርጉ \u2192"
+    "Click to view": "ለማየት ጠቅ ያድርጉ →"
   },
   "login": {
     "errorEmptyCredentials": "እባክዎ የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ።",
@@ -383,7 +383,6 @@
     "btnCancel": "ሰርዝ",
     "btnSaving": "እያስቀመጠ ነው...",
     "btnUpdateGuest": "እንግዳ አዘምን",
-    "btnAddGuest": "እንግዳ ጨምር",
     "dialogDeleteTitle": "እንግዳ ይሰረዝ?",
     "dialogDeleteDesc": "ይህ እንግዳ \"{{name}}\" ን ከመዝገብዎ በቋሚነት ይሰርዘዋል። ይህ እርምጃ ሊቀለበስ አይችልም።",
     "btnDeleting": "በመሰረዝ ላይ..."
@@ -515,5 +514,41 @@
     "infoStatus": "ሁኔታ",
     "statusActive": "ንቁ",
     "msgRefreshSuccess": "ዳሽቦርዱ በተሳካ ሁኔታ ታድሷል"
+  },
+  "accommodation": {
+    "title": "የማደሪያ ቦታ",
+    "subtitle": "የእንግዶችን፣ የክፍሎችን እና የቀን አገልግሎቶችን ያስተዳድሩ።",
+    "guestsTab": "እንግዶች",
+    "roomsTab": "ክፍሎች",
+    "daytimeTab": "የቀን አገልግሎቶች",
+    "manageGuests": "እንግዶችን ማስተዳደር",
+    "manageGuestsDesc": "የእንግዶች ምዝገባ፣ መግቢያ፣ መውጫ እና ቦታ ማስያዝ ማስተዳደሪያ",
+    "newReservation": "አዲስ ቦታ ማስያዝ",
+    "totalGuests": "ጠቅላላ እንግዶች",
+    "checkedIn": "የገቡ እንግዶች",
+    "upcoming": "የሚመጡ እንግዶች",
+    "availableRooms": "ነጻ ክፍሎች",
+    "searchGuests": "በስም፣ በስልክ ቁጥር ወይም በመታወቂያ ፈልግ...",
+    "allGuests": "ሁሉም እንግዶች",
+    "noReservation": "ቦታ ያልያዘ",
+    "noGuestsFound": "ምንም እንግዳ አልተገኘም",
+    "thGuest": "እንግዳ",
+    "thPhoneId": "ስልክ / መታወቂያ",
+    "thStatus": "ሁኔታ",
+    "thRoom": "ክፍል",
+    "thSecondGuest": "ሁለተኛ እንግዳ",
+    "thStayPeriod": "የቆይታ ጊዜ",
+    "thAmount": "ክፍያ",
+    "thActions": "እርምጃዎች",
+    "btnCheckIn": "ማስገባት",
+    "btnCheckOut": "ማስወጣት",
+    "vip": "ቪአይፒ"
+  },
+  "operations": {
+    "title": "ስራዎች እና ማስኬጃ",
+    "subtitle": "ወጪዎችን፣ ሀብቶችን እና የጽዳት ስራዎችን ያስተዳድሩ።",
+    "expensesTab": "ወጪዎች",
+    "resourcesTab": "ሀብቶች",
+    "housekeepingTab": "ጽዳት እና እንክብካቤ"
   }
 }
