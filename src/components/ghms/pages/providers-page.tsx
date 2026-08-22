@@ -339,7 +339,7 @@ export default function ProvidersPage() {
               <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Total</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('statTotal', 'Total')}</p>
               <p className="text-lg sm:text-2xl font-bold">{providers.length}</p>
             </div>
           </div>
@@ -350,7 +350,7 @@ export default function ProvidersPage() {
               <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Approved</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('statApproved', 'Approved')}</p>
               <p className="text-lg sm:text-2xl font-bold text-emerald-600">{approvedCount}</p>
             </div>
           </div>
@@ -361,7 +361,7 @@ export default function ProvidersPage() {
               <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Pending</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('statPending', 'Pending')}</p>
               <p className="text-lg sm:text-2xl font-bold text-yellow-600">{pendingCount}</p>
             </div>
           </div>
@@ -370,18 +370,18 @@ export default function ProvidersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base sm:text-lg font-semibold">
-            {isSuperuser ? "Guesthouses" : "Provider Applications"}
+            {isSuperuser ? t('guesthouses', 'Guesthouses') : t('providerApplications', 'Provider Applications')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             {isSuperuser
-              ? "Register new guesthouses and manage existing ones."
-              : "Manage registrations and licensing"}
+              ? t('guesthousesDesc', 'Register new guesthouses and manage existing ones.')
+              : t('providerApplicationsDesc', 'Manage registrations and licensing')}
           </p>
         </div>
         <div className="flex gap-2">
           {isSuperuser && (
             <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
-              <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
+              <UserPlus className="h-3.5 w-3.5" /> {t('registerGuesthouse', 'Register Guesthouse')}
             </Button>
           )}
         </div>
@@ -398,7 +398,7 @@ export default function ProvidersPage() {
         ) : providers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
             <Building2 className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
-            <p className="text-xs sm:text-sm text-muted-foreground">No providers registered yet</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('noProviders', 'No providers registered yet')}</p>
           </div>
         ) : (
           <>
@@ -429,26 +429,26 @@ export default function ProvidersPage() {
 
                   <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5 flex-wrap">
                     <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100" onClick={() => openDetail(provider)}>
-                      <Eye className="h-3.5 w-3.5" /> Details
+                      <Eye className="h-3.5 w-3.5" /> {t('details', 'Details')}
                     </button>
                     {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t('approve', 'Approve')}
                       </button>
                     )}
                     {provider.status === "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
-                        <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+                        <RotateCcw className="h-3.5 w-3.5" /> {t('reactivate', 'Reactivate')}
                       </button>
                     )}
                     {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
-                        <XCircle className="h-3.5 w-3.5" /> Reject
+                        <XCircle className="h-3.5 w-3.5" /> {t('reject', 'Reject')}
                       </button>
                     )}
                     {provider.status === "APPROVED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
-                        <Ban className="h-3.5 w-3.5" /> Suspend
+                        <Ban className="h-3.5 w-3.5" /> {t('suspend', 'Suspend')}
                       </button>
                     )}
                   </div>
@@ -481,22 +481,22 @@ export default function ProvidersPage() {
                         <div className="flex items-center justify-end gap-1">
                           {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
-                              <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+                              <CheckCircle2 className="mr-1 h-4 w-4" /> {t('approve', 'Approve')}
                             </Button>
                           )}
                           {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
-                              <XCircle className="mr-1 h-4 w-4" /> Reject
+                              <XCircle className="mr-1 h-4 w-4" /> {t('reject', 'Reject')}
                             </Button>
                           )}
                           {provider.status === "APPROVED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
-                              <Ban className="mr-1 h-4 w-4" /> Suspend
+                              <Ban className="mr-1 h-4 w-4" /> {t('suspend', 'Suspend')}
                             </Button>
                           )}
                           {provider.status === "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
-                              <RotateCcw className="mr-1 h-4 w-4" /> Reactivate
+                              <RotateCcw className="mr-1 h-4 w-4" /> {t('reactivate', 'Reactivate')}
                             </Button>
                           )}
                         </div>
@@ -554,7 +554,7 @@ export default function ProvidersPage() {
               {/* ── License Preview ── */}
               {selectedProvider.licenseFile && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">License Document</p>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t('licenseDocument', 'License Document')}</p>
                   <div
                     className="relative cursor-pointer rounded-xl border border-slate-200 bg-slate-950 overflow-hidden group"
                     style={{ minHeight: "140px" }}
@@ -572,7 +572,7 @@ export default function ProvidersPage() {
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
                           <FileText className="h-7 w-7" />
                         </div>
-                        <span className="text-sm font-medium opacity-80">Click to open license document</span>
+                        <span className="text-sm font-medium opacity-80">{t('clickToOpenLicense', 'Click to open license document')}</span>
                       </div>
                     )}
                   </div>
@@ -581,7 +581,7 @@ export default function ProvidersPage() {
 
               {/* ── Info Grid ── */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Provider Information</p>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t('providerInformation', 'Provider Information')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
                   <InfoCard icon={<User className="h-4 w-4" />} label="Owner" value={selectedProvider.ownerName} />
                   <InfoCard icon={<Phone className="h-4 w-4" />} label="Phone" value={selectedProvider.phone} />
@@ -605,18 +605,18 @@ export default function ProvidersPage() {
               <div className="flex flex-wrap gap-2 pt-1">
                 {selectedProvider.status === "APPROVED" && (
                   <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => { setDetailOpen(false); openSuspend(selectedProvider); }}>
-                    <Ban className="h-3.5 w-3.5" /> Suspend
+                    <Ban className="h-3.5 w-3.5" /> {t('suspend', 'Suspend')}
                   </Button>
                 )}
                 {selectedProvider.status === "SUSPENDED" && (
                   <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => { setDetailOpen(false); setConfirmAction({ provider: selectedProvider, action: "REACTIVATE" }); }}>
-                    <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+                    <RotateCcw className="h-3.5 w-3.5" /> {t('reactivate', 'Reactivate')}
                   </Button>
                 )}
                 {selectedProvider.licenseFile && (
                   <a href={selectedProvider.licenseFile} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors">
-                    <FileText className="h-4 w-4" /> View Full License
+                    <FileText className="h-4 w-4" /> {t('viewFullLicense', 'View Full License')}
                   </a>
                 )}
               </div>
@@ -657,10 +657,10 @@ export default function ProvidersPage() {
         <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
-              <XCircle className="h-5 w-5" /> Reject Provider
+              <XCircle className="h-5 w-5" /> {t('rejectProvider', 'Reject Provider')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+              {t('rejectingProvider', 'Rejecting')} <strong>{rejectDialog?.name}</strong>. {t('pleaseProvideReason', 'Please provide a reason.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -668,9 +668,9 @@ export default function ProvidersPage() {
             <Textarea id="reject-reason" placeholder="Enter the reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">{t('lblcancel', 'Cancel')}</Button>
             <Button variant="destructive" onClick={handleReject} disabled={actioning || !rejectReason.trim()} className="w-full sm:w-auto">
-              {actioning ? "Rejecting..." : "Confirm Rejection"}
+              {actioning ? t('rejecting', 'Rejecting...') : t('confirmRejection', 'Confirm Rejection')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -681,7 +681,7 @@ export default function ProvidersPage() {
         <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base sm:text-lg">
-              {confirmAction?.action === "APPROVED" ? "Approve Provider" : confirmAction?.action === "REACTIVATE" ? "Reactivate Provider" : "Suspend Provider"}
+              {confirmAction?.action === "APPROVED" ? t('approveProvider', 'Approve Provider') : confirmAction?.action === "REACTIVATE" ? t('reactivateProvider', 'Reactivate Provider') : t('suspendProvider', 'Suspend Provider')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm">
               {confirmAction?.action === "APPROVED"
@@ -704,7 +704,7 @@ export default function ProvidersPage() {
                   : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
               }
             >
-              {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : confirmAction?.action === "REACTIVATE" ? "Reactivate" : "Suspend"}
+              {actioning ? t('processing', 'Processing...') : confirmAction?.action === "APPROVED" ? t('approve', 'Approve') : confirmAction?.action === "REACTIVATE" ? t('reactivate', 'Reactivate') : t('suspend', 'Suspend')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -715,23 +715,23 @@ export default function ProvidersPage() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Building2 className="h-5 w-5" /> Register New Guesthouse
+              <Building2 className="h-5 w-5" /> {t('registerNewGuesthouse', 'Register New Guesthouse')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Add a new guesthouse. It will be automatically approved and an operator account will be created.
+              {t('registerGuesthouseDesc', 'Add a new guesthouse. It will be automatically approved and an operator account will be created.')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
             {/* Guesthouse Info Section */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Guesthouse Information</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('guesthouseInformation', 'Guesthouse Information')}</p>
               <Separator />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Guesthouse Name <span className="text-rose-500">*</span></Label>
+                <Label className="text-sm">{t('guesthouseName', 'Guesthouse Name')} <span className="text-rose-500">*</span></Label>
                 <Input
                   value={registerForm.name}
                   onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
@@ -740,7 +740,7 @@ export default function ProvidersPage() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label className="text-sm">Owner Name <span className="text-rose-500">*</span></Label>
+                <Label className="text-sm">{t('ownerName', 'Owner Name')} <span className="text-rose-500">*</span></Label>
                 <Input
                   value={registerForm.ownerName}
                   onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
@@ -749,7 +749,7 @@ export default function ProvidersPage() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+                <Label className="text-sm">{t('lblphone', 'Phone')} <span className="text-rose-500">*</span></Label>
                 <Input
                   type="tel"
                   value={registerForm.phone}
@@ -759,7 +759,7 @@ export default function ProvidersPage() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label className="text-sm">Email <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Label className="text-sm">{t('lblemail', 'Email')} <span className="text-slate-400 font-normal">({t('optional', 'optional')})</span></Label>
                 <Input
                   type="email"
                   value={registerForm.email}
@@ -788,7 +788,7 @@ export default function ProvidersPage() {
                 </div>
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Address <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Label className="text-sm">{t('lbladdress', 'Address')} <span className="text-slate-400 font-normal">({t('optional', 'optional')})</span></Label>
                 <Input
                   value={registerForm.address}
                   onChange={(e) => setRegisterForm((f) => ({ ...f, address: e.target.value }))}
@@ -797,7 +797,7 @@ export default function ProvidersPage() {
                 />
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">License No <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Label className="text-sm">{t('licenseNo', 'License No')} <span className="text-slate-400 font-normal">({t('optional', 'optional')})</span></Label>
                 <Input
                   value={registerForm.licenseNo}
                   onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
@@ -806,7 +806,7 @@ export default function ProvidersPage() {
                 />
               </div>
               <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Upload License <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Label className="text-sm">{t('uploadLicense', 'Upload License')} <span className="text-slate-400 font-normal">({t('optional', 'optional')})</span></Label>
                 {!registerForm.licenseFileData ? (
                   <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 transition-colors hover:border-primary/40 hover:bg-primary/5">
                     <Upload className="h-8 w-8 text-slate-400" />
@@ -859,8 +859,8 @@ export default function ProvidersPage() {
 
             {/* Operator Account Section */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operator Login Account</p>
-              <p className="text-[11px] text-slate-400">An operator account will be created with access to manage this guesthouse.</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('operatorLoginAccount', 'Operator Login Account')}</p>
+              <p className="text-[11px] text-slate-400">{t('operatorAccountDesc', 'An operator account will be created with access to manage this guesthouse.')}</p>
               <Separator />
             </div>
 
@@ -868,7 +868,7 @@ export default function ProvidersPage() {
               <div className="grid gap-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5 text-slate-400" />
-                  Username <span className="text-rose-500">*</span>
+                  {t('lblusername', 'Username')} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   value={registerForm.username}
@@ -881,7 +881,7 @@ export default function ProvidersPage() {
               <div className="grid gap-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <KeyRound className="h-3.5 w-3.5 text-slate-400" />
-                  Password <span className="text-rose-500">*</span>
+                  {t('password', 'Password')} <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   type="password"
@@ -912,7 +912,7 @@ export default function ProvidersPage() {
                 disabled={registering}
                 className="w-full sm:w-auto"
               >
-                Cancel
+                {t('lblcancel', 'Cancel')}
               </Button>
               <Button
                 className="gap-1.5 w-full sm:w-auto"
@@ -942,10 +942,10 @@ export default function ProvidersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-700">
               <Ban className="h-5 w-5" />
-              Suspend Guesthouse
+              {t('suspendGuesthouse', 'Suspend Guesthouse')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Suspend this provider and send them a notification with the reason.
+              {t('suspendGuesthouseDesc', 'Suspend this provider and send them a notification with the reason.')}
             </DialogDescription>
           </DialogHeader>
           {suspendDialog && (
@@ -969,7 +969,7 @@ export default function ProvidersPage() {
               {/* Suspension Reason (required) */}
               <div>
                 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Reason for Suspension <span className="text-rose-500">*</span>
+                  {t('reasonForSuspension', 'Reason for Suspension')} <span className="text-rose-500">*</span>
                 </Label>
                 <Textarea
                   value={suspensionReason}
@@ -984,7 +984,7 @@ export default function ProvidersPage() {
               {/* Short Message to Provider */}
               <div>
                 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('messageToProvider', 'Message to Provider')} <span className="text-slate-400 font-normal">({t('optional', 'optional')})</span>
                 </Label>
                 <Textarea
                   value={providerMessage}
@@ -1018,7 +1018,7 @@ export default function ProvidersPage() {
                   disabled={suspending}
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  {t('lblcancel', 'Cancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -1029,12 +1029,12 @@ export default function ProvidersPage() {
                   {suspending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Suspending...
+                      {t('suspending', 'Suspending...')}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Suspend &amp; Send Notification
+                      {t('suspendAndNotify', 'Suspend & Send Notification')}
                     </>
                   )}
                 </Button>
