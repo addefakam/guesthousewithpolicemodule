@@ -771,18 +771,18 @@ export default function ProvidersPage() {
               <div className="grid gap-1.5">
                 <Label>{t('lbltype', 'Type')}</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {GUESTHOUSE_TYPES.map((t) => (
+                  {GUESTHOUSE_TYPES.map((typeItem) => (
                     <button
-                      key={t.value}
+                      key={typeItem.value}
                       type="button"
-                      onClick={() => setRegisterForm((f) => ({ ...f, type: t.value }))}
+                      onClick={() => setRegisterForm((f) => ({ ...f, type: typeItem.value }))}
                       className={`rounded-lg border-2 px-3 py-1.5 text-xs font-medium transition-all ${
-                        registerForm.type === t.value
+                        registerForm.type === typeItem.value
                           ? "border-primary bg-primary/5 text-primary"
                           : "border-slate-200 text-slate-500 hover:border-slate-300"
                       }`}
                     >
-                      {t.label}
+                      {typeItem.label}
                     </button>
                   ))}
                 </div>

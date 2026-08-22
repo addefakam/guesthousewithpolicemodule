@@ -676,7 +676,7 @@ export default function GuestsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ID_TYPES.map((t) => (
+                    {ID_TYPES.map((typeItem) => (
                       <SelectItem key={t} value={t}>
                         {t}
                       </SelectItem>

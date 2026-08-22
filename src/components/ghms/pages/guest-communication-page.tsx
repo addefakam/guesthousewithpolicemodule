@@ -310,7 +310,7 @@ export default function GuestCommunicationPage() {
     const next = !tpl.isActive;
     setTogglingId(tpl.id);
     setTemplates((prev) =>
-      prev.map((t) => (t.id === tpl.id ? { ...t, isActive: next } : t))
+      prev.map((typeItem) => (typeItem.id === tpl.id ? { ...t, isActive: next } : t))
     );
     try {
       await apiUpdateMessageTemplate(tpl.id, { isActive: next });
@@ -318,7 +318,7 @@ export default function GuestCommunicationPage() {
     } catch {
       toast.error("Failed to toggle template");
       setTemplates((prev) =>
-        prev.map((t) => (t.id === tpl.id ? { ...t, isActive: !next } : t))
+        prev.map((typeItem) => (typeItem.id === tpl.id ? { ...t, isActive: !next } : t))
       );
     } finally {
       setTogglingId(null);
@@ -328,11 +328,11 @@ export default function GuestCommunicationPage() {
   // ─── Send Message Helpers ─────────────────────────────────────────────────
 
   const selectedTemplateForSingle = templates.find(
-    (t) => t.id === singleForm.templateId
+    (t) => typeItem.id === singleForm.templateId
   );
 
   const handleSingleTemplateChange = (templateId: string) => {
-    const tpl = templates.find((t) => t.id === templateId);
+    const tpl = templates.find((t) => typeItem.id === templateId);
     setSingleForm((prev) => ({
       ...prev,
       templateId,
@@ -601,10 +601,10 @@ export default function GuestCommunicationPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {templates
-                        .filter((t) => t.isActive)
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} ({t.channel})
+                        .filter((t) => typeItem.isActive)
+                        .map((typeItem) => (
+                          <SelectItem key={typeItem.id} value={typeItem.id}>
+                            {typeItem.name} ({typeItem.channel})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -671,10 +671,10 @@ export default function GuestCommunicationPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {templates
-                        .filter((t) => t.isActive)
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} ({t.channel})
+                        .filter((t) => typeItem.isActive)
+                        .map((typeItem) => (
+                          <SelectItem key={typeItem.id} value={typeItem.id}>
+                            {typeItem.name} ({typeItem.channel})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -726,7 +726,7 @@ export default function GuestCommunicationPage() {
                     <p className="text-sm text-gray-700 line-clamp-3 whitespace-pre-line">
                       {
                         templates.find(
-                          (t) => t.id === bulkForm.templateId
+                          (t) => typeItem.id === bulkForm.templateId
                         )?.body ?? ""
                       }
                     </p>
