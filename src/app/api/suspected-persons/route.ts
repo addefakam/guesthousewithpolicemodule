@@ -4,7 +4,6 @@ import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { requirePoliceMinRank } from "@/lib/police-permissions";
 import { ensureSuspectTables } from "@/lib/suspect-check";
 import { Prisma } from "@prisma/client";
-import { Prisma } from "@prisma/client";
 import { isValidPhone } from "@/lib/utils";
 
 const MAX_PAGE_SIZE = 100;
