@@ -49,6 +49,7 @@ import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
 import { apiLogout } from "@/lib/api";
+import LanguageSwitcher from "@/components/ghms/language-switcher";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -642,8 +643,19 @@ function SidebarContent({
 
       <Separator className="shrink-0 bg-slate-200/60" />
 
-      {/* ── Bottom section: collapse toggle ── */}
-      <div className="shrink-0 p-3">
+      {/* ── Bottom section: language switcher + collapse toggle ── */}
+      <div className="shrink-0 p-3 flex flex-col gap-2">
+        {/* Language switcher */}
+        {collapsed ? (
+          <div className="flex justify-center">
+            <LanguageSwitcher />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-1">
+            <LanguageSwitcher />
+            <span className="text-xs text-slate-400">Language</span>
+          </div>
+        )}
         {/* Desktop collapse toggle */}
         {!collapsed && (
           <button
