@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
@@ -182,6 +183,7 @@ function truncate(text: string, maxLen: number): string {
 // ── Component ──
 
 export default function StaffLogsPage() {
+  const { t } = useTranslation();
   const refreshKey = useAppStore((s) => s.refreshKey);
 
   // Filters
@@ -320,9 +322,7 @@ export default function StaffLogsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Action Filter */}
             <div className="space-y-1.5">
-              <Label htmlFor="action-filter" className="text-xs font-medium text-gray-500">
-                Action
-              </Label>
+              <Label>{t('lblaction', 'Action')}</Label>
               <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger id="action-filter" className="w-full">
                   <SelectValue placeholder="All actions" />
@@ -339,9 +339,7 @@ export default function StaffLogsPage() {
 
             {/* Target Type Filter */}
             <div className="space-y-1.5">
-              <Label htmlFor="target-filter" className="text-xs font-medium text-gray-500">
-                Target Type
-              </Label>
+              <Label>{t('lbltargetType', 'Target Type')}</Label>
               <Select value={targetTypeFilter} onValueChange={setTargetTypeFilter}>
                 <SelectTrigger id="target-filter" className="w-full">
                   <SelectValue placeholder="All types" />
@@ -358,9 +356,7 @@ export default function StaffLogsPage() {
 
             {/* Date From */}
             <div className="space-y-1.5">
-              <Label htmlFor="date-from" className="text-xs font-medium text-gray-500">
-                Date From
-              </Label>
+              <Label>{t('lbldateFrom', 'Date From')}</Label>
               <Input
                 id="date-from"
                 type="date"
@@ -372,9 +368,7 @@ export default function StaffLogsPage() {
 
             {/* Date To */}
             <div className="space-y-1.5">
-              <Label htmlFor="date-to" className="text-xs font-medium text-gray-500">
-                Date To
-              </Label>
+              <Label>{t('lbldateTo', 'Date To')}</Label>
               <Input
                 id="date-to"
                 type="date"
@@ -548,12 +542,12 @@ export default function StaffLogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/60">
-                    <TableHead className="w-[180px]">Date / Time</TableHead>
-                    <TableHead className="w-[180px]">Staff Name</TableHead>
-                    <TableHead className="w-[160px]">Action</TableHead>
-                    <TableHead className="w-[130px]">Target Type</TableHead>
-                    <TableHead className="min-w-[200px]">Details</TableHead>
-                    <TableHead className="w-[130px]">IP Address</TableHead>
+                    <TableHead>{t('thdateTime', 'Date / Time')}</TableHead>
+                    <TableHead>{t('thstaffName', 'Staff Name')}</TableHead>
+                    <TableHead>{t('thaction', 'Action')}</TableHead>
+                    <TableHead>{t('thtargetType', 'Target Type')}</TableHead>
+                    <TableHead>{t('thdetails', 'Details')}</TableHead>
+                    <TableHead>{t('thipAddress', 'IP Address')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

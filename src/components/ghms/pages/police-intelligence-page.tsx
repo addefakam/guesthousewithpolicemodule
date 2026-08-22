@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -81,6 +82,7 @@ const SEVERITY_CONFIG: Record<string, { bg: string; text: string; border: string
 };
 
 export default function PoliceIntelligencePage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [data, setData] = useState<{ frequentStays: FreqStayItem[]; hotspotData: HotspotItem[]; allProviderLocations: ProviderLocation[]; occupancyCrimeCorrelation: MonthlyItem[]; recentActivity: AuditItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,7 +236,7 @@ export default function PoliceIntelligencePage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="report-month">Month</Label>
+              <Label>{t('lblmonth', 'Month')}</Label>
               <Select value={reportMonth} onValueChange={setReportMonth}>
                 <SelectTrigger id="report-month"><SelectValue placeholder="Select month" /></SelectTrigger>
                 <SelectContent>
@@ -245,7 +247,7 @@ export default function PoliceIntelligencePage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="report-year">Year</Label>
+              <Label>{t('lblyear', 'Year')}</Label>
               <Select value={reportYear} onValueChange={setReportYear}>
                 <SelectTrigger id="report-year"><SelectValue placeholder="Select year" /></SelectTrigger>
                 <SelectContent>

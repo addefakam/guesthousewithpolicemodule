@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -98,6 +99,7 @@ const CYCLE_ICON_BG: Record<string, string> = {
 };
 
 export default function SubscriptionPlansPage() {
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -398,7 +400,7 @@ export default function SubscriptionPlansPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Plan Name</Label>
+              <Label>{t('lblplanName', 'Plan Name')}</Label>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
@@ -406,7 +408,7 @@ export default function SubscriptionPlansPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Billing Cycle</Label>
+              <Label>{t('lblbillingCycle', 'Billing Cycle')}</Label>
               <Select value={formCycle} onValueChange={setFormCycle}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select cycle" />
@@ -420,7 +422,7 @@ export default function SubscriptionPlansPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Price (ETB)</Label>
+              <Label>{t('lblpriceEtb', 'Price (ETB)')}</Label>
               <Input
                 type="number"
                 min="0"

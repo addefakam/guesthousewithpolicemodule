@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState } from "react";
@@ -13,6 +14,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 export default function SuperGuesthouseUsersPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("guesthouses");
 
   return (

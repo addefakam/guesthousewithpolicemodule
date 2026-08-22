@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
@@ -152,6 +153,7 @@ function isThisWeek(dateStr: string): boolean {
 // ── Component ──
 
 export default function SuperAuditLogsPage() {
+  const { t } = useTranslation();
   // Filters
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("ALL");

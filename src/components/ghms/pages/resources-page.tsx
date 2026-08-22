@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -104,6 +105,7 @@ const emptyForm = {
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ResourcesPage() {
+  const { t } = useTranslation();
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [resources, setResources] = useState<Resource[]>([]);
@@ -338,15 +340,15 @@ export default function ResourcesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead className="text-right">Min Level</TableHead>
-                  <TableHead className="text-right">Cost/Unit</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Last Restocked</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('thname', 'Name')}</TableHead>
+                  <TableHead>{t('thcategory', 'Category')}</TableHead>
+                  <TableHead>{t('thquantity', 'Quantity')}</TableHead>
+                  <TableHead>{t('thunit', 'Unit')}</TableHead>
+                  <TableHead>{t('thminLevel', 'Min Level')}</TableHead>
+                  <TableHead>{t('thcostunit', 'Cost/Unit')}</TableHead>
+                  <TableHead>{t('thsupplier', 'Supplier')}</TableHead>
+                  <TableHead>{t('thlastRestocked', 'Last Restocked')}</TableHead>
+                  <TableHead>{t('thactions', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -432,17 +434,17 @@ export default function ResourcesPage() {
                 <Input placeholder="e.g. pcs, kg" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Min Level</Label>
+                <Label>{t('lblminLevel', 'Min Level')}</Label>
                 <Input type="number" placeholder="0" value={form.minLevel} onChange={(e) => setForm({ ...form, minLevel: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Cost per Unit</Label>
+                <Label>{t('lblcostPerUnit', 'Cost per Unit')}</Label>
                 <Input type="number" placeholder="0" value={form.costPerUnit} onChange={(e) => setForm({ ...form, costPerUnit: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Supplier</Label>
+                <Label>{t('lblsupplier', 'Supplier')}</Label>
                 <Input placeholder="Supplier name" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
               </div>
             </div>

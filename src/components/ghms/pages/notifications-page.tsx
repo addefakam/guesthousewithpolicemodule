@@ -616,7 +616,7 @@ export default function NotificationsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmitConcern} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="concern-title">Subject *</Label>
+              <Label>{t('lblsubject', 'Subject')} *</Label>
               <Input
                 id="concern-title"
                 placeholder="Brief subject of your concern"
@@ -626,7 +626,7 @@ export default function NotificationsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="concern-message">Message *</Label>
+              <Label>{t('lblmessage', 'Message')} *</Label>
               <Textarea
                 id="concern-message"
                 placeholder="Describe your concern in detail..."

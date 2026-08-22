@@ -1633,7 +1633,7 @@ export default function RoomsPage() {
                 </p>
               </div>
               <div>
-                <Label className="text-xs">New Check-out Date *</Label>
+                <Label>{t('lblnewCheckoutDate', 'New Check-out Date')} *</Label>
                 <Input
                   type="date"
                   value={extendDate}
@@ -1712,7 +1712,7 @@ export default function RoomsPage() {
                 </p>
               </div>
               <div>
-                <Label className="text-xs">Target Room *</Label>
+                <Label>{t('lbltargetRoom', 'Target Room')} *</Label>
                 {shiftAvailableRooms.length > 0 ? (
                   <Select value={shiftTargetRoomId} onValueChange={setShiftTargetRoomId}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="Select available room" /></SelectTrigger>

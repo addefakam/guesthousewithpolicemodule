@@ -550,7 +550,7 @@ export default function AccommodationGuestsPage() {
           <div className="space-y-3">
             {/* Guest Select */}
             <div>
-              <Label className="text-xs">Guest *</Label>
+              <Label>{t('lblguest', 'Guest')} *</Label>
               {resForm.guestId ? (
                 <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/30">
                   <span className="text-sm font-medium flex-1">{guests.find((g) => g.id === resForm.guestId)?.name || "Selected"}</span>
@@ -576,7 +576,7 @@ export default function AccommodationGuestsPage() {
 
             {/* Room Select */}
             <div>
-              <Label className="text-xs">Room *</Label>
+              <Label>{t('lblroom', 'Room')} *</Label>
               <Select value={resForm.roomId} onValueChange={(v) => setResForm({ ...resForm, roomId: v })}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select available room" /></SelectTrigger>
                 <SelectContent>
@@ -624,7 +624,7 @@ export default function AccommodationGuestsPage() {
                   <div className="space-y-2">
                     <p className="text-[10px] text-muted-foreground">Enter the second guest details for this double room.</p>
                     <div>
-                      <Label className="text-xs">Second Guest Name *</Label>
+                      <Label>{t('lblsecondGuestName', 'Second Guest Name')} *</Label>
                       <Input
                         value={resForm.secondGuestName}
                         onChange={(e) => setResForm({ ...resForm, secondGuestName: e.target.value })}
@@ -633,7 +633,7 @@ export default function AccommodationGuestsPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Second Guest Phone *</Label>
+                      <Label>{t('lblsecondGuestPhone', 'Second Guest Phone')} *</Label>
                       <Input
                         type="tel"
                         value={resForm.secondGuestPhone}
@@ -643,7 +643,7 @@ export default function AccommodationGuestsPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Second Guest ID Number</Label>
+                      <Label>{t('lblsecondGuestIdNumber', 'Second Guest ID Number')}</Label>
                       <Input
                         value={resForm.secondGuestIdNumber}
                         onChange={(e) => setResForm({ ...resForm, secondGuestIdNumber: e.target.value })}
@@ -660,7 +660,7 @@ export default function AccommodationGuestsPage() {
                       <p className="text-[10px] font-medium">This room will be reserved for single occupancy with an exception.</p>
                     </div>
                     <div>
-                      <Label className="text-xs">Exception Reason *</Label>
+                      <Label>{t('lblexceptionReason', 'Exception Reason')} *</Label>
                       <Textarea
                         value={resForm.exceptionReason}
                         onChange={(e) => setResForm({ ...resForm, exceptionReason: e.target.value })}
@@ -674,8 +674,8 @@ export default function AccommodationGuestsPage() {
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Check-in *</Label><Input type="date" value={resForm.checkIn} min={todayStr()} onChange={(e) => setResForm({ ...resForm, checkIn: e.target.value, checkOut: resForm.checkOut || addDays(e.target.value, 1) })} className="h-9 text-sm" /></div>
-              <div><Label className="text-xs">Check-out *</Label><Input type="date" value={resForm.checkOut} min={resForm.checkIn || todayStr()} onChange={(e) => setResForm({ ...resForm, checkOut: e.target.value })} className="h-9 text-sm" /></div>
+              <div><Label>{t('lblcheckin', 'Check-in')} *</Label><Input type="date" value={resForm.checkIn} min={todayStr()} onChange={(e) => setResForm({ ...resForm, checkIn: e.target.value, checkOut: resForm.checkOut || addDays(e.target.value, 1) })} className="h-9 text-sm" /></div>
+              <div><Label>{t('lblcheckout', 'Check-out')} *</Label><Input type="date" value={resForm.checkOut} min={resForm.checkIn || todayStr()} onChange={(e) => setResForm({ ...resForm, checkOut: e.target.value })} className="h-9 text-sm" /></div>
             </div>
             {resNights > 0 && resRate > 0 && (
               <div className="rounded-md bg-muted/50 p-2 flex justify-between text-xs">
@@ -683,7 +683,7 @@ export default function AccommodationGuestsPage() {
                 <span className="font-bold">{formatCurrency(resNights * resRate)}</span>
               </div>
             )}
-            <div><Label className="text-xs">Notes</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder="Optional notes" className="h-9 text-sm" /></div>
+            <div><Label>{t('lblnotes', 'Notes')}</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder="Optional notes" className="h-9 text-sm" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); }}>Cancel</Button>

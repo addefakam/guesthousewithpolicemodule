@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -170,6 +171,7 @@ const emptyBulkForm = {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function GuestCommunicationPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState("templates");
 
@@ -571,7 +573,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="single-channel">Channel</Label>
+                  <Label>{t('lblchannel', 'Channel')}</Label>
                   <Select
                     value={singleForm.channel}
                     onValueChange={(v) =>
@@ -589,7 +591,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="single-template">Template (Optional)</Label>
+                  <Label>{t('lbltemplateOptional', 'Template (Optional)')}</Label>
                   <Select
                     value={singleForm.templateId}
                     onValueChange={handleSingleTemplateChange}
@@ -680,7 +682,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-status">Target Guests</Label>
+                  <Label>{t('lbltargetGuests', 'Target Guests')}</Label>
                   <Select
                     value={bulkForm.status}
                     onValueChange={(v) =>
@@ -699,7 +701,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-channel">Channel</Label>
+                  <Label>{t('lblchannel', 'Channel')}</Label>
                   <Select
                     value={bulkForm.channel}
                     onValueChange={(v) =>
@@ -751,9 +753,7 @@ export default function GuestCommunicationPage() {
             {/* Filters */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2 flex-1">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                  Status:
-                </Label>
+                <Label>{t('lblstatus', 'Status:')}</Label>
                 <Select
                   value={filterStatus}
                   onValueChange={setFilterStatus}
@@ -771,9 +771,7 @@ export default function GuestCommunicationPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                  Channel:
-                </Label>
+                <Label>{t('lblchannel', 'Channel:')}</Label>
                 <Select
                   value={filterChannel}
                   onValueChange={setFilterChannel}
@@ -816,14 +814,12 @@ export default function GuestCommunicationPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Recipient</TableHead>
-                        <TableHead>Channel</TableHead>
-                        <TableHead>Template</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="max-w-[200px]">
-                          Message
-                        </TableHead>
+                        <TableHead>{t('thdate', 'Date')}</TableHead>
+                        <TableHead>{t('threcipient', 'Recipient')}</TableHead>
+                        <TableHead>{t('thchannel', 'Channel')}</TableHead>
+                        <TableHead>{t('thtemplate', 'Template')}</TableHead>
+                        <TableHead>{t('thstatus', 'Status')}</TableHead>
+                        <TableHead>{t('thmessage', 'Message')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -984,7 +980,7 @@ export default function GuestCommunicationPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tpl-type">Type</Label>
+                <Label>{t('lbltype', 'Type')}</Label>
                 <Select
                   value={tplForm.type}
                   onValueChange={(v) =>
@@ -1011,7 +1007,7 @@ export default function GuestCommunicationPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tpl-channel">Channel</Label>
+                <Label>{t('lblchannel', 'Channel')}</Label>
                 <Select
                   value={tplForm.channel}
                   onValueChange={(v) =>

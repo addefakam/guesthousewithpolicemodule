@@ -517,14 +517,14 @@ export default function ExpensesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('thdate', 'Date')}</TableHead>
+                  <TableHead>{t('thcategory', 'Category')}</TableHead>
+                  <TableHead>{t('thdescription', 'Description')}</TableHead>
+                  <TableHead>{t('thamount', 'Amount')}</TableHead>
+                  <TableHead>{t('thvendor', 'Vendor')}</TableHead>
+                  <TableHead>{t('thmethod', 'Method')}</TableHead>
+                  <TableHead>{t('threceipt', 'Receipt')}</TableHead>
+                  <TableHead>{t('thactions', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -629,13 +629,13 @@ export default function ExpensesPage() {
                 <Input type="number" placeholder="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Tax Amount</Label>
+                <Label>{t('lbltaxAmount', 'Tax Amount')}</Label>
                 <Input type="number" placeholder="0" value={form.taxAmount} onChange={(e) => setForm({ ...form, taxAmount: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Vendor</Label>
+                <Label>{t('lblvendor', 'Vendor')}</Label>
                 <Input placeholder="Vendor name" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
               </div>
               <div className="space-y-2">
@@ -651,7 +651,7 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Receipt Number</Label>
+              <Label>{t('lblreceiptNumber', 'Receipt Number')}</Label>
               <Input placeholder="Receipt or reference number" value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} />
             </div>
           </div>

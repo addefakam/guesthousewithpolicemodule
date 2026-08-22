@@ -296,13 +296,13 @@ export default function GuestsPage() {
         <TableHeader>
           <TableRow className="bg-gray-50/80">
             <TableHead className="w-12"></TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>ID Number</TableHead>
-            <TableHead>Nationality</TableHead>
-            <TableHead className="text-center">VIP</TableHead>
-            <TableHead className="text-right">Total Spent</TableHead>
-            <TableHead className="text-center">Stays</TableHead>
+            <TableHead>{t('thname', 'Name')}</TableHead>
+            <TableHead>{t('thphone', 'Phone')}</TableHead>
+            <TableHead>{t('thidNumber', 'ID Number')}</TableHead>
+            <TableHead>{t('thnationality', 'Nationality')}</TableHead>
+            <TableHead>{t('thvip', 'VIP')}</TableHead>
+            <TableHead>{t('thtotalSpent', 'Total Spent')}</TableHead>
+            <TableHead>{t('thstays', 'Stays')}</TableHead>
             <TableHead className="w-12"></TableHead>
           </TableRow>
         </TableHeader>

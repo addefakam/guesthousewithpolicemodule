@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -138,6 +139,7 @@ function LoadingSkeleton() {
 }
 
 export default function MySubscriptionPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPayDialog, setShowPayDialog] = useState(false);
@@ -860,7 +862,7 @@ export default function MySubscriptionPage() {
 
                   {/* Notes */}
                   <div>
-                    <Label className="text-xs font-medium">Additional Notes</Label>
+                    <Label>{t('lbladditionalNotes', 'Additional Notes')}</Label>
                     <Textarea
                       value={payNotes}
                       onChange={(e) => setPayNotes(e.target.value)}

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -141,6 +142,7 @@ function formatDateShort(dateStr: string) {
 }
 
 export default function ReviewsPage() {
+  const { t } = useTranslation();
   const { currentUser, refreshKey, triggerRefresh } = useAppStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -290,12 +292,12 @@ export default function ReviewsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Guest Name</TableHead>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Rating</TableHead>
-                  <TableHead className="hidden md:table-cell">Comment</TableHead>
-                  <TableHead>Date</TableHead>
-                  {canDelete && <TableHead className="text-right">Actions</TableHead>}
+                  <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+                  <TableHead>{t('throom', 'Room')}</TableHead>
+                  <TableHead>{t('thrating', 'Rating')}</TableHead>
+                  <TableHead>{t('thcomment', 'Comment')}</TableHead>
+                  <TableHead>{t('thdate', 'Date')}</TableHead>
+                  {canDelete && <TableHead>{t('thactions', 'Actions')}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -345,7 +347,7 @@ export default function ReviewsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Reservation</Label>
+              <Label>{t('lblreservation', 'Reservation')}</Label>
               <Select value={selectedResId} onValueChange={setSelectedResId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a completed reservation" />
@@ -366,11 +368,11 @@ export default function ReviewsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Rating</Label>
+              <Label>{t('lblrating', 'Rating')}</Label>
               <ClickableStars value={rating} onChange={setRating} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="review-comment">Comment</Label>
+              <Label>{t('lblcomment', 'Comment')}</Label>
               <Textarea
                 id="review-comment"
                 placeholder="Share your experience..."

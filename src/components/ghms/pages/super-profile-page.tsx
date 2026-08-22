@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,6 +38,7 @@ import {
 } from "lucide-react";
 
 export default function SuperProfilePage() {
+  const { t } = useTranslation();
   const { currentUser, setCurrentUser } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -195,7 +197,7 @@ export default function SuperProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="profile-name">Full Name</Label>
+                <Label>{t('lblfullName', 'Full Name')}</Label>
                 <Input
                   id="profile-name"
                   value={name}
@@ -248,7 +250,7 @@ export default function SuperProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="current-password">New Password</Label>
+                <Label>{t('lblnewPassword', 'New Password')}</Label>
                 <div className="relative">
                   <Input
                     id="current-password"
@@ -269,7 +271,7 @@ export default function SuperProfilePage() {
               </div>
               {newPassword && (
                 <div className="grid gap-2">
-                  <Label htmlFor="confirm-password">Confirm Current Password</Label>
+                  <Label>{t('lblconfirmCurrentPassword', 'Confirm Current Password')}</Label>
                   <div className="relative">
                     <Input
                       id="confirm-password"

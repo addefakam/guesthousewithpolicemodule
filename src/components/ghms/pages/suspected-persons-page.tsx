@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef, type FormEvent } from "react";
@@ -184,6 +185,7 @@ const emptyForm = {
 };
 
 export default function SuspectedPersonsPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState<"watchlist" | "scanner">("watchlist");
   const [persons, setPersons] = useState<SuspectedPerson[]>([]);
@@ -768,15 +770,15 @@ export default function SuspectedPersonsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Identification</TableHead>
-                        <TableHead>Nationality</TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead className="text-center">Matches</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Registered</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{t('thname', 'Name')}</TableHead>
+                        <TableHead>{t('thphone', 'Phone')}</TableHead>
+                        <TableHead>{t('thidentification', 'Identification')}</TableHead>
+                        <TableHead>{t('thnationality', 'Nationality')}</TableHead>
+                        <TableHead>{t('thseverity', 'Severity')}</TableHead>
+                        <TableHead>{t('thmatches', 'Matches')}</TableHead>
+                        <TableHead>{t('thstatus', 'Status')}</TableHead>
+                        <TableHead>{t('thregistered', 'Registered')}</TableHead>
+                        <TableHead>{t('thactions', 'Actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -872,7 +874,7 @@ export default function SuspectedPersonsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="sp-name">Full Name *</Label>
+              <Label>{t('lblfullName', 'Full Name')} *</Label>
               <Input
                 id="sp-name"
                 placeholder="Full name of the suspected person"
@@ -884,7 +886,7 @@ export default function SuspectedPersonsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="sp-phone">Phone</Label>
+                <Label>{t('lblphone', 'Phone')}</Label>
                 <Input
                   id="sp-phone"
                   type="tel"
@@ -894,7 +896,7 @@ export default function SuspectedPersonsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="sp-severity">Severity</Label>
+                <Label>{t('lblseverity', 'Severity')}</Label>
                 <Select value={form.severity} onValueChange={(v) => setForm((f) => ({ ...f, severity: v }))}>
                   <SelectTrigger id="sp-severity">
                     <SelectValue />
@@ -911,7 +913,7 @@ export default function SuspectedPersonsPage() {
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>Identification Documents</Label>
+                <Label>{t('lblidentificationDocuments', 'Identification Documents')}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -977,7 +979,7 @@ export default function SuspectedPersonsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="sp-nationality">Nationality</Label>
+                <Label>{t('lblnationality', 'Nationality')}</Label>
                 <Input
                   id="sp-nationality"
                   placeholder="e.g. Ethiopian"
@@ -986,7 +988,7 @@ export default function SuspectedPersonsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="sp-address">Address</Label>
+                <Label>{t('lbladdress', 'Address')}</Label>
                 <Input
                   id="sp-address"
                   placeholder="Last known address"
@@ -997,7 +999,7 @@ export default function SuspectedPersonsPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="sp-description">Description / Reason</Label>
+              <Label>{t('lbldescriptionReason', 'Description / Reason')}</Label>
               <Textarea
                 id="sp-description"
                 placeholder="Why is this person suspected? Include any relevant details for officers..."

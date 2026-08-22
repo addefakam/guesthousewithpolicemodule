@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -106,6 +107,7 @@ function formatTime(dateStr: string): string {
 }
 
 export default function AnomaliesPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
   const [stats, setStats] = useState<AnomalyStats | null>(null);
@@ -354,13 +356,13 @@ export default function AnomaliesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs text-gray-500">Type</TableHead>
-                    <TableHead className="text-xs text-gray-500">Severity</TableHead>
-                    <TableHead className="text-xs text-gray-500 text-right">Risk</TableHead>
-                    <TableHead className="text-xs text-gray-500">Guest</TableHead>
-                    <TableHead className="text-xs text-gray-500">Phone</TableHead>
-                    <TableHead className="text-xs text-gray-500">Provider</TableHead>
-                    <TableHead className="text-xs text-gray-500">Time</TableHead>
+                    <TableHead>{t('thtype', 'Type')}</TableHead>
+                    <TableHead>{t('thseverity', 'Severity')}</TableHead>
+                    <TableHead>{t('thrisk', 'Risk')}</TableHead>
+                    <TableHead>{t('thguest', 'Guest')}</TableHead>
+                    <TableHead>{t('thphone', 'Phone')}</TableHead>
+                    <TableHead>{t('thprovider', 'Provider')}</TableHead>
+                    <TableHead>{t('thtime', 'Time')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

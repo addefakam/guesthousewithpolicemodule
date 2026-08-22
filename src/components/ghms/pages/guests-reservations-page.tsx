@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState } from "react";
@@ -7,6 +8,7 @@ import GuestsPage from "./guests-page";
 import ReservationsPage from "./reservations-page";
 
 export default function GuestsReservationsPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("guests");
 
   return (

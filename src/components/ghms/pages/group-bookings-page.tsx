@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -156,6 +157,7 @@ const RESERVATION_STATUS_BADGE: Record<string, string> = {
 const GROUP_STATUSES = ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
 export default function GroupBookingsPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
 
   const [groupBookings, setGroupBookings] = useState<GroupBooking[]>([]);
@@ -812,12 +814,12 @@ export default function GroupBookingsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Guest</TableHead>
-                              <TableHead>Assigned Room</TableHead>
-                              <TableHead className="hidden md:table-cell">Room Type</TableHead>
-                              <TableHead className="hidden lg:table-cell">Cost</TableHead>
-                              <TableHead className="hidden md:table-cell">Check-in</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead>{t('thguest', 'Guest')}</TableHead>
+                              <TableHead>{t('thassignedRoom', 'Assigned Room')}</TableHead>
+                              <TableHead>{t('throomType', 'Room Type')}</TableHead>
+                              <TableHead>{t('thcost', 'Cost')}</TableHead>
+                              <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
+                              <TableHead>{t('thstatus', 'Status')}</TableHead>
                               <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -957,7 +959,7 @@ export default function GroupBookingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="contact-name">Contact Name</Label>
+                <Label>{t('lblcontactName', 'Contact Name')}</Label>
                 <Input
                   id="contact-name"
                   placeholder="Full name"
@@ -966,7 +968,7 @@ export default function GroupBookingsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="contact-phone">Contact Phone</Label>
+                <Label>{t('lblcontactPhone', 'Contact Phone')}</Label>
                 <Input
                   id="contact-phone"
                   type="tel"
@@ -977,7 +979,7 @@ export default function GroupBookingsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="contact-email">Contact Email</Label>
+              <Label>{t('lblcontactEmail', 'Contact Email')}</Label>
               <Input
                 id="contact-email"
                 type="email"
@@ -1011,7 +1013,7 @@ export default function GroupBookingsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label>{t('lblnotes', 'Notes')}</Label>
               <Input
                 id="notes"
                 placeholder="Any additional notes..."
@@ -1097,9 +1099,7 @@ export default function GroupBookingsPage() {
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="new-guest-phone" className="text-xs">
-                        Phone Number
-                      </Label>
+                      <Label>{t('lblphoneNumber', 'Phone Number')}</Label>
                       <Input
                         id="new-guest-phone"
                         type="tel"
@@ -1111,9 +1111,7 @@ export default function GroupBookingsPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
-                      <Label htmlFor="new-guest-id-type" className="text-xs">
-                        ID Type
-                      </Label>
+                      <Label>{t('lblidType', 'ID Type')}</Label>
                       <Select value={newGuestIdType} onValueChange={setNewGuestIdType}>
                         <SelectTrigger id="new-guest-id-type">
                           <SelectValue placeholder="Select ID type" />
@@ -1128,9 +1126,7 @@ export default function GroupBookingsPage() {
                       </Select>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="new-guest-id-number" className="text-xs">
-                        ID Number
-                      </Label>
+                      <Label>{t('lblidNumber', 'ID Number')}</Label>
                       <Input
                         id="new-guest-id-number"
                         placeholder="ID number"
@@ -1218,7 +1214,7 @@ export default function GroupBookingsPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Second Guest ID Number</Label>
+                      <Label>{t('lblsecondGuestIdNumber', 'Second Guest ID Number')}</Label>
                       <Input placeholder="ID number (optional)" value={resSecondGuestIdNumber} onChange={(e) => setResSecondGuestIdNumber(e.target.value)} />
                     </div>
                   </div>
@@ -1240,7 +1236,7 @@ export default function GroupBookingsPage() {
             {/* Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Check-in Date</Label>
+                <Label>{t('lblcheckinDate', 'Check-in Date')}</Label>
                 <Input
                   type="date"
                   value={resCheckIn}
@@ -1248,7 +1244,7 @@ export default function GroupBookingsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Check-out Date</Label>
+                <Label>{t('lblcheckoutDate', 'Check-out Date')}</Label>
                 <Input
                   type="date"
                   value={resCheckOut}
@@ -1388,7 +1384,7 @@ export default function GroupBookingsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Reference No</Label>
+              <Label>{t('lblreferenceNo', 'Reference No')}</Label>
               <Input
                 value={paymentForm.referenceNo}
                 onChange={(e) => setPaymentForm({ ...paymentForm, referenceNo: e.target.value })}
@@ -1396,7 +1392,7 @@ export default function GroupBookingsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Notes</Label>
+              <Label>{t('lblnotes', 'Notes')}</Label>
               <Input
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}

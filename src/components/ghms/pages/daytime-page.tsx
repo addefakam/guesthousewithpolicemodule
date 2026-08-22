@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -132,6 +133,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function DaytimePage() {
+  const { t } = useTranslation();
   const { refreshKey, triggerRefresh } = useAppStore();
   const [activeTab, setActiveTab] = useState("services");
 
@@ -544,14 +546,14 @@ export default function DaytimePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Guest</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('thguest', 'Guest')}</TableHead>
+                      <TableHead>{t('thservice', 'Service')}</TableHead>
+                      <TableHead>{t('thdate', 'Date')}</TableHead>
+                      <TableHead>{t('thtime', 'Time')}</TableHead>
+                      <TableHead>{t('thqty', 'Qty')}</TableHead>
+                      <TableHead>{t('thtotal', 'Total')}</TableHead>
+                      <TableHead>{t('thpayment', 'Payment')}</TableHead>
+                      <TableHead>{t('thactions', 'Actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -636,7 +638,7 @@ export default function DaytimePage() {
                 <Input type="number" placeholder="0" value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>{t('lblcategory', 'Category')}</Label>
                 <Select value={svcForm.category} onValueChange={(v) => setSvcForm({ ...svcForm, category: v })}>
                   <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>
@@ -648,11 +650,11 @@ export default function DaytimePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Duration</Label>
+              <Label>{t('lblduration', 'Duration')}</Label>
               <Input placeholder="e.g. 1 hour, 30 mins" value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>{t('lbldescription', 'Description')}</Label>
               <Textarea placeholder="Describe the service..." rows={3} value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
             </div>
           </div>
@@ -698,7 +700,7 @@ export default function DaytimePage() {
                 <Input placeholder="Guest name" value={bkForm.guestName} onChange={(e) => setBkForm({ ...bkForm, guestName: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Phone</Label>
+                <Label>{t('lblphone', 'Phone')}</Label>
                 <Input type="tel" placeholder="Phone number" value={bkForm.guestPhone} onChange={(e) => setBkForm({ ...bkForm, guestPhone: e.target.value })} />
               </div>
             </div>
@@ -712,7 +714,7 @@ export default function DaytimePage() {
                 <Input type="time" value={bkForm.time} onChange={(e) => setBkForm({ ...bkForm, time: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Quantity</Label>
+                <Label>{t('lblquantity', 'Quantity')}</Label>
                 <Input type="number" min="1" value={bkForm.quantity} onChange={(e) => setBkForm({ ...bkForm, quantity: e.target.value })} />
               </div>
             </div>
@@ -755,7 +757,7 @@ export default function DaytimePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Payment Method</Label>
+              <Label>{t('lblpaymentMethod', 'Payment Method')}</Label>
               <Select value={payForm.method} onValueChange={(v) => setPayForm({ ...payForm, method: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>

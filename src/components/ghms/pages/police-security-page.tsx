@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -29,6 +30,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default function PoliceSecurityPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState<"audit" | "geofence" | "officers">("audit");
 
@@ -208,13 +210,13 @@ export default function PoliceSecurityPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm">New Geofence Zone</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label className="text-xs">Zone Name *</Label><Input value={geoForm.name} onChange={(e) => setGeoForm({ ...geoForm, name: e.target.value })} placeholder="e.g. Bole District" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Address</Label><Input value={geoForm.address} onChange={(e) => setGeoForm({ ...geoForm, address: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Latitude *</Label><Input type="number" step="0.0001" value={geoForm.latitude} onChange={(e) => setGeoForm({ ...geoForm, latitude: e.target.value })} placeholder="9.0250" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Longitude *</Label><Input type="number" step="0.0001" value={geoForm.longitude} onChange={(e) => setGeoForm({ ...geoForm, longitude: e.target.value })} placeholder="38.7469" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Radius (meters)</Label><Input type="number" value={geoForm.radius} onChange={(e) => setGeoForm({ ...geoForm, radius: e.target.value })} /></div>
+                <div className="space-y-1.5"><Label>{t('lblzoneName', 'Zone Name')} *</Label><Input value={geoForm.name} onChange={(e) => setGeoForm({ ...geoForm, name: e.target.value })} placeholder="e.g. Bole District" /></div>
+                <div className="space-y-1.5"><Label>{t('lbladdress', 'Address')}</Label><Input value={geoForm.address} onChange={(e) => setGeoForm({ ...geoForm, address: e.target.value })} /></div>
+                <div className="space-y-1.5"><Label>{t('lbllatitude', 'Latitude')} *</Label><Input type="number" step="0.0001" value={geoForm.latitude} onChange={(e) => setGeoForm({ ...geoForm, latitude: e.target.value })} placeholder="9.0250" /></div>
+                <div className="space-y-1.5"><Label>{t('lbllongitude', 'Longitude')} *</Label><Input type="number" step="0.0001" value={geoForm.longitude} onChange={(e) => setGeoForm({ ...geoForm, longitude: e.target.value })} placeholder="38.7469" /></div>
+                <div className="space-y-1.5"><Label>{t('lblradiusMeters', 'Radius (meters)')}</Label><Input type="number" value={geoForm.radius} onChange={(e) => setGeoForm({ ...geoForm, radius: e.target.value })} /></div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Severity</Label>
+                  <Label>{t('lblseverity', 'Severity')}</Label>
                   <Select value={geoForm.severity} onValueChange={(v) => setGeoForm({ ...geoForm, severity: v })}>
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -277,11 +279,11 @@ export default function PoliceSecurityPage() {
             <Card>
               <CardHeader><CardTitle className="text-sm">New Police Officer</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label className="text-xs">Username *</Label><Input value={officerForm.username} onChange={(e) => setOfficerForm({ ...officerForm, username: e.target.value })} placeholder="officer.username" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Password *</Label><Input type="password" value={officerForm.password} onChange={(e) => setOfficerForm({ ...officerForm, password: e.target.value })} placeholder="Secure password" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Full Name *</Label><Input value={officerForm.name} onChange={(e) => setOfficerForm({ ...officerForm, name: e.target.value })} placeholder="Officer name" /></div>
+                <div className="space-y-1.5"><Label>{t('lblusername', 'Username')} *</Label><Input value={officerForm.username} onChange={(e) => setOfficerForm({ ...officerForm, username: e.target.value })} placeholder="officer.username" /></div>
+                <div className="space-y-1.5"><Label>{t('lblpassword', 'Password')} *</Label><Input type="password" value={officerForm.password} onChange={(e) => setOfficerForm({ ...officerForm, password: e.target.value })} placeholder="Secure password" /></div>
+                <div className="space-y-1.5"><Label>{t('lblfullName', 'Full Name')} *</Label><Input value={officerForm.name} onChange={(e) => setOfficerForm({ ...officerForm, name: e.target.value })} placeholder="Officer name" /></div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Rank</Label>
+                  <Label>{t('lblrank', 'Rank')}</Label>
                   <Select value={officerForm.policeRank} onValueChange={(v) => setOfficerForm({ ...officerForm, policeRank: v })}>
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>

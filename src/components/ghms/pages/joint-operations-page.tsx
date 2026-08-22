@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -55,6 +56,7 @@ interface SystemStats {
  * - System audit review
  */
 export default function JointOperationsPage() {
+  const { t } = useTranslation();
   const { currentUser, jointSession, setJointSession, setJointLoginDialogOpen } = useAppStore();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);

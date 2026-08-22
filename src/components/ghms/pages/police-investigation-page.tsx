@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -46,6 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PoliceInvestigationPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState<"movement" | "frequent" | "linking" | "alerts" | "export">("movement");
 
@@ -549,7 +551,7 @@ export default function PoliceInvestigationPage() {
                     </button>
                   </div>
                   {config.emailEnabled && (
-                    <div className="ml-8"><Label className="text-xs">Email Recipients (comma-separated)</Label><Input value={config.emailRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, emailRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="officer1@police.gov.et, officer2@police.gov.et" className="text-xs" /></div>
+                    <div className="ml-8"><Label>{t('lblemailRecipientsCommaseparated', 'Email Recipients (comma-separated)')}</Label><Input value={config.emailRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, emailRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="officer1@police.gov.et, officer2@police.gov.et" className="text-xs" /></div>
                   )}
                 </div>
 
@@ -561,7 +563,7 @@ export default function PoliceInvestigationPage() {
                     </button>
                   </div>
                   {config.smsEnabled && (
-                    <div className="ml-8"><Label className="text-xs">SMS Recipients (comma-separated)</Label><Input value={config.smsRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, smsRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="+251911234567, +251922345678" className="text-xs" /></div>
+                    <div className="ml-8"><Label>{t('lblsmsRecipientsCommaseparated', 'SMS Recipients (comma-separated)')}</Label><Input value={config.smsRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, smsRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="+251911234567, +251922345678" className="text-xs" /></div>
                   )}
                 </div>
 
@@ -569,7 +571,7 @@ export default function PoliceInvestigationPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Escalation Delay (minutes)</Label>
+                    <Label>{t('lblescalationDelayMinutes', 'Escalation Delay (minutes)')}</Label>
                     <Input type="number" value={config.escalationDelayMins} onChange={(e) => setConfig({ ...config, escalationDelayMins: parseInt(e.target.value) || 60 })} className="text-xs" />
                     <p className="text-[10px] text-muted-foreground">How long before escalating HIGH alerts</p>
                   </div>

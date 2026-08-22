@@ -326,13 +326,13 @@ export default function HousekeepingPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Scheduled Date</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('throom', 'Room')}</TableHead>
+                  <TableHead>{t('thtype', 'Type')}</TableHead>
+                  <TableHead>{t('thstatus', 'Status')}</TableHead>
+                  <TableHead>{t('thassignedTo', 'Assigned To')}</TableHead>
+                  <TableHead>{t('thscheduledDate', 'Scheduled Date')}</TableHead>
+                  <TableHead>{t('thnotes', 'Notes')}</TableHead>
+                  <TableHead>{t('thactions', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -469,7 +469,7 @@ export default function HousekeepingPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Assigned To</Label>
+              <Label>{t('lblassignedTo', 'Assigned To')}</Label>
               <Input
                 placeholder="Staff member name"
                 value={form.assignedTo}
@@ -477,7 +477,7 @@ export default function HousekeepingPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t('lblnotes', 'Notes')}</Label>
               <Textarea
                 placeholder="Additional notes about this task..."
                 rows={3}

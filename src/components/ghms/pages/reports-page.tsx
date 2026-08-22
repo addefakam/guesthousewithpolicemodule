@@ -434,7 +434,7 @@ export default function ReportsPage() {
         <CardContent className="flex flex-col sm:flex-row items-end gap-3 pt-6">
           {/* Preset Dropdown */}
           <div className="grid gap-2 w-full sm:w-48 shrink-0">
-            <Label>Period</Label>
+            <Label>{t('lblperiod', 'Period')}</Label>
             <Select value={preset} onValueChange={handlePresetChange}>
               <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
               <SelectContent>
@@ -452,7 +452,7 @@ export default function ReportsPage() {
           </div>
           {/* From / To */}
           <div className="grid gap-2 flex-1 w-full sm:w-auto">
-            <Label htmlFor="from">From</Label>
+            <Label>{t('lblfrom', 'From')}</Label>
             <Input
               id="from"
               type="date"
@@ -461,7 +461,7 @@ export default function ReportsPage() {
             />
           </div>
           <div className="grid gap-2 flex-1 w-full sm:w-auto">
-            <Label htmlFor="to">To</Label>
+            <Label>{t('lblto', 'To')}</Label>
             <Input
               id="to"
               type="date"
@@ -570,13 +570,13 @@ export default function ReportsPage() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-gray-50/80">
-                            <TableHead>Guest Name</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Room</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Check-In</TableHead>
-                            <TableHead>Check-Out</TableHead>
-                            <TableHead className="text-right">Paid</TableHead>
+                            <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+                            <TableHead>{t('thphone', 'Phone')}</TableHead>
+                            <TableHead>{t('throom', 'Room')}</TableHead>
+                            <TableHead>{t('thstatus', 'Status')}</TableHead>
+                            <TableHead>{t('thcheckin', 'Check-In')}</TableHead>
+                            <TableHead>{t('thcheckout', 'Check-Out')}</TableHead>
+                            <TableHead>{t('thpaid', 'Paid')}</TableHead>
                             <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
@@ -753,14 +753,14 @@ export default function ReportsPage() {
                         <TableHeader>
                           <TableRow className="bg-gray-50/80">
                             <TableHead className="w-12"></TableHead>
-                            <TableHead>Guest Name</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>ID Number</TableHead>
-                            <TableHead>Nationality</TableHead>
-                            <TableHead className="text-center">VIP</TableHead>
-                            <TableHead className="text-center">Visits</TableHead>
-                            <TableHead>Last Visit</TableHead>
-                            <TableHead className="text-right">Total Spent</TableHead>
+                            <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+                            <TableHead>{t('thphone', 'Phone')}</TableHead>
+                            <TableHead>{t('thidNumber', 'ID Number')}</TableHead>
+                            <TableHead>{t('thnationality', 'Nationality')}</TableHead>
+                            <TableHead>{t('thvip', 'VIP')}</TableHead>
+                            <TableHead>{t('thvisits', 'Visits')}</TableHead>
+                            <TableHead>{t('thlastVisit', 'Last Visit')}</TableHead>
+                            <TableHead>{t('thtotalSpent', 'Total Spent')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1039,9 +1039,9 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Count</TableHead>
-                          <TableHead className="text-right">Revenue</TableHead>
+                          <TableHead>{t('thstatus', 'Status')}</TableHead>
+                          <TableHead>{t('thcount', 'Count')}</TableHead>
+                          <TableHead>{t('threvenue', 'Revenue')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1084,8 +1084,8 @@ export default function ReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Revenue</TableHead>
+                        <TableHead>{t('thdate', 'Date')}</TableHead>
+                        <TableHead>{t('threvenue', 'Revenue')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

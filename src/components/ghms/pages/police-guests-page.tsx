@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -83,6 +84,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function PoliceGuestsPage() {
+  const { t } = useTranslation();
   const { refreshKey } = useAppStore();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [total, setTotal] = useState(0);
@@ -229,15 +231,15 @@ export default function PoliceGuestsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Guest Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>ID Number</TableHead>
-                    <TableHead>ID Type</TableHead>
-                    <TableHead>Nationality</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead className="text-right">Total Spent</TableHead>
-                    <TableHead className="text-center">Stays</TableHead>
-                    <TableHead className="text-center">VIP</TableHead>
+                    <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+                    <TableHead>{t('thphone', 'Phone')}</TableHead>
+                    <TableHead>{t('thidNumber', 'ID Number')}</TableHead>
+                    <TableHead>{t('thidType', 'ID Type')}</TableHead>
+                    <TableHead>{t('thnationality', 'Nationality')}</TableHead>
+                    <TableHead>{t('thprovider', 'Provider')}</TableHead>
+                    <TableHead>{t('thtotalSpent', 'Total Spent')}</TableHead>
+                    <TableHead>{t('thstays', 'Stays')}</TableHead>
+                    <TableHead>{t('thvip', 'VIP')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -408,7 +410,7 @@ export default function PoliceGuestsPage() {
                 <>
                   <Separator />
                   <div className="space-y-1.5">
-                    <Label className="text-muted-foreground text-xs">Notes</Label>
+                    <Label>{t('lblnotes', 'Notes')}</Label>
                     <p className="rounded-lg bg-muted/50 p-3 text-xs sm:text-sm">{selectedGuest.notes}</p>
                   </div>
                 </>

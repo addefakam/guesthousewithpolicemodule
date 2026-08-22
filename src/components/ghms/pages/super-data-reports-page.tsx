@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -171,6 +172,7 @@ const EXPORT_OPTIONS = [
 // ── Component ──
 
 export default function SuperDataReportsPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [backingUp, setBackingUp] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);

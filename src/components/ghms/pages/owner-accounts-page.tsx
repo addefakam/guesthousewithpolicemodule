@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, type FormEvent } from "react";
@@ -130,6 +131,7 @@ const RANK_ORDER: Record<string, number> = { VIEWER: 0, OFFICER: 1, DETECTIVE: 2
 type TabType = "overview" | "owners" | "police";
 
 export default function OwnerAccountsPage() {
+  const { t } = useTranslation();
   const { currentUser, refreshKey } = useAppStore();
   const [providers, setProviders] = useState<ProviderWithOwner[]>([]);
   const [policeUsers, setPoliceUsers] = useState<AccountUser[]>([]);
@@ -876,7 +878,7 @@ export default function OwnerAccountsPage() {
           </DialogHeader>
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="reset-username">Username *</Label>
+              <Label>{t('lblusername', 'Username')} *</Label>
               <Input
                 id="reset-username"
                 placeholder="Enter new username"
@@ -886,7 +888,7 @@ export default function OwnerAccountsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reset-password">New Password</Label>
+              <Label>{t('lblnewPassword', 'New Password')}</Label>
               <div className="relative">
                 <Input
                   id="reset-password"
@@ -951,7 +953,7 @@ export default function OwnerAccountsPage() {
           <form onSubmit={handlePoliceSubmit} className="space-y-4">
             {!editMode && (
               <div className="space-y-2">
-                <Label htmlFor="police-username">Username *</Label>
+                <Label>{t('lblusername', 'Username')} *</Label>
                 <Input
                   id="police-username"
                   placeholder="e.g. officer-habtamu"
@@ -963,7 +965,7 @@ export default function OwnerAccountsPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="police-name">Full Name *</Label>
+              <Label>{t('lblfullName', 'Full Name')} *</Label>
               <Input
                 id="police-name"
                 placeholder="e.g. Officer Habtamu"
@@ -973,7 +975,7 @@ export default function OwnerAccountsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="police-rank">Rank *</Label>
+              <Label>{t('lblrank', 'Rank')} *</Label>
               <Select value={policeRank} onValueChange={setPoliceRank}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select rank" />

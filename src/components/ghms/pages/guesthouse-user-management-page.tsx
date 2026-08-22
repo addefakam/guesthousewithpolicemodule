@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState } from "react";
@@ -10,6 +11,7 @@ import OwnerAccountsPage from "./owner-accounts-page";
 type TabType = "guesthouses" | "users";
 
 export default function GuesthouseUserManagementPage() {
+  const { t } = useTranslation();
   const { currentUser } = useAppStore();
   const isSuperuser = currentUser?.role === "SUPERUSER";
   const isPolice = currentUser?.role === "POLICE";

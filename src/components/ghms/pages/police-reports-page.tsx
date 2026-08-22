@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -105,6 +106,7 @@ function SkeletonGrid() {
 }
 
 export default function PoliceReportsPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("monthly");
@@ -268,11 +270,11 @@ export default function PoliceReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Guest</TableHead>
-                        <TableHead className="text-xs">Phone / ID</TableHead>
-                        <TableHead className="text-xs text-center">Stays</TableHead>
-                        <TableHead className="text-xs text-center">Avg Days</TableHead>
-                        <TableHead className="text-xs">Risk</TableHead>
+                        <TableHead>{t('thguest', 'Guest')}</TableHead>
+                        <TableHead>{t('thphoneId', 'Phone / ID')}</TableHead>
+                        <TableHead>{t('thstays', 'Stays')}</TableHead>
+                        <TableHead>{t('thavgDays', 'Avg Days')}</TableHead>
+                        <TableHead>{t('thrisk', 'Risk')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -335,13 +337,13 @@ export default function PoliceReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Provider</TableHead>
-                        <TableHead className="text-xs text-center">Total</TableHead>
-                        <TableHead className="text-xs text-center">Occupied</TableHead>
-                        <TableHead className="text-xs text-center">Available</TableHead>
-                        <TableHead className="text-xs text-center">Reserved</TableHead>
-                        <TableHead className="text-xs text-center">Maint.</TableHead>
-                        <TableHead className="text-xs text-center">Rate</TableHead>
+                        <TableHead>{t('thprovider', 'Provider')}</TableHead>
+                        <TableHead>{t('thtotal', 'Total')}</TableHead>
+                        <TableHead>{t('thoccupied', 'Occupied')}</TableHead>
+                        <TableHead>{t('thavailable', 'Available')}</TableHead>
+                        <TableHead>{t('threserved', 'Reserved')}</TableHead>
+                        <TableHead>{t('thmaint', 'Maint.')}</TableHead>
+                        <TableHead>{t('thrate', 'Rate')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -442,13 +444,13 @@ export default function PoliceReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">#</TableHead>
-                        <TableHead className="text-xs">Provider</TableHead>
-                        <TableHead className="text-xs text-center">Rooms</TableHead>
-                        <TableHead className="text-xs text-center">Guests</TableHead>
-                        <TableHead className="text-xs text-center">Check-Ins</TableHead>
-                        <TableHead className="text-xs text-center">Check-Outs</TableHead>
-                        <TableHead className="text-xs text-center">Suspect Matches</TableHead>
+                        <TableHead>{t('thkey', '#')}</TableHead>
+                        <TableHead>{t('thprovider', 'Provider')}</TableHead>
+                        <TableHead>{t('throoms', 'Rooms')}</TableHead>
+                        <TableHead>{t('thguests', 'Guests')}</TableHead>
+                        <TableHead>{t('thcheckins', 'Check-Ins')}</TableHead>
+                        <TableHead>{t('thcheckouts', 'Check-Outs')}</TableHead>
+                        <TableHead>{t('thsuspectMatches', 'Suspect Matches')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

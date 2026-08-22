@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -96,6 +97,7 @@ interface PlanOption {
 }
 
 export default function SubscriptionsPage() {
+  const { t } = useTranslation();
   const [subscriptions, setSubscriptions] = useState<SubRow[]>([]);
   const [allSubscriptions, setAllSubscriptions] = useState<SubRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -545,7 +547,7 @@ export default function SubscriptionsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Price per Cycle (ETB)</Label>
+              <Label>{t('lblpricePerCycleEtb', 'Price per Cycle (ETB)')}</Label>
               <Input
                 type="number"
                 min="0"
@@ -556,7 +558,7 @@ export default function SubscriptionsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Billing Cycle</Label>
+              <Label>{t('lblbillingCycle', 'Billing Cycle')}</Label>
               <Select value={editCycle} onValueChange={setEditCycle}>
                 <SelectTrigger>
                   <SelectValue />
@@ -597,7 +599,7 @@ export default function SubscriptionsPage() {
             {/* Plan selector */}
             {plans.length > 0 && (
               <div className="grid gap-2">
-                <Label>Select Plan (optional)</Label>
+                <Label>{t('lblselectPlanOptional', 'Select Plan (optional)')}</Label>
                 <Select value={payPlanId} onValueChange={handlePayPlanChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a plan to auto-fill" />
@@ -614,7 +616,7 @@ export default function SubscriptionsPage() {
               </div>
             )}
             <div className="grid gap-2">
-              <Label>Amount (ETB)</Label>
+              <Label>{t('lblamountEtb', 'Amount (ETB)')}</Label>
               <Input
                 type="number"
                 min="0"
@@ -625,7 +627,7 @@ export default function SubscriptionsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Cycle</Label>
+              <Label>{t('lblcycle', 'Cycle')}</Label>
               <Select value={payCycle} onValueChange={setPayCycle}>
                 <SelectTrigger>
                   <SelectValue />
@@ -639,7 +641,7 @@ export default function SubscriptionsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Notes (optional)</Label>
+              <Label>{t('lblnotesOptional', 'Notes (optional)')}</Label>
               <Input
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}

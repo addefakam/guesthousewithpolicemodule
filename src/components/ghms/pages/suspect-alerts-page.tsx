@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -98,6 +99,7 @@ function parseDetails(detailsStr: string): Record<string, unknown> {
 }
 
 export default function SuspectAlertsPage() {
+  const { t } = useTranslation();
   const { refreshKey, triggerRefresh } = useAppStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -282,10 +284,10 @@ export default function SuspectAlertsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
-                    <TableHead>Suspect Name</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Detected At</TableHead>
+                    <TableHead>{t('thsuspectName', 'Suspect Name')}</TableHead>
+                    <TableHead>{t('thseverity', 'Severity')}</TableHead>
+                    <TableHead>{t('thlocation', 'Location')}</TableHead>
+                    <TableHead>{t('thdetectedAt', 'Detected At')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

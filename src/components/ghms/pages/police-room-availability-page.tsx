@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -166,6 +167,7 @@ function getUtilizationBarColor(rate: number): string {
 
 // ── Page ──
 export default function PoliceRoomAvailabilityPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<{
     summary: Summary;
     roomTypes: RoomTypeStat[];

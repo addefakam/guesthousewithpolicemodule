@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { Lock, Clock, Phone, CreditCard, AlertTriangle, CalendarDays } from "lucide-react";
@@ -23,6 +24,7 @@ interface LockoutInfo {
  * Full-screen lockout — cannot navigate away.
  */
 export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo }) {
+  const { t } = useTranslation();
   const isSuspended = info.status === "SUSPENDED";
   const suspendedDaysAgo = Math.abs(info.daysRemaining);
 

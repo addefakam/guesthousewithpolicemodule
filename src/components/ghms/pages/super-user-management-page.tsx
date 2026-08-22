@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -385,6 +386,7 @@ function UserRow({
 
 // ── Main Page Component ──
 export default function SuperUserManagementPage() {
+  const { t } = useTranslation();
   const { currentUser, refreshKey } = useAppStore();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [providers, setProviders] = useState<ProviderOption[]>([]);
@@ -846,7 +848,7 @@ export default function SuperUserManagementPage() {
           <div className="grid gap-4 py-2">
             {/* Role Selection */}
             <div className="grid gap-2">
-              <Label>Role</Label>
+              <Label>{t('lblrole', 'Role')}</Label>
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(ROLE_CONFIG).map(([key, conf]) => {
                   const Icon = conf.icon;
@@ -879,7 +881,7 @@ export default function SuperUserManagementPage() {
 
             {/* Username */}
             <div className="grid gap-2">
-              <Label htmlFor="su-username">Username</Label>
+              <Label>{t('lblusername', 'Username')}</Label>
               <Input
                 id="su-username"
                 value={form.username}
@@ -909,7 +911,7 @@ export default function SuperUserManagementPage() {
 
             {/* Full Name */}
             <div className="grid gap-2">
-              <Label htmlFor="su-name">Full Name</Label>
+              <Label>{t('lblfullName', 'Full Name')}</Label>
               <Input
                 id="su-name"
                 value={form.name}
@@ -922,7 +924,7 @@ export default function SuperUserManagementPage() {
             {/* Email & Phone Row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="su-email">Email</Label>
+                <Label>{t('lblemail', 'Email')}</Label>
                 <Input
                   id="su-email"
                   type="email"
@@ -933,7 +935,7 @@ export default function SuperUserManagementPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="su-phone">Phone</Label>
+                <Label>{t('lblphone', 'Phone')}</Label>
                 <Input
                   id="su-phone"
                   type="tel"
@@ -1010,7 +1012,7 @@ export default function SuperUserManagementPage() {
             {/* Police Rank — for POLICE role */}
             {form.role === "POLICE" && (
               <div className="grid gap-2">
-                <Label>Police Rank</Label>
+                <Label>{t('lblpoliceRank', 'Police Rank')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {POLICE_RANKS.map((rank) => (
                     <button
@@ -1038,7 +1040,7 @@ export default function SuperUserManagementPage() {
             {/* Staff Permissions */}
             {form.role === "STAFF" && (
               <div className="grid gap-2">
-                <Label>Permissions</Label>
+                <Label>{t('lblpermissions', 'Permissions')}</Label>
                 <p className="text-xs text-slate-400">Select which pages this staff member can access.</p>
                 <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
                   {PERMISSION_OPTIONS.map((perm) => (

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -114,6 +115,7 @@ function getChannelIcon(channel: string) {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NotificationDispatchPage() {
+  const { t } = useTranslation();
   const currentUser = useAppStore((s) => s.currentUser);
   const isPolice = currentUser?.role === "POLICE";
   const isAdmin = currentUser?.role === "SUPERUSER";
@@ -356,7 +358,7 @@ function ComposeTab({
             {/* Channel & Priority row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Delivery Channel</Label>
+                <Label>{t('lbldeliveryChannel', 'Delivery Channel')}</Label>
                 <Select value={channel} onValueChange={setChannel} disabled={isViewer}>
                   <SelectTrigger>
                     <SelectValue />
@@ -397,7 +399,7 @@ function ComposeTab({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Priority Level</Label>
+                <Label>{t('lblpriorityLevel', 'Priority Level')}</Label>
                 <Select value={priority} onValueChange={setPriority} disabled={isViewer}>
                   <SelectTrigger>
                     <SelectValue />
@@ -426,7 +428,7 @@ function ComposeTab({
 
             {/* Target Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Target Audience</Label>
+              <Label>{t('lbltargetAudience', 'Target Audience')}</Label>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
@@ -681,12 +683,12 @@ function HistoryTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[180px]">Date</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Channel</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead className="text-right">Delivery</TableHead>
+                    <TableHead>{t('thdate', 'Date')}</TableHead>
+                    <TableHead>{t('thtitle', 'Title')}</TableHead>
+                    <TableHead>{t('thchannel', 'Channel')}</TableHead>
+                    <TableHead>{t('thpriority', 'Priority')}</TableHead>
+                    <TableHead>{t('thtarget', 'Target')}</TableHead>
+                    <TableHead>{t('thdelivery', 'Delivery')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

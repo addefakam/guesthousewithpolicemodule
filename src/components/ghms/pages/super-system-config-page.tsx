@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -1107,6 +1108,7 @@ function PaymentTab({
 // ── Main Page Component ──
 
 export default function SuperSystemConfigPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("general");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -647,16 +647,16 @@ export default function ReservationsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/80">
-                <TableHead className="min-w-[160px]">Guest</TableHead>
-                <TableHead className="min-w-[100px]">Room</TableHead>
-                <TableHead className="min-w-[100px]">Check-in</TableHead>
-                <TableHead className="min-w-[100px]">Check-out</TableHead>
-                <TableHead className="text-center">Nights</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
+                <TableHead>{t('thguest', 'Guest')}</TableHead>
+                <TableHead>{t('throom', 'Room')}</TableHead>
+                <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
+                <TableHead>{t('thcheckout', 'Check-out')}</TableHead>
+                <TableHead>{t('thnights', 'Nights')}</TableHead>
+                <TableHead>{t('thtotal', 'Total')}</TableHead>
+                <TableHead>{t('thpaid', 'Paid')}</TableHead>
+                <TableHead>{t('thbalance', 'Balance')}</TableHead>
+                <TableHead>{t('thstatus', 'Status')}</TableHead>
+                <TableHead>{t('thpayment', 'Payment')}</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
