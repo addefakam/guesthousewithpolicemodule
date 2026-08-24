@@ -64,7 +64,12 @@ export async function GET(req: NextRequest) {
       }),
       db.user.findMany({
         where: providerId ? { providerId } : undefined,
-        select: { id: true, username: true, role: true, name: true, permissions: true, providerId: true, createdAt: true, updatedAt: true },
+        select: {
+          id: true, username: true, role: true, name: true, email: true, phone: true,
+          policeRank: true, providerId: true, isActive: true, lastLogin: true,
+          createdAt: true, updatedAt: true,
+          provider: { select: { id: true, name: true, status: true } },
+        },
       }),
       db.room.findMany({
         where: providerId ? { providerId } : undefined,
@@ -74,10 +79,35 @@ export async function GET(req: NextRequest) {
           createdAt: true, updatedAt: true,
         },
       }),
-      db.guest.findMany({ where: providerId ? { providerId } : undefined }),
-      db.reservation.findMany({ where: providerId ? { providerId } : undefined }),
-      db.expense.findMany({ where: providerId ? { providerId } : undefined }),
-      db.payment.findMany({ where: providerId ? { providerId } : undefined }),
+      db.guest.findMany({
+        where: providerId ? { providerId } : undefined,
+        select: {
+          id: true, name: true, phone: true, email: true, idNumber: true, idType: true,
+          nationality: true, region: true, zone: true, woreda: true, kebele: true,
+          houseNumber: true, streetName: true, plateNumber: true, weapon: true,
+          address: true, notes: true, vip: true, totalSpent: true, totalStays: true,
+          providerId: true, createdAt: true, updatedAt: true,
+        },
+      }),
+      db.reservation.findMany({
+        where: providerId ? { providerId } : undefined,
+        include: {
+          guest: { select: { id: true, name: true, phone: true, email: true, idNumber: true, nationality: true } },
+          room: { select: { id: true, number: true, name: true, type: true, pricePerNight: true } },
+        },
+      }),
+      db.expense.findMany({
+        where: providerId ? { providerId } : undefined,
+        include: {
+          category: { select: { id: true, name: true } },
+        },
+      }),
+      db.payment.findMany({
+        where: providerId ? { providerId } : undefined,
+        include: {
+          reservation: { select: { id: true, guestId: true, room: { select: { number: true, name: true } } } },
+        },
+      }),
       db.settings.findMany({
         where: providerId ? { providerId } : undefined,
         select: {

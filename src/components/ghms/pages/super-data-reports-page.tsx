@@ -120,7 +120,6 @@ const EXPORT_OPTIONS = [
     icon: <Users className="h-5 w-5" />, 
     iconBg: "bg-sky-100 text-sky-600",
     borderColor: "border-sky-200 hover:border-sky-300",
-    apiPath: "/api/owner-accounts",
   },
   {
     id: "guesthouses",
@@ -130,7 +129,6 @@ const EXPORT_OPTIONS = [
     icon: <Building2 className="h-5 w-5" />, 
     iconBg: "bg-emerald-100 text-emerald-600",
     borderColor: "border-emerald-200 hover:border-emerald-300",
-    apiPath: "/api/providers",
   },
   {
     id: "reservations",
@@ -140,7 +138,15 @@ const EXPORT_OPTIONS = [
     icon: <ClipboardList className="h-5 w-5" />, 
     iconBg: "bg-amber-100 text-amber-600",
     borderColor: "border-amber-200 hover:border-amber-300",
-    apiPath: "/api/reservations",
+  },
+  {
+    id: "guests",
+    label: "Guests",
+    description: "Export all registered guest information",
+    format: "CSV",
+    icon: <Users className="h-5 w-5" />, 
+    iconBg: "bg-indigo-100 text-indigo-600",
+    borderColor: "border-indigo-200 hover:border-indigo-300",
   },
   {
     id: "financial",
@@ -150,7 +156,6 @@ const EXPORT_OPTIONS = [
     icon: <DollarSign className="h-5 w-5" />, 
     iconBg: "bg-violet-100 text-violet-600",
     borderColor: "border-violet-200 hover:border-violet-300",
-    apiPath: "/api/reports",
   },
   {
     id: "backup",
@@ -160,7 +165,6 @@ const EXPORT_OPTIONS = [
     icon: <HardDrive className="h-5 w-5" />, 
     iconBg: "bg-rose-100 text-rose-600",
     borderColor: "border-rose-200 hover:border-rose-300",
-    apiPath: null,
   },
 ];
 
@@ -249,103 +253,139 @@ export default function SuperDataReportsPage() {
     fetchSummary();
   }, [fetchSummary]);
 
-  // Handle export
+  // ── CSV Helpers ──
+  // Flatten a nested object into a single-level object with dot-notation keys.
+  // Omits keys listed in skipKeys and any value that is an object/array (unless in allowKeys).
+  function flattenRow(
+    obj: Record<string, unknown>,
+    skipKeys: string[] = [],
+    allowKeys: string[] = []
+  ): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (skipKeys.includes(key)) continue;
+      if (val === null || val === undefined) { out[key] = ""; continue; }
+      if (typeof val === "object" && !Array.isArray(val)) {
+        if (allowKeys.includes(key)) {
+          // Flatten this nested object with prefix
+          const nested = flattenRow(val as Record<string, unknown>, [], []);
+          for (const [nk, nv] of Object.entries(nested)) {
+            out[`${key}.${nk}`] = nv;
+          }
+        }
+        // Otherwise skip nested objects (they become [object Object])
+        continue;
+      }
+      if (Array.isArray(val)) { out[key] = JSON.stringify(val); continue; }
+      if (val instanceof Date) { out[key] = val.toISOString(); continue; }
+      out[key] = String(val);
+    }
+    return out;
+  }
+
+  function buildCSV(rows: Record<string, string>[]): string {
+    if (rows.length === 0) return "";
+    const allKeys = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+    const escape = (v: string) =>
+      v.includes(",") || v.includes("\"") || v.includes("\n")
+        ? `"${v.replace(/"/g, '\"')}"`
+        : v;
+    const header = allKeys.map(escape).join(",");
+    const body = rows
+      .map((row) => allKeys.map((k) => escape(row[k] ?? "")).join(","))
+      .join("\n");
+    return header + "\n" + body;
+  }
+
+  function downloadBlob(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Handle export — each type fetches its own data and builds proper CSV
   const handleExport = async (option: (typeof EXPORT_OPTIONS)[number]) => {
     setExportingId(option.id);
     try {
       const token = localStorage.getItem("ghms_token");
-      const headers: HeadersInit = token
-        ? { Authorization: `Bearer ${token}` }
-        : {};
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const dateStr = new Date().toISOString().split("T")[0];
 
-      if (option.apiPath) {
-        const res = await fetch(option.apiPath, { headers });
-        if (res.ok) {
-          const data = await res.json();
-
-          // Build CSV from array data
-          let csvContent = "";
-          if (Array.isArray(data)) {
-            if (data.length > 0) {
-              const headers_row = Object.keys(data[0]).join(",");
-              const rows = data.map((row: Record<string, unknown>) =>
-                Object.values(row)
-                  .map((val) =>
-                    typeof val === "string" && val.includes(",")
-                      ? `"${val.replace(/"/g, '\"')}"`
-                      : String(val ?? "")
-                  )
-                  .join(",")
-              );
-              csvContent = [headers_row, ...rows].join("\n");
-            }
-          } else {
-            // Try nested arrays
-            const arrays = Object.values(data).filter(Array.isArray);
-            if (arrays.length > 0) {
-              const flat = arrays.flat();
-              if (flat.length > 0) {
-                const headers_row = Object.keys(flat[0]).join(",");
-                const rows = flat.map((row: Record<string, unknown>) =>
-                  Object.values(row)
-                    .map((val) =>
-                      typeof val === "string" && val.includes(",")
-                        ? `"${val.replace(/"/g, '\"')}"`
-                        : String(val ?? "")
-                    )
-                    .join(",")
-                );
-                csvContent = [headers_row, ...rows].join("\n");
-              }
-            } else {
-              csvContent = JSON.stringify(data, null, 2);
-            }
-          }
-
-          const ext = option.format.toLowerCase();
-          const mimeType =
-            ext === "json"
-              ? "application/json"
-              : "text/csv;charset=utf-8;";
-          const blob = new Blob([csvContent], { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `${option.id}-export-${new Date().toISOString().split("T")[0]}.${ext}`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          toast.success(`${option.label} exported successfully`);
-        } else {
-          toast.error(`Failed to export ${option.label}`);
-        }
-      } else {
-        // Full backup - create JSON
-        const backupData = {
-          exportDate: new Date().toISOString(),
-          system: "GHMS",
-          version: "1.0",
-          summary: { ...stats, ...summary },
-          data: {
-            message: "Full system backup requires server-side generation. Use the backup API endpoint for complete data export.",
-          },
-        };
-        const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `ghms-backup-${new Date().toISOString().split("T")[0]}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        toast.success("System backup file downloaded");
+      // ── Full System Backup (JSON) ──
+      if (option.id === "backup") {
+        const res = await fetch("/api/data", { headers });
+        if (!res.ok) { toast.error("Failed to fetch backup data"); return; }
+        const data = await res.json();
+        const backup = { exportDate: new Date().toISOString(), system: "GHMS", version: "1.0", data };
+        downloadBlob(JSON.stringify(backup, null, 2), `ghms-backup-${dateStr}.json`, "application/json");
+        toast.success("Full system backup downloaded");
+        return;
       }
+
+      // ── All other exports: fetch from /api/data and pick the right array ──
+      const res = await fetch("/api/data", { headers });
+      if (!res.ok) { toast.error(`Failed to export ${option.label}`); return; }
+      const allData = await res.json();
+
+      let flatRows: Record<string, string>[] = [];
+
+      switch (option.id) {
+        case "users": {
+          const skip = ["password", "permissions"];
+          flatRows = (allData.users || []).map((u: Record<string, unknown>) =>
+            flattenRow(u, skip, ["provider"])
+          );
+          break;
+        }
+        case "guesthouses": {
+          const skip = ["licenseFile"];
+          flatRows = (allData.providers || []).map((p: Record<string, unknown>) =>
+            flattenRow(p, skip, [])
+          );
+          break;
+        }
+        case "reservations": {
+          const skip = ["payments"];
+          const allow = ["guest", "room"];
+          flatRows = (allData.reservations || []).map((r: Record<string, unknown>) =>
+            flattenRow(r, skip, allow)
+          );
+          break;
+        }
+        case "guests": {
+          flatRows = (allData.guests || []).map((g: Record<string, unknown>) =>
+            flattenRow(g, [], [])
+          );
+          break;
+        }
+        case "financial": {
+          const paymentRows = (allData.payments || []).map((p: Record<string, unknown>) => ({
+            ...flattenRow(p, ["subscription"], ["reservation"]),
+            _recordType: "Payment",
+          }));
+          const expenseRows = (allData.expenses || []).map((e: Record<string, unknown>) => ({
+            ...flattenRow(e, [], ["category"]),
+            _recordType: "Expense",
+          }));
+          flatRows = [...paymentRows, ...expenseRows];
+          break;
+        }
+      }
+
+      if (flatRows.length === 0) {
+        toast.error(`No ${option.label} data found to export`);
+        return;
+      }
+
+      const csv = buildCSV(flatRows);
+      downloadBlob(csv, `${option.id}-export-${dateStr}.csv`, "text/csv;charset=utf-8;");
+      toast.success(`${option.label} exported (${flatRows.length} rows)`);
     } catch {
       toast.error(`Network error exporting ${option.label}`);
     } finally {
@@ -410,8 +450,9 @@ export default function SuperDataReportsPage() {
     "Users Export": EXPORT_OPTIONS[0],
     "Guesthouses Export": EXPORT_OPTIONS[1],
     "Reservations Export": EXPORT_OPTIONS[2],
-    "Financial Report": EXPORT_OPTIONS[3],
-    "Full System Backup": EXPORT_OPTIONS[4],
+    "Guests Export": EXPORT_OPTIONS[3],
+    "Financial Report": EXPORT_OPTIONS[4],
+    "Full System Backup": EXPORT_OPTIONS[5],
   };
 
   const handleRecentDownload = (exp: RecentExport) => {
