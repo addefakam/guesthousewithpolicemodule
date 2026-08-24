@@ -159,6 +159,8 @@ export default function SuperAuditLogsPage() {
   const [actionFilter, setActionFilter] = useState<string>("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [activePreset, setActivePreset] = useState<string>("total");
+  const [criticalFilter, setCriticalFilter] = useState(false);
 
   // Data
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -198,6 +200,7 @@ export default function SuperAuditLogsPage() {
         params.set("action", actionFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (criticalFilter) params.set("critical", "true");
 
       const res = await fetch(`/api/police-audit?${params.toString()}`, {
         headers,
@@ -232,7 +235,7 @@ export default function SuperAuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, actionFilter, dateFrom, dateTo]);
+  }, [page, search, actionFilter, dateFrom, dateTo, criticalFilter]);
 
   useEffect(() => {
     fetchLogs();
@@ -258,7 +261,53 @@ export default function SuperAuditLogsPage() {
     setActionFilter("ALL");
     setDateFrom("");
     setDateTo("");
+    setCriticalFilter(false);
+    setActivePreset("total");
     setPage(1);
+  };
+
+  // Preset filter helpers
+  const todayStr = new Date().toISOString().split("T")[0];
+  const getStartOfWeek = () => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString().split("T")[0];
+  };
+
+  const handlePresetClick = (preset: string) => {
+    setPage(1);
+    if (preset === "total") {
+      setDateFrom("");
+      setDateTo("");
+      setActionFilter("ALL");
+      setCriticalFilter(false);
+      setActivePreset("total");
+    } else if (preset === "today") {
+      setDateFrom(todayStr);
+      setDateTo(todayStr);
+      setActionFilter("ALL");
+      setCriticalFilter(false);
+      setActivePreset("today");
+    } else if (preset === "thisWeek") {
+      setDateFrom(getStartOfWeek());
+      setDateTo(todayStr);
+      setActionFilter("ALL");
+      setCriticalFilter(false);
+      setActivePreset("thisWeek");
+    } else if (preset === "critical") {
+      setDateFrom("");
+      setDateTo("");
+      setActionFilter("ALL");
+      setCriticalFilter(true);
+      setActivePreset("critical");
+    }
+  };
+
+  // When manual filters change, deactivate preset
+  const handleManualFilterChange = () => {
+    setActivePreset("");
   };
 
   // Export logs as CSV
@@ -279,6 +328,7 @@ export default function SuperAuditLogsPage() {
         params.set("action", actionFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (criticalFilter) params.set("critical", "true");
 
       const res = await fetch(`/api/police-audit?${params.toString()}`, {
         headers,
@@ -332,6 +382,7 @@ export default function SuperAuditLogsPage() {
   // Stat cards config
   const statCards = [
     {
+      key: "total",
       label: "Total Entries",
       value: stats.total,
       icon: <ClipboardList className="h-4 w-4" />,
@@ -339,8 +390,11 @@ export default function SuperAuditLogsPage() {
       bg: "bg-slate-100",
       border: "border-slate-200",
       iconBg: "bg-slate-200",
+      activeBg: "bg-slate-200",
+      activeBorder: "border-slate-400",
     },
     {
+      key: "today",
       label: "Today",
       value: stats.today,
       icon: <Activity className="h-4 w-4" />,
@@ -348,8 +402,11 @@ export default function SuperAuditLogsPage() {
       bg: "bg-emerald-50",
       border: "border-emerald-200",
       iconBg: "bg-emerald-200",
+      activeBg: "bg-emerald-100",
+      activeBorder: "border-emerald-400",
     },
     {
+      key: "thisWeek",
       label: "This Week",
       value: stats.thisWeek,
       icon: <Calendar className="h-4 w-4" />,
@@ -357,8 +414,11 @@ export default function SuperAuditLogsPage() {
       bg: "bg-sky-50",
       border: "border-sky-200",
       iconBg: "bg-sky-200",
+      activeBg: "bg-sky-100",
+      activeBorder: "border-sky-400",
     },
     {
+      key: "critical",
       label: "Critical",
       value: stats.critical,
       icon: <Shield className="h-4 w-4" />,
@@ -366,6 +426,8 @@ export default function SuperAuditLogsPage() {
       bg: "bg-rose-50",
       border: "border-rose-200",
       iconBg: "bg-rose-200",
+      activeBg: "bg-rose-100",
+      activeBorder: "border-rose-400",
     },
   ];
 
@@ -454,22 +516,36 @@ export default function SuperAuditLogsPage() {
 
       {/* ── Stats Bar ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {statCards.map((stat) => (
-          <div
-            key={stat.label}
-            className={`flex items-center gap-3 rounded-xl border ${stat.border} ${stat.bg} p-3.5 transition-shadow hover:shadow-sm`}
-          >
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${stat.iconBg} ${stat.color}`}
+        {statCards.map((stat) => {
+          const isActive = activePreset === stat.key;
+          return (
+            <button
+              key={stat.key}
+              type="button"
+              onClick={() => handlePresetClick(stat.key)}
+              className={`flex items-center gap-3 rounded-xl border p-3.5 transition-all text-left cursor-pointer ${
+                isActive
+                  ? `${stat.activeBorder} ${stat.activeBg} ring-2 ring-offset-1 ${
+                      stat.key === "total" ? "ring-slate-400" :
+                      stat.key === "today" ? "ring-emerald-400" :
+                      stat.key === "thisWeek" ? "ring-sky-400" :
+                      "ring-rose-400"
+                    } shadow-md`
+                  : `${stat.border} ${stat.bg} hover:shadow-sm hover:scale-[1.02]`
+              }`}
             >
-              {stat.icon}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-500">{stat.label}</p>
-              <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          </div>
-        ))}
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${stat.iconBg} ${stat.color}`}
+              >
+                {stat.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+                <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Filters Row ── */}
@@ -498,6 +574,8 @@ export default function SuperAuditLogsPage() {
                 value={actionFilter}
                 onValueChange={(val) => {
                   setActionFilter(val);
+                  setCriticalFilter(false);
+                  setActivePreset("");
                   setPage(1);
                 }}
               >
@@ -522,6 +600,7 @@ export default function SuperAuditLogsPage() {
                   value={dateFrom}
                   onChange={(e) => {
                     setDateFrom(e.target.value);
+                    setActivePreset("");
                     setPage(1);
                   }}
                   className="pl-9 border-slate-300"
@@ -536,6 +615,7 @@ export default function SuperAuditLogsPage() {
                   value={dateTo}
                   onChange={(e) => {
                     setDateTo(e.target.value);
+                    setActivePreset("");
                     setPage(1);
                   }}
                   className="pl-9 border-slate-300"
@@ -555,7 +635,7 @@ export default function SuperAuditLogsPage() {
             </div>
 
             {/* Active filter badges */}
-            {(search || (actionFilter && actionFilter !== "ALL") || dateFrom || dateTo) && (
+            {(search || (actionFilter && actionFilter !== "ALL") || dateFrom || dateTo || criticalFilter) && (
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="text-xs text-slate-500">Active filters:</span>
                 {search && (
@@ -588,6 +668,24 @@ export default function SuperAuditLogsPage() {
                         setPage(1);
                       }}
                       className="ml-1 rounded-full hover:bg-slate-300 p-0.5"
+                    >
+                      <ArrowRight className="h-2.5 w-2.5 rotate-45" />
+                    </button>
+                  </Badge>
+                )}
+                {criticalFilter && (
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 bg-rose-100 text-rose-700 hover:bg-rose-200"
+                  >
+                    Critical Only
+                    <button
+                      onClick={() => {
+                        setCriticalFilter(false);
+                        setActivePreset("");
+                        setPage(1);
+                      }}
+                      className="ml-1 rounded-full hover:bg-rose-300 p-0.5"
                     >
                       <ArrowRight className="h-2.5 w-2.5 rotate-45" />
                     </button>
@@ -670,11 +768,11 @@ export default function SuperAuditLogsPage() {
               </div>
               <p className="text-sm font-medium text-slate-700">No audit logs found</p>
               <p className="mt-1 text-xs text-slate-500">
-                {search || actionFilter !== "ALL" || dateFrom || dateTo
+                {search || actionFilter !== "ALL" || dateFrom || dateTo || criticalFilter
                   ? "Try adjusting your filters to find what you are looking for."
                   : "No activity has been recorded yet."}
               </p>
-              {(search || actionFilter !== "ALL" || dateFrom || dateTo) && (
+              {(search || actionFilter !== "ALL" || dateFrom || dateTo || criticalFilter) && (
                 <Button
                   variant="outline"
                   size="sm"
