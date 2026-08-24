@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, RotateCcw, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, RotateCcw, LogOut, Copy, Check } from "lucide-react";
 
 const STORAGE_KEY = "ghms_session";
 
@@ -12,13 +12,20 @@ export default function ErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
   // If the error is a session/data corruption issue, clear localStorage
-  // so the user can start fresh instead of being stuck in a crash loop.
   const isSessionError =
     error.message.includes("undefined") ||
     error.message.includes("null") ||
     error.message.includes("Cannot read") ||
     error.message.includes("split");
+
+  const isObjectError =
+    error.message.includes("Objects are not valid") ||
+    error.message.includes("#310") ||
+    error.message.includes("#418") ||
+    error.message.includes("#425");
 
   useEffect(() => {
     if (isSessionError) {
@@ -29,15 +36,30 @@ export default function ErrorBoundary({
         // Ignore
       }
     }
-  }, [isSessionError, error.message]);
+    // Log full error details for debugging
+    console.error("[ErrorBoundary] Full error:", error);
+  }, [isSessionError, error]);
 
   function handleReset() {
     if (isSessionError) {
-      // Full page reload to start fresh after clearing session
       window.location.href = "/";
     } else {
       reset();
     }
+  }
+
+  function handleCopy() {
+    const details = [
+      `Error: ${error.message}`,
+      `Digest: ${error.digest || "N/A"}`,
+      `Stack: ${error.stack || "N/A"}`,
+      `URL: ${typeof window !== "undefined" ? window.location.href : "N/A"}`,
+      `Time: ${new Date().toISOString()}`,
+    ].join("\n---\n");
+    navigator.clipboard.writeText(details).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   return (
@@ -50,7 +72,9 @@ export default function ErrorBoundary({
         <p className="mt-2 text-sm text-slate-500">
           {isSessionError
             ? "Your session data was corrupted and has been cleared. Please sign in again."
-            : error.message || "An unexpected error occurred."}
+            : isObjectError
+              ? "A rendering error occurred. Try clearing your cache and reloading, or contact support."
+              : error.message || "An unexpected error occurred."}
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
@@ -73,6 +97,13 @@ export default function ErrorBoundary({
             </button>
           )}
         </div>
+        <button
+          onClick={handleCopy}
+          className="mt-3 mx-auto inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copied" : "Copy error details"}
+        </button>
       </div>
     </div>
   );
