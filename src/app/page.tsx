@@ -30,9 +30,21 @@ export default function Home() {
 function HomeContent() {
   const { t } = useTranslation("common");
   const { currentUser, currentPage, setCurrentPage } = useAppStore();
+  const [mounted, setMounted] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [urgentNotifs, setUrgentNotifs] = useState<UrgentNotif[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Prevent hydration mismatch — store loads from localStorage on client
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-700" />
+      </div>
+    );
+  }
 
   // ── Handle Chapa payment redirect: /?chapa=success&sub=XXX ──
   // Chapa redirects here after payment. We detect via URL params (no useSearchParams
