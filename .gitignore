@@ -71,4 +71,4 @@ server.log
 
 # IDE
 .idea/
-.vscode/
+.vscode/tool-results/
