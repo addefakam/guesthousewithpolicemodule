@@ -156,7 +156,7 @@ export default function HousekeepingPage() {
 
   const filteredTasks = useMemo(() => {
     if (statusFilter === "all") return tasks;
-    return tasks.filter((t) => typeItem.status === statusFilter);
+    return tasks.filter((x) => x.status === statusFilter);
   }, [tasks, statusFilter]);
 
   const getRoomLabel = (roomId: string) => {
@@ -281,7 +281,7 @@ export default function HousekeepingPage() {
       {/* Status Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {STATUS_TABS.map((status) => {
-          const count = status === "all" ? tasks.length : tasks.filter((t) => typeItem.status === status).length;
+          const count = status === "all" ? tasks.length : tasks.filter((x) => x.status === status).length;
           return (
             <Button
               key={status}
@@ -448,12 +448,12 @@ export default function HousekeepingPage() {
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TASK_TYPES.map((typeItem) => (
-                      <SelectItem key={t} value={t} className="gap-1.5">
+                    {TASK_TYPES.map((x) => (
+                      <SelectItem key={x} value={x} className="gap-1.5">
                         <span className="mr-1">
-                          {TASK_TYPE_STYLES[t]?.icon}
+                          {TASK_TYPE_STYLES[x]?.icon}
                         </span>
-                        {t}
+                        {x}
                       </SelectItem>
                     ))}
                   </SelectContent>

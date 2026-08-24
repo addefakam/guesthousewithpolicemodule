@@ -1028,8 +1028,8 @@ export default function ReservationsPage() {
                       <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {["National ID", "Passport", "Driver's License", "Other"].map((typeItem) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          {["National ID", "Passport", "Driver's License", "Other"].map((x) => (
+                            <SelectItem key={x} value={x}>{x}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

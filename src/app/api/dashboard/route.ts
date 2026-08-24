@@ -66,10 +66,12 @@ export async function GET(req: NextRequest) {
             `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "createdAt" >= $1 GROUP BY DATE("createdAt") ORDER BY date ASC`,
             sevenDaysAgo.toISOString()
           )
-        : db.$queryRawUnsafe<{ date: string; amount: number }[]>(
-            `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "providerId" = $1 AND "createdAt" >= $2 GROUP BY DATE("createdAt") ORDER BY date ASC`,
-            filter.providerId, sevenDaysAgo.toISOString()
-          ),
+        : filter.providerId
+          ? db.$queryRawUnsafe<{ date: string; amount: number }[]>(
+              `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "providerId" = $1 AND "createdAt" >= $2 GROUP BY DATE("createdAt") ORDER BY date ASC`,
+              filter.providerId, sevenDaysAgo.toISOString()
+            )
+          : Promise.resolve([] as { date: string; amount: number }[]),
 
       // 8+9. Subscription + Provider info (OPERATOR/STAFF only)
       (auth.role !== "SUPERUSER" && auth.role !== "POLICE" && auth.providerId)
