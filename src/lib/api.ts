@@ -416,6 +416,10 @@ export const apiSuperGetProviders = () =>
 export const apiSuperCreateProvider = (data: Record<string, unknown>) =>
   req("/api/providers", { method: "POST", body: JSON.stringify(data) });
 
+// ── Superuser: bulk import guesthouses ──
+export const apiSuperBulkImportProviders = (records: Record<string, string>[]) =>
+  req("/api/providers/bulk-import", { method: "POST", body: JSON.stringify({ records }) });
+
 // ── Group Bookings ──
 export const apiGetGroupBookings = (params?: string) =>
   req(`/api/group-bookings${params ? `?${params}` : ""}`);

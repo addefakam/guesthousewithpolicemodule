@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { useAppStore } from "@/lib/store";
-import { apiGetProviders, apiUpdateProvider, apiPoliceSuspendProvider, apiSuperCreateProvider, req } from "@/lib/api";
+import { apiGetProviders, apiUpdateProvider, apiPoliceSuspendProvider, apiSuperCreateProvider, apiSuperBulkImportProviders, req } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -50,6 +49,8 @@ import {
   Mail,
   MapPin,
   FileText,
+  FileSpreadsheet,
+  Download,
   Calendar,
   ShieldCheck,
   User,
@@ -61,8 +62,10 @@ import {
   Upload,
   X,
   RotateCcw,
+  Table2,
 } from "lucide-react";
 import InfoCard from "@/components/shared/info-card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Provider {
   id: string;
@@ -113,10 +116,18 @@ function StatusBadge({ status }: { status: string }) {
 const GUESTHOUSE_TYPES = [
   { value: "GUEST_HOUSE", label: "Guest House" },
   { value: "HOTEL", label: "Hotel" },
-  { value: "HOSTEL", label: "Hostel" },
   { value: "LODGE", label: "Lodge" },
+  { value: "HOMESTAY", label: "Homestay" },
   { value: "RESORT", label: "Resort" },
+  { value: "DHARAMSHALA", label: "Dharamshala" },
+  { value: "OTHER", label: "Other" },
 ];
+
+const SUB_CITY_WOREDAS: Record<string, string[]> = {
+  "Cheleleka": ["Erer", "Arsadee", "Kilolee"],
+  "Dhibaayyuu": ["Dhaka Booraa", "Dirree", "Horaa", "Biiftuu"],
+  "Dukam": ["Odaa Nabee", "Xaddachaa", "Malkaa", "Abbuu Seeraa"],
+};
 
 interface RegisterForm {
   name: string;
@@ -124,6 +135,8 @@ interface RegisterForm {
   phone: string;
   email: string;
   address: string;
+  subCity: string;
+  woreda: string;
   type: string;
   licenseNo: string;
   licenseFileData: string;
@@ -138,7 +151,9 @@ const emptyRegisterForm: RegisterForm = {
   phone: "",
   email: "",
   address: "",
-  type: "GUEST_HOUSE",
+  subCity: "",
+  woreda: "",
+  type: "",
   licenseNo: "",
   licenseFileData: "",
   licenseFileName: "",
@@ -172,6 +187,14 @@ export default function ProvidersPage() {
   const [suspensionReason, setSuspensionReason] = useState("");
   const [providerMessage, setProviderMessage] = useState("");
   const [suspending, setSuspending] = useState(false);
+
+  // Bulk import state
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<Record<string, string>[]>([]);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkErrors, setBulkErrors] = useState<string[]>([]);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   const pagination = usePagination({ totalItems: providers.length, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
   const paginatedProviders = useMemo(() => pagination.paginate(providers), [providers, pagination]);
@@ -253,12 +276,19 @@ export default function ProvidersPage() {
   };
 
   const handleRegister = async () => {
-    if (!registerForm.name.trim() || !registerForm.ownerName.trim() || !registerForm.phone.trim()) {
-      toast.error("Guesthouse name, owner name, and phone are required");
-      return;
-    }
-    if (!registerForm.username.trim() || !registerForm.password.trim()) {
-      toast.error("Operator username and password are required");
+    if (
+      !registerForm.name.trim() ||
+      !registerForm.ownerName.trim() ||
+      !registerForm.phone.trim() ||
+      !registerForm.email.trim() ||
+      !registerForm.type ||
+      !registerForm.licenseNo.trim() ||
+      !registerForm.username.trim() ||
+      !registerForm.password.trim() ||
+      !registerForm.subCity ||
+      !registerForm.woreda
+    ) {
+      toast.error("Please fill in all required fields.");
       return;
     }
     if (registerForm.password.trim().length < 4) {
@@ -269,14 +299,16 @@ export default function ProvidersPage() {
       toast.error("Invalid phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
       return;
     }
-    if (registerForm.email.trim() && !isValidEmail(registerForm.email)) {
+    if (!isValidEmail(registerForm.email)) {
       toast.error("Invalid email address format");
       return;
     }
     try {
       setRegistering(true);
+      const address = ["Bishoftu", registerForm.subCity, registerForm.woreda].filter(Boolean).join(", ");
       await apiSuperCreateProvider({
         ...registerForm,
+        address,
         licenseFile: registerForm.licenseFileData || undefined,
       });
       toast.success(`"${registerForm.name}" registered and approved successfully`);
@@ -312,6 +344,144 @@ export default function ProvidersPage() {
       toast.error(err instanceof Error ? err.message : "Failed to suspend provider");
     } finally {
       setSuspending(false);
+    }
+  };
+
+  // ── Bulk Import handlers ──
+  const handleDownloadTemplate = () => {
+    import("xlsx").then((XLSX) => {
+      const headers = ["Full Name", "Phone", "Email", "Guesthouse Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
+      const example1 = ["Abebe Kebede", "+251911223344", "abebe@example.com", "Sunshine Guest House", "GUEST_HOUSE", "LIC-2024-001", "Cheleleka", "Erer", "sunshine_gh", "pass1234"];
+      const example2 = ["Tigist Haile", "+251922334455", "tigist@example.com", "Bishoftu Lodge", "LODGE", "LIC-2024-002", "Dukam", "Malkaa", "bishoftu_lodge", "pass5678"];
+      const ws = XLSX.utils.aoa_to_sheet([headers, example1, example2]);
+      // Set column widths
+      ws["!cols"] = headers.map(() => ({ wch: 22 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Guesthouses");
+      XLSX.writeFile(wb, "guesthouse_bulk_import_template.xlsx");
+      toast.success("Template downloaded");
+    });
+  };
+
+  const handleBulkFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkFile(file);
+    setBulkErrors([]);
+    setBulkPreview([]);
+    try {
+      const XLSX = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+
+      if (rows.length === 0) {
+        setBulkErrors(["The Excel file has no data rows."]);
+        return;
+      }
+
+      // Validate columns
+      const requiredCols = ["Full Name", "Phone", "Email", "Guesthouse Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
+      const firstRowKeys = Object.keys(rows[0]);
+      const missingCols = requiredCols.filter((c) => !firstRowKeys.includes(c));
+      if (missingCols.length > 0) {
+        setBulkErrors([`Missing columns: ${missingCols.join(", ")}. Please download the template.`]);
+        return;
+      }
+
+      // Validate rows
+      const errors: string[] = [];
+      const validSubCities = Object.keys(SUB_CITY_WOREDAS);
+      const validTypes = GUESTHOUSE_TYPES.map((t) => t.value);
+      const validTypeLabels = GUESTHOUSE_TYPES.map((t) => t.label);
+
+      rows.forEach((row, idx) => {
+        const rowNum = idx + 2; // Excel row number (1-based + header)
+        const fullName = (row["Full Name"] || "").trim();
+        const phone = (row["Phone"] || "").trim();
+        const email = (row["Email"] || "").trim();
+        const ghName = (row["Guesthouse Name"] || "").trim();
+        const type = (row["Type"] || "").trim();
+        const licenseNo = (row["License No"] || "").trim();
+        const subCity = (row["Sub-City"] || "").trim();
+        const woreda = (row["Woreda"] || "").trim();
+        const username = (row["Username"] || "").trim();
+        const password = (row["Password"] || "").trim();
+
+        if (!fullName) errors.push(`Row ${rowNum}: Full Name is empty`);
+        if (!phone) errors.push(`Row ${rowNum}: Phone is empty`);
+        else if (!isValidPhone(phone)) errors.push(`Row ${rowNum}: Invalid phone format "${phone}"`);
+        if (!email) errors.push(`Row ${rowNum}: Email is empty`);
+        else if (!isValidEmail(email)) errors.push(`Row ${rowNum}: Invalid email format "${email}"`);
+        if (!ghName) errors.push(`Row ${rowNum}: Guesthouse Name is empty`);
+        if (!type) errors.push(`Row ${rowNum}: Type is empty`);
+        else if (!validTypes.includes(type) && !validTypeLabels.includes(type)) errors.push(`Row ${rowNum}: Invalid type "${type}". Use: ${validTypes.join(", ")}`);
+        if (!licenseNo) errors.push(`Row ${rowNum}: License No is empty`);
+        if (!subCity) errors.push(`Row ${rowNum}: Sub-City is empty`);
+        else if (!validSubCities.includes(subCity)) errors.push(`Row ${rowNum}: Invalid Sub-City "${subCity}". Use: ${validSubCities.join(", ")}`);
+        if (!woreda) errors.push(`Row ${rowNum}: Woreda is empty`);
+        else if (subCity && validSubCities.includes(subCity) && !SUB_CITY_WOREDAS[subCity]?.includes(woreda)) errors.push(`Row ${rowNum}: Woreda "${woreda}" is not valid for Sub-City "${subCity}"`);
+        if (!username) errors.push(`Row ${rowNum}: Username is empty`);
+        if (!password) errors.push(`Row ${rowNum}: Password is empty`);
+        else if (password.length < 4) errors.push(`Row ${rowNum}: Password must be at least 4 characters`);
+      });
+
+      if (errors.length > 0) {
+        setBulkErrors(errors.slice(0, 20));
+        if (errors.length > 20) setBulkErrors((prev) => [...prev, `...and ${errors.length - 20} more errors`]);
+      }
+
+      setBulkPreview(rows);
+    } catch {
+      setBulkErrors(["Failed to read the Excel file. Please make sure it's a valid .xlsx file."]);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (bulkPreview.length === 0) {
+      toast.error("No data to import");
+      return;
+    }
+    if (bulkErrors.length > 0) {
+      toast.error("Please fix validation errors before importing");
+      return;
+    }
+    try {
+      setBulkImporting(true);
+      const records = bulkPreview.map((row) => {
+        const subCity = (row["Sub-City"] || "").trim();
+        const woreda = (row["Woreda"] || "").trim();
+        let type = (row["Type"] || "").trim();
+        // Convert label to value if needed
+        const typeMatch = GUESTHOUSE_TYPES.find((t) => t.label === type);
+        if (typeMatch) type = typeMatch.value;
+        const address = ["Bishoftu", subCity, woreda].filter(Boolean).join(", ");
+        return {
+          ownerName: (row["Full Name"] || "").trim(),
+          phone: (row["Phone"] || "").trim(),
+          email: (row["Email"] || "").trim(),
+          name: (row["Guesthouse Name"] || "").trim(),
+          type,
+          licenseNo: (row["License No"] || "").trim(),
+          address,
+          username: (row["Username"] || "").trim(),
+          password: (row["Password"] || "").trim(),
+        };
+      });
+      const result = await apiSuperBulkImportProviders(records);
+      const data = result as { success: number; failed: number; errors: string[] };
+      toast.success(`Imported ${data.success} guesthouses successfully${data.failed > 0 ? `, ${data.failed} failed` : ""}`);
+      setBulkImportOpen(false);
+      setBulkFile(null);
+      setBulkPreview([]);
+      setBulkErrors([]);
+      if (bulkFileInputRef.current) bulkFileInputRef.current.value = "";
+      triggerRefresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Bulk import failed");
+    } finally {
+      setBulkImporting(false);
     }
   };
 
@@ -378,9 +548,14 @@ export default function ProvidersPage() {
         </div>
         <div className="flex gap-2">
           {isSuperuser && (
-            <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
-              <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
-            </Button>
+            <>
+              <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
+                <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setBulkImportOpen(true)}>
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Bulk Import
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -709,7 +884,7 @@ export default function ProvidersPage() {
       </AlertDialog>
 
       {/* Register Guesthouse Dialog (SUPERUSER) */}
-      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+      <Dialog open={registerOpen} onOpenChange={(open) => { if (!open) { setRegisterForm(emptyRegisterForm); } setRegisterOpen(open); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -721,174 +896,219 @@ export default function ProvidersPage() {
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
-            {/* Guesthouse Info Section */}
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Guesthouse Information</p>
-              <Separator />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Guesthouse Name <span className="text-rose-500">*</span></Label>
-                <Input
-                  value={registerForm.name}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Sunshine Guest House"
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-sm">Owner Name <span className="text-rose-500">*</span></Label>
-                <Input
-                  value={registerForm.ownerName}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
-                  placeholder="Full name of the owner"
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-sm">Phone <span className="text-rose-500">*</span></Label>
-                <Input
-                  type="tel"
-                  value={registerForm.phone}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="+251..."
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-sm">Email <span className="text-slate-400 font-normal">(optional)</span></Label>
-                <Input
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="owner@email.com"
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-sm">Type</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {GUESTHOUSE_TYPES.map((t) => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => setRegisterForm((f) => ({ ...f, type: t.value }))}
-                      className={`rounded-lg border-2 px-3 py-1.5 text-xs font-medium transition-all ${
-                        registerForm.type === t.value
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-slate-200 text-slate-500 hover:border-slate-300"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+            {/* Contact Information */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Contact Information
+              </p>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="reg-name" className="text-sm">Full Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="reg-name"
+                    placeholder="Owner full name"
+                    value={registerForm.ownerName}
+                    onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-phone" className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+                    <Input
+                      id="reg-phone"
+                      type="tel"
+                      placeholder="Phone number"
+                      value={registerForm.phone}
+                      onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-email" className="text-sm">Email <span className="text-rose-500">*</span></Label>
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      placeholder="Email address"
+                      value={registerForm.email}
+                      onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
+                      className="bg-white"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Address <span className="text-slate-400 font-normal">(optional)</span></Label>
-                <Input
-                  value={registerForm.address}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, address: e.target.value }))}
-                  placeholder="Street, city, sub-city"
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">License No <span className="text-slate-400 font-normal">(optional)</span></Label>
-                <Input
-                  value={registerForm.licenseNo}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
-                  placeholder="Business license number"
-                  className="bg-slate-50"
-                />
-              </div>
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label className="text-sm">Upload License <span className="text-slate-400 font-normal">(optional)</span></Label>
-                {!registerForm.licenseFileData ? (
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 transition-colors hover:border-primary/40 hover:bg-primary/5">
-                    <Upload className="h-8 w-8 text-slate-400" />
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-slate-600">Click to upload license document</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">PDF, Image, or any document (max 5MB)</p>
-                    </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.size > 5 * 1024 * 1024) {
-                          toast.error("File size must be under 5MB");
-                          return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          const base64 = reader.result as string;
-                          setRegisterForm((f) => ({
-                            ...f,
-                            licenseFileData: base64,
-                            licenseFileName: file.name,
-                          }));
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                ) : (
-                  <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                    <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
-                      <p className="text-[11px] text-emerald-600">License uploaded</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
-                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5 text-slate-500" />
-                    </button>
+            </div>
+
+            {/* Guest House Details */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Guest House Details
+              </p>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="reg-gh-name" className="text-sm">Guest House Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="reg-gh-name"
+                    placeholder="Name of the guest house"
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-type" className="text-sm">Type <span className="text-rose-500">*</span></Label>
+                    <Select value={registerForm.type} onValueChange={(v) => setRegisterForm((f) => ({ ...f, type: v }))}>
+                      <SelectTrigger id="reg-type" className="w-full bg-white">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GUESTHOUSE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-license" className="text-sm">License No. <span className="text-rose-500">*</span></Label>
+                    <Input
+                      id="reg-license"
+                      placeholder="License number"
+                      value={registerForm.licenseNo}
+                      onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-sm">Upload License Document</Label>
+                  {!registerForm.licenseFileData ? (
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+                        <Upload className="size-4 text-slate-500" />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="truncate text-sm font-medium text-slate-700">
+                          Click to upload license document
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          PDF, JPG, or PNG (max 5MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (file && file.size > 5 * 1024 * 1024) {
+                            toast.error("File size must be under 5MB.");
+                            return;
+                          }
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setRegisterForm((f) => ({
+                                ...f,
+                                licenseFileData: reader.result as string,
+                                licenseFileName: file.name,
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                      <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
+                        <p className="text-[11px] text-emerald-600">License uploaded</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
+                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5 text-slate-500" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Operator Account Section */}
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operator Login Account</p>
-              <p className="text-[11px] text-slate-400">An operator account will be created with access to manage this guesthouse.</p>
-              <Separator />
+            {/* Location */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Location
+              </p>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <Label className="text-sm">City</Label>
+                  <Input value="Bishoftu" disabled className="bg-slate-100" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-subcity" className="text-sm">Sub-City <span className="text-rose-500">*</span></Label>
+                    <Select value={registerForm.subCity} onValueChange={(v) => setRegisterForm((f) => ({ ...f, subCity: v, woreda: "" }))}>
+                      <SelectTrigger id="reg-subcity" className="w-full bg-white">
+                        <SelectValue placeholder="Select sub-city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(SUB_CITY_WOREDAS).map((sc) => (
+                          <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="reg-woreda" className="text-sm">Woreda <span className="text-rose-500">*</span></Label>
+                    <Select value={registerForm.woreda} onValueChange={(v) => setRegisterForm((f) => ({ ...f, woreda: v }))} disabled={!registerForm.subCity}>
+                      <SelectTrigger id="reg-woreda" className="w-full bg-white">
+                        <SelectValue placeholder={registerForm.subCity ? "Select woreda" : "Select sub-city first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {registerForm.subCity && SUB_CITY_WOREDAS[registerForm.subCity]?.map((w) => (
+                          <SelectItem key={w} value={w}>{w}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-slate-400" />
-                  Username <span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  value={registerForm.username}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
-                  placeholder="operator_username"
-                  className="bg-slate-50"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <KeyRound className="h-3.5 w-3.5 text-slate-400" />
-                  Password <span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  type="password"
-                  value={registerForm.password}
-                  onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Min 4 characters"
-                  className="bg-slate-50"
-                  autoComplete="new-password"
-                />
+            {/* Login Credentials */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Desired Login Credentials
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="reg-username" className="text-sm">Username <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="reg-username"
+                    placeholder="Desired username"
+                    value={registerForm.username}
+                    onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
+                    className="bg-white"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="reg-password" className="text-sm">Password <span className="text-rose-500">*</span></Label>
+                  <Input
+                    id="reg-password"
+                    type="password"
+                    placeholder="Min 4 characters"
+                    value={registerForm.password}
+                    onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
+                    className="bg-white"
+                    autoComplete="new-password"
+                  />
+                </div>
               </div>
             </div>
 
@@ -925,7 +1145,7 @@ export default function ProvidersPage() {
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Register &amp; Approve
+                    Register & Approve
                   </>
                 )}
               </Button>
@@ -1039,6 +1259,168 @@ export default function ProvidersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog (SUPERUSER) */}
+      <Dialog open={bulkImportOpen} onOpenChange={(open) => { if (!open) { setBulkFile(null); setBulkPreview([]); setBulkErrors([]); } setBulkImportOpen(open); }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileSpreadsheet className="h-5 w-5" /> Bulk Import Guesthouses
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Import multiple guesthouses at once from an Excel file. All entries will be automatically approved.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            {/* Step 1: Download template */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm">1</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-blue-900">Download Template</p>
+                  <p className="text-xs text-blue-700 mt-0.5">Download the Excel template, fill in guesthouse data, then upload it below.</p>
+                  <Button size="sm" variant="outline" className="mt-2 gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100" onClick={handleDownloadTemplate}>
+                    <Download className="h-3.5 w-3.5" /> Download Template (.xlsx)
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Upload file */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-700 font-bold text-sm">2</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-slate-900">Upload Filled Template</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Select the filled Excel file to preview and import.</p>
+                  <div className="mt-3">
+                    <input
+                      ref={bulkFileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      className="hidden"
+                      onChange={handleBulkFileSelect}
+                    />
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-slate-300 bg-white p-4 transition-colors hover:border-primary/40 hover:bg-primary/5">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+                        <Upload className="size-5 text-slate-500" />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="truncate text-sm font-medium text-slate-700">
+                          {bulkFile ? bulkFile.name : "Click to select Excel file"}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {bulkFile ? `${(bulkFile.size / 1024).toFixed(1)} KB` : ".xlsx files only"}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Validation errors */}
+            {bulkErrors.length > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-700">Validation Errors ({bulkErrors.length})</p>
+                    <ul className="mt-1.5 space-y-0.5 text-xs text-red-600 max-h-32 overflow-y-auto">
+                      {bulkErrors.map((err, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="shrink-0 text-red-400">&bull;</span> {err}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Preview table */}
+            {bulkPreview.length > 0 && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">3</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">Preview Data</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Review the data before importing. {bulkPreview.length} guesthouse(s) found.</p>
+                  </div>
+                </div>
+                <div className="mt-3 overflow-x-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-100">
+                        <TableHead className="text-xs font-semibold h-9">#</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Full Name</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Phone</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Guesthouse</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Type</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Sub-City</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">Woreda</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkPreview.map((row, idx) => (
+                        <TableRow key={idx} className="text-xs">
+                          <TableCell className="text-slate-400 font-medium">{idx + 1}</TableCell>
+                          <TableCell className="font-medium">{(row["Full Name"] || "").trim()}</TableCell>
+                          <TableCell>{(row["Phone"] || "").trim()}</TableCell>
+                          <TableCell>{(row["Guesthouse Name"] || "").trim()}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px] px-1.5 py-0">{(row["Type"] || "").trim()}</Badge></TableCell>
+                          <TableCell>{(row["Sub-City"] || "").trim()}</TableCell>
+                          <TableCell>{(row["Woreda"] || "").trim()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* Info banner */}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-emerald-800">
+                  All imported guesthouses will be <strong>automatically approved</strong> and operator accounts will be created with the provided credentials.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => { setBulkImportOpen(false); setBulkFile(null); setBulkPreview([]); setBulkErrors([]); if (bulkFileInputRef.current) bulkFileInputRef.current.value = ""; }}
+                disabled={bulkImporting}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="gap-1.5 w-full sm:w-auto"
+                onClick={handleBulkImport}
+                disabled={bulkImporting || bulkPreview.length === 0 || bulkErrors.length > 0}
+              >
+                {bulkImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importing {bulkPreview.length} guesthouses...
+                  </>
+                ) : (
+                  <>
+                    <Table2 className="h-4 w-4" />
+                    Import {bulkPreview.length > 0 ? `${bulkPreview.length} Guesthouses` : ""}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

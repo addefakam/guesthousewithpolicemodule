@@ -177,3 +177,32 @@ Stage Summary:
 - All 14 phone inputs now use type="tel" for mobile numeric keyboard
 - Frontend + backend双重验证 (dual-layer validation)
 - No new TypeScript errors introduced
+---
+Task ID: 1
+Agent: main
+Task: Update superuser Register Guesthouse form to match login page self-registration and add bulk import from Excel
+
+Work Log:
+- Examined login-page.tsx self-registration form (fields: Full Name, Phone, Email, GH Name, Type, License No, License Upload, Sub-City, Woreda, Username, Password)
+- Examined providers-page.tsx superuser registration dialog (was missing: Sub-City, Woreda, had fewer type options, email was optional)
+- Updated RegisterForm interface to add subCity and woreda fields
+- Updated GUESTHOUSE_TYPES to match login page (added HOMESTAY, DHARAMSHALA, OTHER; removed HOSTEL)
+- Added SUB_CITY_WOREDAS constant for Bishoftu sub-cities
+- Completely rewrote registration dialog with 4 sections matching login page: Contact Information, Guest House Details, Location, Desired Login Credentials
+- Made email, type, license no, sub-city, woreda all required (with red asterisk)
+- Changed type selection from button group to Select dropdown
+- Added Sub-City/Woreda cascading dropdowns
+- Updated validation in handleRegister to require all fields + validate email
+- Added bulk import feature: Bulk Import button, 3-step dialog (download template, upload file, preview data)
+- Template download generates .xlsx with headers and 2 example rows
+- File upload parses Excel with xlsx library, validates all rows (phone, email, type, sub-city/woreda mapping)
+- Preview table shows data before import with validation error display
+- Created API endpoint /api/providers/bulk-import for server-side import (max 100 records, duplicate username check, per-row error tracking)
+- Added apiSuperBulkImportProviders to api.ts
+- Fixed TypeScript compilation errors (missing comment bracket, auth.userName vs username)
+
+Stage Summary:
+- Modified: src/components/ghms/pages/providers-page.tsx (registration form redesigned + bulk import UI)
+- Modified: src/lib/api.ts (added apiSuperBulkImportProviders)
+- Created: src/app/api/providers/bulk-import/route.ts (bulk import API endpoint)
+- All TypeScript checks pass for modified files
