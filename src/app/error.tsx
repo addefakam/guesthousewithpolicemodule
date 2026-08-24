@@ -28,20 +28,19 @@ export default function ErrorBoundary({
     error.message.includes("#425");
 
   useEffect(() => {
-    if (isSessionError) {
-      console.error("[ErrorBoundary] Session-related error detected, clearing corrupted session:", error.message);
+    if (isSessionError || isObjectError) {
+      console.error("[ErrorBoundary] Clearing corrupted session:", error.message);
       try {
         localStorage.removeItem(STORAGE_KEY);
       } catch {
         // Ignore
       }
     }
-    // Log full error details for debugging
     console.error("[ErrorBoundary] Full error:", error);
-  }, [isSessionError, error]);
+  }, [isSessionError, isObjectError, error]);
 
   function handleReset() {
-    if (isSessionError) {
+    if (isSessionError || isObjectError) {
       window.location.href = "/";
     } else {
       reset();
@@ -73,7 +72,7 @@ export default function ErrorBoundary({
           {isSessionError
             ? "Your session data was corrupted and has been cleared. Please sign in again."
             : isObjectError
-              ? "A rendering error occurred. Try clearing your cache and reloading, or contact support."
+              ? "A rendering error occurred. Your session has been cleared. Please sign in again."
               : error.message || "An unexpected error occurred."}
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -82,9 +81,9 @@ export default function ErrorBoundary({
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
             <RotateCcw className="h-4 w-4" />
-            {isSessionError ? "Sign In Again" : "Try Again"}
+            {(isSessionError || isObjectError) ? "Sign In Again" : "Try Again"}
           </button>
-          {isSessionError && (
+          {(isSessionError || isObjectError) && (
             <button
               onClick={() => {
                 try { localStorage.removeItem(STORAGE_KEY); } catch {}

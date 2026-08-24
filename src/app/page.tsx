@@ -35,21 +35,14 @@ function HomeContent() {
   const [urgentNotifs, setUrgentNotifs] = useState<UrgentNotif[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // ── ALL hooks must be called before any conditional return (Rules of Hooks) ──
+
   // Prevent hydration mismatch — store loads from localStorage on client
   useEffect(() => { setMounted(true); }, []);
 
-  if (!mounted) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-700" />
-      </div>
-    );
-  }
-
   // ── Handle Chapa payment redirect: /?chapa=success&sub=XXX ──
-  // Chapa redirects here after payment. We detect via URL params (no useSearchParams
-  // needed — just read window.location.search directly to avoid Suspense issues).
   useEffect(() => {
+    if (!mounted) return;
     const params = new URLSearchParams(window.location.search);
     const chapa = params.get("chapa");
     const sub = params.get("sub");
@@ -66,15 +59,13 @@ function HomeContent() {
     const subValue = sub || sessionData?.sub;
 
     if (chapaValue === "success") {
-      // Store for MySubscriptionPage to pick up
       sessionStorage.setItem("chapa_result", "success");
       sessionStorage.setItem("chapa_sub", subValue || "");
       sessionStorage.setItem("chapa_timestamp", String(Date.now()));
       setCurrentPage("my-subscription");
-      // Clean the URL
       window.history.replaceState({}, "/", "/");
     }
-  }, [setCurrentPage]);
+  }, [mounted, setCurrentPage]);
 
   const fetchNotifData = useCallback(async () => {
     try {
@@ -83,7 +74,6 @@ function HomeContent() {
       const list = Array.isArray(raw) ? raw : raw?.notifications;
       const arr: Record<string, unknown>[] = Array.isArray(list) ? list : [];
       setUnreadCount(arr.filter((n) => !n.isRead).length);
-      // Collect unread URGENT broadcast notifications
       const urgent = arr
         .filter((n) => !n.isRead && typeof n.title === "string" && n.title.startsWith("[URGENT]"))
         .map((n) => ({
@@ -98,11 +88,21 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!mounted || !currentUser) return;
     fetchNotifData();
     const interval = setInterval(fetchNotifData, 15000);
     return () => clearInterval(interval);
-  }, [currentUser, fetchNotifData]);
+  }, [mounted, currentUser, fetchNotifData]);
+
+  // ── Conditional renders (AFTER all hooks) ──
+
+  if (!mounted) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-700" />
+      </div>
+    );
+  }
 
   if (!currentUser || currentPage === "login") {
     return <LoginPage />;
@@ -122,7 +122,6 @@ function HomeContent() {
             tabIndex={0}
             onClick={(e) => {
               e.preventDefault();
-              // Mark all urgent as read, clear ticker, navigate to notifications
               const ids = urgentNotifs.map((n) => n.id);
               setUrgentNotifs([]);
               setUnreadCount((c) => Math.max(0, c - ids.length));
