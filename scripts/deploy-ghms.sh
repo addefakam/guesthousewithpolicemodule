@@ -376,7 +376,7 @@ check "PostgreSQL is running"       "systemctl is-active postgresql"
 check "GHMS service is running"     "systemctl is-active ghms"
 check "Caddy is running"            "systemctl is-active caddy"
 check "Port 80 is listening"        "ss -tlnp | grep -q ':80 '
-tcheck "Port 443 is listening"       "ss -tlnp | grep -q ':443 '"
+check "Port 443 is listening"       "ss -tlnp | grep -q ':443 '"
 check "Port 3000 is internal"       "ss -tlnp | grep -q '127.0.0.1:3000 \|0.0.0.0:3000'"
 check "Server responds on :3000"    "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 | grep -q 200"
 
