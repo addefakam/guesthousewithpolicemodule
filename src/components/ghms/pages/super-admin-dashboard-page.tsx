@@ -119,28 +119,10 @@ export default function SuperAdminDashboardPage() {
       // Silently handle
     }
 
-    try {
-      // Try dashboard endpoint (may need providerId, wrap safely)
-      const dashRes = await fetch("/api/dashboard", { headers });
-      if (dashRes.ok) {
-        const dashData = await dashRes.json();
-        // If dashboard returned subscription info, use it
-        if (dashData.activeSubscriptions !== undefined) {
-          activeSubscriptions = dashData.activeSubscriptions;
-        }
-        if (dashData.expiringSubscriptions !== undefined) {
-          expiringSubscriptions = dashData.expiringSubscriptions;
-        }
-        if (dashData.totalUsers !== undefined) {
-          totalUsers = dashData.totalUsers;
-        }
-        if (dashData.activeGuesthouses !== undefined) {
-          activeGuesthouses = dashData.activeGuesthouses;
-        }
-      }
-    } catch {
-      // Expected to fail for super admin without providerId
-    }
+    // NOTE: /api/dashboard is provider-scoped and does not return admin-level
+    // aggregation fields (totalUsers, activeGuesthouses, etc.). Those come from
+    // /api/owner-accounts and /api/subscription/status above. Do NOT call
+    // /api/dashboard here — it causes 500 errors for SUPERUSERs with providerId.
 
     setStats({
       totalUsers,

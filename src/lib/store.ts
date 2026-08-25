@@ -86,6 +86,10 @@ function loadSession(): {
       if (!Array.isArray(data.currentUser.permissions)) {
         data.currentUser.permissions = [];
       }
+      // Migration: SUPERUSER with providerId should not land on super-admin-dashboard
+      if (data.currentUser.role === "SUPERUSER" && data.currentUser.providerId && data.currentPage === "super-admin-dashboard") {
+        data.currentPage = "dashboard";
+      }
       return data;
     }
     return null;

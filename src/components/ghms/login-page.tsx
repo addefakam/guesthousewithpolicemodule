@@ -82,7 +82,16 @@ export default function LoginPage() {
       const userData = resp.user;
       setCurrentUser({ ...userData, providerName: resp.providerName });
       // Route based on role
-      const page = userData.role === "POLICE" ? "police-dashboard" : userData.role === "SUPERUSER" ? "super-admin-dashboard" : "dashboard";
+      // SUPERUSER with providerId = guest house owner → provider dashboard
+      // SUPERUSER without providerId = system admin → admin dashboard
+      let page: string;
+      if (userData.role === "POLICE") {
+        page = "police-dashboard";
+      } else if (userData.role === "SUPERUSER" && !userData.providerId) {
+        page = "super-admin-dashboard";
+      } else {
+        page = "dashboard";
+      }
       setCurrentPage(page);
       toast.success(t("welcomeBack", { name: userData.name }));
     } catch (err: unknown) {

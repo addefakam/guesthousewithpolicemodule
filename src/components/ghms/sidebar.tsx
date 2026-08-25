@@ -222,8 +222,14 @@ function getNavItems(user: CurrentUser): NavItem[] {
       return POLICE_NAV_ITEMS.filter((item) => allowedPages.includes(item.page));
     }
 
-    case "SUPERUSER":
+    case "SUPERUSER": {
+      // Guest house owners (SUPERUSER with providerId) see the provider dashboard.
+      // System admins (SUPERUSER without providerId) see the admin dashboard.
+      if (user.providerId) {
+        return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
+      }
       return SUPERUSER_NAV_ITEMS;
+    }
 
     case "OPERATOR":
       return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
