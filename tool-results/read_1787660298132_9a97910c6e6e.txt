@@ -1,0 +1,1104 @@
+     1→import pg from "pg";
+     2→import bcrypt from "bcryptjs";
+     3→import { PrismaClient } from "@prisma/client";
+     4→
+     5→const { Client } = pg;
+     6→
+     7→// ─── Enum types ────────────────────────────────────────────────────────────
+     8→const ENUMS_SQL = `
+     9→DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('POLICE','SUPERUSER','OPERATOR','STAFF'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    10→DO $$ BEGIN CREATE TYPE "ProviderStatus" AS ENUM ('PENDING','APPROVED','REJECTED','SUSPENDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    11→DO $$ BEGIN CREATE TYPE "RoomType" AS ENUM ('SINGLE','DOUBLE','TWIN','SUITE','DELUXE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    12→DO $$ BEGIN CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE','OCCUPIED','MAINTENANCE','RESERVED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    13→DO $$ BEGIN CREATE TYPE "PaymentStatusType" AS ENUM ('PAID','PARTIAL','PENDING'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    14→DO $$ BEGIN CREATE TYPE "PaymentMethodType" AS ENUM ('CASH','TRANSFER','CARD','MOBILE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    15→DO $$ BEGIN CREATE TYPE "ReservationStatus" AS ENUM ('UPCOMING','ACTIVE','COMPLETED','CANCELLED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    16→DO $$ BEGIN CREATE TYPE "NotificationType" AS ENUM ('INFO','WARNING','SUCCESS','ERROR'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    17→DO $$ BEGIN CREATE TYPE "HousekeepingTaskType" AS ENUM ('CLEANING','MAINTENANCE','INSPECTION'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    18→DO $$ BEGIN CREATE TYPE "HousekeepingTaskStatus" AS ENUM ('PENDING','IN_PROGRESS','COMPLETED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    19→DO $$ BEGIN CREATE TYPE "SuspectSeverity" AS ENUM ('LOW','MEDIUM','HIGH','CRITICAL'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    20→DO $$ BEGIN CREATE TYPE "SubscriptionCycle" AS ENUM ('MONTHLY','QUARTERLY','SEMI_ANNUAL','YEARLY'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    21→DO $$ BEGIN CREATE TYPE "GroupBookingStatus" AS ENUM ('PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    22→DO $$ BEGIN CREATE TYPE "MessageChannel" AS ENUM ('SMS','WHATSAPP'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    23→DO $$ BEGIN CREATE TYPE "MessageStatus" AS ENUM ('PENDING','SENT','FAILED','DELIVERED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    24→`;
+    25→
+    26→// ─── Table creation ────────────────────────────────────────────────────────
+    27→const TABLES_SQL = `
+    28→CREATE TABLE IF NOT EXISTS "Provider" (
+    29→  "id" TEXT NOT NULL PRIMARY KEY,
+    30→  "name" TEXT NOT NULL,
+    31→  "ownerName" TEXT NOT NULL,
+    32→  "phone" TEXT NOT NULL,
+    33→  "email" TEXT NOT NULL DEFAULT '',
+    34→  "address" TEXT NOT NULL DEFAULT '',
+    35→  "type" TEXT NOT NULL DEFAULT 'GUEST_HOUSE',
+    36→  "licenseNo" TEXT NOT NULL DEFAULT '',
+    37→  "licenseFile" TEXT NOT NULL DEFAULT '',
+    38→  "status" "ProviderStatus" NOT NULL DEFAULT 'PENDING',
+    39→  "latitude" DOUBLE PRECISION NOT NULL DEFAULT 9.02,
+    40→  "longitude" DOUBLE PRECISION NOT NULL DEFAULT 38.75,
+    41→  "approvedBy" TEXT,
+    42→  "approvedAt" TIMESTAMP(3),
+    43→  "rejectionReason" TEXT NOT NULL DEFAULT '',
+    44→  "suspensionReason" TEXT NOT NULL DEFAULT '',
+    45→  "suspendedAt" TIMESTAMP(3),
+    46→  "suspendedBy" TEXT NOT NULL DEFAULT '',
+    47→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    48→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    49→);
+    50→CREATE TABLE IF NOT EXISTS "User" (
+    51→  "id" TEXT NOT NULL PRIMARY KEY,
+    52→  "username" TEXT NOT NULL,
+    53→  "password" TEXT NOT NULL,
+    54→  "role" "UserRole" NOT NULL DEFAULT 'STAFF',
+    55→  "name" TEXT NOT NULL,
+    56→  "email" TEXT DEFAULT '',
+    57→  "phone" TEXT DEFAULT '',
+    58→  "permissions" TEXT NOT NULL DEFAULT '["reservations","guests"]',
+    59→  "policeRank" TEXT NOT NULL DEFAULT '',
+    60→  "isActive" BOOLEAN NOT NULL DEFAULT true,
+    61→  "lastLogin" TIMESTAMP(3),
+    62→  "providerId" TEXT,
+    63→  "createdBy" TEXT,
+    64→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    65→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    66→  CONSTRAINT "User_username_key" UNIQUE ("username")
+    67→);
+    68→DO $$ BEGIN CREATE INDEX "User_createdBy_idx" ON "User"("createdBy"); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    69→CREATE TABLE IF NOT EXISTS "Room" (
+    70→  "id" TEXT NOT NULL PRIMARY KEY,
+    71→  "number" TEXT NOT NULL,
+    72→  "name" TEXT NOT NULL,
+    73→  "type" "RoomType" NOT NULL,
+    74→  "pricePerNight" DOUBLE PRECISION NOT NULL,
+    75→  "floor" INTEGER NOT NULL,
+    76→  "capacity" INTEGER NOT NULL,
+    77→  "status" "RoomStatus" NOT NULL DEFAULT 'AVAILABLE',
+    78→  "amenities" TEXT NOT NULL,
+    79→  "description" TEXT NOT NULL,
+    80→  "image" TEXT,
+    81→  "providerId" TEXT NOT NULL,
+    82→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    83→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    84→  CONSTRAINT "Room_number_providerId_key" UNIQUE ("number", "providerId")
+    85→);
+    86→CREATE TABLE IF NOT EXISTS "Guest" (
+    87→  "id" TEXT NOT NULL PRIMARY KEY,
+    88→  "name" TEXT NOT NULL,
+    89→  "phone" TEXT NOT NULL,
+    90→  "email" TEXT NOT NULL DEFAULT '',
+    91→  "idNumber" TEXT NOT NULL DEFAULT '',
+    92→  "idType" TEXT NOT NULL DEFAULT '',
+    93→  "nationality" TEXT NOT NULL DEFAULT '',
+    94→  "region" TEXT NOT NULL DEFAULT '',
+    95→  "zone" TEXT NOT NULL DEFAULT '',
+    96→  "woreda" TEXT NOT NULL DEFAULT '',
+    97→  "kebele" TEXT NOT NULL DEFAULT '',
+    98→  "houseNumber" TEXT NOT NULL DEFAULT '',
+    99→  "streetName" TEXT NOT NULL DEFAULT '',
+   100→  "plateNumber" TEXT NOT NULL DEFAULT '',
+   101→  "weapon" TEXT NOT NULL DEFAULT '',
+   102→  "address" TEXT NOT NULL DEFAULT '',
+   103→  "notes" TEXT NOT NULL DEFAULT '',
+   104→  "vip" BOOLEAN NOT NULL DEFAULT false,
+   105→  "totalSpent" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   106→  "totalStays" INTEGER NOT NULL DEFAULT 0,
+   107→  "providerId" TEXT NOT NULL,
+   108→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   109→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   110→);
+   111→CREATE TABLE IF NOT EXISTS "Reservation" (
+   112→  "id" TEXT NOT NULL PRIMARY KEY,
+   113→  "guestId" TEXT NOT NULL,
+   114→  "roomId" TEXT NOT NULL,
+   115→  "checkIn" TEXT NOT NULL,
+   116→  "checkOut" TEXT NOT NULL,
+   117→  "nights" INTEGER NOT NULL,
+   118→  "roomRate" DOUBLE PRECISION NOT NULL,
+   119→  "totalCost" DOUBLE PRECISION NOT NULL,
+   120→  "paidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   121→  "balance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   122→  "paymentStatus" "PaymentStatusType" NOT NULL DEFAULT 'PENDING',
+   123→  "paymentMethod" "PaymentMethodType",
+   124→  "status" "ReservationStatus" NOT NULL DEFAULT 'UPCOMING',
+   125→  "notes" TEXT NOT NULL DEFAULT '',
+   126→  "actualCheckIn" TIMESTAMP(3),
+   127→  "actualCheckOut" TIMESTAMP(3),
+   128→  "taxAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   129→  "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   130→  "secondGuestName" TEXT NOT NULL DEFAULT '',
+   131→  "secondGuestPhone" TEXT NOT NULL DEFAULT '',
+   132→  "secondGuestIdNumber" TEXT NOT NULL DEFAULT '',
+   133→  "exceptionallyReserved" BOOLEAN NOT NULL DEFAULT false,
+   134→  "exceptionReason" TEXT NOT NULL DEFAULT '',
+   135→  "providerId" TEXT NOT NULL,
+   136→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   137→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   138→);
+   139→CREATE TABLE IF NOT EXISTS "DaytimeService" (
+   140→  "id" TEXT NOT NULL PRIMARY KEY,
+   141→  "name" TEXT NOT NULL,
+   142→  "price" DOUBLE PRECISION NOT NULL,
+   143→  "category" TEXT NOT NULL,
+   144→  "duration" TEXT NOT NULL DEFAULT '',
+   145→  "description" TEXT NOT NULL DEFAULT '',
+   146→  "active" BOOLEAN NOT NULL DEFAULT true,
+   147→  "providerId" TEXT NOT NULL,
+   148→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   149→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   150→);
+   151→CREATE TABLE IF NOT EXISTS "DaytimeBooking" (
+   152→  "id" TEXT NOT NULL PRIMARY KEY,
+   153→  "serviceId" TEXT NOT NULL,
+   154→  "guestName" TEXT NOT NULL,
+   155→  "guestPhone" TEXT NOT NULL,
+   156→  "date" TEXT NOT NULL,
+   157→  "time" TEXT NOT NULL,
+   158→  "quantity" INTEGER NOT NULL DEFAULT 1,
+   159→  "unitPrice" DOUBLE PRECISION NOT NULL,
+   160→  "totalCost" DOUBLE PRECISION NOT NULL,
+   161→  "paidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   162→  "paymentStatus" "PaymentStatusType" NOT NULL DEFAULT 'PENDING',
+   163→  "paymentMethod" "PaymentMethodType",
+   164→  "notes" TEXT NOT NULL DEFAULT '',
+   165→  "providerId" TEXT NOT NULL,
+   166→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   167→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   168→);
+   169→CREATE TABLE IF NOT EXISTS "Expense" (
+   170→  "id" TEXT NOT NULL PRIMARY KEY,
+   171→  "date" TEXT NOT NULL,
+   172→  "category" TEXT NOT NULL,
+   173→  "description" TEXT NOT NULL,
+   174→  "amount" DOUBLE PRECISION NOT NULL,
+   175→  "vendor" TEXT NOT NULL DEFAULT '',
+   176→  "paymentMethod" "PaymentMethodType" NOT NULL,
+   177→  "receiptNo" TEXT NOT NULL DEFAULT '',
+   178→  "taxAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   179→  "providerId" TEXT NOT NULL,
+   180→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   181→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   182→);
+   183→CREATE TABLE IF NOT EXISTS "ExpenseCategory" (
+   184→  "id" TEXT NOT NULL PRIMARY KEY,
+   185→  "name" TEXT NOT NULL,
+   186→  "nameAm" TEXT NOT NULL,
+   187→  "color" TEXT NOT NULL,
+   188→  "icon" TEXT NOT NULL,
+   189→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   190→);
+   191→CREATE TABLE IF NOT EXISTS "Resource" (
+   192→  "id" TEXT NOT NULL PRIMARY KEY,
+   193→  "name" TEXT NOT NULL,
+   194→  "category" TEXT NOT NULL,
+   195→  "quantity" DOUBLE PRECISION NOT NULL,
+   196→  "unit" TEXT NOT NULL,
+   197→  "minLevel" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   198→  "costPerUnit" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   199→  "supplier" TEXT NOT NULL DEFAULT '',
+   200→  "lastRestocked" TIMESTAMP(3),
+   201→  "providerId" TEXT NOT NULL,
+   202→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   203→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   204→);
+   205→CREATE TABLE IF NOT EXISTS "Payment" (
+   206→  "id" TEXT NOT NULL PRIMARY KEY,
+   207→  "reservationId" TEXT,
+   208→  "daytimeBookingId" TEXT,
+   209→  "amount" DOUBLE PRECISION NOT NULL,
+   210→  "method" "PaymentMethodType" NOT NULL,
+   211→  "referenceNo" TEXT NOT NULL DEFAULT '',
+   212→  "notes" TEXT NOT NULL DEFAULT '',
+   213→  "providerId" TEXT NOT NULL,
+   214→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   215→);
+   216→CREATE TABLE IF NOT EXISTS "Notification" (
+   217→  "id" TEXT NOT NULL PRIMARY KEY,
+   218→  "title" TEXT NOT NULL,
+   219→  "message" TEXT NOT NULL,
+   220→  "type" "NotificationType" NOT NULL DEFAULT 'INFO',
+   221→  "isRead" BOOLEAN NOT NULL DEFAULT false,
+   222→  "link" TEXT,
+   223→  "providerId" TEXT,
+   224→  "userId" TEXT,
+   225→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   226→);
+   227→CREATE TABLE IF NOT EXISTS "HousekeepingTask" (
+   228→  "id" TEXT NOT NULL PRIMARY KEY,
+   229→  "roomId" TEXT NOT NULL,
+   230→  "type" "HousekeepingTaskType" NOT NULL,
+   231→  "status" "HousekeepingTaskStatus" NOT NULL DEFAULT 'PENDING',
+   232→  "assignedTo" TEXT,
+   233→  "scheduledDate" TEXT NOT NULL,
+   234→  "notes" TEXT NOT NULL DEFAULT '',
+   235→  "completedAt" TIMESTAMP(3),
+   236→  "providerId" TEXT NOT NULL,
+   237→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   238→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   239→);
+   240→CREATE TABLE IF NOT EXISTS "Review" (
+   241→  "id" TEXT NOT NULL PRIMARY KEY,
+   242→  "guestId" TEXT NOT NULL,
+   243→  "reservationId" TEXT NOT NULL,
+   244→  "rating" INTEGER NOT NULL,
+   245→  "comment" TEXT NOT NULL DEFAULT '',
+   246→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   247→);
+   248→CREATE TABLE IF NOT EXISTS "ActivityLog" (
+   249→  "id" TEXT NOT NULL PRIMARY KEY,
+   250→  "message" TEXT NOT NULL,
+   251→  "type" TEXT NOT NULL DEFAULT 'INFO',
+   252→  "providerId" TEXT,
+   253→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   254→);
+   255→CREATE TABLE IF NOT EXISTS "Settings" (
+   256→  "id" TEXT NOT NULL PRIMARY KEY,
+   257→  "guestHouseName" TEXT NOT NULL DEFAULT 'Guest House',
+   258→  "ownerName" TEXT NOT NULL DEFAULT '',
+   259→  "address" TEXT NOT NULL DEFAULT '',
+   260→  "phone" TEXT NOT NULL DEFAULT '',
+   261→  "email" TEXT NOT NULL DEFAULT '',
+   262→  "currency" TEXT NOT NULL DEFAULT 'ETB',
+   263→  "taxRate" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   264→  "language" TEXT NOT NULL DEFAULT 'en',
+   265→  "logo" TEXT,
+   266→  "checkInTime" TEXT NOT NULL DEFAULT '14:00',
+   267→  "checkOutTime" TEXT NOT NULL DEFAULT '12:00',
+   268→  "configJson" JSONB,
+   269→  "providerId" TEXT,
+   270→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   271→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   272→);
+   273→CREATE TABLE IF NOT EXISTS "SuspectedPerson" (
+   274→  "id" TEXT NOT NULL PRIMARY KEY,
+   275→  "name" TEXT NOT NULL,
+   276→  "phone" TEXT NOT NULL DEFAULT '',
+   277→  "idNumber" TEXT NOT NULL DEFAULT '',
+   278→  "idType" TEXT NOT NULL DEFAULT '',
+   279→  "nationality" TEXT NOT NULL DEFAULT '',
+   280→  "address" TEXT NOT NULL DEFAULT '',
+   281→  "description" TEXT NOT NULL DEFAULT '',
+   282→  "severity" "SuspectSeverity" NOT NULL DEFAULT 'MEDIUM',
+   283→  "is_active" BOOLEAN NOT NULL DEFAULT true,
+   284→  "registeredBy" TEXT NOT NULL DEFAULT '',
+   285→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   286→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   287→);
+   288→CREATE TABLE IF NOT EXISTS "SuspectMatch" (
+   289→  "id" TEXT NOT NULL PRIMARY KEY,
+   290→  "suspectedPersonId" TEXT NOT NULL,
+   291→  "matchType" TEXT NOT NULL,
+   292→  "guestName" TEXT NOT NULL,
+   293→  "guestPhone" TEXT NOT NULL DEFAULT '',
+   294→  "guestIdNumber" TEXT NOT NULL DEFAULT '',
+   295→  "providerName" TEXT NOT NULL DEFAULT '',
+   296→  "providerId" TEXT NOT NULL DEFAULT '',
+   297→  "reservationId" TEXT,
+   298→  "daytimeBookingId" TEXT,
+   299→  "details" TEXT NOT NULL DEFAULT '',
+   300→  "isRead" BOOLEAN NOT NULL DEFAULT false,
+   301→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   302→);
+   303→CREATE TABLE IF NOT EXISTS "AuditLog" (
+   304→  "id" TEXT NOT NULL PRIMARY KEY,
+   305→  "officerName" TEXT NOT NULL DEFAULT '',
+   306→  "action" TEXT NOT NULL,
+   307→  "targetId" TEXT,
+   308→  "targetType" TEXT DEFAULT '',
+   309→  "details" TEXT,
+   310→  "ipAddress" TEXT DEFAULT '',
+   311→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   312→);
+   313→CREATE TABLE IF NOT EXISTS "Geofence" (
+   314→  "id" TEXT NOT NULL PRIMARY KEY,
+   315→  "name" TEXT NOT NULL,
+   316→  "address" TEXT NOT NULL DEFAULT '',
+   317→  "latitude" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   318→  "longitude" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   319→  "radius" DOUBLE PRECISION NOT NULL DEFAULT 1000,
+   320→  "severity" TEXT NOT NULL DEFAULT 'HIGH',
+   321→  "isActive" BOOLEAN NOT NULL DEFAULT true,
+   322→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   323→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   324→);
+   325→CREATE TABLE IF NOT EXISTS "FrequentStayAlert" (
+   326→  "id" TEXT NOT NULL PRIMARY KEY,
+   327→  "guestName" TEXT NOT NULL,
+   328→  "guestPhone" TEXT NOT NULL DEFAULT '',
+   329→  "guestIdNumber" TEXT NOT NULL DEFAULT '',
+   330→  "providerNames" TEXT NOT NULL DEFAULT '[]',
+   331→  "stayCount" INTEGER NOT NULL DEFAULT 0,
+   332→  "avgDaysBetween" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   333→  "riskLevel" TEXT NOT NULL DEFAULT 'MEDIUM',
+   334→  "isReviewed" BOOLEAN NOT NULL DEFAULT false,
+   335→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   336→);
+   337→CREATE TABLE IF NOT EXISTS "Subscription" (
+   338→  "id" TEXT NOT NULL PRIMARY KEY,
+   339→  "providerId" TEXT NOT NULL,
+   340→  "startDate" TIMESTAMP(3) NOT NULL,
+   341→  "endDate" TIMESTAMP(3) NOT NULL,
+   342→  "cycle" "SubscriptionCycle" NOT NULL DEFAULT 'MONTHLY',
+   343→  "price" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   344→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   345→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   346→  CONSTRAINT "Subscription_providerId_key" UNIQUE ("providerId")
+   347→);
+   348→CREATE TABLE IF NOT EXISTS "SubscriptionPayment" (
+   349→  "id" TEXT NOT NULL PRIMARY KEY,
+   350→  "subscriptionId" TEXT NOT NULL,
+   351→  "amount" DOUBLE PRECISION NOT NULL,
+   352→  "cycle" "SubscriptionCycle" NOT NULL,
+   353→  "periodStart" TIMESTAMP(3) NOT NULL,
+   354→  "periodEnd" TIMESTAMP(3) NOT NULL,
+   355→  "markedBy" TEXT NOT NULL,
+   356→  "notes" TEXT NOT NULL DEFAULT '',
+   357→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   358→);
+   359→CREATE TABLE IF NOT EXISTS "SubscriptionPlan" (
+   360→  "id" TEXT NOT NULL PRIMARY KEY,
+   361→  "name" TEXT NOT NULL,
+   362→  "cycle" "SubscriptionCycle" NOT NULL,
+   363→  "price" DOUBLE PRECISION NOT NULL,
+   364→  "isActive" BOOLEAN NOT NULL DEFAULT true,
+   365→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   366→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   367→);
+   368→CREATE TABLE IF NOT EXISTS "PoliceAlertConfig" (
+   369→  "id" TEXT NOT NULL PRIMARY KEY,
+   370→  "emailEnabled" BOOLEAN NOT NULL DEFAULT false,
+   371→  "emailRecipients" TEXT NOT NULL DEFAULT '[]',
+   372→  "smsEnabled" BOOLEAN NOT NULL DEFAULT false,
+   373→  "smsRecipients" TEXT NOT NULL DEFAULT '[]',
+   374→  "escalationDelayMins" INTEGER NOT NULL DEFAULT 60,
+   375→  "criticalImmediate" BOOLEAN NOT NULL DEFAULT true,
+   376→  "anomalyDetectionEnabled" BOOLEAN NOT NULL DEFAULT false,
+   377→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   378→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   379→);
+   380→CREATE TABLE IF NOT EXISTS "NotificationBroadcast" (
+   381→  "id"            TEXT NOT NULL PRIMARY KEY,
+   382→  "title"         TEXT NOT NULL,
+   383→  "message"       TEXT NOT NULL,
+   384→  "channel"       TEXT NOT NULL DEFAULT 'IN_APP',
+   385→  "priority"      TEXT NOT NULL DEFAULT 'NORMAL',
+   386→  "targetType"    TEXT NOT NULL DEFAULT 'ALL_PROVIDERS',
+   387→  "targetIds"     TEXT NOT NULL DEFAULT '[]',
+   388→  "sentBy"        TEXT NOT NULL DEFAULT '',
+   389→  "sentByName"    TEXT NOT NULL DEFAULT '',
+   390→  "totalSent"     INTEGER NOT NULL DEFAULT 0,
+   391→  "totalFailed"   INTEGER NOT NULL DEFAULT 0,
+   392→  "status"        TEXT NOT NULL DEFAULT 'COMPLETED',
+   393→  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   394→);
+   395→`;
+   396→
+   397→// ─── Foreign Keys ──────────────────────────────────────────────────────────
+   398→const FKS_SQL = `
+   399→DO $$ BEGIN ALTER TABLE "User" ADD CONSTRAINT "User_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   400→DO $$ BEGIN ALTER TABLE "Room" ADD CONSTRAINT "Room_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   401→DO $$ BEGIN ALTER TABLE "Guest" ADD CONSTRAINT "Guest_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   402→DO $$ BEGIN ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   403→DO $$ BEGIN ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "Guest"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   404→DO $$ BEGIN ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   405→DO $$ BEGIN ALTER TABLE "DaytimeService" ADD CONSTRAINT "DaytimeService_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   406→DO $$ BEGIN ALTER TABLE "DaytimeBooking" ADD CONSTRAINT "DaytimeBooking_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   407→DO $$ BEGIN ALTER TABLE "DaytimeBooking" ADD CONSTRAINT "DaytimeBooking_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "DaytimeService"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   408→DO $$ BEGIN ALTER TABLE "Expense" ADD CONSTRAINT "Expense_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   409→DO $$ BEGIN ALTER TABLE "Resource" ADD CONSTRAINT "Resource_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   410→DO $$ BEGIN ALTER TABLE "Payment" ADD CONSTRAINT "Payment_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   411→DO $$ BEGIN ALTER TABLE "Payment" ADD CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   412→DO $$ BEGIN ALTER TABLE "Payment" ADD CONSTRAINT "Payment_daytimeBookingId_fkey" FOREIGN KEY ("daytimeBookingId") REFERENCES "DaytimeBooking"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   413→DO $$ BEGIN ALTER TABLE "Notification" ADD CONSTRAINT "Notification_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   414→DO $$ BEGIN ALTER TABLE "HousekeepingTask" ADD CONSTRAINT "HousekeepingTask_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   415→DO $$ BEGIN ALTER TABLE "HousekeepingTask" ADD CONSTRAINT "HousekeepingTask_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   416→DO $$ BEGIN ALTER TABLE "Review" ADD CONSTRAINT "Review_guestId_fkey" FOREIGN KEY ("guestId") REFERENCES "Guest"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   417→DO $$ BEGIN ALTER TABLE "Review" ADD CONSTRAINT "Review_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   418→DO $$ BEGIN ALTER TABLE "Settings" ADD COLUMN "configJson" JSONB; EXCEPTION WHEN duplicate_column THEN null; END $$;
+   419→DO $$ BEGIN ALTER TABLE "Settings" ADD CONSTRAINT "Settings_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   420→DO $$ BEGIN ALTER TABLE "SuspectMatch" ADD CONSTRAINT "SuspectMatch_suspectedPersonId_fkey" FOREIGN KEY ("suspectedPersonId") REFERENCES "SuspectedPerson"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   421→DO $$ BEGIN ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   422→DO $$ BEGIN ALTER TABLE "SubscriptionPayment" ADD CONSTRAINT "SubscriptionPayment_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   423→DO $$ BEGIN ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_planId_fkey" FOREIGN KEY ("planId") REFERENCES "SubscriptionPlan"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   424→DO $$ BEGIN ALTER TABLE "GroupBooking" ADD CONSTRAINT "GroupBooking_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   425→DO $$ BEGIN ALTER TABLE "StaffLog" ADD CONSTRAINT "StaffLog_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   426→DO $$ BEGIN ALTER TABLE "MessageTemplate" ADD CONSTRAINT "MessageTemplate_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   427→DO $$ BEGIN ALTER TABLE "MessageLog" ADD CONSTRAINT "MessageLog_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   428→DO $$ BEGIN ALTER TABLE "MessageLog" ADD CONSTRAINT "MessageLog_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "MessageTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   429→DO $$ BEGIN ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_groupBookingId_fkey" FOREIGN KEY ("groupBookingId") REFERENCES "GroupBooking"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+   430→`;
+   431→
+   432→// ─── Migrations: Add new columns to existing tables ────────────────
+   433→const MIGRATIONS_SQL = `
+   434→-- Add email, phone, isActive, lastLogin, permissions, policeRank to User table if missing
+   435→DO $$ BEGIN
+   436→  ALTER TABLE "User" ADD COLUMN "email" TEXT DEFAULT '';
+   437→EXCEPTION WHEN duplicate_column THEN null;
+   438→END $$;
+   439→DO $$ BEGIN
+   440→  ALTER TABLE "User" ADD COLUMN "phone" TEXT DEFAULT '';
+   441→EXCEPTION WHEN duplicate_column THEN null;
+   442→END $$;
+   443→DO $$ BEGIN
+   444→  ALTER TABLE "User" ADD COLUMN "permissions" TEXT NOT NULL DEFAULT '["reservations","guests"]';
+   445→EXCEPTION WHEN duplicate_column THEN null;
+   446→END $$;
+   447→DO $$ BEGIN
+   448→  ALTER TABLE "User" ADD COLUMN "policeRank" TEXT NOT NULL DEFAULT '';
+   449→EXCEPTION WHEN duplicate_column THEN null;
+   450→END $$;
+   451→DO $$ BEGIN
+   452→  ALTER TABLE "User" ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true;
+   453→EXCEPTION WHEN duplicate_column THEN null;
+   454→END $$;
+   455→DO $$ BEGIN
+   456→  ALTER TABLE "User" ADD COLUMN "lastLogin" TIMESTAMP(3);
+   457→EXCEPTION WHEN duplicate_column THEN null;
+   458→END $$;
+   459→DO $$ BEGIN
+   460→  ALTER TABLE "User" ADD COLUMN "createdBy" TEXT;
+   461→EXCEPTION WHEN duplicate_column THEN null;
+   462→END $$;
+   463→DO $$ BEGIN
+   464→  ALTER TABLE "Guest" ADD COLUMN "region" TEXT NOT NULL DEFAULT '';
+   465→EXCEPTION WHEN duplicate_column THEN null;
+   466→END $$;
+   467→DO $$ BEGIN
+   468→  ALTER TABLE "Guest" ADD COLUMN "zone" TEXT NOT NULL DEFAULT '';
+   469→EXCEPTION WHEN duplicate_column THEN null;
+   470→END $$;
+   471→DO $$ BEGIN
+   472→  ALTER TABLE "Guest" ADD COLUMN "woreda" TEXT NOT NULL DEFAULT '';
+   473→EXCEPTION WHEN duplicate_column THEN null;
+   474→END $$;
+   475→DO $$ BEGIN
+   476→  ALTER TABLE "Guest" ADD COLUMN "kebele" TEXT NOT NULL DEFAULT '';
+   477→EXCEPTION WHEN duplicate_column THEN null;
+   478→END $$;
+   479→DO $$ BEGIN
+   480→  ALTER TABLE "Guest" ADD COLUMN "houseNumber" TEXT NOT NULL DEFAULT '';
+   481→EXCEPTION WHEN duplicate_column THEN null;
+   482→END $$;
+   483→DO $$ BEGIN
+   484→  ALTER TABLE "Guest" ADD COLUMN "streetName" TEXT NOT NULL DEFAULT '';
+   485→EXCEPTION WHEN duplicate_column THEN null;
+   486→END $$;
+   487→DO $$ BEGIN
+   488→  ALTER TABLE "Guest" ADD COLUMN "plateNumber" TEXT NOT NULL DEFAULT '';
+   489→EXCEPTION WHEN duplicate_column THEN null;
+   490→END $$;
+   491→DO $$ BEGIN
+   492→  ALTER TABLE "Guest" ADD COLUMN "weapon" TEXT NOT NULL DEFAULT '';
+   493→EXCEPTION WHEN duplicate_column THEN null;
+   494→END $$;
+   495→DO $$ BEGIN
+   496→  ALTER TABLE "Subscription" ADD COLUMN "planId" TEXT;
+   497→EXCEPTION WHEN duplicate_column THEN null;
+   498→END $$;
+   499→DO $$ BEGIN
+   500→  ALTER TABLE "Provider" ADD COLUMN "suspensionReason" TEXT NOT NULL DEFAULT '';
+   501→EXCEPTION WHEN duplicate_column THEN null;
+   502→END $$;
+   503→DO $$ BEGIN
+   504→  ALTER TABLE "Provider" ADD COLUMN "suspendedAt" TIMESTAMP(3);
+   505→EXCEPTION WHEN duplicate_column THEN null;
+   506→END $$;
+   507→DO $$ BEGIN
+   508→  ALTER TABLE "Provider" ADD COLUMN "suspendedBy" TEXT NOT NULL DEFAULT '';
+   509→EXCEPTION WHEN duplicate_column THEN null;
+   510→END $$;
+   511→DO $$ BEGIN
+   512→  ALTER TABLE "Reservation" ADD COLUMN "groupBookingId" TEXT;
+   513→EXCEPTION WHEN duplicate_column THEN null;
+   514→END $$;
+   515→DO $$ BEGIN
+   516→  ALTER TABLE "Reservation" ADD COLUMN "secondGuestName" TEXT NOT NULL DEFAULT '';
+   517→EXCEPTION WHEN duplicate_column THEN null;
+   518→END $$;
+   519→DO $$ BEGIN
+   520→  ALTER TABLE "Reservation" ADD COLUMN "secondGuestPhone" TEXT NOT NULL DEFAULT '';
+   521→EXCEPTION WHEN duplicate_column THEN null;
+   522→END $$;
+   523→DO $$ BEGIN
+   524→  ALTER TABLE "Reservation" ADD COLUMN "secondGuestIdNumber" TEXT NOT NULL DEFAULT '';
+   525→EXCEPTION WHEN duplicate_column THEN null;
+   526→END $$;
+   527→DO $$ BEGIN
+   528→  ALTER TABLE "Reservation" ADD COLUMN "exceptionallyReserved" BOOLEAN NOT NULL DEFAULT false;
+   529→EXCEPTION WHEN duplicate_column THEN null;
+   530→END $$;
+   531→DO $$ BEGIN
+   532→  ALTER TABLE "Reservation" ADD COLUMN "exceptionReason" TEXT NOT NULL DEFAULT '';
+   533→EXCEPTION WHEN duplicate_column THEN null;
+   534→END $$;
+   535→DO $$ BEGIN
+   536→  ALTER TABLE "Provider" ADD COLUMN "telegramChatId" TEXT;
+   537→EXCEPTION WHEN duplicate_column THEN null;
+   538→END $$;
+   539→CREATE TABLE IF NOT EXISTS "GroupBooking" (
+   540→  "id" TEXT NOT NULL PRIMARY KEY,
+   541→  "name" TEXT NOT NULL,
+   542→  "contactName" TEXT NOT NULL DEFAULT '',
+   543→  "contactPhone" TEXT NOT NULL DEFAULT '',
+   544→  "contactEmail" TEXT NOT NULL DEFAULT '',
+   545→  "startDate" TEXT NOT NULL,
+   546→  "endDate" TEXT NOT NULL,
+   547→  "notes" TEXT NOT NULL DEFAULT '',
+   548→  "status" "GroupBookingStatus" NOT NULL DEFAULT 'PENDING',
+   549→  "totalRooms" INTEGER NOT NULL DEFAULT 0,
+   550→  "totalGuests" INTEGER NOT NULL DEFAULT 0,
+   551→  "totalCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   552→  "providerId" TEXT NOT NULL,
+   553→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   554→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   555→);
+   556→CREATE TABLE IF NOT EXISTS "StaffLog" (
+   557→  "id" TEXT NOT NULL PRIMARY KEY,
+   558→  "userId" TEXT NOT NULL,
+   559→  "userName" TEXT NOT NULL DEFAULT '',
+   560→  "action" TEXT NOT NULL,
+   561→  "targetType" TEXT NOT NULL DEFAULT '',
+   562→  "targetId" TEXT NOT NULL DEFAULT '',
+   563→  "details" TEXT NOT NULL DEFAULT '',
+   564→  "ipAddress" TEXT NOT NULL DEFAULT '',
+   565→  "providerId" TEXT NOT NULL,
+   566→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   567→);
+   568→CREATE TABLE IF NOT EXISTS "MessageTemplate" (
+   569→  "id" TEXT NOT NULL PRIMARY KEY,
+   570→  "name" TEXT NOT NULL,
+   571→  "type" TEXT NOT NULL,
+   572→  "channel" "MessageChannel" NOT NULL DEFAULT 'SMS',
+   573→  "subject" TEXT NOT NULL DEFAULT '',
+   574→  "body" TEXT NOT NULL,
+   575→  "isDefault" BOOLEAN NOT NULL DEFAULT false,
+   576→  "isActive" BOOLEAN NOT NULL DEFAULT true,
+   577→  "providerId" TEXT NOT NULL,
+   578→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   579→  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   580→);
+   581→CREATE TABLE IF NOT EXISTS "MessageLog" (
+   582→  "id" TEXT NOT NULL PRIMARY KEY,
+   583→  "templateId" TEXT,
+   584→  "recipient" TEXT NOT NULL,
+   585→  "channel" "MessageChannel" NOT NULL DEFAULT 'SMS',
+   586→  "message" TEXT NOT NULL,
+   587→  "status" "MessageStatus" NOT NULL DEFAULT 'PENDING',
+   588→  "errorMessage" TEXT NOT NULL DEFAULT '',
+   589→  "reservationId" TEXT,
+   590→  "guestId" TEXT,
+   591→  "providerId" TEXT NOT NULL,
+   592→  "sentAt" TIMESTAMP(3),
+   593→  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   594→);
+   595→`;
+   596→
+   597→// ─── Indexes ───────────────────────────────────────────────────────────────
+   598→const INDEXES_SQL = `
+   599→CREATE INDEX IF NOT EXISTS "Provider_status_idx" ON "Provider" ("status");
+   600→CREATE INDEX IF NOT EXISTS "Provider_createdAt_idx" ON "Provider" ("createdAt");
+   601→CREATE INDEX IF NOT EXISTS "User_providerId_idx" ON "User" ("providerId");
+   602→CREATE INDEX IF NOT EXISTS "User_role_idx" ON "User" ("role");
+   603→CREATE INDEX IF NOT EXISTS "User_isActive_idx" ON "User" ("isActive");
+   604→CREATE INDEX IF NOT EXISTS "Room_providerId_idx" ON "Room" ("providerId");
+   605→CREATE INDEX IF NOT EXISTS "Room_status_idx" ON "Room" ("status");
+   606→CREATE INDEX IF NOT EXISTS "Guest_providerId_idx" ON "Guest" ("providerId");
+   607→CREATE INDEX IF NOT EXISTS "Guest_phone_idx" ON "Guest" ("phone");
+   608→CREATE INDEX IF NOT EXISTS "Guest_idNumber_idx" ON "Guest" ("idNumber");
+   609→CREATE INDEX IF NOT EXISTS "Guest_email_idx" ON "Guest" ("email");
+   610→CREATE INDEX IF NOT EXISTS "Guest_createdAt_idx" ON "Guest" ("createdAt");
+   611→CREATE INDEX IF NOT EXISTS "Guest_name_idx" ON "Guest" ("name");
+   612→CREATE INDEX IF NOT EXISTS "Guest_region_idx" ON "Guest" ("region");
+   613→CREATE INDEX IF NOT EXISTS "Guest_zone_idx" ON "Guest" ("zone");
+   614→CREATE INDEX IF NOT EXISTS "Guest_woreda_idx" ON "Guest" ("woreda");
+   615→CREATE INDEX IF NOT EXISTS "Reservation_providerId_idx" ON "Reservation" ("providerId");
+   616→CREATE INDEX IF NOT EXISTS "Reservation_guestId_idx" ON "Reservation" ("guestId");
+   617→CREATE INDEX IF NOT EXISTS "Reservation_roomId_idx" ON "Reservation" ("roomId");
+   618→CREATE INDEX IF NOT EXISTS "Reservation_status_idx" ON "Reservation" ("status");
+   619→CREATE INDEX IF NOT EXISTS "Reservation_createdAt_idx" ON "Reservation" ("createdAt");
+   620→CREATE INDEX IF NOT EXISTS "Reservation_checkIn_idx" ON "Reservation" ("checkIn");
+   621→CREATE INDEX IF NOT EXISTS "DaytimeService_providerId_idx" ON "DaytimeService" ("providerId");
+   622→CREATE INDEX IF NOT EXISTS "DaytimeBooking_providerId_idx" ON "DaytimeBooking" ("providerId");
+   623→CREATE INDEX IF NOT EXISTS "DaytimeBooking_serviceId_idx" ON "DaytimeBooking" ("serviceId");
+   624→CREATE INDEX IF NOT EXISTS "DaytimeBooking_guestPhone_idx" ON "DaytimeBooking" ("guestPhone");
+   625→CREATE INDEX IF NOT EXISTS "DaytimeBooking_date_idx" ON "DaytimeBooking" ("date");
+   626→CREATE INDEX IF NOT EXISTS "DaytimeBooking_createdAt_idx" ON "DaytimeBooking" ("createdAt");
+   627→CREATE INDEX IF NOT EXISTS "Expense_providerId_idx" ON "Expense" ("providerId");
+   628→CREATE INDEX IF NOT EXISTS "Expense_date_idx" ON "Expense" ("date");
+   629→CREATE INDEX IF NOT EXISTS "Expense_category_idx" ON "Expense" ("category");
+   630→CREATE INDEX IF NOT EXISTS "Resource_providerId_idx" ON "Resource" ("providerId");
+   631→CREATE INDEX IF NOT EXISTS "Resource_category_idx" ON "Resource" ("category");
+   632→CREATE INDEX IF NOT EXISTS "Payment_providerId_idx" ON "Payment" ("providerId");
+   633→CREATE INDEX IF NOT EXISTS "Payment_reservationId_idx" ON "Payment" ("reservationId");
+   634→CREATE INDEX IF NOT EXISTS "Payment_daytimeBookingId_idx" ON "Payment" ("daytimeBookingId");
+   635→CREATE INDEX IF NOT EXISTS "Payment_createdAt_idx" ON "Payment" ("createdAt");
+   636→CREATE INDEX IF NOT EXISTS "Notification_providerId_idx" ON "Notification" ("providerId");
+   637→CREATE INDEX IF NOT EXISTS "Notification_userId_idx" ON "Notification" ("userId");
+   638→CREATE INDEX IF NOT EXISTS "Notification_isRead_idx" ON "Notification" ("isRead");
+   639→CREATE INDEX IF NOT EXISTS "Notification_createdAt_idx" ON "Notification" ("createdAt");
+   640→CREATE INDEX IF NOT EXISTS "HousekeepingTask_providerId_idx" ON "HousekeepingTask" ("providerId");
+   641→CREATE INDEX IF NOT EXISTS "HousekeepingTask_roomId_idx" ON "HousekeepingTask" ("roomId");
+   642→CREATE INDEX IF NOT EXISTS "HousekeepingTask_status_idx" ON "HousekeepingTask" ("status");
+   643→CREATE INDEX IF NOT EXISTS "HousekeepingTask_scheduledDate_idx" ON "HousekeepingTask" ("scheduledDate");
+   644→CREATE INDEX IF NOT EXISTS "Review_guestId_idx" ON "Review" ("guestId");
+   645→CREATE INDEX IF NOT EXISTS "Review_reservationId_idx" ON "Review" ("reservationId");
+   646→CREATE INDEX IF NOT EXISTS "Review_createdAt_idx" ON "Review" ("createdAt");
+   647→CREATE INDEX IF NOT EXISTS "ActivityLog_providerId_idx" ON "ActivityLog" ("providerId");
+   648→CREATE INDEX IF NOT EXISTS "ActivityLog_createdAt_idx" ON "ActivityLog" ("createdAt");
+   649→CREATE INDEX IF NOT EXISTS "Settings_providerId_idx" ON "Settings" ("providerId");
+   650→CREATE INDEX IF NOT EXISTS "SuspectedPerson_name_idx" ON "SuspectedPerson" ("name");
+   651→CREATE INDEX IF NOT EXISTS "SuspectedPerson_phone_idx" ON "SuspectedPerson" ("phone");
+   652→CREATE INDEX IF NOT EXISTS "SuspectedPerson_idNumber_idx" ON "SuspectedPerson" ("idNumber");
+   653→CREATE INDEX IF NOT EXISTS "SuspectedPerson_severity_idx" ON "SuspectedPerson" ("severity");
+   654→CREATE INDEX IF NOT EXISTS "SuspectedPerson_is_active_idx" ON "SuspectedPerson" ("is_active");
+   655→CREATE INDEX IF NOT EXISTS "SuspectMatch_suspectedPersonId_idx" ON "SuspectMatch" ("suspectedPersonId");
+   656→CREATE INDEX IF NOT EXISTS "SuspectMatch_isRead_idx" ON "SuspectMatch" ("isRead");
+   657→CREATE INDEX IF NOT EXISTS "SuspectMatch_createdAt_idx" ON "SuspectMatch" ("createdAt");
+   658→CREATE INDEX IF NOT EXISTS "SuspectMatch_guestPhone_idx" ON "SuspectMatch" ("guestPhone");
+   659→CREATE INDEX IF NOT EXISTS "SuspectMatch_guestIdNumber_idx" ON "SuspectMatch" ("guestIdNumber");
+   660→CREATE INDEX IF NOT EXISTS "SuspectMatch_providerId_idx" ON "SuspectMatch" ("providerId");
+   661→CREATE INDEX IF NOT EXISTS "AuditLog_action_idx" ON "AuditLog" ("action");
+   662→CREATE INDEX IF NOT EXISTS "AuditLog_createdAt_idx" ON "AuditLog" ("createdAt");
+   663→CREATE INDEX IF NOT EXISTS "AuditLog_officerName_idx" ON "AuditLog" ("officerName");
+   664→CREATE INDEX IF NOT EXISTS "Geofence_isActive_idx" ON "Geofence" ("isActive");
+   665→CREATE INDEX IF NOT EXISTS "Geofence_severity_idx" ON "Geofence" ("severity");
+   666→CREATE INDEX IF NOT EXISTS "FrequentStayAlert_createdAt_idx" ON "FrequentStayAlert" ("createdAt");
+   667→CREATE INDEX IF NOT EXISTS "FrequentStayAlert_isReviewed_idx" ON "FrequentStayAlert" ("isReviewed");
+   668→CREATE INDEX IF NOT EXISTS "FrequentStayAlert_riskLevel_idx" ON "FrequentStayAlert" ("riskLevel");
+   669→CREATE INDEX IF NOT EXISTS "FrequentStayAlert_guestPhone_idx" ON "FrequentStayAlert" ("guestPhone");
+   670→CREATE INDEX IF NOT EXISTS "FrequentStayAlert_guestIdNumber_idx" ON "FrequentStayAlert" ("guestIdNumber");
+   671→CREATE INDEX IF NOT EXISTS "Subscription_endDate_idx" ON "Subscription" ("endDate");
+   672→CREATE INDEX IF NOT EXISTS "Subscription_planId_idx" ON "Subscription" ("planId");
+   673→CREATE INDEX IF NOT EXISTS "SubscriptionPayment_subscriptionId_idx" ON "SubscriptionPayment" ("subscriptionId");
+   674→CREATE INDEX IF NOT EXISTS "SubscriptionPayment_createdAt_idx" ON "SubscriptionPayment" ("createdAt");
+   675→CREATE INDEX IF NOT EXISTS "SubscriptionPlan_cycle_idx" ON "SubscriptionPlan" ("cycle");
+   676→CREATE INDEX IF NOT EXISTS "SubscriptionPlan_isActive_idx" ON "SubscriptionPlan" ("isActive");
+   677→-- Composite indexes for common query patterns
+   678→CREATE INDEX IF NOT EXISTS "Reservation_providerId_status_idx" ON "Reservation" ("providerId", "status");
+   679→CREATE INDEX IF NOT EXISTS "Reservation_providerId_createdAt_idx" ON "Reservation" ("providerId", "createdAt" DESC);
+   680→CREATE INDEX IF NOT EXISTS "GroupBooking_providerId_status_idx" ON "GroupBooking" ("providerId", "status");
+   681→CREATE INDEX IF NOT EXISTS "Guest_providerId_createdAt_idx" ON "Guest" ("providerId", "createdAt" DESC);
+   682→CREATE INDEX IF NOT EXISTS "AuditLog_createdAt_desc_idx" ON "AuditLog" ("createdAt" DESC);
+   683→CREATE INDEX IF NOT EXISTS "Payment_providerId_createdAt_idx" ON "Payment" ("providerId", "createdAt" DESC);
+   684→CREATE INDEX IF NOT EXISTS "Notification_providerId_isRead_idx" ON "Notification" ("providerId", "isRead");
+   685→CREATE INDEX IF NOT EXISTS "GroupBooking_providerId_idx" ON "GroupBooking" ("providerId");
+   686→CREATE INDEX IF NOT EXISTS "GroupBooking_status_idx" ON "GroupBooking" ("status");
+   687→CREATE INDEX IF NOT EXISTS "GroupBooking_startDate_idx" ON "GroupBooking" ("startDate");
+   688→CREATE INDEX IF NOT EXISTS "StaffLog_providerId_idx" ON "StaffLog" ("providerId");
+   689→CREATE INDEX IF NOT EXISTS "StaffLog_userId_idx" ON "StaffLog" ("userId");
+   690→CREATE INDEX IF NOT EXISTS "StaffLog_action_idx" ON "StaffLog" ("action");
+   691→CREATE INDEX IF NOT EXISTS "StaffLog_targetType_idx" ON "StaffLog" ("targetType");
+   692→CREATE INDEX IF NOT EXISTS "StaffLog_createdAt_idx" ON "StaffLog" ("createdAt");
+   693→CREATE INDEX IF NOT EXISTS "MessageTemplate_providerId_idx" ON "MessageTemplate" ("providerId");
+   694→CREATE INDEX IF NOT EXISTS "MessageTemplate_type_idx" ON "MessageTemplate" ("type");
+   695→CREATE INDEX IF NOT EXISTS "MessageLog_providerId_idx" ON "MessageLog" ("providerId");
+   696→CREATE INDEX IF NOT EXISTS "MessageLog_recipient_idx" ON "MessageLog" ("recipient");
+   697→CREATE INDEX IF NOT EXISTS "MessageLog_status_idx" ON "MessageLog" ("status");
+   698→CREATE INDEX IF NOT EXISTS "MessageLog_createdAt_idx" ON "MessageLog" ("createdAt");
+   699→CREATE INDEX IF NOT EXISTS "Reservation_groupBookingId_idx" ON "Reservation" ("groupBookingId");
+   700→CREATE INDEX IF NOT EXISTS "StaffLog_providerId_createdAt_idx" ON "StaffLog" ("providerId", "createdAt" DESC);
+   701→CREATE INDEX IF NOT EXISTS "MessageLog_providerId_createdAt_idx" ON "MessageLog" ("providerId", "createdAt" DESC);
+   702→CREATE INDEX IF NOT EXISTS "NotificationBroadcast_createdAt_idx" ON "NotificationBroadcast" ("createdAt");
+   703→CREATE INDEX IF NOT EXISTS "NotificationBroadcast_sentBy_idx" ON "NotificationBroadcast" ("sentBy");
+   704→`;
+   705→
+   706→let _initDone = false;
+   707→let _migrationsRan = false;
+   708→let _initPromise: Promise<void> | null = null;
+   709→
+   710→/** Reset the init flag so ensureDatabase() will re-run on next call.
+   711→ *  Called by db.ts when a schema error is detected at runtime. */
+   712→export function resetInitFlag(): void {
+   713→  _initDone = false;
+   714→  _initPromise = null;
+   715→  console.log("[init-db] Init flag reset — migrations will re-run.");
+   716→}
+   717→
+   718→/** Execute SQL via raw pg Client */
+   719→async function execViaPg(sql: string, params?: unknown[]): Promise<void> {
+   720→  const client = new Client({ connectionString: process.env.DATABASE_URL! });
+   721→  try {
+   722→    await client.connect();
+   723→    await client.query(sql, params);
+   724→  } finally {
+   725→    await client.end().catch(() => {});
+   726→  }
+   727→}
+   728→
+   729→/** Execute DDL via Prisma $executeRawUnsafe — splits multi-statement SQL
+   730→ *  because Prisma's driver does NOT support multiple statements per call. */
+   731→async function execViaPrisma(sql: string): Promise<void> {
+   732→  const prisma = new PrismaClient({ log: ["warn", "error"] });
+   733→  try {
+   734→    // Extract individual executable statements.
+   735→    // Prisma $executeRawUnsafe cannot run DO $$ ... END $$ blocks,
+   736→    // so we unwrap them and run the inner SQL, catching duplicate errors in JS.
+   737→    const stmts = extractStatements(sql);
+   738→
+   739→    for (const stmt of stmts) {
+   740→      const s = stmt.endsWith(';') ? stmt : stmt + ';';
+   741→      try {
+   742→        await prisma.$executeRawUnsafe(s);
+   743→      } catch (err) {
+   744→        // Ignore duplicate column / duplicate object / relation already exists errors
+   745→        const msg = err instanceof Error ? err.message : String(err);
+   746→        const ignorable =
+   747→          /duplicate_column/i.test(msg) ||
+   748→          /duplicate_object/i.test(msg) ||
+   749→          /already exists/i.test(msg) ||
+   750→          /relation .* already exists/i.test(msg);
+   751→        if (!ignorable) {
+   752→          console.error("[execViaPrisma] Statement failed (continuing):", s.slice(0, 100), msg);
+   753→        }
+   754→      }
+   755→    }
+   756→  } finally {
+   757→    await prisma.$disconnect().catch(() => {});
+   758→  }
+   759→}
+   760→
+   761→/**
+   762→ * Parse a SQL blob into individual executable statements.
+   763→ * Handles:
+   764→ *  - DO $$ BEGIN <stmt> EXCEPTION WHEN ... THEN null; END $$;  →  <stmt>
+   765→ *  - Plain statements separated by ;
+   766→ */
+   767→function extractStatements(sql: string): string[] {
+   768→  const results: string[] = [];
+   769→
+   770→  // 1. Extract inner statements from DO $$ blocks
+   771→  //    Pattern: DO $$ BEGIN ... EXCEPTION WHEN <type> THEN null; END $$;
+   772→  const doBlockRe = /DO\s+\$\$\s*BEGIN\s*([\s\S]*?)\s*EXCEPTION\s+WHEN\s+\w+\s+THEN\s+null;\s*END\s+\$\$/gi;
+   773→  let remaining = sql;
+   774→  let match: RegExpExecArray | null;
+   775→
+   776→  while ((match = doBlockRe.exec(remaining)) !== null) {
+   777→    const inner = match[1].trim();
+   778→    if (inner) {
+   779→      // Inner content may have multiple statements separated by ;
+   780→      const innerStmts = inner
+   781→        .split(';')
+   782→        .map(s => s.trim())
+   783→        .filter(s => s.length > 0);
+   784→      results.push(...innerStmts);
+   785→    }
+   786→  }
+   787→
+   788→  // 2. Remove DO blocks from remaining SQL
+   789→  remaining = remaining.replace(doBlockRe, '');
+   790→
+   791→  // 3. Extract remaining plain statements (CREATE INDEX, CREATE TABLE, INSERT, etc.)
+   792→  if (remaining.trim()) {
+   793→    const plain = remaining
+   794→      .split(';')
+   795→      .map(s => s.trim())
+   796→      .filter(s => s.length > 0 && !s.startsWith('--'));
+   797→    results.push(...plain);
+   798→  }
+   799→
+   800→  return results;
+   801→}
+   802→
+   803→/**
+   804→ * Run only MIGRATIONS_SQL + INDEXES_SQL without full init.
+   805→ * Used as a background check when _initDone is already true.
+   806→ */
+   807→async function runMigrationsOnly(): Promise<void> {
+   808→  console.log("[init-db] Running idempotent migrations on existing DB...");
+   809→  try {
+   810→    await execViaPrisma(MIGRATIONS_SQL);
+   811→    console.log("[init-db] Background migrations applied.");
+   812→  } catch (err) {
+   813→    throw err;
+   814→  }
+   815→  try {
+   816→    await execViaPrisma(INDEXES_SQL);
+   817→  } catch {
+   818→    // Indexes are best-effort
+   819→  }
+   820→}
+   821→
+   822→export async function ensureDatabase(): Promise<void> {
+   823→  if (_initDone) {
+   824→    // Always run migrations synchronously to ensure columns exist
+   825→    // before any query executes. Migrations are idempotent.
+   826→    if (!_migrationsRan) {
+   827→      _migrationsRan = true;
+   828→      await runMigrationsOnly();
+   829→    }
+   830→    return;
+   831→  }
+   832→  if (_initPromise) return _initPromise;
+   833→
+   834→  if (!process.env.DATABASE_URL) {
+   835→    throw new Error("DATABASE_URL environment variable is not set.");
+   836→  }
+   837→
+   838→  _initPromise = (async () => {
+   839→    console.log("[init-db] Starting database initialization...");
+   840→
+   841→    let usePg = true;
+   842→    let pgError: unknown = null;
+   843→
+   844→    // Strategy 1: Try using pg Client directly
+   845→    try {
+   846→      const client = new Client({ connectionString: process.env.DATABASE_URL });
+   847→      await client.connect();
+   848→      console.log("[init-db] pg Client connected successfully.");
+   849→
+   850→      // Check if User table already exists
+   851→      const res = await client.query(
+   852→        `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') as ok`
+   853→      );
+   854→      const tableExists = res.rows[0]?.ok === true;
+   855→      console.log("[init-db] User table exists:", tableExists);
+   856→
+   857→      if (tableExists) {
+   858→        console.log("[init-db] Tables already exist, ensuring all tables & columns are up to date...");
+   859→        try {
+   860→          // Run TABLES_SQL first — it uses CREATE TABLE IF NOT EXISTS so it's safe.
+   861→          // This ensures any newly-added tables (e.g. Subscription, SubscriptionPayment, SubscriptionPlan)
+   862→          // get created on existing databases.
+   863→          await client.query(TABLES_SQL);
+   864→          console.log("[init-db] Table existence verified.");
+   865→          await client.query(FKS_SQL);
+   866→          console.log("[init-db] Foreign keys verified.");
+   867→          await client.query(MIGRATIONS_SQL);
+   868→          console.log("[init-db] Migrations applied to existing tables.");
+   869→          await client.query(INDEXES_SQL);
+   870→          console.log("[init-db] Indexes verified.");
+   871→        } catch (migrateErr) {
+   872→          console.error("[init-db] Migration on existing tables failed:", migrateErr instanceof Error ? migrateErr.message : String(migrateErr));
+   873→          // Don't throw — the tables exist, migrations are best-effort
+   874→        }
+   875→        // Seed SubscriptionPlans on existing DB (idempotent)
+   876→        try {
+   877→          await client.query(`
+   878→            INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   879→            SELECT 'plan-monthly-001','Monthly','MONTHLY',500,true,NOW(),NOW()
+   880→            WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-monthly-001');
+   881→            INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   882→            SELECT 'plan-quarterly-001','Quarterly','QUARTERLY',1400,true,NOW(),NOW()
+   883→            WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-quarterly-001');
+   884→            INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   885→            SELECT 'plan-semi-annual-001','Semi-Annual','SEMI_ANNUAL',2600,true,NOW(),NOW()
+   886→            WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-semi-annual-001');
+   887→            INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   888→            SELECT 'plan-yearly-001','Annual','YEARLY',4800,true,NOW(),NOW()
+   889→            WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-yearly-001');
+   890→          `);
+   891→          console.log("[init-db] SubscriptionPlans seeded.");
+   892→        } catch (seedErr) {
+   893→          console.error("[init-db] SubscriptionPlan seeding failed:", seedErr instanceof Error ? seedErr.message : String(seedErr));
+   894→        }
+   895→        await client.end().catch(() => {});
+   896→        _initDone = true;
+   897→        return;
+   898→      }
+   899→
+   900→      // Create enums
+   901→      console.log("[init-db] Creating enum types...");
+   902→      await client.query(ENUMS_SQL);
+   903→
+   904→      // Create tables
+   905→      console.log("[init-db] Creating tables...");
+   906→      await client.query(TABLES_SQL);
+   907→
+   908→      // Verify User table was created
+   909→      const verify = await client.query(
+   910→        `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') as ok`
+   911→      );
+   912→      if (!verify.rows[0]?.ok) {
+   913→        throw new Error("DDL executed but User table still not found!");
+   914→      }
+   915→      console.log("[init-db] Tables verified.");
+   916→
+   917→      // Create foreign keys
+   918→      console.log("[init-db] Creating foreign keys...");
+   919→      await client.query(FKS_SQL);
+   920→
+   921→      // Run migrations (add new columns to existing tables)
+   922→      console.log("[init-db] Running migrations...");
+   923→      await client.query(MIGRATIONS_SQL);
+   924→
+   925→      // Create indexes
+   926→      console.log("[init-db] Creating indexes...");
+   927→      await client.query(INDEXES_SQL);
+   928→
+   929→      // Seed SUPERUSER
+   930→      console.log("[init-db] Seeding SUPERUSER...");
+   931→      const hashed = await bcrypt.hash("Admin@2024", 12);
+   932→      await client.query(
+   933→        `INSERT INTO "User" ("id","username","password","name","role","permissions","policeRank","createdAt","updatedAt")
+   934→         SELECT 'su-admin-001','admin',$1,'System Administrator','SUPERUSER','[]','',NOW(),NOW()
+   935→         WHERE NOT EXISTS (SELECT 1 FROM "User" WHERE "username"='admin')`,
+   936→        [hashed]
+   937→      );
+   938→
+   939→      // Seed PoliceAlertConfig
+   940→      await client.query(
+   941→        `INSERT INTO "PoliceAlertConfig" ("id","createdAt","updatedAt")
+   942→         SELECT 'default-alert-config',NOW(),NOW()
+   943→         WHERE NOT EXISTS (SELECT 1 FROM "PoliceAlertConfig" WHERE "id"='default-alert-config')`
+   944→      );
+   945→
+   946→      // Seed default SubscriptionPlans
+   947→      await client.query(`
+   948→        INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   949→        SELECT 'plan-monthly-001','Monthly','MONTHLY',500,true,NOW(),NOW()
+   950→        WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-monthly-001');
+   951→        INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   952→        SELECT 'plan-quarterly-001','Quarterly','QUARTERLY',1400,true,NOW(),NOW()
+   953→        WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-quarterly-001');
+   954→        INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   955→        SELECT 'plan-semi-annual-001','Semi-Annual','SEMI_ANNUAL',2600,true,NOW(),NOW()
+   956→        WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-semi-annual-001');
+   957→        INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+   958→        SELECT 'plan-yearly-001','Annual','YEARLY',4800,true,NOW(),NOW()
+   959→        WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-yearly-001');
+   960→      `);
+   961→
+   962→      console.log("[init-db] Database initialization complete via pg.");
+   963→      await client.end().catch(() => {});
+   964→      _initDone = true;
+   965→      return;
+   966→    } catch (err) {
+   967→      pgError = err;
+   968→      console.error("[init-db] pg approach failed:", err instanceof Error ? err.message : String(err));
+   969→      usePg = false;
+   970→    }
+   971→
+   972→    // Strategy 2: Fallback — use Prisma $executeRawUnsafe
+   973→    console.log("[init-db] Falling back to Prisma $executeRawUnsafe...");
+   974→    try {
+   975→      // First check if tables exist using Prisma raw query
+   976→      const prisma = new PrismaClient({ log: ["warn", "error"] });
+   977→      try {
+   978→        const res: Array<{ ok: boolean }> = await prisma.$queryRawUnsafe(
+   979→          `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='User') as ok`
+   980→        );
+   981→        if (res[0]?.ok) {
+   982→          console.log("[init-db] Tables already exist (verified via Prisma), ensuring all tables & columns are up to date...");
+   983→          try {
+   984→            // Run TABLES_SQL — uses CREATE TABLE IF NOT EXISTS, safe on existing DB.
+   985→            // This creates any newly-added tables (e.g. Subscription, SubscriptionPlan).
+   986→            await execViaPrisma(TABLES_SQL);
+   987→            console.log("[init-db] Table existence verified via Prisma.");
+   988→            await execViaPrisma(FKS_SQL);
+   989→            console.log("[init-db] Foreign keys verified via Prisma.");
+   990→            await execViaPrisma(MIGRATIONS_SQL);
+   991→            console.log("[init-db] Migrations applied via Prisma.");
+   992→            await execViaPrisma(INDEXES_SQL);
+   993→            console.log("[init-db] Indexes verified via Prisma.");
+   994→          } catch (migrateErr) {
+   995→            console.error("[init-db] Prisma migration on existing tables failed:", migrateErr instanceof Error ? migrateErr.message : String(migrateErr));
+   996→          }
+   997→          _initDone = true;
+   998→          return;
+   999→        }
+  1000→      } catch {
+  1001→        // Table might not exist, which is expected
+  1002→        console.log("[init-db] Tables do not exist yet, creating via Prisma...");
+  1003→      } finally {
+  1004→        await prisma.$disconnect().catch(() => {});
+  1005→      }
+  1006→
+  1007→      // Execute DDL via Prisma (split into parts to avoid query size issues)
+  1008→      await execViaPrisma(ENUMS_SQL);
+  1009→      console.log("[init-db] Enums created via Prisma.");
+  1010→
+  1011→      await execViaPrisma(TABLES_SQL);
+  1012→      console.log("[init-db] Tables created via Prisma.");
+  1013→
+  1014→      await execViaPrisma(FKS_SQL);
+  1015→      console.log("[init-db] Foreign keys created via Prisma.");
+  1016→
+  1017→      await execViaPrisma(MIGRATIONS_SQL);
+  1018→      console.log("[init-db] Migrations ran via Prisma.");
+  1019→
+  1020→      await execViaPrisma(INDEXES_SQL);
+  1021→      console.log("[init-db] Indexes created via Prisma.");
+  1022→
+  1023→      // Seed SUPERUSER via Prisma
+  1024→      const prisma2 = new PrismaClient({ log: ["warn", "error"] });
+  1025→      try {
+  1026→        const hashed = await bcrypt.hash("Admin@2024", 12);
+  1027→        await prisma2.$executeRawUnsafe(
+  1028→          `INSERT INTO "User" ("id","username","password","name","role","permissions","policeRank","createdAt","updatedAt")
+  1029→           SELECT 'su-admin-001','admin',$1,'System Administrator','SUPERUSER','[]','',NOW(),NOW()
+  1030→           WHERE NOT EXISTS (SELECT 1 FROM "User" WHERE "username"='admin')`,
+  1031→          hashed
+  1032→        );
+  1033→        await prisma2.$executeRawUnsafe(
+  1034→          `INSERT INTO "PoliceAlertConfig" ("id","createdAt","updatedAt")
+  1035→           SELECT 'default-alert-config',NOW(),NOW()
+  1036→           WHERE NOT EXISTS (SELECT 1 FROM "PoliceAlertConfig" WHERE "id"='default-alert-config')`
+  1037→        );
+  1038→        // Seed default SubscriptionPlans
+  1039→        await prisma2.$executeRawUnsafe(
+  1040→          `INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+  1041→           SELECT 'plan-monthly-001','Monthly','MONTHLY',500,true,NOW(),NOW()
+  1042→           WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-monthly-001')`
+  1043→        );
+  1044→        await prisma2.$executeRawUnsafe(
+  1045→          `INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+  1046→           SELECT 'plan-quarterly-001','Quarterly','QUARTERLY',1400,true,NOW(),NOW()
+  1047→           WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-quarterly-001')`
+  1048→        );
+  1049→        await prisma2.$executeRawUnsafe(
+  1050→          `INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+  1051→           SELECT 'plan-semi-annual-001','Semi-Annual','SEMI_ANNUAL',2600,true,NOW(),NOW()
+  1052→           WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-semi-annual-001')`
+  1053→        );
+  1054→        await prisma2.$executeRawUnsafe(
+  1055→          `INSERT INTO "SubscriptionPlan" ("id","name","cycle","price","isActive","createdAt","updatedAt")
+  1056→           SELECT 'plan-yearly-001','Annual','YEARLY',4800,true,NOW(),NOW()
+  1057→           WHERE NOT EXISTS (SELECT 1 FROM "SubscriptionPlan" WHERE "id"='plan-yearly-001')`
+  1058→        );
+  1059→        console.log("[init-db] SUPERUSER and plans seeded via Prisma.");
+  1060→      } finally {
+  1061→        await prisma2.$disconnect().catch(() => {});
+  1062→      }
+  1063→
+  1064→      console.log("[init-db] Database initialization complete via Prisma fallback.");
+  1065→      _initDone = true;
+  1066→    } catch (prismaErr) {
+  1067→      console.error("[init-db] Prisma fallback also failed:", prismaErr instanceof Error ? prismaErr.message : String(prismaErr));
+  1068→      _initDone = false;
+  1069→      _initPromise = null; // Allow retry
+  1070→      throw new Error(
+  1071→        `Database initialization failed. pg error: ${pgError instanceof Error ? pgError.message : String(pgError)} | Prisma error: ${prismaErr instanceof Error ? prismaErr.message : String(prismaErr)}`
+  1072→      );
+  1073→    }
+  1074→  })();
+  1075→
+  1076→  return _initPromise;
+  1077→}
+  1078→
+  1079→/**
+  1080→ * Force-run just the migrations + indexes on the live database.
+  1081→ * Useful after deploying schema changes to add new columns without full re-init.
+  1082→ * All migrations use EXCEPTION WHEN duplicate_column so they are safe to re-run.
+  1083→ */
+  1084→export async function forceMigrate(): Promise<void> {
+  1085→  console.log("[forceMigrate] Running migrations on existing database...");
+  1086→  try {
+  1087→    await execViaPrisma(MIGRATIONS_SQL);
+  1088→    console.log("[forceMigrate] Migrations applied.");
+  1089→  } catch (err) {
+  1090→    console.error("[forceMigrate] Migration failed:", err instanceof Error ? err.message : String(err));
+  1091→    throw err;
+  1092→  }
+  1093→  try {
+  1094→    await execViaPrisma(INDEXES_SQL);
+  1095→    console.log("[forceMigrate] Indexes verified.");
+  1096→  } catch (err) {
+  1097→    console.error("[forceMigrate] Index creation failed:", err instanceof Error ? err.message : String(err));
+  1098→    // Don't throw — indexes are best-effort
+  1099→  }
+  1100→  // Reset init flag so next ensureDatabase() will do a full check
+  1101→  _initDone = false;
+  1102→  _initPromise = null;
+  1103→}
+  1104→
