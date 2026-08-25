@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const auth = await getAuthContext(req);
     const filter = getProviderFilter(auth);
 
-    const where = filter.isPolice ? {} : { providerId: filter.providerId };
+    const where = filter.isPolice ? {} : (filter.providerId ? { providerId: filter.providerId } : {});
 
     // Today & month boundaries
     const now = new Date();
@@ -23,82 +23,73 @@ export async function GET(req: NextRequest) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    // ── All queries in a single Promise.all ──
-    const [
-      roomStatusCounts,
-      activeReservations,
-      todayCheckins,
-      todayCheckouts,
-      revenueResult,
-      activityLogs,
-      revenueLast7DaysRaw,
-      // Subscription + provider (combined for OPERATOR/STAFF, null otherwise)
-      subResult,
-    ] = await Promise.all([
-      // 1. Room counts by status
-      db.room.groupBy({ by: ["status"], where, _count: { status: true } }),
+    // ── Run core queries in parallel (all roles) ──
+    const [roomStatusCounts, activeReservations, todayCheckins, todayCheckouts, revenueResult, activityLogs] =
+      await Promise.all([
+        db.room.groupBy({ by: ["status"], where, _count: { status: true } }),
+        db.reservation.count({ where: { ...where, status: "ACTIVE" } }),
+        db.reservation.count({ where: { ...where, status: "UPCOMING", checkIn: today } }),
+        db.reservation.count({ where: { ...where, status: "ACTIVE", checkOut: today } }),
+        db.reservation.aggregate({
+          _sum: { paidAmount: true },
+          where: { ...where, status: "COMPLETED", actualCheckOut: { gte: monthStart, lte: monthEnd } },
+        }),
+        db.activityLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: 15,
+        }),
+      ]);
 
-      // 2. Active reservations
-      db.reservation.count({ where: { ...where, status: "ACTIVE" } }),
+    // ── Revenue last 7 days (safe wrapper) ──
+    let revenueLast7DaysRaw: { date: string; amount: number }[] = [];
+    try {
+      if (filter.isPolice) {
+        revenueLast7DaysRaw = await db.$queryRawUnsafe<{ date: string; amount: number }[]>(
+          `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "createdAt" >= $1 GROUP BY DATE("createdAt") ORDER BY date ASC`,
+          sevenDaysAgo.toISOString()
+        );
+      } else if (filter.providerId) {
+        revenueLast7DaysRaw = await db.$queryRawUnsafe<{ date: string; amount: number }[]>(
+          `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "providerId" = $1 AND "createdAt" >= $2 GROUP BY DATE("createdAt") ORDER BY date ASC`,
+          filter.providerId,
+          sevenDaysAgo.toISOString()
+        );
+      }
+    } catch (err) {
+      console.error("[dashboard] Revenue 7-day query failed (non-fatal):", err instanceof Error ? err.message : err);
+      revenueLast7DaysRaw = [];
+    }
 
-      // 3. Today check-ins
-      db.reservation.count({ where: { ...where, status: "UPCOMING", checkIn: today } }),
-
-      // 4. Today check-outs
-      db.reservation.count({ where: { ...where, status: "ACTIVE", checkOut: today } }),
-
-      // 5. Revenue aggregate (monthly)
-      db.reservation.aggregate({
-        _sum: { paidAmount: true },
-        where: { ...where, status: "COMPLETED", actualCheckOut: { gte: monthStart, lte: monthEnd } },
-      }),
-
-      // 6. Recent activity logs
-      db.activityLog.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: 15,
-      }),
-
-      // 7. Revenue last 7 days — actual payments from Payment table
-      filter.isPolice
-        ? db.$queryRawUnsafe<{ date: string; amount: number }[]>(
-            `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "createdAt" >= $1 GROUP BY DATE("createdAt") ORDER BY date ASC`,
-            sevenDaysAgo.toISOString()
-          )
-        : filter.providerId
-          ? db.$queryRawUnsafe<{ date: string; amount: number }[]>(
-              `SELECT DATE("createdAt")::text AS date, COALESCE(SUM("amount"), 0)::float AS amount FROM "Payment" WHERE "providerId" = $1 AND "createdAt" >= $2 GROUP BY DATE("createdAt") ORDER BY date ASC`,
-              filter.providerId, sevenDaysAgo.toISOString()
-            )
-          : Promise.resolve([] as { date: string; amount: number }[]),
-
-      // 8+9. Subscription + Provider info (OPERATOR/STAFF only)
-      (auth.role !== "SUPERUSER" && auth.role !== "POLICE" && auth.providerId)
-        ? (async () => {
-            const [sub, prov] = await Promise.all([
-              db.subscription.findFirst({ where: { providerId: auth.providerId } }),
-              db.provider.findFirst({
-                where: { id: auth.providerId },
-                select: { name: true, ownerName: true, phone: true, status: true },
-              }),
-            ]);
-            let finalSub = sub;
-            if (!sub && prov?.status === "APPROVED") {
-              const trialEnd = new Date();
-              trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
-              try {
-                finalSub = await db.subscription.create({
-                  data: { providerId: auth.providerId, startDate: new Date(), endDate: trialEnd, cycle: "MONTHLY", price: 0 },
-                });
-              } catch {
-                finalSub = await db.subscription.findFirst({ where: { providerId: auth.providerId } });
-              }
-            }
-            return { subscription: finalSub, provider: prov };
-          })()
-        : Promise.resolve(null),
-    ]);
+    // ── Subscription + provider info (OPERATOR/STAFF only, safe wrapper) ──
+    let subResult: { subscription: any; provider: any } | null = null;
+    if (auth.role !== "SUPERUSER" && auth.role !== "POLICE" && auth.providerId) {
+      try {
+        const [sub, prov] = await Promise.all([
+          db.subscription.findFirst({ where: { providerId: auth.providerId } }),
+          db.provider.findFirst({
+            where: { id: auth.providerId },
+            select: { name: true, ownerName: true, phone: true, status: true },
+          }),
+        ]);
+        let finalSub = sub;
+        if (!sub && prov?.status === "APPROVED") {
+          const trialEnd = new Date();
+          trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+          try {
+            finalSub = await db.subscription.create({
+              data: { providerId: auth.providerId, startDate: new Date(), endDate: trialEnd, cycle: "MONTHLY", price: 0 },
+            });
+          } catch {
+            finalSub = await db.subscription.findFirst({ where: { providerId: auth.providerId } });
+          }
+        }
+        subResult = { subscription: finalSub, provider: prov };
+      } catch (err) {
+        console.error("[dashboard] Subscription query failed (non-fatal):", err instanceof Error ? err.message : err);
+        subResult = null;
+      }
+    }
 
     // Process room status
     const roomsByStatus: Record<string, number> = {
