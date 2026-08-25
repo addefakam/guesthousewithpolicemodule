@@ -1,4 +1,27 @@
 ---
+Task ID: 7
+Agent: main
+Task: Fix /api/dashboard 500 error for guest house owners (SUPERUSER with providerId)
+
+Work Log:
+- Investigated full execution path: login → sidebar → page-renderer → dashboard API
+- Found SUPERUSER (both system admin and guest house owners) were ALL routed to 'super-admin-dashboard'
+- SuperAdminDashboardPage made a useless fetch('/api/dashboard') call that checked for fields the endpoint never returns
+- For guest house owner SUPERUSER (with providerId), this returned 500
+- Root cause: SUPERUSER with providerId should see provider dashboard, not admin dashboard
+
+Fix (4 files):
+- super-admin-dashboard-page.tsx: Removed useless /api/dashboard fetch (dead code)
+- sidebar.tsx: SUPERUSER with providerId → ALL_NAV_ITEMS, without → SUPERUSER_NAV_ITEMS
+- login-page.tsx: SUPERUSER+providerId → 'dashboard', without → 'super-admin-dashboard'
+- store.ts: Session migration for SUPERUSER+providerId on 'super-admin-dashboard'
+
+Stage Summary:
+- Guest house owners now see regular provider dashboard
+- No more 500 error for guest providers
+- Committed as 5d3e814 and pushed to main
+
+---
 Task ID: 3
 Agent: Main Agent
 Task: Implement Guest Communication, Group Booking Management, and Staff Activity Log features
