@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #ffffff;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  padding: 30px 40px;
+  width: 900px;
+}
+.diagram-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #242226;
+  margin-bottom: 24px;
+}
+.comparison {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+.col {
+  flex: 1;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1.5px solid;
+}
+.col-old {
+  background: #fdf5f4;
+  border-color: #a54d45;
+}
+.col-new {
+  background: #f2f9f4;
+  border-color: #428f5c;
+}
+.col-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid;
+}
+.col-old .col-title { color: #a54d45; border-color: #a54d45; }
+.col-new .col-title { color: #428f5c; border-color: #428f5c; }
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #242226;
+}
+.item .icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.col-old .icon { background: #a54d45; }
+.col-new .icon { background: #428f5c; }
+.arrow-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #c9c0ce;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+<div class="diagram-title">Old System vs. Proposed System</div>
+<div class="comparison">
+  <div class="col col-old">
+    <div class="col-title">Old Manual System</div>
+    <div class="item"><div class="icon">1</div><div>Paper-based guest registration with no centralized database, making data retrieval slow and unreliable</div></div>
+    <div class="item"><div class="icon">2</div><div>No real-time communication between guest houses and police; information shared through phone calls or physical visits</div></div>
+    <div class="item"><div class="icon">3</div><div>No mechanism to cross-reference guest identities against wanted persons or suspect lists</div></div>
+    <div class="item"><div class="icon">4</div><div>Manual room management with hand-written ledgers leading to overbooking and revenue leakage</div></div>
+    <div class="item"><div class="icon">5</div><div>No subscription or compliance tracking; guest houses operate without any regulatory oversight</div></div>
+    <div class="item"><div class="icon">6</div><div>Guests have no way to discover available guest houses or report issues directly</div></div>
+    <div class="item"><div class="icon">7</div><div>No audit trail or accountability for data access by law enforcement or staff</div></div>
+  </div>
+  <div class="arrow-col">&#x27A1;</div>
+  <div class="col col-new">
+    <div class="col-title">Proposed Digital System</div>
+    <div class="item"><div class="icon">1</div><div>Centralized PostgreSQL database with 20+ relational tables capturing every guest, reservation, and transaction</div></div>
+    <div class="item"><div class="icon">2</div><div>Real-time API integration between guest houses and police for instant suspect matching and alerts</div></div>
+    <div class="item"><div class="icon">3</div><div>Automated cross-referencing of every guest check-in against the suspected persons database</div></div>
+    <div class="item"><div class="icon">4</div><div>Digital room and reservation management with availability tracking, payments, and reporting</div></div>
+    <div class="item"><div class="icon">5</div><div>Subscription-based compliance model with admin approval, status tracking, and renewal reminders</div></div>
+    <div class="item"><div class="icon">6</div><div>Mobile PWA for guests to browse houses, view rooms, and report issues directly to police</div></div>
+    <div class="item"><div class="icon">7</div><div>Complete audit logging of every police action with IP tracking and accountability measures</div></div>
+  </div>
+</div>
+</body>
+</html>

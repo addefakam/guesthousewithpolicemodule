@@ -1,0 +1,619 @@
+    51→];
+    52→
+    53→function buildYearOptions() {
+    54→  const current = new Date().getFullYear();
+    55→  const opts: { value: string; label: string }[] = [];
+    56→  for (let y = current + 1; y >= current - 3; y--) {
+    57→    opts.push({ value: String(y), label: String(y) });
+    58→  }
+    59→  return opts;
+    60→}
+    61→
+    62→const YEAR_OPTIONS = buildYearOptions();
+    63→
+    64→// Severity helpers
+    65→function getSeverity(p: { criticalCount: number; highCount: number; matchCount: number }) {
+    66→  if (p.criticalCount > 0) return "CRITICAL";
+    67→  if (p.highCount > 0) return "HIGH";
+    68→  if (p.matchCount > 0) return "MEDIUM";
+    69→  return "NONE";
+    70→}
+    71→
+    72→function getRiskScore(p: { matchCount: number; criticalCount: number; highCount: number }) {
+    73→  return p.matchCount * 1 + p.criticalCount * 5 + p.highCount * 3;
+    74→}
+    75→
+    76→const SEVERITY_CONFIG: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    77→  CRITICAL: { bg: "bg-red-100", text: "text-red-800", border: "border-red-200", label: "Critical" },
+    78→  HIGH: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200", label: "High" },
+    79→  MEDIUM: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200", label: "Medium" },
+    80→  NONE: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", label: "No Alerts" },
+    81→};
+    82→
+    83→export default function PoliceIntelligencePage() {
+    84→  const { refreshKey } = useAppStore();
+    85→  const [data, setData] = useState<{ frequentStays: FreqStayItem[]; hotspotData: HotspotItem[]; allProviderLocations: ProviderLocation[]; occupancyCrimeCorrelation: MonthlyItem[]; recentActivity: AuditItem[] } | null>(null);
+    86→  const [loading, setLoading] = useState(true);
+    87→  const [activeTab, setActiveTab] = useState<"hotspots" | "charts" | "frequent" | "audit">("hotspots");
+    88→
+    89→  // Hotspot tab state
+    90→  const [hotspotFilter, setHotspotFilter] = useState<string>("ALL");
+    91→  const [hotspotSearch, setHotspotSearch] = useState("");
+    92→  const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
+    93→
+    94→  // Report modal state
+    95→  const [reportOpen, setReportOpen] = useState(false);
+    96→  const [reportMonth, setReportMonth] = useState(String(new Date().getMonth() + 1));
+    97→  const [reportYear, setReportYear] = useState(String(new Date().getFullYear()));
+    98→  const [reportGenerating, setReportGenerating] = useState(false);
+    99→  const reportLinkRef = useRef<HTMLAnchorElement | null>(null);
+   100→
+   101→  // Paginations
+   102→  const hotspotPag = usePagination({ totalItems: 0, initialPageSize: 12, pageSizeOptions: [6, 12, 24, 48] });
+   103→  const freqPag = usePagination({ totalItems: 0, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
+   104→  const auditPag = usePagination({ totalItems: 0, initialPageSize: 20, pageSizeOptions: [10, 20, 50, 100] });
+   105→  const rankingPag = usePagination({ totalItems: 0, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
+   106→
+   107→  const fetchData = useCallback(async () => {
+   108→    try {
+   109→      setLoading(true);
+   110→      const res = await apiPoliceIntelligence();
+   111→      setData(res);
+   112→    } catch (e: unknown) {
+   113→      const msg = e instanceof Error ? e.message : "Failed to load intelligence data";
+   114→      toast.error(msg);
+   115→    }
+   116→    finally { setLoading(false); }
+   117→  }, []);
+   118→
+   119→  useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
+   120→
+   121→  // Filtered hotspot providers
+   122→  const filteredHotspots = (() => {
+   123→    if (!data) return [];
+   124→    let list = data.allProviderLocations || [];
+   125→    if (hotspotFilter !== "ALL") {
+   126→      list = list.filter((p) => getSeverity(p) === hotspotFilter);
+   127→    }
+   128→    if (hotspotSearch.trim()) {
+   129→      const q = hotspotSearch.toLowerCase();
+   130→      list = list.filter((p) =>
+   131→        p.name.toLowerCase().includes(q) ||
+   132→        p.address.toLowerCase().includes(q) ||
+   133→        p.type.toLowerCase().includes(q) ||
+   134→        p.phone.includes(q)
+   135→      );
+   136→    }
+   137→    return list.sort((a, b) => getRiskScore(b) - getRiskScore(a));
+   138→  })();
+   139→
+   140→  // Update paginations when data/filter changes
+   141→  useEffect(() => { hotspotPag.setTotalItems(filteredHotspots.length); }, [filteredHotspots.length]);
+   142→  useEffect(() => {
+   143→    if (data) {
+   144→      freqPag.setTotalItems(data.frequentStays.length);
+   145→      auditPag.setTotalItems(data.recentActivity.length);
+   146→      rankingPag.setTotalItems(data.hotspotData.length);
+   147→    }
+   148→  }, [data]);
+   149→
+   150→  const paginatedHotspots = hotspotPag.paginate(filteredHotspots);
+   151→  const pagFreq = data ? freqPag.paginate(data.frequentStays) : [];
+   152→  const pagAudit = data ? auditPag.paginate(data.recentActivity) : [];
+   153→  const pagRankings = data ? rankingPag.paginate(data.hotspotData) : [];
+   154→
+   155→  const handleDownloadReport = async () => {
+   156→    try {
+   157→      setReportGenerating(true);
+   158→      const html = await apiPoliceReport(Number(reportMonth), Number(reportYear));
+   159→      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+   160→      const url = URL.createObjectURL(blob);
+   161→      const a = document.createElement("a");
+   162→      a.href = url;
+   163→      a.download = `police-report-${reportYear}-${reportMonth.padStart(2, "0")}.html`;
+   164→      document.body.appendChild(a);
+   165→      a.click();
+   166→      document.body.removeChild(a);
+   167→      URL.revokeObjectURL(url);
+   168→      setReportOpen(false);
+   169→      toast.success("Report downloaded successfully");
+   170→    } catch (e: unknown) {
+   171→      const msg = e instanceof Error ? e.message : "Failed to generate report";
+   172→      toast.error(msg);
+   173→    } finally {
+   174→      setReportGenerating(false);
+   175→    }
+   176→  };
+   177→
+   178→  // Summary stats
+   179→  const hotspotStats = (() => {
+   180→    if (!data) return { total: 0, withAlerts: 0, critical: 0, totalMatches: 0, totalGuests: 0 };
+   181→    const all = data.allProviderLocations;
+   182→    return {
+   183→      total: all.length,
+   184→      withAlerts: all.filter((p) => p.matchCount > 0).length,
+   185→      critical: all.filter((p) => p.criticalCount > 0).length,
+   186→      totalMatches: all.reduce((s, p) => s + p.matchCount, 0),
+   187→      totalGuests: all.reduce((s, p) => s + p.guestCount, 0),
+   188→    };
+   189→  })();
+   190→
+   191→  const tabs = [
+   192→    { key: "hotspots" as const, label: "Crime Hotspots", icon: MapPin },
+   193→    { key: "charts" as const, label: "Analytics", icon: BarChart3 },
+   194→    { key: "frequent" as const, label: "Frequent Stays", icon: AlertTriangle },
+   195→    { key: "audit" as const, label: "Activity Log", icon: Activity },
+   196→  ];
+   197→
+   198→  return (
+   199→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   200→      {/* Header */}
+   201→      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+   202→        <div>
+   203→          <h2 className="text-base sm:text-lg font-semibold">Intelligence Center</h2>
+   204→          <p className="text-xs sm:text-sm text-muted-foreground">Crime analytics, hotspot analysis, and pattern detection</p>
+   205→        </div>
+   206→        <div className="flex items-center gap-2">
+   207→          <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
+   208→            <FileDown className="mr-1.5 h-3.5 w-3.5" /> Download Report
+   209→          </Button>
+   210→          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+   211→            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+   212→          </Button>
+   213→        </div>
+   214→      </div>
+   215→
+   216→      {/* Report Download Modal */}
+   217→      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+   218→        <DialogContent className="sm:max-w-md">
+   219→          <DialogHeader>
+   220→            <DialogTitle className="flex items-center gap-2">
+   221→              <FileDown className="h-5 w-5" />
+   222→              Download Monthly Report
+   223→            </DialogTitle>
+   224→            <DialogDescription>
+   225→              Generate a printable HTML intelligence report for the selected month.
+   226→            </DialogDescription>
+   227→          </DialogHeader>
+   228→          <div className="grid gap-4 py-2">
+   229→            <div className="grid gap-2">
+   230→              <Label htmlFor="report-month">Month</Label>
+   231→              <Select value={reportMonth} onValueChange={setReportMonth}>
+   232→                <SelectTrigger id="report-month"><SelectValue placeholder="Select month" /></SelectTrigger>
+   233→                <SelectContent>
+   234→                  {MONTH_OPTIONS.map((m) => (
+   235→                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+   236→                  ))}
+   237→                </SelectContent>
+   238→              </Select>
+   239→            </div>
+   240→            <div className="grid gap-2">
+   241→              <Label htmlFor="report-year">Year</Label>
+   242→              <Select value={reportYear} onValueChange={setReportYear}>
+   243→                <SelectTrigger id="report-year"><SelectValue placeholder="Select year" /></SelectTrigger>
+   244→                <SelectContent>
+   245→                  {YEAR_OPTIONS.map((y) => (
+   246→                    <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
+   247→                  ))}
+   248→                </SelectContent>
+   249→              </Select>
+   250→            </div>
+   251→          </div>
+   252→          <DialogFooter className="gap-2 sm:gap-0">
+   253→            <Button variant="outline" onClick={() => setReportOpen(false)} disabled={reportGenerating}>
+   254→              Cancel
+   255→            </Button>
+   256→            <Button onClick={handleDownloadReport} disabled={reportGenerating}>
+   257→              {reportGenerating ? (
+   258→                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generating...</>
+   259→              ) : (
+   260→                <><FileDown className="mr-1.5 h-3.5 w-3.5" /> Download</>
+   261→              )}
+   262→            </Button>
+   263→          </DialogFooter>
+   264→        </DialogContent>
+   265→      </Dialog>
+   266→      <a ref={reportLinkRef} className="hidden" />
+   267→
+   268→      {/* Tab Navigation */}
+   269→      <div className="flex gap-1 overflow-x-auto rounded-lg border bg-muted/50 p-0.5">
+   270→        {tabs.map((tab) => (
+   271→          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+   272→            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+   273→              activeTab === tab.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+   274→            }`}>
+   275→            <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+   276→          </button>
+   277→        ))}
+   278→      </div>
+   279→
+   280→      {loading && !data ? (
+   281→        <div className="space-y-3 p-4">
+   282→          <Skeleton className="h-[400px] w-full rounded-xl" />
+   283→          <Skeleton className="h-12 w-full" />
+   284→        </div>
+   285→      ) : !data ? (
+   286→        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No intelligence data available</p></CardContent></Card>
+   287→      ) : (
+   288→        <>
+   289→          {/* Crime Hotspots - Full Information Display */}
+   290→          {activeTab === "hotspots" && (
+   291→            <div className="space-y-4">
+   292→              {/* Summary Stats */}
+   293→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+   294→                {[
+   295→                  { label: "Providers", value: hotspotStats.total, icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
+   296→                  { label: "With Alerts", value: hotspotStats.withAlerts, icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
+   297→                  { label: "Critical", value: hotspotStats.critical, icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
+   298→                  { label: "Total Matches", value: hotspotStats.totalMatches, icon: MapPin, color: "text-orange-600", bg: "bg-orange-50" },
+   299→                  { label: "Total Guests", value: hotspotStats.totalGuests, icon: Users, color: "text-sky-600", bg: "bg-sky-50" },
+   300→                ].map((s) => (
+   301→                  <div key={s.label} className="rounded-lg border bg-card p-2.5">
+   302→                    <div className="flex items-center gap-1.5 mb-1">
+   303→                      <div className={`flex h-6 w-6 items-center justify-center rounded-md ${s.bg}`}>
+   304→                        <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
+   305→                      </div>
+   306→                      <span className="text-[10px] text-muted-foreground">{s.label}</span>
+   307→                    </div>
+   308→                    <p className="text-lg font-bold">{s.value}</p>
+   309→                  </div>
+   310→                ))}
+   311→              </div>
+   312→
+   313→              {/* Filters */}
+   314→              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+   315→                <div className="flex gap-1 flex-wrap">
+   316→                  {["ALL", "CRITICAL", "HIGH", "MEDIUM", "NONE"].map((sev) => (
+   317→                    <button
+   318→                      key={sev}
+   319→                      onClick={() => setHotspotFilter(sev)}
+   320→                      className={`px-2.5 py-1 text-[10px] font-medium rounded-md border transition-colors ${
+   321→                        hotspotFilter === sev
+   322→                          ? "bg-foreground text-background border-foreground"
+   323→                          : "bg-card text-muted-foreground border-border hover:bg-muted"
+   324→                      }`}
+   325→                    >
+   326→                      {sev === "NONE" ? "No Alerts" : sev === "ALL" ? "All" : sev}
+   327→                      {sev !== "ALL" && sev !== "NONE" && (
+   328→                        <span className="ml-1">
+   329→                          ({(data.allProviderLocations || []).filter((p) => getSeverity(p) === sev).length})
+   330→                        </span>
+   331→                      )}
+   332→                    </button>
+   333→                  ))}
+   334→                </div>
+   335→                <div className="flex-1 w-full sm:w-auto">
+   336→                  <div className="relative">
+   337→                    <MapPin className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+   338→                    <input
+   339→                      type="text"
+   340→                      placeholder="Search by name, address, type, or phone..."
+   341→                      value={hotspotSearch}
+   342→                      onChange={(e) => setHotspotSearch(e.target.value)}
+   343→                      className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+   344→                    />
+   345→                  </div>
+   346→                </div>
+   347→                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+   348→                  {filteredHotspots.length} guesthouse{filteredHotspots.length !== 1 ? "s" : ""} found
+   349→                </span>
+   350→              </div>
+   351→
+   352→              {/* Guesthouse Cards */}
+   353→              {paginatedHotspots.length === 0 ? (
+   354→                <Card>
+   355→                  <CardContent className="py-12 text-center">
+   356→                    <Building2 className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+   357→                    <p className="text-sm text-muted-foreground">No guesthouses match the current filter</p>
+   358→                    <p className="text-xs text-muted-foreground mt-1">Try adjusting the severity filter or search query</p>
+   359→                  </CardContent>
+   360→                </Card>
+   361→              ) : (
+   362→                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+   363→                  {paginatedHotspots.map((p) => {
+   364→                    const sev = getSeverity(p);
+   365→                    const sevCfg = SEVERITY_CONFIG[sev] || SEVERITY_CONFIG.NONE;
+   366→                    const isExpanded = expandedProvider === p.id;
+   367→
+   368→                    return (
+   369→                      <Card
+   370→                        key={p.id}
+   371→                        className={`overflow-hidden transition-all hover:shadow-md ${
+   372→                          p.matchCount > 0 ? "border-l-4" : ""
+   373→                        }`}
+   374→                        style={{
+   375→                          borderLeftColor: sev === "CRITICAL" ? "#dc2626" : sev === "HIGH" ? "#ea580c" : sev === "MEDIUM" ? "#d97706" : p.matchCount > 0 ? "#6366f1" : undefined,
+   376→                        }}
+   377→                      >
+   378→                        {/* Card Header */}
+   379→                        <div className="p-3 pb-2">
+   380→                          <div className="flex items-start justify-between gap-2">
+   381→                            <div className="min-w-0 flex-1">
+   382→                              <div className="flex items-center gap-2">
+   383→                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+   384→                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+   385→                                </div>
+   386→                                <div className="min-w-0 flex-1">
+   387→                                  <p className="text-sm font-semibold truncate">{p.name}</p>
+   388→                                  <p className="text-[10px] text-muted-foreground capitalize">{p.type || "Guesthouse"}</p>
+   389→                                </div>
+   390→                              </div>
+   391→                            </div>
+   392→                            <Badge variant="outline" className={`text-[9px] shrink-0 ${sevCfg.bg} ${sevCfg.text} ${sevCfg.border}`}>
+   393→                              {sevCfg.label}
+   394→                            </Badge>
+   395→                          </div>
+   396→                        </div>
+   397→
+   398→                        {/* Quick Stats Row */}
+   399→                        <div className="px-3 pb-2">
+   400→                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+   401→                            <MapPin className="h-2.5 w-2.5 shrink-0" />
+   402→                            <span className="truncate">{p.address || "No address set"}</span>
+   403→                          </div>
+   404→                        </div>
+   405→
+   406→                        <div className="px-3 pb-2">
+   407→                          <div className="grid grid-cols-4 gap-1.5">
+   408→                            <div className="text-center rounded-md bg-muted/50 p-1.5">
+   409→                              <p className="text-sm font-bold">{p.guestCount}</p>
+   410→                              <p className="text-[8px] text-muted-foreground">Guests</p>
+   411→                            </div>
+   412→                            <div className="text-center rounded-md bg-muted/50 p-1.5">
+   413→                              <p className="text-sm font-bold">{p.roomCount}</p>
+   414→                              <p className="text-[8px] text-muted-foreground">Rooms</p>
+   415→                            </div>
+   416→                            <div className="text-center rounded-md bg-muted/50 p-1.5">
+   417→                              <p className={`text-sm font-bold ${p.matchCount > 0 ? "text-red-600" : ""}`}>{p.matchCount}</p>
+   418→                              <p className="text-[8px] text-muted-foreground">Matches</p>
+   419→                            </div>
+   420→                            <div className="text-center rounded-md bg-muted/50 p-1.5">
+   421→                              <p className={`text-sm font-bold ${p.criticalCount > 0 ? "text-red-700" : p.highCount > 0 ? "text-orange-600" : ""}`}>
+   422→                                {p.criticalCount + p.highCount}
+   423→                              </p>
+   424→                              <p className="text-[8px] text-muted-foreground">High/Crit</p>
+   425→                            </div>
+   426→                          </div>
+   427→                        </div>
+   428→
+   429→                        {/* Expand/Collapse Button */}
+   430→                        <button
+   431→                          onClick={() => setExpandedProvider(isExpanded ? null : p.id)}
+   432→                          className="w-full flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 border-t transition-colors"
+   433→                        >
+   434→                          {isExpanded ? (
+   435→                            <><ChevronUp className="h-3 w-3" /> Less Details</>
+   436→                          ) : (
+   437→                            <><ChevronDown className="h-3 w-3" /> Full Details</>
+   438→                          )}
+   439→                        </button>
+   440→
+   441→                        {/* Expanded Details */}
+   442→                        {isExpanded && (
+   443→                          <div className="px-3 pb-3 pt-2 border-t bg-muted/20 space-y-2">
+   444→                            {/* Contact & Location */}
+   445→                            <div className="space-y-1.5">
+   446→                              <div className="flex items-center gap-2 text-xs">
+   447→                                <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+   448→                                <span>{p.phone || "No phone"}</span>
+   449→                              </div>
+   450→                              <div className="flex items-start gap-2 text-xs">
+   451→                                <Globe className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+   452→                                <span>{p.address || "No address on file"}</span>
+   453→                              </div>
+   454→                              <div className="flex items-center gap-2 text-xs">
+   455→                                <Crosshair className="h-3 w-3 text-muted-foreground shrink-0" />
+   456→                                <span className="font-mono text-[10px]">
+   457→                                  {p.hasCoordinates
+   458→                                    ? `${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}`
+   459→                                    : "Coordinates not set"}
+   460→                                </span>
+   461→                              </div>
+   462→                            </div>
+   463→
+   464→                            {/* Match Breakdown */}
+   465→                            {p.matchCount > 0 && (
+   466→                              <div className="rounded-md border p-2 bg-red-50/50 border-red-100">
+   467→                                <p className="text-[10px] font-semibold text-red-700 mb-1.5">Alert Breakdown</p>
+   468→                                <div className="flex gap-3">
+   469→                                  <div className="flex items-center gap-1.5">
+   470→                                    <span className="h-2 w-2 rounded-full bg-red-500" />
+   471→                                    <span className="text-[10px]">Critical: <strong>{p.criticalCount}</strong></span>
+   472→                                  </div>
+   473→                                  <div className="flex items-center gap-1.5">
+   474→                                    <span className="h-2 w-2 rounded-full bg-orange-500" />
+   475→                                    <span className="text-[10px]">High: <strong>{p.highCount}</strong></span>
+   476→                                  </div>
+   477→                                  <div className="flex items-center gap-1.5">
+   478→                                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+   479→                                    <span className="text-[10px]">Total: <strong>{p.matchCount}</strong></span>
+   480→                                  </div>
+   481→                                </div>
+   482→                              </div>
+   483→                            )}
+   484→
+   485→                            {/* Risk Score Bar */}
+   486→                            <div>
+   487→                              <div className="flex items-center justify-between mb-1">
+   488→                                <span className="text-[10px] text-muted-foreground">Risk Score</span>
+   489→                                <span className="text-[10px] font-bold">
+   490→                                  {p.matchCount === 0 ? "0" : getRiskScore(p)}
+   491→                                </span>
+   492→                              </div>
+   493→                              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+   494→                                <div
+   495→                                  className={`h-full rounded-full transition-all ${
+   496→                                    sev === "CRITICAL" ? "bg-red-500" : sev === "HIGH" ? "bg-orange-500" : sev === "MEDIUM" ? "bg-amber-500" : "bg-indigo-400"
+   497→                                  }`}
+   498→                                  style={{
+   499→                                    width: p.matchCount === 0 ? "0%" : `${Math.min(100, (getRiskScore(p) / Math.max(1, hotspotStats.totalMatches > 0 ? hotspotStats.totalMatches : 1)) * 100)}%`,
+   500→                                  }}
+   501→                                />
+   502→                              </div>
+   503→                            </div>
+   504→                          </div>
+   505→                        )}
+   506→                      </Card>
+   507→                    );
+   508→                  })}
+   509→                </div>
+   510→              )}
+   511→
+   512→              {/* Pagination */}
+   513→              {filteredHotspots.length > 0 && (
+   514→                <PaginationControls
+   515→                  currentPage={hotspotPag.currentPage}
+   516→                  totalPages={hotspotPag.totalPages}
+   517→                  pageSize={hotspotPag.pageSize}
+   518→                  pageSizeOptions={hotspotPag.pageSizeOptions}
+   519→                  totalItems={filteredHotspots.length}
+   520→                  rangeInfo={hotspotPag.rangeInfo}
+   521→                  goToPage={hotspotPag.goToPage}
+   522→                  setPageSize={hotspotPag.setPageSize}
+   523→                />
+   524→              )}
+   525→            </div>
+   526→          )}
+   527→
+   528→          {/* Analytics Charts */}
+   529→          {activeTab === "charts" && (
+   530→            <div className="grid gap-4 md:grid-cols-2">
+   531→              <Card>
+   532→                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><TrendingUp className="h-4 w-4" /> Occupancy vs. Suspect Matches (6 Months)</CardTitle></CardHeader>
+   533→                <CardContent>
+   534→                  <div className="space-y-2">
+   535→                    {data.occupancyCrimeCorrelation.map((m) => (
+   536→                      <div key={m.month} className="flex items-center gap-3">
+   537→                        <span className="w-16 text-xs text-muted-foreground shrink-0">{m.month}</span>
+   538→                        <div className="flex-1 flex items-center gap-2">
+   539→                          <div className="flex-1 flex items-center gap-1">
+   540→                            <span className="text-[10px] text-sky-600 w-5">R:{m.reservations}</span>
+   541→                            <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+   542→                              <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${Math.min(100, (m.reservations / Math.max(...data.occupancyCrimeCorrelation.map(x => x.reservations), 1)) * 100)}%` }} />
+   543→                            </div>
+   544→                          </div>
+   545→                          <div className="flex-1 flex items-center gap-1">
+   546→                            <span className="text-[10px] text-red-600 w-5">A:{m.suspectMatches}</span>
+   547→                            <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+   548→                              <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${Math.min(100, (m.suspectMatches / Math.max(...data.occupancyCrimeCorrelation.map(x => x.suspectMatches), 1)) * 100)}%` }} />
+   549→                            </div>
+   550→                          </div>
+   551→                        </div>
+   552→                      </div>
+   553→                    ))}
+   554→                  </div>
+   555→                  <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
+   556→                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" /> Reservations</span>
+   557→                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> Suspect Matches</span>
+   558→                  </div>
+   559→                </CardContent>
+   560→              </Card>
+   561→              <Card>
+   562→                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4" /> Provider Hotspot Rankings</CardTitle></CardHeader>
+   563→                <CardContent>
+   564→                  <div className="space-y-2">
+   565→                    {pagRankings.map((h, i) => (
+   566→                      <div key={h.providerId || i} className="flex items-center gap-3">
+   567→                        <span className="w-5 text-xs font-bold text-muted-foreground">{(rankingPag.currentPage - 1) * rankingPag.pageSize + i + 1}</span>
+   568→                        <div className="flex-1 min-w-0">
+   569→                          <p className="text-sm font-medium truncate">{h.providerName || "Unknown"}</p>
+   570→                          <div className="h-2 bg-muted rounded-full overflow-hidden mt-1">
+   571→                            <div className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all" style={{ width: `${Math.min(100, (h.matchCount / Math.max(...data.hotspotData.map(x => x.matchCount), 1)) * 100)}%` }} />
+   572→                          </div>
+   573→                        </div>
+   574→                        <div className="text-right shrink-0">
+   575→                          <p className="text-sm font-bold">{h.matchCount}</p>
+   576→                          <p className="text-[10px] text-muted-foreground">matches</p>
+   577→                        </div>
+   578→                        {(h.criticalCount > 0 || h.highCount > 0) && (
+   579→                          <div className="flex gap-0.5 shrink-0">
+   580→                            {h.criticalCount > 0 && <Badge className="bg-red-100 text-red-800 text-[8px] px-1 py-0">C:{h.criticalCount}</Badge>}
+   581→                            {h.highCount > 0 && <Badge className="bg-orange-100 text-orange-800 text-[8px] px-1 py-0">H:{h.highCount}</Badge>}
+   582→                          </div>
+   583→                        )}
+   584→                      </div>
+   585→                    ))}
+   586→                    {data.hotspotData.length === 0 && <p className="text-center text-xs text-muted-foreground py-4">No hotspot data</p>}
+   587→                  </div>
+   588→                  {data.hotspotData.length > rankingPag.pageSize && (
+   589→                    <PaginationControls currentPage={rankingPag.currentPage} totalPages={rankingPag.totalPages} pageSize={rankingPag.pageSize} pageSizeOptions={rankingPag.pageSizeOptions} totalItems={data.hotspotData.length} rangeInfo={rankingPag.rangeInfo} goToPage={rankingPag.goToPage} setPageSize={rankingPag.setPageSize} />
+   590→                  )}
+   591→                </CardContent>
+   592→              </Card>
+   593→            </div>
+   594→          )}
+   595→
+   596→          {/* Frequent Stay Alerts */}
+   597→          {activeTab === "frequent" && (
+   598→            <Card>
+   599→              <CardHeader>
+   600→                <CardTitle className="flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-amber-500" /> Frequent Stay Alerts</CardTitle>
+   601→              </CardHeader>
+   602→              <CardContent>
+   603→                {data.frequentStays.length === 0 ? (
+   604→                  <p className="py-8 text-center text-xs text-muted-foreground">No frequent stay patterns detected. Patterns appear when guests stay at multiple guesthouses with short intervals.</p>
+   605→                ) : (
+   606→                  <div className="divide-y">
+   607→                    {pagFreq.map((f) => (
+   608→                      <div key={f.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3">
+   609→                        <div className="min-w-0 flex-1">
+   610→                          <div className="flex items-center gap-2">
+   611→                            <p className="text-sm font-medium truncate">{f.guestName}</p>
+   612→                            <Badge variant="outline" className={`text-[9px] ${RISK_STYLES[f.riskLevel] || ""}`}>{f.riskLevel}</Badge>
+   613→                          </div>
+   614→                          <p className="text-xs text-muted-foreground font-mono">{f.guestPhone || f.guestIdNumber}</p>
+   615→                          <div className="flex flex-wrap gap-2 mt-1 text-[10px] text-muted-foreground">
+   616→                            <span>{f.stayCount} stays</span>
+   617→                            <span>{f.avgDaysBetween} avg days between</span>
+   618→                            <span>Providers: {JSON.parse(f.providerNames || "[]").join(", ")}</span>
+   619→                          </div>
+   620→                        </div>
+   621→                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(f.createdAt).toLocaleDateString()}</span>
+   622→                      </div>
+   623→                    ))}
+   624→                  </div>
+   625→                )}
+   626→                {data.frequentStays.length > freqPag.pageSize && (
+   627→                  <PaginationControls currentPage={freqPag.currentPage} totalPages={freqPag.totalPages} pageSize={freqPag.pageSize} pageSizeOptions={freqPag.pageSizeOptions} totalItems={data.frequentStays.length} rangeInfo={freqPag.rangeInfo} goToPage={freqPag.goToPage} setPageSize={freqPag.setPageSize} />
+   628→                )}
+   629→              </CardContent>
+   630→            </Card>
+   631→          )}
+   632→
+   633→          {/* Activity Log */}
+   634→          {activeTab === "audit" && (
+   635→            <Card>
+   636→              <CardHeader>
+   637→                <CardTitle className="flex items-center gap-2 text-sm"><Activity className="h-4 w-4" /> Recent Activity</CardTitle>
+   638→              </CardHeader>
+   639→              <CardContent>
+   640→                {data.recentActivity.length === 0 ? (
+   641→                  <p className="py-8 text-center text-xs text-muted-foreground">No activity recorded yet</p>
+   642→                ) : (
+   643→                  <div className="divide-y">
+   644→                    {pagAudit.map((a) => (
+   645→                      <div key={a.id} className="flex items-center justify-between py-2.5">
+   646→                        <div>
+   647→                          <div className="flex items-center gap-2">
+   648→                            <Badge variant="secondary" className="text-[9px]">{a.action}</Badge>
+   649→                            <p className="text-xs">{a.officerName || "System"}</p>
+   650→                          </div>
+   651→                          {a.targetId && <p className="text-[10px] text-muted-foreground mt-0.5">{a.targetType}: {a.targetId.slice(0, 12)}...</p>}
+   652→                        </div>
+   653→                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(a.createdAt).toLocaleString()}</span>
+   654→                      </div>
+   655→                    ))}
+   656→                  </div>
+   657→                )}
+   658→                {data.recentActivity.length > auditPag.pageSize && (
+   659→                  <PaginationControls currentPage={auditPag.currentPage} totalPages={auditPag.totalPages} pageSize={auditPag.pageSize} pageSizeOptions={auditPag.pageSizeOptions} totalItems={data.recentActivity.length} rangeInfo={auditPag.rangeInfo} goToPage={auditPag.goToPage} setPageSize={auditPag.setPageSize} />
+   660→                )}
+   661→              </CardContent>
+   662→            </Card>
+   663→          )}
+   664→        </>
+   665→      )}
+   666→    </div>
+   667→  );
+   668→}
+   669→

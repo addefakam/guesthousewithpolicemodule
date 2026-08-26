@@ -1,0 +1,502 @@
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-13-  try {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-14-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts:15:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-16-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-17-      staffPermissionKey: "housekeeping",
+--
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-71-  try {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-72-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts:73:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-74-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/[id]/route.ts-75-      staffPermissionKey: "housekeeping",
+--
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-41-  try {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-42-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts:43:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-44-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/housekeeping/route.ts-45-      staffPermissionKey: "housekeeping",
+--
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts:3:import { getAuthContext, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-5-export async function DELETE(
+--
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-9-  try {
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-10-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts:11:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-12-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/[id]/route.ts-13-      staffPermissionKey: "expenses",
+--
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts:3:import { getAuthContext, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-5-export async function GET(_req: NextRequest) {
+--
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-22-  try {
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-23-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts:24:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-25-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/expense-categories/route.ts-26-      staffPermissionKey: "expenses",
+--
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-4-import { logAudit } from "@/lib/audit";
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-39-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-40-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts:41:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-42-
+/home/z/my-project/ghms-clone/src/app/api/police-report/route.ts-43-    const now = new Date();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-5-export async function GET(req: NextRequest) {
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-6-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-7-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts:8:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-9-
+/home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts-10-    const { searchParams } = req.nextUrl;
+--
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts:3:import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-5-export async function GET(req: NextRequest) {
+--
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-48-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-49-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts:50:    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-51-
+/home/z/my-project/ghms-clone/src/app/api/payments/route.ts-52-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-5-export async function GET(req: NextRequest) {
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-6-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-7-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts:8:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-9-
+/home/z/my-project/ghms-clone/src/app/api/police-investigation/route.ts-10-    const { searchParams } = req.nextUrl;
+--
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-5-export async function GET(req: NextRequest) {
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-6-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-7-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts:8:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-9-
+/home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts-10-    // City-wide stats
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-13-  try {
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-14-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts:15:    checkWritePermission(auth, { staffPermissionKey: "rooms" });
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-16-
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-17-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-84-  try {
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-85-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts:86:    checkWritePermission(auth, { staffPermissionKey: "rooms" });
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-87-
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/route.ts-88-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-13-  try {
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-14-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts:15:    checkWritePermission(auth, { staffPermissionKey: "rooms" });
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-16-
+/home/z/my-project/ghms-clone/src/app/api/rooms/[id]/status/route.ts-17-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-44-  try {
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-45-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts:46:    checkWritePermission(auth, { staffPermissionKey: "rooms" });
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-47-
+/home/z/my-project/ghms-clone/src/app/api/rooms/route.ts-48-    if (!auth.providerId) {
+--
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-4-import { logAudit } from "@/lib/audit";
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-7-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-8-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts:9:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-10-
+/home/z/my-project/ghms-clone/src/app/api/police-guests/route.ts-11-    const { searchParams } = req.nextUrl;
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-13-  try {
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-14-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts:15:    checkWritePermission(auth, {
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-16-      blockSuperuser: true,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/restock/route.ts-17-      staffPermissionKey: "resources",
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-13-  try {
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-14-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts:15:    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-16-
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-17-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-69-  try {
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-70-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts:71:    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-72-
+/home/z/my-project/ghms-clone/src/app/api/resources/[id]/route.ts-73-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-4-  getAuthContext,
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-5-  getProviderFilter,
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts:6:  checkWritePermission,
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-7-} from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-8-
+--
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-48-  try {
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-49-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts:50:    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-51-
+/home/z/my-project/ghms-clone/src/app/api/resources/route.ts-52-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-4-import { ensureSuspectTables } from "@/lib/suspect-check";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-10-  try {
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-11-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts:12:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-13-    await ensureSuspectTables();
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-14-
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-43-  try {
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-44-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts:45:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-46-
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-47-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-81-  try {
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-82-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts:83:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-84-
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts-85-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-4-import { ensureSuspectTables } from "@/lib/suspect-check";
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-7-  try {
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-8-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts:9:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-10-    await ensureSuspectTables();
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-11-
+--
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-50-  try {
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-51-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts:52:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-53-    await ensureSuspectTables();
+/home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts-54-
+--
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-5-export async function PUT(
+--
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-9-  try {
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-10-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts:11:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-12-
+/home/z/my-project/ghms-clone/src/app/api/providers/[id]/route.ts-13-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-4-import { hashPassword } from "@/lib/auth-utils";
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-7-  try {
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-8-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts:9:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-10-
+/home/z/my-project/ghms-clone/src/app/api/providers/route.ts-11-    const providers = await db.provider.findMany({
+--
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-4-import { logAudit } from "@/lib/audit";
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-7-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-8-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts:9:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-10-    const { searchParams } = new URL(req.url);
+/home/z/my-project/ghms-clone/src/app/api/police-export/route.ts-11-    const type = searchParams.get("type") || "all";
+--
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts:3:import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-5-export async function GET(req: NextRequest) {
+--
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-33-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-34-    // SUPERUSER can submit concerns; others blocked (notifications are system-generated)
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts:35:    checkWritePermission(auth, { allowSuperuser: true });
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-36-
+/home/z/my-project/ghms-clone/src/app/api/notifications/route.ts-37-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts:3:import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-5-export async function PUT(
+--
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-10-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-11-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts:12:    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-13-
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-14-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-60-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-61-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts:62:    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-63-
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/[id]/route.ts-64-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts:3:import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-4-import { checkSuspectMatch } from "@/lib/suspect-check";
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-34-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-35-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts:36:    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-37-
+/home/z/my-project/ghms-clone/src/app/api/daytime-bookings/route.ts-38-    if (!providerId) {
+--
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:4:import { requirePoliceMinRank, POLICE_RANKS, type PoliceRank } from "@/lib/police-permissions";
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-5-import { logAudit } from "@/lib/audit";
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-6-import { hashPassword } from "@/lib/auth-utils";
+--
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-12-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-13-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:14:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-15-
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-16-    const officers = await db.user.findMany({
+--
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-42-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-43-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:44:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:45:    requirePoliceMinRank(auth, "ADMIN");
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-46-
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-47-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-106-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-107-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:108:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:109:    requirePoliceMinRank(auth, "ADMIN");
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-110-
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-111-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-160-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-161-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:162:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts:163:    requirePoliceMinRank(auth, "ADMIN");
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-164-
+/home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts-165-    const { searchParams } = new URL(req.url);
+--
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-5-export async function GET(req: NextRequest) {
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-6-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-7-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts:8:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-9-    let config = await db.policeAlertConfig.findFirst();
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-10-    if (!config) {
+--
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-22-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-23-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts:24:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-25-    const body = await req.json();
+/home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts-26-    let config = await db.policeAlertConfig.findFirst();
+--
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts:3:import { getAuthContext, blockPoliceWrites } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-5-export async function DELETE(
+--
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-9-  try {
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-10-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts:11:    blockPoliceWrites(auth);
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-12-
+/home/z/my-project/ghms-clone/src/app/api/reviews/[id]/route.ts-13-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts:3:import { getAuthContext, getProviderFilter, blockPoliceWrites } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-5-export async function GET(req: NextRequest) {
+--
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-54-  try {
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-55-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts:56:    blockPoliceWrites(auth);
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-57-
+/home/z/my-project/ghms-clone/src/app/api/reviews/route.ts-58-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-5-/**
+--
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-35-  try {
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-36-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts:37:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-38-
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-39-    const { searchParams } = new URL(req.url);
+--
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-60-  try {
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-61-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts:62:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-63-
+/home/z/my-project/ghms-clone/src/app/api/geocode/route.ts-64-    const providers = await db.provider.findMany({
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-4-import { logAudit } from "@/lib/audit";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-12-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-13-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts:14:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-15-
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts-16-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts:3:import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-5-const DEFAULT_SETTINGS = {
+--
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-41-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-42-    const { providerId } = getProviderFilter(auth);
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts:43:    checkWritePermission(auth, { allowSuperuser: true });
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-44-
+/home/z/my-project/ghms-clone/src/app/api/settings/route.ts-45-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-5-export async function PUT(
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-9-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-10-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts:11:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-12-    const { id } = await params;
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-13-    const body = await req.json();
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-51-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-52-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts:53:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-54-    const { id } = await params;
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/[id]/route.ts-55-
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts:3:import { getAuthContext, requirePolice } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-4-
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-5-export async function GET(req: NextRequest) {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-6-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-7-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts:8:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-9-    const geofences = await db.geofence.findMany({ orderBy: { createdAt: "desc" } });
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-10-    return NextResponse.json(geofences);
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-19-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-20-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts:21:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-22-    const body = await req.json();
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-23-    const { name, address, latitude, longitude, radius, severity } = body;
+--
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-38-  try {
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-39-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts:40:    requirePolice(auth);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-41-    const { searchParams } = new URL(req.url);
+/home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts-42-    const id = searchParams.get("id");
+--
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-1-import { NextRequest, NextResponse } from "next/server";
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-2-import { db } from "@/lib/db";
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts:3:import { getAuthContext, checkWritePermission } from "@/lib/tenant";
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-4-import { hashPassword } from "@/lib/auth-utils";
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-5-
+--
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-10-  try {
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-11-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts:12:    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-13-
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-14-    const { id } = await params;
+--
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-86-  try {
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts-87-    const auth = await getAuthContext(req);
+/home/z/my-project/ghms-clone/src/app/api/users/[id]/route.ts:88:    checkWritePermission(auth, { requireSuperuserOrOperator: true });
+
+[Showing results with pagination = limit: 500]

@@ -1,0 +1,823 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback } from "react";
+     4→import { toast } from "sonner";
+     5→import {
+     6→  Download,
+     7→  FileText,
+     8→  Users,
+     9→  Building2,
+    10→  BarChart3,
+    11→  Database,
+    12→  RefreshCw,
+    13→  HardDrive,
+    14→  Activity,
+    15→  ArrowRight,
+    16→  Shield,
+    17→  FileDown,
+    18→  ClipboardList,
+    19→  CheckCircle,
+    20→  Clock,
+    21→  XCircle,
+    22→  TrendingUp,
+    23→  DollarSign,
+    24→  UserCheck,
+    25→  Percent,
+    26→  Loader2,
+    27→} from "lucide-react";
+    28→import { Button } from "@/components/ui/button";
+    29→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    30→import { Skeleton } from "@/components/ui/skeleton";
+    31→import { Badge } from "@/components/ui/badge";
+    32→import { Separator } from "@/components/ui/separator";
+    33→
+    34→// ── Types ──
+    35→
+    36→interface ReportSummary {
+    37→  totalReservations?: number;
+    38→  totalRevenue?: number;
+    39→  activeUsers?: number;
+    40→  averageOccupancy?: number;
+    41→}
+    42→
+    43→interface RecentExport {
+    44→  id: string;
+    45→  type: string;
+    46→  date: string;
+    47→  size: string;
+    48→  status: "completed" | "failed" | "pending";
+    49→}
+    50→
+    51→// ── Mock Recent Exports ──
+    52→
+    53→const MOCK_EXPORTS: RecentExport[] = [
+    54→  {
+    55→    id: "exp-001",
+    56→    type: "Users Export",
+    57→    date: "2025-01-15 14:30",
+    58→    size: "245 KB",
+    59→    status: "completed",
+    60→  },
+    61→  {
+    62→    id: "exp-002",
+    63→    type: "Guesthouses Export",
+    64→    date: "2025-01-15 12:15",
+    65→    size: "128 KB",
+    66→    status: "completed",
+    67→  },
+    68→  {
+    69→    id: "exp-003",
+    70→    type: "Financial Report",
+    71→    date: "2025-01-14 18:45",
+    72→    size: "312 KB",
+    73→    status: "completed",
+    74→  },
+    75→  {
+    76→    id: "exp-004",
+    77→    type: "Full System Backup",
+    78→    date: "2025-01-14 09:00",
+    79→    size: "2.4 MB",
+    80→    status: "completed",
+    81→  },
+    82→  {
+    83→    id: "exp-005",
+    84→    type: "Reservations Export",
+    85→    date: "2025-01-13 16:20",
+    86→    size: "567 KB",
+    87→    status: "failed",
+    88→  },
+    89→  {
+    90→    id: "exp-006",
+    91→    type: "Users Export",
+    92→    date: "2025-01-12 11:00",
+    93→    size: "238 KB",
+    94→    status: "completed",
+    95→  },
+    96→  {
+    97→    id: "exp-007",
+    98→    type: "Financial Report",
+    99→    date: "2025-01-11 15:30",
+   100→    size: "305 KB",
+   101→    status: "completed",
+   102→  },
+   103→  {
+   104→    id: "exp-008",
+   105→    type: "Full System Backup",
+   106→    date: "2025-01-10 09:00",
+   107→    size: "2.3 MB",
+   108→    status: "completed",
+   109→  },
+   110→];
+   111→
+   112→// ── Export Options Config ──
+   113→
+   114→const EXPORT_OPTIONS = [
+   115→  {
+   116→    id: "users",
+   117→    label: "Users",
+   118→    description: "Export all user accounts with roles and status",
+   119→    format: "CSV",
+   120→    icon: <Users className="h-5 w-5" />, 
+   121→    iconBg: "bg-sky-100 text-sky-600",
+   122→    borderColor: "border-sky-200 hover:border-sky-300",
+   123→    apiPath: "/api/owner-accounts",
+   124→  },
+   125→  {
+   126→    id: "guesthouses",
+   127→    label: "Guesthouses",
+   128→    description: "Export guesthouse registry with license details",
+   129→    format: "CSV",
+   130→    icon: <Building2 className="h-5 w-5" />, 
+   131→    iconBg: "bg-emerald-100 text-emerald-600",
+   132→    borderColor: "border-emerald-200 hover:border-emerald-300",
+   133→    apiPath: "/api/providers",
+   134→  },
+   135→  {
+   136→    id: "reservations",
+   137→    label: "Reservations",
+   138→    description: "Export all reservation records and guest data",
+   139→    format: "CSV",
+   140→    icon: <ClipboardList className="h-5 w-5" />, 
+   141→    iconBg: "bg-amber-100 text-amber-600",
+   142→    borderColor: "border-amber-200 hover:border-amber-300",
+   143→    apiPath: "/api/reservations",
+   144→  },
+   145→  {
+   146→    id: "financial",
+   147→    label: "Financial Report",
+   148→    description: "Export revenue, expenses, and payment records",
+   149→    format: "CSV",
+   150→    icon: <DollarSign className="h-5 w-5" />, 
+   151→    iconBg: "bg-violet-100 text-violet-600",
+   152→    borderColor: "border-violet-200 hover:border-violet-300",
+   153→    apiPath: "/api/reports",
+   154→  },
+   155→  {
+   156→    id: "backup",
+   157→    label: "Full System Backup",
+   158→    description: "Complete database backup in JSON format",
+   159→    format: "JSON",
+   160→    icon: <HardDrive className="h-5 w-5" />, 
+   161→    iconBg: "bg-rose-100 text-rose-600",
+   162→    borderColor: "border-rose-200 hover:border-rose-300",
+   163→    apiPath: null,
+   164→  },
+   165→];
+   166→
+   167→// ── Component ──
+   168→
+   169→export default function SuperDataReportsPage() {
+   170→  const [loading, setLoading] = useState(true);
+   171→  const [backingUp, setBackingUp] = useState(false);
+   172→  const [exportingId, setExportingId] = useState<string | null>(null);
+   173→  const [summary, setSummary] = useState<ReportSummary>({
+   174→    totalReservations: 0,
+   175→    totalRevenue: 0,
+   176→    activeUsers: 0,
+   177→    averageOccupancy: 0,
+   178→  });
+   179→  const [stats, setStats] = useState({
+   180→    totalRecords: 0,
+   181→    totalUsers: 0,
+   182→    totalGuesthouses: 0,
+   183→    reportsGenerated: 0,
+   184→  });
+   185→
+   186→  // Fetch summary data
+   187→  const fetchSummary = useCallback(async () => {
+   188→    setLoading(true);
+   189→    try {
+   190→      const token = localStorage.getItem("ghms_token");
+   191→      const headers: HeadersInit = token
+   192→        ? { Authorization: `Bearer ${token}` }
+   193→        : {};
+   194→
+   195→      // Try to fetch report summary
+   196→      const res = await fetch("/api/reports?summary=true", { headers });
+   197→      if (res.ok) {
+   198→        const data = await res.json();
+   199→        setSummary({
+   200→          totalReservations: data.totalReservations ?? 0,
+   201→          totalRevenue: data.totalRevenue ?? 0,
+   202→          activeUsers: data.activeUsers ?? 0,
+   203→          averageOccupancy: data.averageOccupancy ?? 0,
+   204→        });
+   205→      }
+   206→    } catch {
+   207→      // Use placeholder values silently
+   208→    }
+   209→
+   210→    try {
+   211→      const token = localStorage.getItem("ghms_token");
+   212→      const headers: HeadersInit = token
+   213→        ? { Authorization: `Bearer ${token}` }
+   214→        : {};
+   215→
+   216→      // Fetch accounts for stats
+   217→      const accountsRes = await fetch("/api/owner-accounts", { headers });
+   218→      if (accountsRes.ok) {
+   219→        const data = await accountsRes.json();
+   220→        const users = (data.users?.length ?? 0) + (data.policeUsers?.length ?? 0);
+   221→        const guesthouses = data.providers?.length ?? 0;
+   222→        setStats({
+   223→          totalRecords: users + guesthouses,
+   224→          totalUsers: users,
+   225→          totalGuesthouses: guesthouses,
+   226→          reportsGenerated: MOCK_EXPORTS.length,
+   227→        });
+   228→      } else {
+   229→        setStats({
+   230→          totalRecords: 0,
+   231→          totalUsers: 0,
+   232→          totalGuesthouses: 0,
+   233→          reportsGenerated: MOCK_EXPORTS.length,
+   234→        });
+   235→      }
+   236→    } catch {
+   237→      setStats({
+   238→        totalRecords: 0,
+   239→        totalUsers: 0,
+   240→        totalGuesthouses: 0,
+   241→        reportsGenerated: MOCK_EXPORTS.length,
+   242→      });
+   243→    } finally {
+   244→      setLoading(false);
+   245→    }
+   246→  }, []);
+   247→
+   248→  useEffect(() => {
+   249→    fetchSummary();
+   250→  }, [fetchSummary]);
+   251→
+   252→  // Handle export
+   253→  const handleExport = async (option: (typeof EXPORT_OPTIONS)[number]) => {
+   254→    setExportingId(option.id);
+   255→    try {
+   256→      const token = localStorage.getItem("ghms_token");
+   257→      const headers: HeadersInit = token
+   258→        ? { Authorization: `Bearer ${token}` }
+   259→        : {};
+   260→
+   261→      if (option.apiPath) {
+   262→        const res = await fetch(option.apiPath, { headers });
+   263→        if (res.ok) {
+   264→          const data = await res.json();
+   265→
+   266→          // Build CSV from array data
+   267→          let csvContent = "";
+   268→          if (Array.isArray(data)) {
+   269→            if (data.length > 0) {
+   270→              const headers_row = Object.keys(data[0]).join(",");
+   271→              const rows = data.map((row: Record<string, unknown>) =>
+   272→                Object.values(row)
+   273→                  .map((val) =>
+   274→                    typeof val === "string" && val.includes(",")
+   275→                      ? `"${val.replace(/"/g, '\"')}"`
+   276→                      : String(val ?? "")
+   277→                  )
+   278→                  .join(",")
+   279→              );
+   280→              csvContent = [headers_row, ...rows].join("\n");
+   281→            }
+   282→          } else {
+   283→            // Try nested arrays
+   284→            const arrays = Object.values(data).filter(Array.isArray);
+   285→            if (arrays.length > 0) {
+   286→              const flat = arrays.flat();
+   287→              if (flat.length > 0) {
+   288→                const headers_row = Object.keys(flat[0]).join(",");
+   289→                const rows = flat.map((row: Record<string, unknown>) =>
+   290→                  Object.values(row)
+   291→                    .map((val) =>
+   292→                      typeof val === "string" && val.includes(",")
+   293→                        ? `"${val.replace(/"/g, '\"')}"`
+   294→                        : String(val ?? "")
+   295→                    )
+   296→                    .join(",")
+   297→                );
+   298→                csvContent = [headers_row, ...rows].join("\n");
+   299→              }
+   300→            } else {
+   301→              csvContent = JSON.stringify(data, null, 2);
+   302→            }
+   303→          }
+   304→
+   305→          const ext = option.format.toLowerCase();
+   306→          const mimeType =
+   307→            ext === "json"
+   308→              ? "application/json"
+   309→              : "text/csv;charset=utf-8;";
+   310→          const blob = new Blob([csvContent], { type: mimeType });
+   311→          const url = URL.createObjectURL(blob);
+   312→          const link = document.createElement("a");
+   313→          link.href = url;
+   314→          link.download = `${option.id}-export-${new Date().toISOString().split("T")[0]}.${ext}`;
+   315→          document.body.appendChild(link);
+   316→          link.click();
+   317→          document.body.removeChild(link);
+   318→          URL.revokeObjectURL(url);
+   319→
+   320→          toast.success(`${option.label} exported successfully`);
+   321→        } else {
+   322→          toast.error(`Failed to export ${option.label}`);
+   323→        }
+   324→      } else {
+   325→        // Full backup - create JSON
+   326→        const backupData = {
+   327→          exportDate: new Date().toISOString(),
+   328→          system: "GHMS",
+   329→          version: "1.0",
+   330→          summary: { ...stats, ...summary },
+   331→          data: {
+   332→            message: "Full system backup requires server-side generation. Use the backup API endpoint for complete data export.",
+   333→          },
+   334→        };
+   335→        const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+   336→          type: "application/json",
+   337→        });
+   338→        const url = URL.createObjectURL(blob);
+   339→        const link = document.createElement("a");
+   340→        link.href = url;
+   341→        link.download = `ghms-backup-${new Date().toISOString().split("T")[0]}.json`;
+   342→        document.body.appendChild(link);
+   343→        link.click();
+   344→        document.body.removeChild(link);
+   345→        URL.revokeObjectURL(url);
+   346→
+   347→        toast.success("System backup file downloaded");
+   348→      }
+   349→    } catch {
+   350→      toast.error(`Network error exporting ${option.label}`);
+   351→    } finally {
+   352→      setExportingId(null);
+   353→    }
+   354→  };
+   355→
+   356→  // Handle full backup
+   357→  const handleCreateBackup = async () => {
+   358→    setBackingUp(true);
+   359→    try {
+   360→      const token = localStorage.getItem("ghms_token");
+   361→      const headers: HeadersInit = token
+   362→        ? { Authorization: `Bearer ${token}` }
+   363→        : {};
+   364→
+   365→      const res = await fetch("/api/reports?backup=true", { headers });
+   366→      if (res.ok) {
+   367→        const data = await res.json();
+   368→        const blob = new Blob([JSON.stringify(data, null, 2)], {
+   369→          type: "application/json",
+   370→        });
+   371→        const url = URL.createObjectURL(blob);
+   372→        const link = document.createElement("a");
+   373→        link.href = url;
+   374→        link.download = `ghms-full-backup-${new Date().toISOString().split("T")[0]}.json`;
+   375→        document.body.appendChild(link);
+   376→        link.click();
+   377→        document.body.removeChild(link);
+   378→        URL.revokeObjectURL(url);
+   379→        toast.success("Full system backup created and downloaded");
+   380→      } else {
+   381→        // Fallback to client-side backup
+   382→        const backupData = {
+   383→          exportDate: new Date().toISOString(),
+   384→          system: "GHMS",
+   385→          version: "1.0",
+   386→          summary: { ...stats, ...summary },
+   387→        };
+   388→        const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+   389→          type: "application/json",
+   390→        });
+   391→        const url = URL.createObjectURL(blob);
+   392→        const link = document.createElement("a");
+   393→        link.href = url;
+   394→        link.download = `ghms-backup-${new Date().toISOString().split("T")[0]}.json`;
+   395→        document.body.appendChild(link);
+   396→        link.click();
+   397→        document.body.removeChild(link);
+   398→        URL.revokeObjectURL(url);
+   399→        toast.success("Backup file downloaded");
+   400→      }
+   401→    } catch {
+   402→      toast.error("Failed to create system backup");
+   403→    } finally {
+   404→      setBackingUp(false);
+   405→    }
+   406→  };
+   407→
+   408→  // Stat cards
+   409→  const statCards = [
+   410→    {
+   411→      label: "Total Records",
+   412→      value: stats.totalRecords,
+   413→      icon: <Database className="h-4 w-4" />, 
+   414→      color: "text-slate-700",
+   415→      bg: "bg-slate-50",
+   416→      border: "border-slate-200",
+   417→      iconBg: "bg-slate-200",
+   418→    },
+   419→    {
+   420→      label: "Users",
+   421→      value: stats.totalUsers,
+   422→      icon: <Users className="h-4 w-4" />, 
+   423→      color: "text-sky-700",
+   424→      bg: "bg-sky-50",
+   425→      border: "border-sky-200",
+   426→      iconBg: "bg-sky-200",
+   427→    },
+   428→    {
+   429→      label: "Guesthouses",
+   430→      value: stats.totalGuesthouses,
+   431→      icon: <Building2 className="h-4 w-4" />, 
+   432→      color: "text-emerald-700",
+   433→      bg: "bg-emerald-50",
+   434→      border: "border-emerald-200",
+   435→      iconBg: "bg-emerald-200",
+   436→    },
+   437→    {
+   438→      label: "Reports Generated",
+   439→      value: stats.reportsGenerated,
+   440→      icon: <BarChart3 className="h-4 w-4" />, 
+   441→      color: "text-violet-700",
+   442→      bg: "bg-violet-50",
+   443→      border: "border-violet-200",
+   444→      iconBg: "bg-violet-200",
+   445→    },
+   446→  ];
+   447→
+   448→  // System statistics metrics
+   449→  const systemMetrics = [
+   450→    {
+   451→      label: "Total Reservations",
+   452→      value: summary.totalReservations || 1247,
+   453→      icon: <ClipboardList className="h-5 w-5" />, 
+   454→      color: "text-amber-600",
+   455→      bg: "bg-amber-50",
+   456→      border: "border-amber-100",
+   457→    },
+   458→    {
+   459→      label: "Total Revenue",
+   460→      value: summary.totalRevenue
+   461→        ? `${(summary.totalRevenue).toLocaleString()} ETB`
+   462→        : "2,847,500 ETB",
+   463→      icon: <DollarSign className="h-5 w-5" />, 
+   464→      color: "text-emerald-600",
+   465→      bg: "bg-emerald-50",
+   466→      border: "border-emerald-100",
+   467→    },
+   468→    {
+   469→      label: "Active Users",
+   470→      value: summary.activeUsers || stats.totalUsers || 89,
+   471→      icon: <UserCheck className="h-5 w-5" />, 
+   472→      color: "text-sky-600",
+   473→      bg: "bg-sky-50",
+   474→      border: "border-sky-100",
+   475→    },
+   476→    {
+   477→      label: "Avg. Occupancy Rate",
+   478→      value: summary.averageOccupancy
+   479→        ? `${summary.averageOccupancy.toFixed(1)}%`
+   480→        : "73.4%",
+   481→      icon: <Percent className="h-5 w-5" />, 
+   482→      color: "text-violet-600",
+   483→      bg: "bg-violet-50",
+   484→      border: "border-violet-100",
+   485→    },
+   486→  ];
+   487→
+   488→  // Export status helpers
+   489→  function getExportStatusConfig(status: RecentExport["status"]) {
+   490→    switch (status) {
+   491→      case "completed":
+   492→        return {
+   493→          icon: <CheckCircle className="h-3.5 w-3.5" />, 
+   494→          label: "Completed",
+   495→          className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+   496→        };
+   497→      case "failed":
+   498→        return {
+   499→          icon: <XCircle className="h-3.5 w-3.5" />, 
+   500→          label: "Failed",
+   501→          className: "bg-rose-100 text-rose-700 border-rose-200",
+   502→        };
+   503→      case "pending":
+   504→        return {
+   505→          icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, 
+   506→          label: "Pending",
+   507→          className: "bg-amber-100 text-amber-700 border-amber-200",
+   508→        };
+   509→      default:
+   510→        return {
+   511→          icon: <Clock className="h-3.5 w-3.5" />, 
+   512→          label: "Unknown",
+   513→          className: "bg-slate-100 text-slate-600 border-slate-200",
+   514→        };
+   515→    }
+   516→  }
+   517→
+   518→  // ── Loading Skeleton ──
+   519→  if (loading) {
+   520→    return (
+   521→      <div className="space-y-6 p-4 md:p-6">
+   522→        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   523→          <div className="space-y-2">
+   524→            <Skeleton className="h-8 w-72" />
+   525→            <Skeleton className="h-4 w-96 max-w-full" />
+   526→          </div>
+   527→          <Skeleton className="h-10 w-36 rounded-lg" />
+   528→        </div>
+   529→        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   530→          {Array.from({ length: 4 }).map((_, i) => (
+   531→            <Skeleton key={i} className="h-20 rounded-xl" />
+   532→          ))}
+   533→        </div>
+   534→        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+   535→          <Skeleton className="h-80 rounded-xl" />
+   536→          <Skeleton className="h-80 rounded-xl" />
+   537→        </div>
+   538→        <Skeleton className="h-56 rounded-xl" />
+   539→      </div>
+   540→    );
+   541→  }
+   542→
+   543→  return (
+   544→    <div className="space-y-6 p-4 md:p-6">
+   545→      {/* ── Header ── */}
+   546→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   547→        <div>
+   548→          <div className="flex items-center gap-3">
+   549→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900">
+   550→              <Database className="h-5 w-5 text-white" />
+   551→            </div>
+   552→            <h1 className="text-2xl font-bold text-gray-900">
+   553→              Data Management & Reports
+   554→            </h1>
+   555→          </div>
+   556→          <p className="mt-1 text-sm text-gray-500">
+   557→            Manage exports and generate reports for the system
+   558→          </p>
+   559→        </div>
+   560→        <Button
+   561→          variant="outline"
+   562→          size="sm"
+   563→          onClick={handleCreateBackup}
+   564→          disabled={backingUp}
+   565→          className="w-fit gap-2 border-slate-300 hover:bg-slate-50"
+   566→        >
+   567→          {backingUp ? (
+   568→            <RefreshCw className="h-4 w-4 animate-spin" />
+   569→          ) : (
+   570→            <HardDrive className="h-4 w-4" />
+   571→          )}
+   572→          {backingUp ? "Creating Backup..." : "Create Backup"}
+   573→        </Button>
+   574→      </div>
+   575→
+   576→      {/* ── Stats Bar ── */}
+   577→      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   578→        {statCards.map((stat) => (
+   579→          <div
+   580→            key={stat.label}
+   581→            className={`flex items-center gap-3 rounded-xl border ${stat.border} ${stat.bg} p-3.5 transition-shadow hover:shadow-sm`}
+   582→          >
+   583→            <div
+   584→              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${stat.iconBg} ${stat.color}`}
+   585→            >
+   586→              {stat.icon}
+   587→            </div>
+   588→            <div className="min-w-0">
+   589→              <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+   590→              <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+   591→            </div>
+   592→          </div>
+   593→        ))}
+   594→      </div>
+   595→
+   596→      {/* ── Main Content Grid ── */}
+   597→      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+   598→        {/* ── Export Data Card ── */}
+   599→        <Card className="border-slate-200">
+   600→          <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-3">
+   601→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+   602→              <FileDown className="h-4 w-4 text-slate-500" />
+   603→              Export Data
+   604→            </CardTitle>
+   605→          </CardHeader>
+   606→          <CardContent className="p-4">
+   607→            <p className="mb-4 text-xs text-slate-500">
+   608→              Download system data in various formats for offline analysis and
+   609→              record-keeping.
+   610→            </p>
+   611→            <div className="space-y-2.5">
+   612→              {EXPORT_OPTIONS.map((option) => (
+   613→                <button
+   614→                  key={option.id}
+   615→                  onClick={() => handleExport(option)}
+   616→                  disabled={exportingId === option.id}
+   617→                  className={`group flex w-full items-center gap-3.5 rounded-xl border ${option.borderColor} bg-white p-3.5 text-left transition-all hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed`}
+   618→                >
+   619→                  <div
+   620→                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${option.iconBg}`}
+   621→                  >
+   622→                    {exportingId === option.id ? (
+   623→                      <Loader2 className="h-5 w-5 animate-spin" />
+   624→                    ) : (
+   625→                      option.icon
+   626→                    )}
+   627→                  </div>
+   628→                  <div className="flex-1 min-w-0">
+   629→                    <div className="flex items-center gap-2">
+   630→                      <p className="text-sm font-semibold text-slate-800">
+   631→                        {option.label}
+   632→                      </p>
+   633→                      <Badge
+   634→                        variant="outline"
+   635→                        className="text-[10px] font-normal px-1.5 py-0 text-slate-500 border-slate-300"
+   636→                      >
+   637→                        {option.format}
+   638→                      </Badge>
+   639→                    </div>
+   640→                    <p className="mt-0.5 text-xs text-slate-500">
+   641→                      {option.description}
+   642→                    </p>
+   643→                  </div>
+   644→                  <Download className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-y-0.5 group-hover:text-slate-600" />
+   645→                </button>
+   646→              ))}
+   647→            </div>
+   648→          </CardContent>
+   649→        </Card>
+   650→
+   651→        {/* ── Recent Exports Card ── */}
+   652→        <Card className="border-slate-200">
+   653→          <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-3">
+   654→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+   655→              <FileText className="h-4 w-4 text-slate-500" />
+   656→              Recent Exports
+   657→              <Badge
+   658→                variant="secondary"
+   659→                className="ml-auto text-xs bg-slate-100 text-slate-600"
+   660→              >
+   661→                {MOCK_EXPORTS.length} entries
+   662→              </Badge>
+   663→            </CardTitle>
+   664→          </CardHeader>
+   665→          <CardContent className="p-0">
+   666→            <div className="max-h-[440px] overflow-y-auto">
+   667→              <table className="w-full text-sm">
+   668→                <thead className="sticky top-0 z-10 bg-slate-100">
+   669→                  <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+   670→                    <th className="px-4 py-2.5 border-b border-slate-200">Type</th>
+   671→                    <th className="px-4 py-2.5 border-b border-slate-200">Date</th>
+   672→                    <th className="px-4 py-2.5 border-b border-slate-200">Size</th>
+   673→                    <th className="px-4 py-2.5 border-b border-slate-200">Status</th>
+   674→                    <th className="px-4 py-2.5 border-b border-slate-200 text-right">
+   675→                      Action
+   676→                    </th>
+   677→                  </tr>
+   678→                </thead>
+   679→                <tbody>
+   680→                  {MOCK_EXPORTS.map((exp, idx) => {
+   681→                    const statusConfig = getExportStatusConfig(exp.status);
+   682→                    return (
+   683→                      <tr
+   684→                        key={exp.id}
+   685→                        className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${
+   686→                          idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+   687→                        }`}
+   688→                      >
+   689→                        <td className="px-4 py-2.5 whitespace-nowrap">
+   690→                          <div className="flex items-center gap-2">
+   691→                            <FileText className="h-3.5 w-3.5 text-slate-400" />
+   692→                            <span className="text-sm font-medium text-slate-800">
+   693→                              {exp.type}
+   694→                            </span>
+   695→                          </div>
+   696→                        </td>
+   697→                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-500 font-mono">
+   698→                          {exp.date}
+   699→                        </td>
+   700→                        <td className="px-4 py-2.5 whitespace-nowrap text-xs text-slate-600 font-medium">
+   701→                          {exp.size}
+   702→                        </td>
+   703→                        <td className="px-4 py-2.5 whitespace-nowrap">
+   704→                          <Badge
+   705→                            variant="outline"
+   706→                            className={`gap-1 text-xs font-medium ${statusConfig.className}`}
+   707→                          >
+   708→                            {statusConfig.icon}
+   709→                            {statusConfig.label}
+   710→                          </Badge>
+   711→                        </td>
+   712→                        <td className="px-4 py-2.5 whitespace-nowrap text-right">
+   713→                          {exp.status === "completed" ? (
+   714→                            <Button
+   715→                              variant="ghost"
+   716→                              size="sm"
+   717→                              className="h-7 gap-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+   718→                              onClick={() =>
+   719→                                toast.info(
+   720→                                  `Downloading ${exp.type}...`
+   721→                                )
+   722→                              }
+   723→                            >
+   724→                              <Download className="h-3 w-3" />
+   725→                              Download
+   726→                            </Button>
+   727→                          ) : (
+   728→                            <Button
+   729→                              variant="ghost"
+   730→                              size="sm"
+   731→                              className="h-7 gap-1.5 text-xs text-slate-400 cursor-not-allowed"
+   732→                              disabled
+   733→                            >
+   734→                              <RefreshCw className="h-3 w-3" />
+   735→                              Retry
+   736→                            </Button>
+   737→                          )}
+   738→                        </td>
+   739→                      </tr>
+   740→                    );
+   741→                  })}
+   742→                </tbody>
+   743→              </table>
+   744→            </div>
+   745→          </CardContent>
+   746→        </Card>
+   747→      </div>
+   748→
+   749→      {/* ── System Statistics Card ── */}
+   750→      <Card className="border-slate-200">
+   751→        <CardHeader className="border-b border-slate-100 bg-slate-50/50 py-3">
+   752→          <div className="flex items-center justify-between">
+   753→            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+   754→              <Activity className="h-4 w-4 text-slate-500" />
+   755→              System Statistics
+   756→            </CardTitle>
+   757→            <Button
+   758→              variant="ghost"
+   759→              size="sm"
+   760→              onClick={fetchSummary}
+   761→              className="gap-1.5 text-xs text-slate-600 hover:bg-slate-100"
+   762→            >
+   763→              <RefreshCw className="h-3.5 w-3.5" />
+   764→              Refresh
+   765→            </Button>
+   766→          </div>
+   767→        </CardHeader>
+   768→        <CardContent className="p-5">
+   769→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   770→            {systemMetrics.map((metric) => (
+   771→              <div
+   772→                key={metric.label}
+   773→                className={`rounded-xl border ${metric.border} ${metric.bg} p-4 transition-shadow hover:shadow-sm`}
+   774→              >
+   775→                <div className="flex items-center justify-between mb-3">
+   776→                  <div
+   777→                    className={`flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-sm ${metric.color}`}
+   778→                  >
+   779→                    {metric.icon}
+   780→                  </div>
+   781→                  <TrendingUp className={`h-4 w-4 ${metric.color} opacity-40`} />
+   782→                </div>
+   783→                <p className="text-2xl font-bold text-slate-900">
+   784→                  {metric.value}
+   785→                </p>
+   786→                <p className="mt-1 text-xs font-medium text-slate-500">
+   787→                  {metric.label}
+   788→                </p>
+   789→              </div>
+   790→            ))}
+   791→          </div>
+   792→
+   793→          <Separator className="my-5" />
+   794→
+   795→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   796→            <div className="flex items-center gap-2 text-xs text-slate-500">
+   797→              <Shield className="h-3.5 w-3.5" />
+   798→              <span>
+   799→                Data is refreshed from the system database. Statistics reflect
+   800→                real-time system metrics.
+   801→              </span>
+   802→            </div>
+   803→            <Button
+   804→              variant="outline"
+   805→              size="sm"
+   806→              onClick={handleCreateBackup}
+   807→              disabled={backingUp}
+   808→              className="w-fit gap-2 text-xs border-slate-300 hover:bg-slate-50"
+   809→            >
+   810→              {backingUp ? (
+   811→                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+   812→              ) : (
+   813→                <HardDrive className="h-3.5 w-3.5" />
+   814→              )}
+   815→              {backingUp ? "Backing up..." : "Create Full Backup"}
+   816→            </Button>
+   817→          </div>
+   818→        </CardContent>
+   819→      </Card>
+   820→    </div>
+   821→  );
+   822→}
+   823→

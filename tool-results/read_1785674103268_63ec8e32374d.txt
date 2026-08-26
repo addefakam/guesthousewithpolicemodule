@@ -1,0 +1,745 @@
+     1→"use client";
+     2→
+     3→import React, { useSyncExternalStore, useState, useEffect } from "react";
+     4→import {
+     5→  LayoutDashboard,
+     6→  Bed,
+     7→  BedDouble,
+     8→  Users,
+     9→  CalendarCheck,
+    10→  Sun,
+    11→  Receipt,
+    12→  Package,
+    13→  Sparkles,
+    14→  UserCog,
+    15→  BarChart3,
+    16→  Settings,
+    17→  Bell,
+    18→  Building2,
+    19→  Search,
+    20→  Shield,
+    21→  Star,
+    22→  ChevronLeft,
+    23→  Menu,
+    24→  UsersRound,
+    25→  ShieldAlert,
+    26→  UserX,
+    27→  ScanLine,
+    28→  CreditCard,
+    29→  ShieldCheck,
+    30→  Clock,
+    31→  AlertTriangle,
+    32→  UserCircle,
+    33→  UserPlus,
+    34→  ChevronDown,
+    35→  LogOut,
+    36→  BrainCircuit,
+    37→  ClipboardList,
+    38→  Database,
+    39→  FileDown,
+    40→  RefreshCw,
+    41→  Activity,
+    42→  Globe,
+    43→  Hotel,
+    44→  Wrench,
+    45→  DoorOpen,
+    46→} from "lucide-react";
+    47→
+    48→import { useAppStore, type CurrentUser } from "@/lib/store";
+    49→import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
+    50→import { useIsMobile } from "@/hooks/use-mobile";
+    51→import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
+    52→import { apiLogout } from "@/lib/api";
+    53→
+    54→import { Button } from "@/components/ui/button";
+    55→import { ScrollArea } from "@/components/ui/scroll-area";
+    56→import { Separator } from "@/components/ui/separator";
+    57→import { Badge } from "@/components/ui/badge";
+    58→import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+    59→import {
+    60→  Sheet,
+    61→  SheetContent,
+    62→  SheetHeader,
+    63→  SheetTitle,
+    64→  SheetTrigger,
+    65→} from "@/components/ui/sheet";
+    66→import {
+    67→  DropdownMenu,
+    68→  DropdownMenuContent,
+    69→  DropdownMenuItem,
+    70→  DropdownMenuSeparator,
+    71→  DropdownMenuTrigger,
+    72→} from "@/components/ui/dropdown-menu";
+    73→
+    74→// ── Navigation item definition ──
+    75→interface NavItem {
+    76→  page: string;
+    77→  label: string;
+    78→  icon: React.ElementType;
+    79→  badge?: string;
+    80→}
+    81→
+    82→// ── All available navigation items ──
+    83→const ALL_NAV_ITEMS: NavItem[] = [
+    84→  { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    85→  { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+    86→  { page: "operations", label: "Operations", icon: Wrench },
+    87→  { page: "users", label: "Account Management", icon: UserCog },
+    88→  { page: "reports", label: "Reports", icon: BarChart3 },
+    89→  { page: "settings", label: "Settings", icon: Settings },
+    90→];
+    91→
+    92→const POLICE_NAV_ITEMS: NavItem[] = [
+    93→  {
+    94→    page: "police-dashboard",
+    95→    label: "Dashboard",
+    96→    icon: LayoutDashboard,
+    97→  },
+    98→  { page: "providers", label: "Providers", icon: Building2 },
+    99→  {
+   100→    page: "police-room-availability",
+   101→    label: "Room Availability",
+   102→    icon: BedDouble,
+   103→  },
+   104→  {
+   105→    page: "police-guests",
+   106→    label: "Guests Search",
+   107→    icon: Search,
+   108→  },
+   109→  {
+   110→    page: "suspect-alerts",
+   111→    label: "Suspect Alerts",
+   112→    icon: ShieldAlert,
+   113→    badge: "new",
+   114→  },
+   115→  {
+   116→    page: "suspected-persons",
+   117→    label: "Suspected Persons",
+   118→    icon: UserX,
+   119→  },
+   120→  {
+   121→    page: "police-investigation",
+   122→    label: "Investigation & Settings",
+   123→    icon: Search,
+   124→  },
+   125→  {
+   126→    page: "police-security",
+   127→    label: "Security",
+   128→    icon: Shield,
+   129→  },
+   130→  {
+   131→    page: "anomaly-detection",
+   132→    label: "Anomaly Detection",
+   133→    icon: BrainCircuit,
+   134→  },
+   135→  {
+   136→    page: "owner-accounts",
+   137→    label: "Manage Officers",
+   138→    icon: UserCog,
+   139→  },
+   140→];
+   141→
+   142→// SUPERUSER (admin): admin dashboard, user management, guesthouses, subscriptions, system config, audit logs, data & reports, notifications
+   143→const SUPERUSER_NAV_ITEMS: NavItem[] = [
+   144→  { page: "super-admin-dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
+   145→  { page: "guesthouse-user-management", label: "Guesthouse & User Mgmt", icon: Hotel },
+   146→  { page: "subscriptions", label: "Subscriptions", icon: CreditCard },
+   147→  { page: "super-system-config", label: "System Configuration", icon: Settings },
+   148→  { page: "super-audit-logs", label: "Audit Logs", icon: ClipboardList },
+   149→  { page: "super-data-reports", label: "Data & Reports", icon: BarChart3 },
+   150→];
+   151→
+   152→const OPERATOR_EXCLUDED = new Set<string>(["owner-accounts"]);
+   153→
+   154→// ── Permission → page mapping for STAFF role ──
+   155→// Supports both legacy keys (rooms, daytime) and new keys (rooms_view, daytime_view)
+   156→const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
+   157→  // New keys with _view suffix
+   158→  rooms_view: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+   159→  daytime_view: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+   160→  housekeeping_view: {
+   161→    page: "operations",
+   162→    label: "Operations",
+   163→    icon: Wrench,
+   164→  },
+   165→  reports_view: { page: "reports", label: "Reports", icon: BarChart3 },
+   166→  reviews_view: { page: "reviews", label: "Reviews", icon: Star },
+   167→  notifications_view: {
+   168→    page: "notifications",
+   169→    label: "Notifications",
+   170→    icon: Bell,
+   171→  },
+   172→  settings_view: { page: "settings", label: "Settings", icon: Settings },
+   173→  // Legacy keys without _view suffix (backward compat)
+   174→  rooms: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+   175→  daytime: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+   176→  housekeeping: {
+   177→    page: "operations",
+   178→    label: "Operations",
+   179→    icon: Wrench,
+   180→  },
+   181→  reports: { page: "reports", label: "Reports", icon: BarChart3 },
+   182→  reviews: { page: "reviews", label: "Reviews", icon: Star },
+   183→  notifications: {
+   184→    page: "notifications",
+   185→    label: "Notifications",
+   186→    icon: Bell,
+   187→  },
+   188→  settings: { page: "settings", label: "Settings", icon: Settings },
+   189→  reservations: { page: "guests-reservations", label: "Reservations", icon: CalendarCheck },
+   190→  guests: { page: "guests-reservations", label: "Guests", icon: UsersRound },
+   191→};
+   192→
+   193→// ── Helper: get nav items based on role ──
+   194→function getNavItems(user: CurrentUser): NavItem[] {
+   195→  switch (user.role) {
+   196→    case "POLICE": {
+   197→      const rank = (user.policeRank || "OFFICER") as PoliceRank;
+   198→      const allowedPages = POLICE_RANK_PERMISSIONS[rank] || POLICE_RANK_PERMISSIONS.OFFICER;
+   199→      return POLICE_NAV_ITEMS.filter((item) => allowedPages.includes(item.page));
+   200→    }
+   201→
+   202→    case "SUPERUSER":
+   203→      return SUPERUSER_NAV_ITEMS;
+   204→
+   205→    case "OPERATOR":
+   206→      return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
+   207→
+   208→    case "STAFF": {
+   209→      const items: NavItem[] = [];
+   210→      // Always give staff access to dashboard
+   211→      items.push({
+   212→        page: "dashboard",
+   213→        label: "Dashboard",
+   214→        icon: LayoutDashboard,
+   215→      });
+   216→      // Add items based on permissions (deduplicate by page key)
+   217→      const seen = new Set<string>();
+   218→      for (const perm of user.permissions) {
+   219→        const mapped = PERMISSION_PAGE_MAP[perm];
+   220→        if (mapped && !seen.has(mapped.page)) {
+   221→          seen.add(mapped.page);
+   222→          items.push(mapped);
+   223→        }
+   224→      }
+   225→      return items;
+   226→    }
+   227→
+   228→    default:
+   229→      return [
+   230→        { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+   231→      ];
+   232→  }
+   233→}
+   234→
+   235→// ── Helper: get initials from name ──
+   236→function getInitials(name: string): string {
+   237→  return name
+   238→    .split(" ")
+   239→    .map((w) => w[0])
+   240→    .join("")
+   241→    .toUpperCase()
+   242→    .slice(0, 2);
+   243→}
+   244→
+   245→// ── Helper: get role display info ──
+   246→function getRoleDisplay(role: string): {
+   247→  label: string;
+   248→  className: string;
+   249→} {
+   250→  switch (role) {
+   251→    case "SUPERUSER":
+   252→      return {
+   253→        label: "Superuser",
+   254→        className: "bg-amber-100 text-amber-700 border-amber-200",
+   255→      };
+   256→    case "OPERATOR":
+   257→      return {
+   258→        label: "Operator",
+   259→        className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+   260→      };
+   261→    case "STAFF":
+   262→      return {
+   263→        label: "Staff",
+   264→        className: "bg-sky-100 text-sky-700 border-sky-200",
+   265→      };
+   266→    case "POLICE":
+   267→      return {
+   268→        label: "Police",
+   269→        className: "bg-rose-100 text-rose-700 border-rose-200",
+   270→      };
+   271→    default:
+   272→      return {
+   273→        label: role,
+   274→        className: "bg-slate-100 text-slate-700 border-slate-200",
+   275→      };
+   276→  }
+   277→}
+   278→
+   279→// ── Nav item button component ──
+   280→function NavItemButton({
+   281→  item,
+   282→  currentPage,
+   283→  onClick,
+   284→}: {
+   285→  item: NavItem;
+   286→  currentPage: string;
+   287→  onClick: () => void;
+   288→}) {
+   289→  const Icon = item.icon;
+   290→  const isActive = currentPage === item.page;
+   291→
+   292→  return (
+   293→    <button
+   294→      onClick={onClick}
+   295→      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+   296→        isActive
+   297→          ? "bg-primary/10 text-primary"
+   298→          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+   299→      }`}
+   300→    >
+   301→      {isActive && (
+   302→        <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
+   303→      )}
+   304→      <Icon
+   305→        className={`size-[18px] shrink-0 transition-colors ${
+   306→          isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+   307→        }`}
+   308→      />
+   309→      <span className="truncate">{item.label}</span>
+   310→      {item.badge && (
+   311→        <Badge
+   312→          variant="secondary"
+   313→          className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+   314→        >
+   315→          {item.badge}
+   316→        </Badge>
+   317→      )}
+   318→    </button>
+   319→  );
+   320→}
+   321→
+   322→// ── Sidebar content (shared between desktop & mobile) ──
+   323→// ── Subscription status widget for provider sidebar ──
+   324→function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
+   325→  const subscription = useAppStore((s) => s.subscription);
+   326→
+   327→  if (!subscription) return null;
+   328→
+   329→  const isActive = subscription.status === "ACTIVE";
+   330→  const isWarning = subscription.status === "WARNING";
+   331→  const isGrace = subscription.status === "GRACE";
+   332→  const isSuspended = subscription.status === "SUSPENDED";
+   333→
+   334→  // Collapsed mode — icon indicator
+   335→  if (collapsed) {
+   336→    const bgClass = isActive
+   337→      ? "bg-emerald-100"
+   338→      : isSuspended || isGrace
+   339→      ? "bg-rose-100"
+   340→      : "bg-amber-100";
+   341→    const iconClass = isActive
+   342→      ? "text-emerald-600"
+   343→      : isSuspended || isGrace
+   344→      ? "text-rose-600"
+   345→      : "text-amber-600";
+   346→    return (
+   347→      <div className="flex flex-col items-center gap-1 px-2 py-2">
+   348→        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bgClass} animate-pulse shadow-sm`}> 
+   349→          <Clock className={`size-4 ${iconClass}`} />
+   350→        </div>
+   351→      </div>
+   352→    );
+   353→  }
+   354→
+   355→  // Expanded card
+   356→  const containerClass = isActive
+   357→    ? "border-emerald-200 bg-emerald-50"
+   358→    : isSuspended || isGrace
+   359→    ? "border-rose-200 bg-rose-50"
+   360→    : "border-amber-200 bg-amber-50";
+   361→
+   362→  const iconColorClass = isActive
+   363→    ? "text-emerald-600"
+   364→    : isSuspended || isGrace
+   365→    ? "text-rose-600"
+   366→    : "text-amber-600";
+   367→
+   368→  const titleClass = isActive
+   369→    ? "text-emerald-800"
+   370→    : isSuspended || isGrace
+   371→    ? "text-rose-800"
+   372→    : "text-amber-800";
+   373→
+   374→  const subtextClass = isActive
+   375→    ? "text-emerald-700"
+   376→    : isSuspended || isGrace
+   377→    ? "text-rose-700"
+   378→    : "text-amber-700";
+   379→
+   380→  const badgeClass = isActive
+   381→    ? "bg-emerald-200/60 text-emerald-800"
+   382→    : isSuspended || isGrace
+   383→    ? "bg-rose-200/60 text-rose-800"
+   384→    : "bg-amber-200/60 text-amber-800";
+   385→
+   386→  const Icon = isSuspended || isGrace ? AlertTriangle : Clock;
+   387→
+   388→  return (
+   389→    <div className={`rounded-lg border p-3 ${containerClass} animate-subtle-pulse shadow-sm`}> 
+   390→      <div className="flex items-center gap-2">
+   391→        <Icon className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
+   392→        <p className={`text-xs font-semibold ${titleClass}`}>
+   393→          {isActive
+   394→            ? "Subscription Active"
+   395→            : isSuspended
+   396→            ? "Service Suspended"
+   397→            : isGrace
+   398→            ? "Subscription Expired"
+   399→            : "Expiring Soon"}
+   400→        </p>
+   401→      </div>
+   402→      <div className={`mt-1.5 flex items-center justify-between text-[11px] ${subtextClass}`}>
+   403→        <span>{formatDaysRemaining(subscription.daysRemaining)}</span>
+   404→        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold ${badgeClass}`}>
+   405→          <Clock className="h-3 w-3" />
+   406→          {Math.abs(subscription.daysRemaining)}d
+   407→        </span>
+   408→      </div>
+   409→      {subscription.price > 0 ? (
+   410→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   411→          Due: {subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
+   412→        </div>
+   413→      ) : (
+   414→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   415→          {formatCycle(subscription.cycle)} cycle — Free trial
+   416→        </div>
+   417→      )}
+   418→    </div>
+   419→  );
+   420→}
+   421→
+   422→function SidebarContent({
+   423→  user,
+   424→  currentPage,
+   425→  onNavigate,
+   426→  onLogout,
+   427→  collapsed,
+   428→  onToggleCollapse,
+   429→}: {
+   430→  user: CurrentUser;
+   431→  currentPage: string;
+   432→  onNavigate: (page: string) => void;
+   433→  onLogout: () => void;
+   434→  collapsed: boolean;
+   435→  onToggleCollapse: () => void;
+   436→}) {
+   437→  const { jointSession, setJointLoginDialogOpen, subscription } = useAppStore();
+   438→  const navItems = getNavItems(user);
+   439→  const roleDisplay = getRoleDisplay(user.role);
+   440→
+   441→  // Determine if user can start a joint session (SUPERUSER or POLICE ADMIN)
+   442→  const canStartJoint =
+   443→    user.role === "SUPERUSER" ||
+   444→    (user.role === "POLICE" && user.policeRank === "ADMIN");
+   445→
+   446→  return (
+   447→    <div className="flex h-full flex-col">
+   448→      {/* ── User profile section ── */}
+   449→      <div className="px-3 pt-3 pb-2">
+   450→        <div
+   451→          className={`flex items-center gap-3 ${collapsed ? "flex-col text-center" : ""}`}
+   452→        >
+   453→          <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20">
+   454→            <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
+   455→              {getInitials(user.name)}
+   456→            </AvatarFallback>
+   457→          </Avatar>
+   458→          {!collapsed && (
+   459→            <div className="min-w-0 flex-1">
+   460→              {/* SUPERUSER: Name with dropdown menu (My Profile + Sign Out) */}
+   461→              {user.role === "SUPERUSER" ? (
+   462→                <DropdownMenu>
+   463→                  <DropdownMenuTrigger asChild>
+   464→                    <button className="flex w-full items-center justify-between gap-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-50 group">
+   465→                      <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-primary">
+   466→                        {user.name}
+   467→                      </p>
+   468→                      <ChevronDown className="size-3.5 shrink-0 text-slate-400 group-hover:text-primary transition-colors" />
+   469→                    </button>
+   470→                  </DropdownMenuTrigger>
+   471→                  <DropdownMenuContent align="start" className="w-52">
+   472→                    {/* User info header */}
+   473→                    <div className="flex items-center gap-2.5 px-2 py-2.5">
+   474→                      <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+   475→                        <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+   476→                          {getInitials(user.name)}
+   477→                        </AvatarFallback>
+   478→                      </Avatar>
+   479→                      <div className="min-w-0 flex-1">
+   480→                        <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
+   481→                        <p className="truncate text-[11px] text-slate-400">System Administrator</p>
+   482→                      </div>
+   483→                    </div>
+   484→                    <DropdownMenuSeparator />
+   485→                    <DropdownMenuItem
+   486→                      className="flex items-center gap-2.5 cursor-pointer"
+   487→                      onClick={() => onNavigate("super-profile")}
+   488→                    >
+   489→                      <UserCircle className="size-4 text-slate-500" />
+   490→                      <span>My Profile</span>
+   491→                    </DropdownMenuItem>
+   492→                    <DropdownMenuSeparator />
+   493→                    <DropdownMenuItem
+   494→                      className="flex items-center gap-2.5 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+   495→                      onClick={() => onLogout()}
+   496→                    >
+   497→                      <LogOut className="size-4" />
+   498→                      <span>Sign Out</span>
+   499→                    </DropdownMenuItem>
+   500→                  </DropdownMenuContent>
+   501→                </DropdownMenu>
+   502→              ) : (
+   503→                <div className="flex items-center justify-between gap-1">
+   504→                  <p className="truncate text-sm font-semibold text-slate-900">
+   505→                    {user.name}
+   506→                  </p>
+   507→                  <button
+   508→                    onClick={onLogout}
+   509→                    className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors"
+   510→                    title="Logout"
+   511→                  >
+   512→                    <LogOut className="size-4 shrink-0" />
+   513→                  </button>
+   514→                </div>
+   515→              )}
+   516→              <div className="mt-0.5 flex items-center gap-2">
+   517→                <Badge
+   518→                  variant="outline"
+   519→                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleDisplay.className}`}
+   520→                >
+   521→                  <Shield className="mr-1 size-2.5" />
+   522→                  {roleDisplay.label}
+   523→                </Badge>
+   524→                {user.role === "POLICE" && user.policeRank && (
+   525→                  <Badge
+   526→                    variant="outline"
+   527→                    className={`text-[9px] font-semibold leading-none px-1.5 py-0.5 ${RANK_BADGE_CLASSES[(user.policeRank as PoliceRank)] || ""}`}
+   528→                  >
+   529→                    {RANK_LABELS[(user.policeRank as PoliceRank)] || user.policeRank}
+   530→                  </Badge>
+   531→                )}
+   532→                {user.providerName && (
+   533→                  <span className="truncate text-[11px] text-slate-400">
+   534→                    {user.providerName}
+   535→                  </span>
+   536→                )}
+   537→              </div>
+   538→            </div>
+   539→          )}
+   540→        </div>
+   541→      </div>
+   542→
+   543→      <Separator className="bg-slate-200/60" />
+   544→
+   545→      {/* ── Navigation links ── */}
+   546→      <ScrollArea className="flex-1 px-3 py-3">
+   547→        <nav className="flex flex-col gap-1" aria-label="Main navigation">
+   548→          {navItems.map((item) => (
+   549→            <NavItemButton
+   550→              key={item.page}
+   551→              item={item}
+   552→              currentPage={currentPage}
+   553→              onClick={() => onNavigate(item.page)}
+   554→            />
+   555→          ))}
+   556→
+   557→          {/* Joint Operations — only shown during active joint session */}
+   558→          {jointSession.active && (
+   559→            <>
+   560→              <Separator className="my-2 bg-slate-200/60" />
+   561→              <NavItemButton
+   562→                item={{ page: "joint-operations", label: "Joint Operations", icon: ShieldCheck }}
+   563→                currentPage={currentPage}
+   564→                onClick={() => onNavigate("joint-operations")}
+   565→              />
+   566→            </>
+   567→          )}
+   568→
+   569→          {/* Start Joint Session button — shown for SUPERUSER/POLICE ADMIN when no joint session */}
+   570→          {canStartJoint && !jointSession.active && !collapsed && (
+   571→            <>
+   572→              <Separator className="my-2 bg-slate-200/60" />
+   573→              <button
+   574→                onClick={() => setJointLoginDialogOpen(true)}
+   575→                className="flex w-full items-center gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 text-sm font-medium text-amber-700 transition-all hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800 outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+   576→              >
+   577→                <ShieldCheck className="size-[18px] shrink-0" />
+   578→                <span>Start Joint Session</span>
+   579→              </button>
+   580→            </>
+   581→          )}
+   582→          {canStartJoint && !jointSession.active && collapsed && (
+   583→            <button
+   584→              onClick={() => setJointLoginDialogOpen(true)}
+   585→              className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 p-2 text-amber-600 hover:bg-amber-50 transition-colors outline-none"
+   586→              title="Start Joint Session"
+   587→            >
+   588→              <ShieldCheck className="size-[18px]" />
+   589→            </button>
+   590→          )}
+   591→        </nav>
+   592→      </ScrollArea>
+   593→
+   594→      {/* ── Subscription status for providers ── */}
+   595→      {(user.role === "OPERATOR" || user.role === "STAFF") && (
+   596→        <div className="px-3 py-2">
+   597→          <SubscriptionStatusCard collapsed={collapsed} />
+   598→        </div>
+   599→      )}
+   600→
+   601→      <Separator className="bg-slate-200/60" />
+   602→
+   603→      {/* ── Bottom section: collapse toggle + logout ── */}
+   604→      <div className="p-3">
+   605→        {/* Desktop collapse toggle */}
+   606→        {!collapsed && (
+   607→          <button
+   608→            onClick={onToggleCollapse}
+   609→            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+   610→          >
+   611→            <ChevronLeft className="size-[18px] text-slate-400" />
+   612→            <span>Collapse</span>
+   613→          </button>
+   614→        )}
+   615→
+   616→        {/* Logout — hidden for SUPERUSER (moved to name dropdown) */}
+   617→        {user.role !== "SUPERUSER" && (
+   618→          <button
+   619→            onClick={onLogout}
+   620→            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+   621→          >
+   622→            <LogOut className="size-[18px]" />
+   623→            {!collapsed && <span>Logout</span>}
+   624→          </button>
+   625→        )}
+   626→      </div>
+   627→    </div>
+   628→  );
+   629→}
+   630→
+   631→// ── Main Sidebar Component ──
+   632→export default function Sidebar() {
+   633→  const { currentUser, currentPage, setCurrentPage, setCurrentUser, sidebarOpen, setSidebarOpen } =
+   634→    useAppStore();
+   635→  const isMobile = useIsMobile();
+   636→  const mounted = useSyncExternalStore(
+   637→    () => () => {},
+   638→    () => true,
+   639→    () => false,
+   640→  );
+   641→
+   642→  if (!mounted || !currentUser) return null;
+   643→
+   644→  async function handleLogout() {
+   645→    // Clear httpOnly cookie on server
+   646→    await apiLogout();
+   647→    // Clear local state
+   648→    setCurrentUser(null);
+   649→    setCurrentPage("login");
+   650→    if (isMobile) setSidebarOpen(false);
+   651→  }
+   652→
+   653→  function handleNavigate(page: string) {
+   654→    setCurrentPage(page);
+   655→    if (isMobile) setSidebarOpen(false);
+   656→  }
+   657→
+   658→  // ── Mobile: render as a Sheet ──
+   659→  if (isMobile) {
+   660→    return (
+   661→      <>
+   662→        {/* Mobile hamburger button */}
+   663→        <button
+   664→          onClick={() => setSidebarOpen(true)}
+   665→          className="fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 active:bg-slate-100"
+   666→          aria-label="Open navigation menu"
+   667→        >
+   668→          <Menu className="size-5 text-slate-700" />
+   669→        </button>
+   670→
+   671→        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+   672→          <SheetContent side="left" className="w-72 p-0">
+   673→            <SheetHeader className="border-b border-slate-100 px-4 py-3">
+   674→              <div className="flex items-center gap-2">
+   675→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+   676→                  <Building2 className="size-4 text-white" />
+   677→                </div>
+   678→                <SheetTitle className="text-sm font-bold text-slate-900">
+   679→                  GHMS
+   680→                </SheetTitle>
+   681→              </div>
+   682→            </SheetHeader>
+   683→            <SidebarContent
+   684→              user={currentUser}
+   685→              currentPage={currentPage}
+   686→              onNavigate={handleNavigate}
+   687→              onLogout={handleLogout}
+   688→              collapsed={false}
+   689→              onToggleCollapse={() => {}}
+   690→            />
+   691→          </SheetContent>
+   692→        </Sheet>
+   693→      </>
+   694→    );
+   695→  }
+   696→
+   697→  // ── Desktop: render as a fixed sidebar ──
+   698→  const collapsed = !sidebarOpen;
+   699→
+   700→  return (
+   701→    <aside
+   702→      className={`relative flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
+   703→        collapsed ? "w-[68px]" : "w-64"
+   704→      }`}
+   705→    >
+   706→      {/* ── Logo / Brand ── */}
+   707→      <div
+   708→        className={`flex h-16 items-center border-b border-slate-200/60 px-4 ${collapsed ? "justify-center" : "gap-3"}`}
+   709→      >
+   710→        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
+   711→          <Building2 className="size-5 text-white" />
+   712→        </div>
+   713→        {!collapsed && (
+   714→          <div className="min-w-0">
+   715→            <h1 className="text-sm font-bold tracking-tight text-slate-900">
+   716→              GHMS
+   717→            </h1>
+   718→            <p className="truncate text-[11px] text-slate-400">
+   719→              Guest House Management
+   720→            </p>
+   721→          </div>
+   722→        )}
+   723→        {/* Expand button when collapsed */}
+   724→        {collapsed && (
+   725→          <button
+   726→            onClick={() => setSidebarOpen(true)}
+   727→            className="absolute -right-3 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50"
+   728→            aria-label="Expand sidebar"
+   729→          >
+   730→            <Menu className="size-3 text-slate-500" />
+   731→          </button>
+   732→        )}
+   733→      </div>
+   734→
+   735→      <SidebarContent
+   736→        user={currentUser}
+   737→        currentPage={currentPage}
+   738→        onNavigate={handleNavigate}
+   739→        onLogout={handleLogout}
+   740→        collapsed={collapsed}
+   741→        onToggleCollapse={() => setSidebarOpen(!sidebarOpen)}
+   742→      />
+   743→    </aside>
+   744→  );
+   745→}

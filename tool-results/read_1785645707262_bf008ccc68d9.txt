@@ -1,0 +1,1264 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from "react";
+     4→     4→import { useAppStore } from "@/lib/store";
+     5→     5→import {
+     6→     6→  apiSuperGetUsers,
+     7→     7→  apiSuperCreateUser,
+     8→     8→  apiSuperUpdateUser,
+     9→     9→  apiSuperDeleteUser,
+    10→    10→  apiSuperGetProviders,
+    11→    11→} from "@/lib/api";
+    12→    12→import { toast } from "sonner";
+    13→    13→import { Button } from "@/components/ui/button";
+    14→    14→import { Badge } from "@/components/ui/badge";
+    15→    15→import { Input } from "@/components/ui/input";
+    16→    16→import { Label } from "@/components/ui/label";
+    17→    17→import { Checkbox } from "@/components/ui/checkbox";
+    18→    18→import { Skeleton } from "@/components/ui/skeleton";
+    19→    19→import { Switch } from "@/components/ui/switch";
+    20→    20→import { Separator } from "@/components/ui/separator";
+    21→    21→import {
+    22→    22→  Card,
+    23→    23→  CardContent,
+    24→    24→  CardHeader,
+    25→    25→  CardTitle,
+    26→    26→  CardDescription,
+    27→    27→} from "@/components/ui/card";
+    28→    28→import {
+    29→    29→  Dialog,
+    30→    30→  DialogContent,
+    31→    31→  DialogHeader,
+    32→    32→  DialogTitle,
+    33→    33→  DialogDescription,
+    34→    34→  DialogFooter,
+    35→    35→} from "@/components/ui/dialog";
+    36→    36→import {
+    37→    37→  AlertDialog,
+    38→    38→  AlertDialogContent,
+    39→    39→  AlertDialogHeader,
+    40→    40→  AlertDialogTitle,
+    41→    41→  AlertDialogDescription,
+    42→    42→  AlertDialogFooter,
+    43→    43→  AlertDialogAction,
+    44→    44→  AlertDialogCancel,
+    45→    45→} from "@/components/ui/alert-dialog";
+    46→    46→import {
+    47→    47→  Select,
+    48→    48→  SelectContent,
+    49→    49→  SelectItem,
+    50→    50→  SelectTrigger,
+    51→    51→  SelectValue,
+    52→    52→} from "@/components/ui/select";
+    53→    53→import {
+    54→    54→  DropdownMenu,
+    55→    55→  DropdownMenuContent,
+    56→    56→  DropdownMenuItem,
+    57→    57→  DropdownMenuSeparator,
+    58→    58→  DropdownMenuTrigger,
+    59→    59→} from "@/components/ui/dropdown-menu";
+    60→    60→import {
+    61→    61→  Users,
+    62→    62→  UserPlus,
+    63→    63→  Search,
+    64→    64→  Filter,
+    65→    65→  MoreVertical,
+    66→    66→  Pencil,
+    67→    67→  Trash2,
+    68→    68→  Eye,
+    69→    69→  Shield,
+    70→    70→  ShieldCheck,
+    71→    71→  Crown,
+    72→    72→  UserCog,
+    73→    73→  UserCircle,
+    74→    74→  Building2,
+    75→    75→  Mail,
+    76→    76→  Phone,
+    77→    77→  Calendar,
+    78→    78→  Clock,
+    79→    79→  CheckCircle2,
+    80→    80→  XCircle,
+    81→    81→  Loader2,
+    82→    82→  ChevronLeft,
+    83→    83→  ChevronRight,
+    84→    84→  Activity,
+    85→    85→  KeyRound,
+    86→    86→  AlertTriangle,
+    87→    87→  TrendingUp,
+    88→    88→  Lock,
+    89→    89→  Unlock,
+    90→    90→} from "lucide-react";
+    91→    91→
+    92→    92→// ── Types ──
+    93→    93→interface UserRecord {
+    94→    94→  id: string;
+    95→    95→  username: string;
+    96→    96→  name: string;
+    97→    97→  email: string | null;
+    98→    98→  phone: string | null;
+    99→    99→  role: string;
+   100→   100→  policeRank: string | null;
+   101→   101→  permissions: string;
+   102→   102→  providerId: string | null;
+   103→   103→  isActive: boolean;
+   104→   104→  createdAt: string;
+   105→   105→  updatedAt: string;
+   106→   106→  lastLogin: string | null;
+   107→   107→  provider?: { id: string; name: string; status: string } | null;
+   108→   108→}
+   109→   109→
+   110→   110→interface ProviderOption {
+   111→   111→  id: string;
+   112→   112→  name: string;
+   113→   113→  status: string;
+   114→   114→}
+   115→   115→
+   116→   116→interface PaginationInfo {
+   117→   117→  page: number;
+   118→   118→  pageSize: number;
+   119→   119→  total: number;
+   120→   120→  totalPages: number;
+   121→   121→}
+   122→   122→
+   123→   123→interface StatsInfo {
+   124→   124→  totalUsers: number;
+   125→   125→  roleCounts: Record<string, number>;
+   126→   126→  providerCount: number;
+   127→   127→  activeProviderCount: number;
+   128→   128→}
+   129→   129→
+   130→   130→// ── Role Configuration ──
+   131→   131→const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType; desc: string }> = {
+   132→   132→  SUPERUSER: {
+   133→   133→    label: "Superuser",
+   134→   134→    color: "text-amber-700",
+   135→   135→    bg: "bg-amber-50 border-amber-200",
+   136→   136→    icon: Crown,
+   137→   137→    desc: "Full system access",
+   138→   138→  },
+   139→   139→  OPERATOR: {
+   140→   140→    label: "Operator",
+   141→   141→    color: "text-emerald-700",
+   142→   142→    bg: "bg-emerald-50 border-emerald-200",
+   143→   143→    icon: ShieldCheck,
+   144→   144→    desc: "Manage guesthouse operations",
+   145→   145→  },
+   146→   146→  STAFF: {
+   147→   147→    label: "Staff",
+   148→   148→    color: "text-sky-700",
+   149→   149→    bg: "bg-sky-50 border-sky-200",
+   150→   150→    icon: UserCog,
+   151→   151→    desc: "Limited access based on permissions",
+   152→   152→  },
+   153→   153→  POLICE: {
+   154→   154→    label: "Police",
+   155→   155→    color: "text-rose-700",
+   156→   156→    bg: "bg-rose-50 border-rose-200",
+   157→   157→    icon: Shield,
+   158→   158→    desc: "Law enforcement access",
+   159→   159→  },
+   160→   160→};
+   161→   161→
+   162→   162→const POLICE_RANKS = [
+   163→   163→  { value: "ADMIN", label: "Police Admin", desc: "Full police access, can manage officers" },
+   164→   164→  { value: "DETECTIVE", label: "Detective", desc: "Investigation tools and intelligence" },
+   165→   165→  { value: "OFFICER", label: "Officer", desc: "Standard police access" },
+   166→   166→  { value: "VIEWER", label: "Viewer", desc: "Read-only access" },
+   167→   167→];
+   168→   168→
+   169→   169→const PERMISSION_OPTIONS = [
+   170→   170→  { value: "reservations", label: "Reservations" },
+   171→   171→  { value: "guests", label: "Guests" },
+   172→   172→  { value: "rooms", label: "Rooms" },
+   173→   173→  { value: "housekeeping", label: "Housekeeping" },
+   174→   174→  { value: "daytime", label: "Daytime Services" },
+   175→   175→  { value: "expenses", label: "Expenses" },
+   176→   176→  { value: "reports", label: "Reports" },
+   177→   177→  { value: "settings", label: "Settings" },
+   178→   178→];
+   179→   179→
+   180→   180→const ROLE_TABS = [
+   181→   181→  { value: "", label: "All Users" },
+   182→   182→  { value: "SUPERUSER", label: "Superusers" },
+   183→   183→  { value: "OPERATOR", label: "Operators" },
+   184→   184→  { value: "STAFF", label: "Staff" },
+   185→   185→  { value: "POLICE", label: "Police" },
+   186→   186→];
+   187→   187→
+   188→   188→const emptyForm = {
+   189→   189→  username: "",
+   190→   190→  password: "",
+   191→   191→  name: "",
+   192→   192→  email: "",
+   193→   193→  phone: "",
+   194→   194→  role: "STAFF",
+   195→   195→  policeRank: "OFFICER",
+   196→   196→  permissions: [] as string[],
+   197→   197→  providerId: "",
+   198→   198→  isActive: true,
+   199→   199→};
+   200→   200→
+   201→   201→// ── Stat Card Component ──
+   202→   202→function StatCard({
+   203→   203→  icon: Icon,
+   204→   204→  label,
+   205→   205→  value,
+   206→   206→  sub,
+   207→   207→  color,
+   208→   208→  bgColor,
+   209→   209→}: {
+   210→   210→  icon: React.ElementType;
+   211→   211→  label: string;
+   212→   212→  value: number;
+   213→   213→  sub?: string;
+   214→   214→  color: string;
+   215→   215→  bgColor: string;
+   216→   216→}) {
+   217→   217→  return (
+   218→   218→    <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+   219→   219→      <CardContent className="p-5">
+   220→   220→        <div className="flex items-start justify-between">
+   221→   221→          <div>
+   222→   222→            <p className="text-sm font-medium text-slate-500">{label}</p>
+   223→   223→            <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{value}</p>
+   224→   224→            {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
+   225→   225→          </div>
+   226→   226→          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${bgColor} shadow-sm`}>
+   227→   227→            <Icon className={`h-5 w-5 ${color}`} />
+   228→   228→          </div>
+   229→   229→        </div>
+   230→   230→      </CardContent>
+   231→   231→    </Card>
+   232→   232→  );
+   233→   233→}
+   234→   234→
+   235→   235→// ── User Row Component ──
+   236→   236→function UserRow({
+   237→   237→  user,
+   238→   238→  onEdit,
+   239→   239→  onDelete,
+   240→   240→  onView,
+   241→   241→  onToggleActive,
+   242→   242→}: {
+   243→   243→  user: UserRecord;
+   244→   244→  onEdit: (u: UserRecord) => void;
+   245→   245→  onDelete: (u: UserRecord) => void;
+   246→   246→  onView: (u: UserRecord) => void;
+   247→   247→  onToggleActive: (u: UserRecord) => void;
+   248→   248→}) {
+   249→   249→  const roleConf = ROLE_CONFIG[user.role] || ROLE_CONFIG.STAFF;
+   250→   250→  const RoleIcon = roleConf.icon;
+   251→   251→  let perms: string[] = [];
+   252→   252→  try {
+   253→   253→    perms = user.permissions ? JSON.parse(user.permissions) : [];
+   254→   254→  } catch {
+   255→   255→    perms = [];
+   256→   256→  }
+   257→   257→
+   258→   258→  return (
+   259→   259→    <div className="group flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 transition-all hover:border-slate-200 hover:shadow-sm">
+   260→   260→      {/* Avatar */}
+   261→   261→      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${roleConf.bg} border` }>
+   262→   262→        <RoleIcon className={`h-5 w-5 ${roleConf.color}`} />
+   263→   263→      </div>
+   264→   264→
+   265→   265→      {/* User Info */}
+   266→   266→      <div className="min-w-0 flex-1">
+   267→   267→        <div className="flex items-center gap-2.5">
+   268→   268→          <h3 className="truncate text-sm font-semibold text-slate-900">{user.name}</h3>
+   269→   269→          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${roleConf.bg} ${roleConf.color}`}>
+   270→   270→            <RoleIcon className="h-2.5 w-2.5" />
+   271→   271→            {roleConf.label}
+   272→   272→          </span>
+   273→   273→          {user.role === "POLICE" && user.policeRank && (
+   274→   274→            <Badge
+   275→   275→              variant="outline"
+   276→   276→              className={`text-[10px] font-semibold px-1.5 py-0 ${
+   277→   277→                user.policeRank === "ADMIN"
+   278→   278→                  ? "bg-amber-50 text-amber-700 border-amber-200"
+   279→   279→                  : user.policeRank === "DETECTIVE"
+   280→   280→                  ? "bg-violet-50 text-violet-700 border-violet-200"
+   281→   281→                  : user.policeRank === "OFFICER"
+   282→   282→                  ? "bg-sky-50 text-sky-700 border-sky-200"
+   283→   283→                  : "bg-slate-50 text-slate-600 border-slate-200"
+   284→   284→              }`}
+   285→   285→            >
+   286→   286→              {user.policeRank}
+   287→   287→            </Badge>
+   288→   288→          )}
+   289→   289→        </div>
+   290→   290→        <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
+   291→   291→          <span className="flex items-center gap-1">
+   292→   292→            <UserCircle className="h-3 w-3" />
+   293→   293→            @{user.username}
+   294→   294→          </span>
+   295→   295→          {user.email && (
+   296→   296→            <span className="flex items-center gap-1">
+   297→   297→              <Mail className="h-3 w-3" />
+   298→   298→              {user.email}
+   299→   299→            </span>
+   300→   300→          )}
+   301→   301→          {user.phone && (
+   302→   302→            <span className="flex items-center gap-1">
+   303→   303→              <Phone className="h-3 w-3" />
+   304→   304→              {user.phone}
+   305→   305→            </span>
+   306→   306→          )}
+   307→   307→        </div>
+   308→   308→        {user.provider && (
+   309→   309→          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+   310→   310→            <Building2 className="h-3 w-3 text-slate-400" />
+   311→   311→            <span>{user.provider.name}</span>
+   312→   312→            <Badge
+   313→   313→              variant="outline"
+   314→   314→              className={`text-[9px] px-1 py-0 ${
+   315→   315→                user.provider.status === "APPROVED"
+   316→   316→                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+   317→   317→                  : user.provider.status === "PENDING"
+   318→   318→                  ? "bg-amber-50 text-amber-600 border-amber-200"
+   319→   319→                  : "bg-slate-50 text-slate-500 border-slate-200"
+   320→   320→              }`}
+   321→   321→            >
+   322→   322→              {user.provider.status}
+   323→   323→            </Badge>
+   324→   324→          </div>
+   325→   325→        )}
+   326→   326→      </div>
+   327→   327→
+   328→   328→      {/* Right: status + meta + actions */}
+   329→   329→      <div className="flex flex-col items-end gap-2">
+   330→   330→        {/* Active toggle */}
+   331→   331→        <div className="flex items-center gap-1.5">
+   332→   332→          <Switch
+   333→   333→            checked={user.isActive}
+   334→   334→            onCheckedChange={() => onToggleActive(user)}
+   335→   335→            className="data-[state=checked]:bg-emerald-500"
+   336→   336→          />
+   337→   337→          <span className={`text-[11px] font-medium ${user.isActive ? "text-emerald-600" : "text-slate-400"}`}>
+   338→   338→            {user.isActive ? "Active" : "Inactive"}
+   339→   339→          </span>
+   340→   340→        </div>
+   341→   341→
+   342→   342→        {/* Meta */}
+   343→   343→        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+   344→   344→          <span className="flex items-center gap-1">
+   345→   345→            <Calendar className="h-3 w-3" />
+   346→   346→            {new Date(user.createdAt).toLocaleDateString()}
+   347→   347→          </span>
+   348→   348→        </div>
+   349→   349→
+   350→   350→        {/* Actions */}
+   351→   351→        <DropdownMenu>
+   352→   352→          <DropdownMenuTrigger asChild>
+   353→   353→            <Button
+   354→   354→              variant="ghost"
+   355→   355→              size="icon"
+   356→   356→              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   357→   357→            >
+   358→   358→              <MoreVertical className="h-4 w-4" />
+   359→   359→            </Button>
+   360→   360→          </DropdownMenuTrigger>
+   361→   361→          <DropdownMenuContent align="end" className="w-44">
+   362→   362→            <DropdownMenuItem onClick={() => onView(user)}>
+   363→   363→              <Eye className="mr-2 h-4 w-4" />
+   364→   364→              View Details
+   365→   365→            </DropdownMenuItem>
+   366→   366→            <DropdownMenuItem onClick={() => onEdit(user)}>
+   367→   367→              <Pencil className="mr-2 h-4 w-4" />
+   368→   368→              Edit User
+   369→   369→            </DropdownMenuItem>
+   370→   370→            <DropdownMenuSeparator />
+   371→   371→            <DropdownMenuItem
+   372→   372→              className="text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+   373→   373→              onClick={() => onDelete(user)}
+   374→   374→            >
+   375→   375→              <Trash2 className="mr-2 h-4 w-4" />
+   376→   376→              Delete User
+   377→   377→            </DropdownMenuItem>
+   378→   378→          </DropdownMenuContent>
+   379→   379→        </DropdownMenu>
+   380→   380→      </div>
+   381→   381→    </div>
+   382→   382→  );
+   383→   383→}
+   384→   384→
+   385→   385→// ── Main Page Component ──
+   386→   386→export default function SuperUserManagementPage() {
+   387→   387→  const { currentUser, refreshKey } = useAppStore();
+   388→   388→  const [users, setUsers] = useState<UserRecord[]>([]);
+   389→   389→  const [providers, setProviders] = useState<ProviderOption[]>([]);
+   390→   390→  const [stats, setStats] = useState<StatsInfo | null>(null);
+   391→   391→  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+   392→   392→  const [loading, setLoading] = useState(true);
+   393→   393→  const [search, setSearch] = useState("");
+   394→   394→  const [activeRoleTab, setActiveRoleTab] = useState("");
+   395→   395→  const [activeProvider, setActiveProvider] = useState("");
+   396→   396→  const [currentPage, setCurrentPage] = useState(1);
+   397→   397→
+   398→   398→  // Dialog states
+   399→   399→  const [formOpen, setFormOpen] = useState(false);
+   400→   400→  const [viewOpen, setViewOpen] = useState(false);
+   401→   401→  const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
+   402→   402→  const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
+   403→   403→  const [viewingUser, setViewingUser] = useState<UserRecord | null>(null);
+   404→   404→  const [form, setForm] = useState(emptyForm);
+   405→   405→  const [saving, setSaving] = useState(false);
+   406→   406→  const [deleting, setDeleting] = useState(false);
+   407→   407→
+   408→   408→  const fetchData = useCallback(async () => {
+   409→   409→    setLoading(true);
+   410→   410→    try {
+   411→   411→      const [usersData, provDataRaw] = await Promise.all([
+   412→   412→        apiSuperGetUsers({
+   413→   413→          search: search || undefined,
+   414→   414→          role: activeRoleTab || undefined,
+   415→   415→          providerId: activeProvider || undefined,
+   416→   416→          page: currentPage,
+   417→   417→          pageSize: 12,
+   418→   418→        }),
+   419→   419→        apiSuperGetProviders(),
+   420→   420→      ]);
+   421→   421→      setUsers(usersData.users || []);
+   422→   422→      setPagination(usersData.pagination || null);
+   423→   423→      setStats(usersData.stats || null);
+   424→   424→      // Providers API returns an array directly
+   425→   425→      const provs = Array.isArray(provDataRaw)
+   426→   426→        ? provDataRaw
+   427→   427→        : (provDataRaw as Record<string, unknown>).providers || [];
+   428→   428→      setProviders(provs.map((p: Record<string, unknown>) => ({
+   429→   429→        id: p.id as string,
+   430→   430→        name: p.name as string,
+   431→   431→        status: p.status as string,
+   432→   432→      })));
+   433→   433→    } catch (err: unknown) {
+   434→   434→      const msg = err instanceof Error ? err.message : "Failed to load data";
+   435→   435→      toast.error(msg);
+   436→   436→    } finally {
+   437→   437→      setLoading(false);
+   438→   438→    }
+   439→   439→  }, [search, activeRoleTab, activeProvider, currentPage]);
+   440→   440→
+   441→   441→  useEffect(() => {
+   442→   442→    fetchData();
+   443→   443→  }, [fetchData, refreshKey]);
+   444→   444→
+   445→   445→  // Reset page when filters change
+   446→   446→  useEffect(() => {
+   447→   447→    setCurrentPage(1);
+   448→   448→  }, [search, activeRoleTab, activeProvider]);
+   449→   449→
+   450→   450→  // ── Form Handlers ──
+   451→   451→  const openCreate = () => {
+   452→   452→    setEditingUser(null);
+   453→   453→    setForm(emptyForm);
+   454→   454→    setFormOpen(true);
+   455→   455→  };
+   456→   456→
+   457→   457→  const openEdit = (user: UserRecord) => {
+   458→   458→    setEditingUser(user);
+   459→   459→    let perms: string[] = [];
+   460→   460→    try {
+   461→   461→      perms = user.permissions ? JSON.parse(user.permissions) : [];
+   462→   462→    } catch {
+   463→   463→      perms = [];
+   464→   464→    }
+   465→   465→    setForm({
+   466→   466→      username: user.username,
+   467→   467→      password: "",
+   468→   468→      name: user.name,
+   469→   469→      email: user.email || "",
+   470→   470→      phone: user.phone || "",
+   471→   471→      role: user.role,
+   472→   472→      policeRank: user.policeRank || "OFFICER",
+   473→   473→      permissions: perms,
+   474→   474→      providerId: user.providerId || "",
+   475→   475→      isActive: user.isActive,
+   476→   476→    });
+   477→   477→    setFormOpen(true);
+   478→   478→  };
+   479→   479→
+   480→   480→  const openView = (user: UserRecord) => {
+   481→   481→    setViewingUser(user);
+   482→   482→    setViewOpen(true);
+   483→   483→  };
+   484→   484→
+   485→   485→  const handleSave = async () => {
+   486→   486→    if (!form.username.trim() || !form.name.trim() || !form.role) {
+   487→   487→      toast.error("Username, name, and role are required");
+   488→   488→      return;
+   489→   489→    }
+   490→   490→    if (!editingUser && !form.password) {
+   491→   491→      toast.error("Password is required for new users");
+   492→   492→      return;
+   493→   493→    }
+   494→   494→    if ((form.role === "OPERATOR" || form.role === "STAFF") && !form.providerId) {
+   495→   495→      toast.error("Please select a provider for this user");
+   496→   496→      return;
+   497→   497→    }
+   498→   498→    if (form.role === "POLICE" && !form.policeRank) {
+   499→   499→      toast.error("Please select a police rank");
+   500→   500→      return;
+   501→   501→    }
+   502→   502→
+   503→   503→    setSaving(true);
+   504→   504→    try {
+   505→   505→      const payload: Record<string, unknown> = {
+   506→   506→        username: form.username.trim(),
+   507→   507→        name: form.name.trim(),
+   508→   508→        email: form.email.trim() || null,
+   509→   509→        phone: form.phone.trim() || null,
+   510→   510→        role: form.role,
+   511→   511→        policeRank: form.role === "POLICE" ? form.policeRank : null,
+   512→   512→        permissions: form.role === "STAFF" ? form.permissions : [],
+   513→   513→        providerId: form.providerId || null,
+   514→   514→        isActive: form.isActive,
+   515→   515→      };
+   516→   516→      if (form.password) payload.password = form.password;
+   517→   517→
+   518→   518→      if (editingUser) {
+   519→   519→        await apiSuperUpdateUser(editingUser.id, payload);
+   520→   520→        toast.success("User updated successfully");
+   521→   521→      } else {
+   522→   522→        await apiSuperCreateUser(payload);
+   523→   523→        toast.success("User created successfully");
+   524→   524→      }
+   525→   525→      setFormOpen(false);
+   526→   526→      fetchData();
+   527→   527→    } catch (err: unknown) {
+   528→   528→      const msg = err instanceof Error ? err.message : "Failed to save user";
+   529→   529→      toast.error(msg);
+   530→   530→    } finally {
+   531→   531→      setSaving(false);
+   532→   532→    }
+   533→   533→  };
+   534→   534→
+   535→   535→  const handleDelete = async () => {
+   536→   536→    if (!deleteTarget) return;
+   537→   537→    setDeleting(true);
+   538→   538→    try {
+   539→   539→      await apiSuperDeleteUser(deleteTarget.id);
+   540→   540→      toast.success("User deleted successfully");
+   541→   541→      setDeleteTarget(null);
+   542→   542→      fetchData();
+   543→   543→    } catch (err: unknown) {
+   544→   544→      const msg = err instanceof Error ? err.message : "Failed to delete user";
+   545→   545→      toast.error(msg);
+   546→   546→    } finally {
+   547→   547→      setDeleting(false);
+   548→   548→    }
+   549→   549→  };
+   550→   550→
+   551→   551→  const handleToggleActive = async (user: UserRecord) => {
+   552→   552→    try {
+   553→   553→      await apiSuperUpdateUser(user.id, { isActive: !user.isActive });
+   554→   554→      toast.success(`User ${user.isActive ? "deactivated" : "activated"} successfully`);
+   555→   555→      fetchData();
+   556→   556→    } catch (err: unknown) {
+   557→   557→      const msg = err instanceof Error ? err.message : "Failed to update status";
+   558→   558→      toast.error(msg);
+   559→   559→    }
+   560→   560→  };
+   561→   561→
+   562→   562→  const togglePermission = (perm: string) => {
+   563→   563→    setForm((prev) => ({
+   564→   564→      ...prev,
+   565→   565→      permissions: prev.permissions.includes(perm)
+   566→   566→        ? prev.permissions.filter((p) => p !== perm)
+   567→   567→        : [...prev.permissions, perm],
+   568→   568→    }));
+   569→   569→  };
+   570→   570→
+   571→   571→  return (
+   572→   572→    <div className="space-y-6 p-4 md:p-6">
+   573→   573→      {/* ── Page Header ── */}
+   574→   574→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   575→   575→        <div>
+   576→   576→          <h1 className="text-2xl font-bold tracking-tight text-slate-900">User Management</h1>
+   577→   577→          <p className="mt-1 text-sm text-slate-500">
+   578→   578→            Manage all user accounts, roles, and permissions across the system.
+   579→   579→          </p>
+   580→   580→        </div>
+   581→   581→        <Button onClick={openCreate} className="shadow-sm">
+   582→   582→          <UserPlus className="mr-2 h-4 w-4" />
+   583→   583→          Add New User
+   584→   584→        </Button>
+   585→   585→      </div>
+   586→   586→
+   587→   587→      {/* ── Stats Cards ── */}
+   588→   588→      {!loading && stats && (
+   589→   589→        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+   590→   590→          <StatCard
+   591→   591→            icon={Users}
+   592→   592→            label="Total Users"
+   593→   593→            value={stats.totalUsers}
+   594→   594→            sub="Across all providers"
+   595→   595→            color="text-indigo-600"
+   596→   596→            bgColor="bg-indigo-50"
+   597→   597→          />
+   598→   598→          <StatCard
+   599→   599→            icon={Building2}
+   600→   600→            label="Active Providers"
+   601→   601→            value={stats.activeProviderCount}
+   602→   602→            sub={`${stats.providerCount} total`}
+   603→   603→            color="text-emerald-600"
+   604→   604→            bgColor="bg-emerald-50"
+   605→   605→          />
+   606→   606→          <StatCard
+   607→   607→            icon={ShieldCheck}
+   608→   608→            label="Operators"
+   609→   609→            value={stats.roleCounts.OPERATOR || 0}
+   610→   610→            sub={`${stats.roleCounts.STAFF || 0} staff members`}
+   611→   611→            color="text-teal-600"
+   612→   612→            bgColor="bg-teal-50"
+   613→   613→          />
+   614→   614→          <StatCard
+   615→   615→            icon={Shield}
+   616→   616→            label="Police Accounts"
+   617→   617→            value={stats.roleCounts.POLICE || 0}
+   618→   618→            sub="Law enforcement users"
+   619→   619→            color="text-rose-600"
+   620→   620→            bgColor="bg-rose-50"
+   621→   621→          />
+   622→   622→        </div>
+   623→   623→      )}
+   624→   624→
+   625→   625→      {/* ── Filters & Search ── */}
+   626→   626→      <Card className="border-0 shadow-sm">
+   627→   627→        <CardContent className="p-4">
+   628→   628→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+   629→   629→            {/* Search */}
+   630→   630→            <div className="relative flex-1">
+   631→   631→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+   632→   632→              <Input
+   633→   633→                placeholder="Search by name, username, or email..."
+   634→   634→                value={search}
+   635→   635→                onChange={(e) => setSearch(e.target.value)}
+   636→   636→                className="pl-9 bg-slate-50 border-slate-200"
+   637→   637→              />
+   638→   638→            </div>
+   639→   639→
+   640→   640→            {/* Provider Filter */}
+   641→   641→            <Select value={activeProvider} onValueChange={setActiveProvider}>
+   642→   642→              <SelectTrigger className="w-full lg:w-48 bg-slate-50 border-slate-200">
+   643→   643→                <Building2 className="mr-2 h-4 w-4 text-slate-400" />
+   644→   644→                <SelectValue placeholder="All Providers" />
+   645→   645→              </SelectTrigger>
+   646→   646→              <SelectContent>
+   647→   647→                <SelectItem value="">All Providers</SelectItem>
+   648→   648→                {providers.map((p) => (
+   649→   649→                  <SelectItem key={p.id} value={p.id}>
+   650→   650→                    <div className="flex items-center gap-2">
+   651→   651→                      <span>{p.name}</span>
+   652→   652→                      <Badge
+   653→   653→                        variant="outline"
+   654→   654→                        className={`text-[9px] px-1 py-0 ${
+   655→   655→                          p.status === "APPROVED"
+   656→   656→                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+   657→   657→                            : p.status === "PENDING"
+   658→   658→                            ? "bg-amber-50 text-amber-600 border-amber-200"
+   659→   659→                            : "bg-slate-50 text-slate-500 border-slate-200"
+   660→   660→                        }`}
+   661→   661→                      >
+   662→   662→                        {p.status}
+   663→   663→                      </Badge>
+   664→   664→                    </div>
+   665→   665→                  </SelectItem>
+   666→   666→                ))}
+   667→   667→              </SelectContent>
+   668→   668→            </Select>
+   669→   669→          </div>
+   670→   670→
+   671→   671→          {/* Role Tabs */}
+   672→   672→          <div className="mt-4 flex flex-wrap gap-1.5">
+   673→   673→            {ROLE_TABS.map((tab) => {
+   674→   674→              const count = tab.value
+   675→   675→                ? (stats?.roleCounts[tab.value] || 0)
+   676→   676→                : stats?.totalUsers || 0;
+   677→   677→              return (
+   678→   678→                <button
+   679→   679→                  key={tab.value}
+   680→   680→                  onClick={() => setActiveRoleTab(tab.value)}
+   681→   681→                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
+   682→   682→                    activeRoleTab === tab.value
+   683→   683→                      ? "bg-primary text-white shadow-sm"
+   684→   684→                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+   685→   685→                  }`}
+   686→   686→                >
+   687→   687→                  {tab.label}
+   688→   688→                  <span
+   689→   689→                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+   690→   690→                      activeRoleTab === tab.value
+   691→   691→                        ? "bg-white/20 text-white"
+   692→   692→                        : "bg-slate-200 text-slate-500"
+   693→   693→                    }`}
+   694→   694→                  >
+   695→   695→                    {count}
+   696→   696→                  </span>
+   697→   697→                </button>
+   698→   698→              );
+   699→   699→            })}
+   700→   700→          </div>
+   701→   701→        </CardContent>
+   702→   702→      </Card>
+   703→   703→
+   704→   704→      {/* ── Users List ── */}
+   705→   705→      {loading ? (
+   706→   706→        <div className="space-y-3">
+   707→   707→          {Array.from({ length: 4 }).map((_, i) => (
+   708→   708→            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+   709→   709→          ))}
+   710→   710→        </div>
+   711→   711→      ) : users.length === 0 ? (
+   712→   712→        <Card className="border-0 shadow-sm">
+   713→   713→          <CardContent className="flex flex-col items-center justify-center py-16">
+   714→   714→            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+   715→   715→              <Users className="h-8 w-8 text-slate-300" />
+   716→   716→            </div>
+   717→   717→            <p className="mt-4 font-semibold text-slate-700">No users found</p>
+   718→   718→            <p className="mt-1 text-sm text-slate-400">
+   719→   719→              {search || activeRoleTab
+   720→   720→                ? "Try adjusting your search or filters."
+   721→   721→                : "Create your first user to get started."}
+   722→   722→            </p>
+   723→   723→            {!search && !activeRoleTab && (
+   724→   724→              <Button onClick={openCreate} className="mt-4" variant="outline">
+   725→   725→                <UserPlus className="mr-2 h-4 w-4" />
+   726→   726→                Add User
+   727→   727→              </Button>
+   728→   728→            )}
+   729→   729→          </CardContent>
+   730→   730→        </Card>
+   731→   731→      ) : (
+   732→   732→        <>
+   733→   733→          <div className="space-y-2">
+   734→   734→            {users.map((user) => (
+   735→   735→              <UserRow
+   736→   736→                key={user.id}
+   737→   737→                user={user}
+   738→   738→                onEdit={openEdit}
+   739→   739→                onDelete={setDeleteTarget}
+   740→   740→                onView={openView}
+   741→   741→                onToggleActive={handleToggleActive}
+   742→   742→              />
+   743→   743→            ))}
+   744→   744→          </div>
+   745→   745→
+   746→   746→          {/* ── Pagination ── */}
+   747→   747→          {pagination && pagination.totalPages > 1 && (
+   748→   748→            <div className="flex items-center justify-between">
+   749→   749→              <p className="text-sm text-slate-500">
+   750→   750→                Showing {(pagination.page - 1) * pagination.pageSize + 1}
+   751→   751→                {" - "}
+   752→   752→                {Math.min(pagination.page * pagination.pageSize, pagination.total)}{" "}
+   753→   753→                of {pagination.total} users
+   754→   754→              </p>
+   755→   755→              <div className="flex items-center gap-1">
+   756→   756→                <Button
+   757→   757→                  variant="outline"
+   758→   758→                  size="sm"
+   759→   759→                  disabled={pagination.page <= 1}
+   760→   760→                  onClick={() => setCurrentPage((p) => p - 1)}
+   761→   761→                  className="h-8 w-8 p-0"
+   762→   762→                >
+   763→   763→                  <ChevronLeft className="h-4 w-4" />
+   764→   764→                </Button>
+   765→   765→                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+   766→   766→                  .filter((p) => {
+   767→   767→                    // Show first, last, current, and neighbors
+   768→   768→                    return (
+   769→   769→                      p === 1 ||
+   770→   770→                      p === pagination.totalPages ||
+   771→   771→                      Math.abs(p - pagination.page) <= 1
+   772→   772→                    );
+   773→   773→                  })
+   774→   774→                  .map((p, idx, arr) => {
+   775→   775→                    // Add ellipsis
+   776→   776→                    const prev = arr[idx - 1];
+   777→   777→                    const showEllipsis = prev && p - prev > 1;
+   778→   778→                    return (
+   779→   779→                      <span key={p} className="flex items-center">
+   780→   780→                        {showEllipsis && (
+   781→   781→                          <span className="px-1 text-slate-400">...</span>
+   782→   782→                        )}
+   783→   783→                        <Button
+   784→   784→                          variant={p === pagination.page ? "default" : "outline"}
+   785→   785→                          size="sm"
+   786→   786→                          onClick={() => setCurrentPage(p)}
+   787→   787→                          className="h-8 w-8 p-0"
+   788→   788→                        >
+   789→   789→                          {p}
+   790→   790→                        </Button>
+   791→   791→                      </span>
+   792→   792→                    );
+   793→   793→                  })}
+   794→   794→                <Button
+   795→   795→                  variant="outline"
+   796→   796→                  size="sm"
+   797→   797→                  disabled={pagination.page >= pagination.totalPages}
+   798→   798→                  onClick={() => setCurrentPage((p) => p + 1)}
+   799→   799→                  className="h-8 w-8 p-0"
+   800→   800→                >
+   801→   801→                  <ChevronRight className="h-4 w-4" />
+   802→   802→                </Button>
+   803→   803→              </div>
+   804→   804→            </div>
+   805→   805→          )}
+   806→   806→        </>
+   807→   807→      )}
+   808→   808→
+   809→   809→      {/* ══════════════════════════════════════════ */}
+   810→   810→      {/* ── CREATE / EDIT DIALOG ── */}
+   811→   811→      {/* ══════════════════════════════════════════ */}
+   812→   812→      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+   813→   813→        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+   814→   814→          <DialogHeader>
+   815→   815→            <DialogTitle className="flex items-center gap-2">
+   816→   816→              {editingUser ? (
+   817→   817→                <>
+   818→   818→                  <Pencil className="h-5 w-5 text-primary" />
+   819→   819→                  Edit User
+   820→   820→                </>
+   821→   821→              ) : (
+   822→   822→                <>
+   823→   823→                  <UserPlus className="h-5 w-5 text-primary" />
+   824→   824→                  Create New User
+   825→   825→                </>
+   826→   826→              )}
+   827→   827→            </DialogTitle>
+   828→   828→            <DialogDescription>
+   829→   829→              {editingUser
+   830→   830→                ? "Update user details. Leave password blank to keep current password."
+   831→   831→                : "Fill in the details to create a new user account."}
+   832→   832→            </DialogDescription>
+   833→   833→          </DialogHeader>
+   834→   834→
+   835→   835→          <div className="grid gap-4 py-2">
+   836→   836→            {/* Role Selection */}
+   837→   837→            <div className="grid gap-2">
+   838→   838→              <Label>Role</Label>
+   839→   839→              <div className="grid grid-cols-2 gap-2">
+   840→   840→                {Object.entries(ROLE_CONFIG).map(([key, conf]) => {
+   841→   841→                  const Icon = conf.icon;
+   842→   842→                  const isSelected = form.role === key;
+   843→   843→                  return (
+   844→   844→                    <button
+   845→   845→                      key={key}
+   846→   846→                      type="button"
+   847→   847→                      onClick={() => setForm((f) => ({ ...f, role: key }))}
+   848→   848→                      className={`flex items-center gap-2.5 rounded-lg border-2 p-3 text-left transition-all ${
+   849→   849→                        isSelected
+   850→   850→                          ? `${conf.bg} ${conf.color} border-current`
+   851→   851→                          : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+   852→   852→                      }`}
+   853→   853→                    >
+   854→   854→                      <Icon className={`h-4 w-4 shrink-0 ${isSelected ? conf.color : "text-slate-400"}`} />
+   855→   855→                      <div className="min-w-0">
+   856→   856→                        <p className={`text-sm font-semibold ${isSelected ? conf.color : "text-slate-700"}`}>
+   857→   857→                          {conf.label}
+   858→   858→                        </p>
+   859→   859→                        <p className="text-[10px] text-slate-400 truncate">{conf.desc}</p>
+   860→   860→                      </div>
+   861→   861→                    </button>
+   862→   862→                  );
+   863→   863→                })}
+   864→   864→              </div>
+   865→   865→            </div>
+   866→   866→
+   867→   867→            <Separator />
+   868→   868→
+   869→   869→            {/* Username */}
+   870→   870→            <div className="grid gap-2">
+   871→   871→              <Label htmlFor="su-username">Username</Label>
+   872→   872→              <Input
+   873→   873→                id="su-username"
+   874→   874→                value={form.username}
+   875→   875→                onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+   876→   876→                placeholder="e.g. john_doe"
+   877→   877→                className="bg-slate-50"
+   878→   878→              />
+   879→   879→            </div>
+   880→   880→
+   881→   881→            {/* Password */}
+   882→   882→            <div className="grid gap-2">
+   883→   883→              <Label htmlFor="su-password">
+   884→   884→                Password
+   885→   885→                {editingUser && (
+   886→   886→                  <span className="ml-1 font-normal text-slate-400">(leave blank to keep current)</span>
+   887→   887→                )}
+   888→   888→              </Label>
+   889→   889→              <Input
+   890→   890→                id="su-password"
+   891→   891→                type="password"
+   892→   892→                value={form.password}
+   893→   893→                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+   894→   894→                placeholder={editingUser ? "Leave blank to keep current" : "Minimum 6 characters"}
+   895→   895→                className="bg-slate-50"
+   896→   896→              />
+   897→   897→            </div>
+   898→   898→
+   899→   899→            {/* Full Name */}
+   900→   900→            <div className="grid gap-2">
+   901→   901→              <Label htmlFor="su-name">Full Name</Label>
+   902→   902→              <Input
+   903→   903→                id="su-name"
+   904→   904→                value={form.name}
+   905→   905→                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+   906→   906→                placeholder="e.g. John Doe"
+   907→   907→                className="bg-slate-50"
+   908→   908→              />
+   909→   909→            </div>
+   910→   910→
+   911→   911→            {/* Email & Phone Row */}
+   912→   912→            <div className="grid grid-cols-2 gap-3">
+   913→   913→              <div className="grid gap-2">
+   914→   914→                <Label htmlFor="su-email">Email</Label>
+   915→   915→                <Input
+   916→   916→                  id="su-email"
+   917→   917→                  type="email"
+   918→   918→                  value={form.email}
+   919→   919→                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+   920→   920→                  placeholder="user@email.com"
+   921→   921→                  className="bg-slate-50"
+   922→   922→                />
+   923→   923→              </div>
+   924→   924→              <div className="grid gap-2">
+   925→   925→                <Label htmlFor="su-phone">Phone</Label>
+   926→   926→                <Input
+   927→   927→                  id="su-phone"
+   928→   928→                  value={form.phone}
+   929→   929→                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+   930→   930→                  placeholder="+251..."
+   931→   931→                  className="bg-slate-50"
+   932→   932→                />
+   933→   933→              </div>
+   934→   934→            </div>
+   935→   935→
+   936→   936→            {/* Provider Selection — for OPERATOR/STAFF */}
+   937→   937→            {(form.role === "OPERATOR" || form.role === "STAFF") && (
+   938→   938→              <div className="grid gap-2">
+   939→   939→                <Label>Provider (Guesthouse)</Label>
+   940→   940→                <Select
+   941→   941→                  value={form.providerId}
+   942→   942→                  onValueChange={(v) => setForm((f) => ({ ...f, providerId: v }))}
+   943→   943→                >
+   944→   944→                  <SelectTrigger className="bg-slate-50">
+   945→   945→                    <Building2 className="mr-2 h-4 w-4 text-slate-400" />
+   946→   946→                    <SelectValue placeholder="Select a provider" />
+   947→   947→                  </SelectTrigger>
+   948→   948→                  <SelectContent>
+   949→   949→                    {providers.map((p) => (
+   950→   950→                      <SelectItem key={p.id} value={p.id}>
+   951→   951→                        <div className="flex items-center gap-2">
+   952→   952→                          <span>{p.name}</span>
+   953→   953→                          <Badge
+   954→   954→                            variant="outline"
+   955→   955→                            className={`text-[9px] px-1 py-0 ${
+   956→   956→                              p.status === "APPROVED"
+   957→   957→                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+   958→   958→                                : "bg-amber-50 text-amber-600 border-amber-200"
+   959→   959→                            }`}
+   960→   960→                          >
+   961→   961→                            {p.status}
+   962→   962→                          </Badge>
+   963→   963→                        </div>
+   964→   964→                      </SelectItem>
+   965→   965→                    ))}
+   966→   966→                  </SelectContent>
+   967→   967→                </Select>
+   968→   968→              </div>
+   969→   969→            )}
+   970→   970→
+   971→   971→            {/* Police Rank — for POLICE role */}
+   972→   972→            {form.role === "POLICE" && (
+   973→   973→              <div className="grid gap-2">
+   974→   974→                <Label>Police Rank</Label>
+   975→   975→                <div className="grid grid-cols-2 gap-2">
+   976→   976→                  {POLICE_RANKS.map((rank) => (
+   977→   977→                    <button
+   978→   978→                      key={rank.value}
+   979→   979→                      type="button"
+   980→   980→                      onClick={() => setForm((f) => ({ ...f, policeRank: rank.value }))}
+   981→   981→                      className={`rounded-lg border-2 p-3 text-left transition-all ${
+   982→   982→                        form.policeRank === rank.value
+   983→   983→                          ? "border-primary bg-primary/5"
+   984→   984→                          : "border-slate-200 hover:border-slate-300"
+   985→   985→                      }`}
+   986→   986→                    >
+   987→   987→                      <p className={`text-sm font-semibold ${
+   988→   988→                        form.policeRank === rank.value ? "text-primary" : "text-slate-700"
+   989→   989→                      }`}>
+   990→   990→                        {rank.label}
+   991→   991→                      </p>
+   992→   992→                      <p className="mt-0.5 text-[10px] text-slate-400">{rank.desc}</p>
+   993→   993→                    </button>
+   994→   994→                  ))}
+   995→   995→                </div>
+   996→   996→              </div>
+   997→   997→            )}
+   998→   998→
+   999→   999→            {/* Staff Permissions */}
+  1000→  1000→            {form.role === "STAFF" && (
+  1001→  1001→              <div className="grid gap-2">
+  1002→  1002→                <Label>Permissions</Label>
+  1003→  1003→                <p className="text-xs text-slate-400">Select which pages this staff member can access.</p>
+  1004→  1004→                <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
+  1005→  1005→                  {PERMISSION_OPTIONS.map((perm) => (
+  1006→  1006→                    <label
+  1007→  1007→                      key={perm.value}
+  1008→  1008→                      className="flex items-center gap-2 text-sm cursor-pointer rounded-md p-1.5 hover:bg-slate-50 transition-colors"
+  1009→  1009→                    >
+  1010→  1010→                      <Checkbox
+  1011→  1011→                        checked={form.permissions.includes(perm.value)}
+  1012→  1012→                        onCheckedChange={() => togglePermission(perm.value)}
+  1013→  1013→                      />
+  1014→  1014→                      <span className="text-slate-700">{perm.label}</span>
+  1015→  1015→                    </label>
+  1016→  1016→                  ))}
+  1017→  1017→                </div>
+  1018→  1018→              </div>
+  1019→  1019→            )}
+  1020→  1020→
+  1021→  1021→            {/* Active Status */}
+  1022→  1022→            <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+  1023→  1023→              <div>
+  1024→  1024→                <p className="text-sm font-medium text-slate-700">Account Status</p>
+  1025→  1025→                <p className="text-xs text-slate-400">
+  1026→  1026→                  {form.isActive
+  1027→  1027→                    ? "User can log in and access the system"
+  1028→  1028→                    : "User account is disabled"}
+  1029→  1029→                </p>
+  1030→  1030→              </div>
+  1031→  1031→              <Switch
+  1032→  1032→                checked={form.isActive}
+  1033→  1033→                onCheckedChange={(checked) => setForm((f) => ({ ...f, isActive: checked }))}
+  1034→  1034→              />
+  1035→  1035→            </div>
+  1036→  1036→          </div>
+  1037→  1037→
+  1038→  1038→          <DialogFooter>
+  1039→  1039→            <Button variant="outline" onClick={() => setFormOpen(false)}>
+  1040→  1040→              Cancel
+  1041→  1041→            </Button>
+  1042→  1042→            <Button onClick={handleSave} disabled={saving} className="shadow-sm">
+  1043→  1043→              {saving ? (
+  1044→  1044→                <>
+  1045→  1045→                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+  1046→  1046→                  Saving...
+  1047→  1047→                </>
+  1048→  1048→              ) : editingUser ? (
+  1049→  1049→                "Update User"
+  1050→  1050→              ) : (
+  1051→  1051→                "Create User"
+  1052→  1052→              )}
+  1053→  1053→            </Button>
+  1054→  1054→          </DialogFooter>
+  1055→  1055→        </DialogContent>
+  1056→  1056→      </Dialog>
+  1057→  1057→
+  1058→  1058→      {/* ══════════════════════════════════════════ */}
+  1059→  1059→      {/* ── VIEW DETAILS DIALOG ── */}
+  1060→  1060→      {/* ══════════════════════════════════════════ */}
+  1061→  1061→      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+  1062→  1062→        <DialogContent className="max-w-md">
+  1063→  1063→          {viewingUser && (() => {
+  1064→  1064→            const roleConf = ROLE_CONFIG[viewingUser.role] || ROLE_CONFIG.STAFF;
+  1065→  1065→            const RoleIcon = roleConf.icon;
+  1066→  1066→            let perms: string[] = [];
+  1067→  1067→            try {
+  1068→  1068→              perms = viewingUser.permissions ? JSON.parse(viewingUser.permissions) : [];
+  1069→  1069→            } catch {
+  1070→  1070→              perms = [];
+  1071→  1071→            }
+  1072→  1072→            return (
+  1073→  1073→              <>
+  1074→  1074→                <DialogHeader>
+  1075→  1075→                  <div className="flex items-center gap-3">
+  1076→  1076→                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${roleConf.bg} border`}>
+  1077→  1077→                      <RoleIcon className={`h-6 w-6 ${roleConf.color}`} />
+  1078→  1078→                    </div>
+  1079→  1079→                    <div>
+  1080→  1080→                      <DialogTitle className="text-lg">{viewingUser.name}</DialogTitle>
+  1081→  1081→                      <DialogDescription>
+  1082→  1082→                        @{viewingUser.username} · Joined {new Date(viewingUser.createdAt).toLocaleDateString()}
+  1083→  1083→                      </DialogDescription>
+  1084→  1084→                    </div>
+  1085→  1085→                  </div>
+  1086→  1086→                </DialogHeader>
+  1087→  1087→
+  1088→  1088→                <div className="space-y-4 py-2">
+  1089→  1089→                  {/* Status & Role */}
+  1090→  1090→                  <div className="flex items-center gap-2">
+  1091→  1091→                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${roleConf.bg} ${roleConf.color}`}>
+  1092→  1092→                      <RoleIcon className="h-3 w-3" />
+  1093→  1093→                      {roleConf.label}
+  1094→  1094→                    </span>
+  1095→  1095→                    {viewingUser.role === "POLICE" && viewingUser.policeRank && (
+  1096→  1096→                      <Badge variant="outline" className="text-xs">
+  1097→  1097→                        {viewingUser.policeRank}
+  1098→  1098→                      </Badge>
+  1099→  1099→                    )}
+  1100→  1100→                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+  1101→  1101→                      viewingUser.isActive
+  1102→  1102→                        ? "bg-emerald-50 text-emerald-700"
+  1103→  1103→                        : "bg-slate-100 text-slate-500"
+  1104→  1104→                    }`}>
+  1105→  1105→                      {viewingUser.isActive ? (
+  1106→  1106→                        <><CheckCircle2 className="h-3 w-3" /> Active</>
+  1107→  1107→                      ) : (
+  1108→  1108→                        <><XCircle className="h-3 w-3" /> Inactive</>
+  1109→  1109→                      )}
+  1110→  1110→                    </span>
+  1111→  1111→                  </div>
+  1112→  1112→
+  1113→  1113→                  <Separator />
+  1114→  1114→
+  1115→  1115→                  {/* Contact Info */}
+  1116→  1116→                  <div className="space-y-3">
+  1117→  1117→                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Contact Information</h4>
+  1118→  1118→                    <div className="space-y-2">
+  1119→  1119→                      {viewingUser.email && (
+  1120→  1120→                        <div className="flex items-center gap-2.5 text-sm">
+  1121→  1121→                          <Mail className="h-4 w-4 text-slate-400" />
+  1122→  1122→                          <span>{viewingUser.email}</span>
+  1123→  1123→                        </div>
+  1124→  1124→                      )}
+  1125→  1125→                      {viewingUser.phone && (
+  1126→  1126→                        <div className="flex items-center gap-2.5 text-sm">
+  1127→  1127→                          <Phone className="h-4 w-4 text-slate-400" />
+  1128→  1128→                          <span>{viewingUser.phone}</span>
+  1129→  1129→                        </div>
+  1130→  1130→                      )}
+  1131→  1131→                    </div>
+  1132→  1132→                  </div>
+  1133→  1133→
+  1134→  1134→                  {/* Provider Info */}
+  1135→  1135→                  {viewingUser.provider && (
+  1136→  1136→                    <>
+  1137→  1137→                      <Separator />
+  1138→  1138→                      <div className="space-y-2">
+  1139→  1139→                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Provider</h4>
+  1140→  1140→                        <div className="flex items-center gap-2.5 text-sm">
+  1141→  1141→                          <Building2 className="h-4 w-4 text-slate-400" />
+  1142→  1142→                          <span className="font-medium">{viewingUser.provider.name}</span>
+  1143→  1143→                          <Badge
+  1144→  1144→                            variant="outline"
+  1145→  1145→                            className={`text-[10px] px-1.5 py-0 ${
+  1146→  1146→                              viewingUser.provider.status === "APPROVED"
+  1147→  1147→                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+  1148→  1148→                                : "bg-amber-50 text-amber-600 border-amber-200"
+  1149→  1149→                            }`}
+  1150→  1150→                          >
+  1151→  1151→                            {viewingUser.provider.status}
+  1152→  1152→                          </Badge>
+  1153→  1153→                        </div>
+  1154→  1154→                      </div>
+  1155→  1155→                    </>
+  1156→  1156→                  )}
+  1157→  1157→
+  1158→  1158→                  {/* Staff Permissions */}
+  1159→  1159→                  {viewingUser.role === "STAFF" && perms.length > 0 && (
+  1160→  1160→                    <>
+  1161→  1161→                      <Separator />
+  1162→  1162→                      <div className="space-y-2">
+  1163→  1163→                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Permissions</h4>
+  1164→  1164→                        <div className="flex flex-wrap gap-1.5">
+  1165→  1165→                          {perms.map((p) => (
+  1166→  1166→                            <Badge
+  1167→  1167→                              key={p}
+  1168→  1168→                              variant="secondary"
+  1169→  1169→                              className="text-xs bg-slate-100 text-slate-600"
+  1170→  1170→                            >
+  1171→  1171→                              {p}
+  1172→  1172→                            </Badge>
+  1173→  1173→                          ))}
+  1174→  1174→                        </div>
+  1175→  1175→                      </div>
+  1176→  1176→                    </>
+  1177→  1177→                  )}
+  1178→  1178→
+  1179→  1179→                  {/* Activity */}
+  1180→  1180→                  <Separator />
+  1181→  1181→                  <div className="space-y-2">
+  1182→  1182→                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Activity</h4>
+  1183→  1183→                    <div className="grid grid-cols-2 gap-3 text-sm">
+  1184→  1184→                      <div className="flex items-center gap-2 text-slate-500">
+  1185→  1185→                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+  1186→  1186→                        <span>Created: {new Date(viewingUser.createdAt).toLocaleDateString()}</span>
+  1187→  1187→                      </div>
+  1188→  1188→                      <div className="flex items-center gap-2 text-slate-500">
+  1189→  1189→                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+  1190→  1190→                        <span>Updated: {new Date(viewingUser.updatedAt).toLocaleDateString()}</span>
+  1191→  1191→                      </div>
+  1192→  1192→                      {viewingUser.lastLogin && (
+  1193→  1193→                        <div className="flex items-center gap-2 text-slate-500">
+  1194→  1194→                          <Activity className="h-3.5 w-3.5 text-slate-400" />
+  1195→  1195→                          <span>Last login: {new Date(viewingUser.lastLogin).toLocaleDateString()}</span>
+  1196→  1196→                        </div>
+  1197→  1197→                      )}
+  1198→  1198→                    </div>
+  1199→  1199→                  </div>
+  1200→  1200→                </div>
+  1201→  1201→
+  1202→  1202→                <DialogFooter>
+  1203→  1203→                  <Button
+  1204→  1204→                    variant="outline"
+  1205→  1205→                    onClick={() => {
+  1206→  1206→                      setViewOpen(false);
+  1207→  1207→                      openEdit(viewingUser);
+  1208→  1208→                    }}
+  1209→  1209→                  >
+  1210→  1210→                    <Pencil className="mr-2 h-4 w-4" />
+  1211→  1211→                    Edit User
+  1212→  1212→                  </Button>
+  1213→  1213→                </DialogFooter>
+  1214→  1214→              </>
+  1215→  1215→            );
+  1216→  1216→          })()}
+  1217→  1217→        </DialogContent>
+  1218→  1218→      </Dialog>
+  1219→  1219→
+  1220→  1220→      {/* ══════════════════════════════════════════ */}
+  1221→  1221→      {/* ── DELETE CONFIRMATION ── */}
+  1222→  1222→      {/* ══════════════════════════════════════════ */}
+  1223→  1223→      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+  1224→  1224→        <AlertDialogContent>
+  1225→  1225→          <AlertDialogHeader>
+  1226→  1226→            <div className="flex items-center gap-3">
+  1227→  1227→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 border border-rose-200">
+  1228→  1228→                <AlertTriangle className="h-5 w-5 text-rose-600" />
+  1229→  1229→              </div>
+  1230→  1230→              <div>
+  1231→  1231→                <AlertDialogTitle>Delete User</AlertDialogTitle>
+  1232→  1232→                <AlertDialogDescription className="mt-1">
+  1233→  1233→                  Are you sure you want to delete <strong>{deleteTarget?.name}</strong> (@{deleteTarget?.username})?
+  1234→  1234→                  This action cannot be undone and will permanently remove the account.
+  1235→  1235→                </AlertDialogDescription>
+  1236→  1236→              </div>
+  1237→  1237→            </div>
+  1238→  1238→          </AlertDialogHeader>
+  1239→  1239→          <AlertDialogFooter>
+  1240→  1240→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+  1241→  1241→            <AlertDialogAction
+  1242→  1242→              onClick={handleDelete}
+  1243→  1243→              disabled={deleting}
+  1244→  1244→              className="bg-rose-600 text-white hover:bg-rose-700"
+  1245→  1245→            >
+  1246→  1246→              {deleting ? (
+  1247→  1247→                <>
+  1248→  1248→                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+  1249→  1249→                  Deleting...
+  1250→  1250→                </>
+  1251→  1251→              ) : (
+  1252→  1252→                <>
+  1253→  1253→                  <Trash2 className="mr-2 h-4 w-4" />
+  1254→  1254→                  Delete Permanently
+  1255→  1255→                </>
+  1256→  1256→              )}
+  1257→  1257→            </AlertDialogAction>
+  1258→  1258→          </AlertDialogFooter>
+  1259→  1259→        </AlertDialogContent>
+  1260→  1260→      </AlertDialog>
+  1261→  1261→    </div>
+  1262→  1262→  );
+  1263→  1263→}
+  1264→  1264→

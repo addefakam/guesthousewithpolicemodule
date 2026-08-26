@@ -1,0 +1,859 @@
+     1→"use client";
+     2→
+     3→import React, { useSyncExternalStore, useState, useEffect, useCallback } from "react";
+     4→import {
+     5→  LayoutDashboard,
+     6→  Bed,
+     7→  BedDouble,
+     8→  Users,
+     9→  CalendarCheck,
+    10→  Sun,
+    11→  Receipt,
+    12→  Package,
+    13→  Sparkles,
+    14→  UserCog,
+    15→  BarChart3,
+    16→  Settings,
+    17→  Bell,
+    18→  Building2,
+    19→  Search,
+    20→  Shield,
+    21→  Star,
+    22→  ChevronLeft,
+    23→  Menu,
+    24→  UsersRound,
+    25→  ShieldAlert,
+    26→  UserX,
+    27→  ScanLine,
+    28→  CreditCard,
+    29→  ShieldCheck,
+    30→  Clock,
+    31→  AlertTriangle,
+    32→  UserCircle,
+    33→  ChevronDown,
+    34→  LogOut,
+    35→  BrainCircuit,
+    36→  ToggleLeft,
+    37→  ToggleRight,
+    38→  Loader2,
+    39→} from "lucide-react";
+    40→
+    41→import { useAppStore, type CurrentUser } from "@/lib/store";
+    42→import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
+    43→import { useIsMobile } from "@/hooks/use-mobile";
+    44→import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
+    45→import { apiLogout, apiToggleAnomalyDetection, apiGetAnomalies } from "@/lib/api";
+    46→
+    47→import { Button } from "@/components/ui/button";
+    48→import { ScrollArea } from "@/components/ui/scroll-area";
+    49→import { Separator } from "@/components/ui/separator";
+    50→import { Badge } from "@/components/ui/badge";
+    51→import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+    52→import {
+    53→  Sheet,
+    54→  SheetContent,
+    55→  SheetHeader,
+    56→  SheetTitle,
+    57→  SheetTrigger,
+    58→} from "@/components/ui/sheet";
+    59→import {
+    60→  DropdownMenu,
+    61→  DropdownMenuContent,
+    62→  DropdownMenuItem,
+    63→  DropdownMenuSeparator,
+    64→  DropdownMenuTrigger,
+    65→} from "@/components/ui/dropdown-menu";
+    66→
+    67→// ── Navigation item definition ──
+    68→interface NavItem {
+    69→  page: string;
+    70→  label: string;
+    71→  icon: React.ElementType;
+    72→  badge?: string;
+    73→}
+    74→
+    75→// ── All available navigation items ──
+    76→const ALL_NAV_ITEMS: NavItem[] = [
+    77→  { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    78→  { page: "rooms", label: "Rooms", icon: Bed },
+    79→  { page: "daytime", label: "Daytime", icon: Sun },
+    80→  { page: "expenses", label: "Expenses", icon: Receipt },
+    81→  { page: "resources", label: "Resources", icon: Package },
+    82→  { page: "housekeeping", label: "Housekeeping", icon: Sparkles },
+    83→  { page: "users", label: "Users", icon: UserCog },
+    84→  { page: "reports", label: "Reports", icon: BarChart3 },
+    85→  { page: "settings", label: "Settings", icon: Settings },
+    86→  { page: "notifications", label: "Notifications", icon: Bell, badge: "new" },
+    87→];
+    88→
+    89→const POLICE_NAV_ITEMS: NavItem[] = [
+    90→  {
+    91→    page: "police-dashboard",
+    92→    label: "Dashboard",
+    93→    icon: LayoutDashboard,
+    94→  },
+    95→  { page: "providers", label: "Providers", icon: Building2 },
+    96→  {
+    97→    page: "police-room-availability",
+    98→    label: "Room Availability",
+    99→    icon: BedDouble,
+   100→  },
+   101→  {
+   102→    page: "police-guests",
+   103→    label: "Guests Search",
+   104→    icon: Search,
+   105→  },
+   106→  {
+   107→    page: "suspect-alerts",
+   108→    label: "Suspect Alerts",
+   109→    icon: ShieldAlert,
+   110→    badge: "new",
+   111→  },
+   112→  {
+   113→    page: "suspected-persons",
+   114→    label: "Suspected Persons",
+   115→    icon: UserX,
+   116→  },
+   117→  {
+   118→    page: "police-investigation",
+   119→    label: "Investigation & Settings",
+   120→    icon: Search,
+   121→  },
+   122→  {
+   123→    page: "police-security",
+   124→    label: "Security",
+   125→    icon: Shield,
+   126→  },
+   127→  {
+   128→    page: "anomaly-detection",
+   129→    label: "Anomaly Detection",
+   130→    icon: BrainCircuit,
+   131→  },
+   132→  {
+   133→    page: "owner-accounts",
+   134→    label: "Manage Officers",
+   135→    icon: UserCog,
+   136→  },
+   137→  {
+   138→    page: "notifications",
+   139→    label: "Notifications",
+   140→    icon: Bell,
+   141→    badge: "new",
+   142→  },
+   143→];
+   144→
+   145→// SUPERUSER (admin): police admin management, guesthouse management, subscriptions, settings, notifications (no dashboard)
+   146→const SUPERUSER_NAV_ITEMS: NavItem[] = [
+   147→  { page: "owner-accounts", label: "Police Admins", icon: Shield },
+   148→  { page: "providers", label: "Guesthouses", icon: Building2 },
+   149→  { page: "subscriptions", label: "Subscriptions", icon: CreditCard },
+   150→  { page: "notifications", label: "Notifications", icon: Bell },
+   151→];
+   152→
+   153→const OPERATOR_EXCLUDED = new Set<string>(["owner-accounts"]);
+   154→
+   155→// ── Permission → page mapping for STAFF role ──
+   156→// Supports both legacy keys (rooms, daytime) and new keys (rooms_view, daytime_view)
+   157→const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
+   158→  // New keys with _view suffix
+   159→  rooms_view: { page: "rooms", label: "Rooms", icon: Bed },
+   160→  daytime_view: { page: "daytime", label: "Daytime", icon: Sun },
+   161→  housekeeping_view: {
+   162→    page: "housekeeping",
+   163→    label: "Housekeeping",
+   164→    icon: Sparkles,
+   165→  },
+   166→  reports_view: { page: "reports", label: "Reports", icon: BarChart3 },
+   167→  reviews_view: { page: "reviews", label: "Reviews", icon: Star },
+   168→  notifications_view: {
+   169→    page: "notifications",
+   170→    label: "Notifications",
+   171→    icon: Bell,
+   172→  },
+   173→  settings_view: { page: "settings", label: "Settings", icon: Settings },
+   174→  // Legacy keys without _view suffix (backward compat)
+   175→  rooms: { page: "rooms", label: "Rooms", icon: Bed },
+   176→  daytime: { page: "daytime", label: "Daytime", icon: Sun },
+   177→  housekeeping: {
+   178→    page: "housekeeping",
+   179→    label: "Housekeeping",
+   180→    icon: Sparkles,
+   181→  },
+   182→  reports: { page: "reports", label: "Reports", icon: BarChart3 },
+   183→  reviews: { page: "reviews", label: "Reviews", icon: Star },
+   184→  notifications: {
+   185→    page: "notifications",
+   186→    label: "Notifications",
+   187→    icon: Bell,
+   188→  },
+   189→  settings: { page: "settings", label: "Settings", icon: Settings },
+   190→  reservations: { page: "guests-reservations", label: "Reservations", icon: CalendarCheck },
+   191→  guests: { page: "guests-reservations", label: "Guests", icon: UsersRound },
+   192→};
+   193→
+   194→// ── Helper: get nav items based on role ──
+   195→function getNavItems(user: CurrentUser): NavItem[] {
+   196→  switch (user.role) {
+   197→    case "POLICE": {
+   198→      const rank = (user.policeRank || "OFFICER") as PoliceRank;
+   199→      const allowedPages = POLICE_RANK_PERMISSIONS[rank] || POLICE_RANK_PERMISSIONS.OFFICER;
+   200→      return POLICE_NAV_ITEMS.filter((item) => allowedPages.includes(item.page));
+   201→    }
+   202→
+   203→    case "SUPERUSER":
+   204→      return SUPERUSER_NAV_ITEMS;
+   205→
+   206→    case "OPERATOR":
+   207→      return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
+   208→
+   209→    case "STAFF": {
+   210→      const items: NavItem[] = [];
+   211→      // Always give staff access to dashboard
+   212→      items.push({
+   213→        page: "dashboard",
+   214→        label: "Dashboard",
+   215→        icon: LayoutDashboard,
+   216→      });
+   217→      // Add items based on permissions
+   218→      for (const perm of user.permissions) {
+   219→        const mapped = PERMISSION_PAGE_MAP[perm];
+   220→        if (mapped) {
+   221→          items.push(mapped);
+   222→        }
+   223→      }
+   224→      return items;
+   225→    }
+   226→
+   227→    default:
+   228→      return [
+   229→        { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+   230→      ];
+   231→  }
+   232→}
+   233→
+   234→// ── Helper: get initials from name ──
+   235→function getInitials(name: string): string {
+   236→  return name
+   237→    .split(" ")
+   238→    .map((w) => w[0])
+   239→    .join("")
+   240→    .toUpperCase()
+   241→    .slice(0, 2);
+   242→}
+   243→
+   244→// ── Helper: get role display info ──
+   245→function getRoleDisplay(role: string): {
+   246→  label: string;
+   247→  className: string;
+   248→} {
+   249→  switch (role) {
+   250→    case "SUPERUSER":
+   251→      return {
+   252→        label: "Superuser",
+   253→        className: "bg-amber-100 text-amber-700 border-amber-200",
+   254→      };
+   255→    case "OPERATOR":
+   256→      return {
+   257→        label: "Operator",
+   258→        className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+   259→      };
+   260→    case "STAFF":
+   261→      return {
+   262→        label: "Staff",
+   263→        className: "bg-sky-100 text-sky-700 border-sky-200",
+   264→      };
+   265→    case "POLICE":
+   266→      return {
+   267→        label: "Police",
+   268→        className: "bg-rose-100 text-rose-700 border-rose-200",
+   269→      };
+   270→    default:
+   271→      return {
+   272→        label: role,
+   273→        className: "bg-slate-100 text-slate-700 border-slate-200",
+   274→      };
+   275→  }
+   276→}
+   277→
+   278→// ── Nav item button component ──
+   279→function NavItemButton({
+   280→  item,
+   281→  currentPage,
+   282→  onClick,
+   283→}: {
+   284→  item: NavItem;
+   285→  currentPage: string;
+   286→  onClick: () => void;
+   287→}) {
+   288→  const Icon = item.icon;
+   289→  const isActive = currentPage === item.page;
+   290→
+   291→  return (
+   292→    <button
+   293→      onClick={onClick}
+   294→      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+   295→        isActive
+   296→          ? "bg-primary/10 text-primary"
+   297→          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+   298→      }`}
+   299→    >
+   300→      {isActive && (
+   301→        <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
+   302→      )}
+   303→      <Icon
+   304→        className={`size-[18px] shrink-0 transition-colors ${
+   305→          isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+   306→        }`}
+   307→      />
+   308→      <span className="truncate">{item.label}</span>
+   309→      {item.badge && (
+   310→        <Badge
+   311→          variant="secondary"
+   312→          className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+   313→        >
+   314→          {item.badge}
+   315→        </Badge>
+   316→      )}
+   317→    </button>
+   318→  );
+   319→}
+   320→
+   321→// ── Anomaly Detection Toggle Widget (sidebar) ──
+   322→function AnomalyToggle({ collapsed }: { collapsed: boolean }) {
+   323→  const currentUser = useAppStore((s) => s.currentUser);
+   324→  const isAdmin = currentUser?.role === "POLICE" && currentUser?.policeRank === "ADMIN";
+   325→  const [enabled, setEnabled] = useState(false);
+   326→  const [toggling, setToggling] = useState(false);
+   327→
+   328→  const fetchStatus = useCallback(async () => {
+   329→    try {
+   330→      const data = await apiGetAnomalies("pageSize=1");
+   331→      if (data.enabled !== undefined) setEnabled(data.enabled);
+   332→    } catch { /* non-critical */ }
+   333→  }, []);
+   334→
+   335→  useEffect(() => {
+   336→    fetchStatus();
+   337→  }, [fetchStatus]);
+   338→
+   339→  const handleToggle = async () => {
+   340→    if (!isAdmin || toggling) return;
+   341→    try {
+   342→      setToggling(true);
+   343→      const result = await apiToggleAnomalyDetection(!enabled);
+   344→      setEnabled(result.enabled);
+   345→    } catch { /* non-critical */ }
+   346→    finally { setToggling(false); }
+   347→  };
+   348→
+   349→  // Collapsed: prominent colored bar indicator
+   350→  if (collapsed) {
+   351→    return (
+   352→      <div className="flex justify-center py-1.5 px-1">
+   353→        <button
+   354→          onClick={handleToggle}
+   355→          disabled={!isAdmin}
+   356→          title={enabled ? "Anomaly Detection: ON — click to disable" : "Anomaly Detection: OFF — click to enable"}
+   357→          className={`relative h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 ${
+   358→            enabled
+   359→              ? "bg-violet-100 text-violet-600 shadow-sm shadow-violet-100 hover:bg-violet-200"
+   360→              : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+   361→          } ${isAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+   362→        >
+   363→          {toggling ? (
+   364→            <Loader2 className="size-3.5 animate-spin" />
+   365→          ) : enabled ? (
+   366→            <ToggleRight className="size-4" />
+   367→          ) : (
+   368→            <ToggleLeft className="size-4" />
+   369→          )}
+   370→        </button>
+   371→      </div>
+   372→    );
+   373→  }
+   374→
+   375→  // Expanded: prominent card-style toggle widget
+   376→  return (
+   377→    <div
+   378→      className={`my-1 rounded-xl border p-3 transition-all duration-200 ${
+   379→        enabled
+   380→          ? "border-violet-200 bg-gradient-to-r from-violet-50 to-fuchsia-50 shadow-sm"
+   381→          : "border-slate-200 bg-slate-50"
+   382→      }`}
+   383→    >
+   384→      <div className="flex items-center justify-between gap-2">
+   385→        <div className="flex items-center gap-2.5 min-w-0">
+   386→          <div
+   387→            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+   388→              enabled ? "bg-violet-500 text-white shadow-sm shadow-violet-200" : "bg-slate-200 text-slate-400"
+   389→            }`}
+   390→          >
+   391→            {toggling ? (
+   392→              <Loader2 className="size-4 animate-spin" />
+   393→            ) : enabled ? (
+   394→              <ToggleRight className="size-4" />
+   395→            ) : (
+   396→              <ToggleLeft className="size-4" />
+   397→            )}
+   398→          </div>
+   399→          <div className="min-w-0">
+   400→            <p className={`text-xs font-bold leading-tight ${enabled ? "text-violet-800" : "text-slate-600"}`}>
+   401→              Smart Detection
+   402→            </p>
+   403→            <p className={`text-[10px] leading-tight mt-0.5 ${enabled ? "text-violet-600" : "text-slate-400"}`}>
+   404→              {enabled ? "Active — auto-scanning" : "Inactive — no scan"}
+   405→            </p>
+   406→          </div>
+   407→        </div>
+   408→        {/* Toggle switch */}
+   409→        <button
+   410→          onClick={handleToggle}
+   411→          disabled={!isAdmin || toggling}
+   412→          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 ${
+   413→            enabled ? "bg-violet-500" : "bg-slate-300"
+   414→          } ${!isAdmin ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+   415→          title={!isAdmin ? "Only ADMIN can toggle" : enabled ? "Click to disable" : "Click to enable"}
+   416→        >
+   417→          <span
+   418→            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+   419→              enabled ? "translate-x-6" : "translate-x-1"
+   420→            }`}
+   421→          />
+   422→        </button>
+   423→      </div>
+   424→      {!isAdmin && (
+   425→        <p className="mt-2 text-[10px] text-slate-400 italic">Only ADMIN can toggle this setting</p>
+   426→      )}
+   427→    </div>
+   428→  );
+   429→}
+   430→
+   431→// ── Sidebar content (shared between desktop & mobile) ──
+   432→// ── Subscription status widget for provider sidebar ──
+   433→function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
+   434→  const subscription = useAppStore((s) => s.subscription);
+   435→
+   436→  if (!subscription) return null;
+   437→
+   438→  const isActive = subscription.status === "ACTIVE";
+   439→  const isWarning = subscription.status === "WARNING";
+   440→  const isGrace = subscription.status === "GRACE";
+   441→  const isSuspended = subscription.status === "SUSPENDED";
+   442→
+   443→  // Collapsed mode — icon indicator
+   444→  if (collapsed) {
+   445→    const bgClass = isActive
+   446→      ? "bg-emerald-100"
+   447→      : isSuspended || isGrace
+   448→      ? "bg-rose-100"
+   449→      : "bg-amber-100";
+   450→    const iconClass = isActive
+   451→      ? "text-emerald-600"
+   452→      : isSuspended || isGrace
+   453→      ? "text-rose-600"
+   454→      : "text-amber-600";
+   455→    return (
+   456→      <div className="flex flex-col items-center gap-1 px-2 py-2">
+   457→        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bgClass} animate-pulse shadow-sm`}> 
+   458→          <Clock className={`size-4 ${iconClass}`} />
+   459→        </div>
+   460→      </div>
+   461→    );
+   462→  }
+   463→
+   464→  // Expanded card
+   465→  const containerClass = isActive
+   466→    ? "border-emerald-200 bg-emerald-50"
+   467→    : isSuspended || isGrace
+   468→    ? "border-rose-200 bg-rose-50"
+   469→    : "border-amber-200 bg-amber-50";
+   470→
+   471→  const iconColorClass = isActive
+   472→    ? "text-emerald-600"
+   473→    : isSuspended || isGrace
+   474→    ? "text-rose-600"
+   475→    : "text-amber-600";
+   476→
+   477→  const titleClass = isActive
+   478→    ? "text-emerald-800"
+   479→    : isSuspended || isGrace
+   480→    ? "text-rose-800"
+   481→    : "text-amber-800";
+   482→
+   483→  const subtextClass = isActive
+   484→    ? "text-emerald-700"
+   485→    : isSuspended || isGrace
+   486→    ? "text-rose-700"
+   487→    : "text-amber-700";
+   488→
+   489→  const badgeClass = isActive
+   490→    ? "bg-emerald-200/60 text-emerald-800"
+   491→    : isSuspended || isGrace
+   492→    ? "bg-rose-200/60 text-rose-800"
+   493→    : "bg-amber-200/60 text-amber-800";
+   494→
+   495→  const Icon = isSuspended || isGrace ? AlertTriangle : Clock;
+   496→
+   497→  return (
+   498→    <div className={`rounded-lg border p-3 ${containerClass} animate-subtle-pulse shadow-sm`}> 
+   499→      <div className="flex items-center gap-2">
+   500→        <Icon className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
+   501→        <p className={`text-xs font-semibold ${titleClass}`}>
+   502→          {isActive
+   503→            ? "Subscription Active"
+   504→            : isSuspended
+   505→            ? "Service Suspended"
+   506→            : isGrace
+   507→            ? "Subscription Expired"
+   508→            : "Expiring Soon"}
+   509→        </p>
+   510→      </div>
+   511→      <div className={`mt-1.5 flex items-center justify-between text-[11px] ${subtextClass}`}>
+   512→        <span>{formatDaysRemaining(subscription.daysRemaining)}</span>
+   513→        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold ${badgeClass}`}>
+   514→          <Clock className="h-3 w-3" />
+   515→          {Math.abs(subscription.daysRemaining)}d
+   516→        </span>
+   517→      </div>
+   518→      {subscription.price > 0 ? (
+   519→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   520→          Due: {subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
+   521→        </div>
+   522→      ) : (
+   523→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   524→          {formatCycle(subscription.cycle)} cycle — Free trial
+   525→        </div>
+   526→      )}
+   527→    </div>
+   528→  );
+   529→}
+   530→
+   531→function SidebarContent({
+   532→  user,
+   533→  currentPage,
+   534→  onNavigate,
+   535→  onLogout,
+   536→  collapsed,
+   537→  onToggleCollapse,
+   538→}: {
+   539→  user: CurrentUser;
+   540→  currentPage: string;
+   541→  onNavigate: (page: string) => void;
+   542→  onLogout: () => void;
+   543→  collapsed: boolean;
+   544→  onToggleCollapse: () => void;
+   545→}) {
+   546→  const { jointSession, setJointLoginDialogOpen, subscription } = useAppStore();
+   547→  const navItems = getNavItems(user);
+   548→  const roleDisplay = getRoleDisplay(user.role);
+   549→
+   550→  // Determine if user can start a joint session (SUPERUSER or POLICE ADMIN)
+   551→  const canStartJoint =
+   552→    user.role === "SUPERUSER" ||
+   553→    (user.role === "POLICE" && user.policeRank === "ADMIN");
+   554→
+   555→  return (
+   556→    <div className="flex h-full flex-col">
+   557→      {/* ── User profile section ── */}
+   558→      <div className="px-3 pt-3 pb-2">
+   559→        <div
+   560→          className={`flex items-center gap-3 ${collapsed ? "flex-col text-center" : ""}`}
+   561→        >
+   562→          <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20">
+   563→            <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
+   564→              {getInitials(user.name)}
+   565→            </AvatarFallback>
+   566→          </Avatar>
+   567→          {!collapsed && (
+   568→            <div className="min-w-0 flex-1">
+   569→              {/* SUPERUSER: Name with dropdown menu (My Profile + Sign Out) */}
+   570→              {user.role === "SUPERUSER" ? (
+   571→                <DropdownMenu>
+   572→                  <DropdownMenuTrigger asChild>
+   573→                    <button className="flex w-full items-center justify-between gap-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-50 group">
+   574→                      <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-primary">
+   575→                        {user.name}
+   576→                      </p>
+   577→                      <ChevronDown className="size-3.5 shrink-0 text-slate-400 group-hover:text-primary transition-colors" />
+   578→                    </button>
+   579→                  </DropdownMenuTrigger>
+   580→                  <DropdownMenuContent align="start" className="w-52">
+   581→                    {/* User info header */}
+   582→                    <div className="flex items-center gap-2.5 px-2 py-2.5">
+   583→                      <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+   584→                        <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+   585→                          {getInitials(user.name)}
+   586→                        </AvatarFallback>
+   587→                      </Avatar>
+   588→                      <div className="min-w-0 flex-1">
+   589→                        <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
+   590→                        <p className="truncate text-[11px] text-slate-400">System Administrator</p>
+   591→                      </div>
+   592→                    </div>
+   593→                    <DropdownMenuSeparator />
+   594→                    <DropdownMenuItem
+   595→                      className="flex items-center gap-2.5 cursor-pointer"
+   596→                      onClick={() => onNavigate("settings")}
+   597→                    >
+   598→                      <UserCircle className="size-4 text-slate-500" />
+   599→                      <span>My Profile</span>
+   600→                    </DropdownMenuItem>
+   601→                    <DropdownMenuSeparator />
+   602→                    <DropdownMenuItem
+   603→                      className="flex items-center gap-2.5 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+   604→                      onClick={() => onLogout()}
+   605→                    >
+   606→                      <LogOut className="size-4" />
+   607→                      <span>Sign Out</span>
+   608→                    </DropdownMenuItem>
+   609→                  </DropdownMenuContent>
+   610→                </DropdownMenu>
+   611→              ) : (
+   612→                <div className="flex items-center justify-between gap-1">
+   613→                  <p className="truncate text-sm font-semibold text-slate-900">
+   614→                    {user.name}
+   615→                  </p>
+   616→                  <button
+   617→                    onClick={onLogout}
+   618→                    className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600 transition-colors"
+   619→                    title="Logout"
+   620→                  >
+   621→                    <LogOut className="size-4 shrink-0" />
+   622→                  </button>
+   623→                </div>
+   624→              )}
+   625→              <div className="mt-0.5 flex items-center gap-2">
+   626→                <Badge
+   627→                  variant="outline"
+   628→                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleDisplay.className}`}
+   629→                >
+   630→                  <Shield className="mr-1 size-2.5" />
+   631→                  {roleDisplay.label}
+   632→                </Badge>
+   633→                {user.role === "POLICE" && user.policeRank && (
+   634→                  <Badge
+   635→                    variant="outline"
+   636→                    className={`text-[9px] font-semibold leading-none px-1.5 py-0.5 ${RANK_BADGE_CLASSES[(user.policeRank as PoliceRank)] || ""}`}
+   637→                  >
+   638→                    {RANK_LABELS[(user.policeRank as PoliceRank)] || user.policeRank}
+   639→                  </Badge>
+   640→                )}
+   641→                {user.providerName && (
+   642→                  <span className="truncate text-[11px] text-slate-400">
+   643→                    {user.providerName}
+   644→                  </span>
+   645→                )}
+   646→              </div>
+   647→            </div>
+   648→          )}
+   649→        </div>
+   650→      </div>
+   651→
+   652→      <Separator className="bg-slate-200/60" />
+   653→
+   654→      {/* ── Navigation links ── */}
+   655→      <ScrollArea className="flex-1 px-3 py-3">
+   656→        <nav className="flex flex-col gap-1" aria-label="Main navigation">
+   657→          {navItems.map((item) => (
+   658→            <React.Fragment key={item.page}>
+   659→              <NavItemButton
+   660→                item={item}
+   661→                currentPage={currentPage}
+   662→                onClick={() => onNavigate(item.page)}
+   663→              />
+   664→              {/* Show inline toggle right below the Anomaly Detection nav item */}
+   665→              {item.page === "anomaly-detection" && user.role === "POLICE" && (
+   666→                <AnomalyToggle collapsed={collapsed} />
+   667→              )}
+   668→            </React.Fragment>
+   669→          ))}
+   670→
+   671→          {/* Joint Operations — only shown during active joint session */}
+   672→          {jointSession.active && (
+   673→            <>
+   674→              <Separator className="my-2 bg-slate-200/60" />
+   675→              <NavItemButton
+   676→                item={{ page: "joint-operations", label: "Joint Operations", icon: ShieldCheck }}
+   677→                currentPage={currentPage}
+   678→                onClick={() => onNavigate("joint-operations")}
+   679→              />
+   680→            </>
+   681→          )}
+   682→
+   683→          {/* Start Joint Session button — shown for SUPERUSER/POLICE ADMIN when no joint session */}
+   684→          {canStartJoint && !jointSession.active && !collapsed && (
+   685→            <>
+   686→              <Separator className="my-2 bg-slate-200/60" />
+   687→              <button
+   688→                onClick={() => setJointLoginDialogOpen(true)}
+   689→                className="flex w-full items-center gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2.5 text-sm font-medium text-amber-700 transition-all hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800 outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+   690→              >
+   691→                <ShieldCheck className="size-[18px] shrink-0" />
+   692→                <span>Start Joint Session</span>
+   693→              </button>
+   694→            </>
+   695→          )}
+   696→          {canStartJoint && !jointSession.active && collapsed && (
+   697→            <button
+   698→              onClick={() => setJointLoginDialogOpen(true)}
+   699→              className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 p-2 text-amber-600 hover:bg-amber-50 transition-colors outline-none"
+   700→              title="Start Joint Session"
+   701→            >
+   702→              <ShieldCheck className="size-[18px]" />
+   703→            </button>
+   704→          )}
+   705→        </nav>
+   706→      </ScrollArea>
+   707→
+   708→      {/* ── Subscription status for providers ── */}
+   709→      {(user.role === "OPERATOR" || user.role === "STAFF") && (
+   710→        <div className="px-3 py-2">
+   711→          <SubscriptionStatusCard collapsed={collapsed} />
+   712→        </div>
+   713→      )}
+   714→
+   715→      <Separator className="bg-slate-200/60" />
+   716→
+   717→      {/* ── Bottom section: collapse toggle + logout ── */}
+   718→      <div className="p-3">
+   719→        {/* Desktop collapse toggle */}
+   720→        {!collapsed && (
+   721→          <button
+   722→            onClick={onToggleCollapse}
+   723→            className="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+   724→          >
+   725→            <ChevronLeft className="size-[18px] text-slate-400" />
+   726→            <span>Collapse</span>
+   727→          </button>
+   728→        )}
+   729→
+   730→        {/* Logout — hidden for SUPERUSER (moved to name dropdown) */}
+   731→        {user.role !== "SUPERUSER" && (
+   732→          <button
+   733→            onClick={onLogout}
+   734→            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+   735→          >
+   736→            <LogOut className="size-[18px]" />
+   737→            {!collapsed && <span>Logout</span>}
+   738→          </button>
+   739→        )}
+   740→      </div>
+   741→    </div>
+   742→  );
+   743→}
+   744→
+   745→// ── Main Sidebar Component ──
+   746→export default function Sidebar() {
+   747→  const { currentUser, currentPage, setCurrentPage, setCurrentUser, sidebarOpen, setSidebarOpen } =
+   748→    useAppStore();
+   749→  const isMobile = useIsMobile();
+   750→  const mounted = useSyncExternalStore(
+   751→    () => () => {},
+   752→    () => true,
+   753→    () => false,
+   754→  );
+   755→
+   756→  if (!mounted || !currentUser) return null;
+   757→
+   758→  async function handleLogout() {
+   759→    // Clear httpOnly cookie on server
+   760→    await apiLogout();
+   761→    // Clear local state
+   762→    setCurrentUser(null);
+   763→    setCurrentPage("login");
+   764→    if (isMobile) setSidebarOpen(false);
+   765→  }
+   766→
+   767→  function handleNavigate(page: string) {
+   768→    setCurrentPage(page);
+   769→    if (isMobile) setSidebarOpen(false);
+   770→  }
+   771→
+   772→  // ── Mobile: render as a Sheet ──
+   773→  if (isMobile) {
+   774→    return (
+   775→      <>
+   776→        {/* Mobile hamburger button */}
+   777→        <button
+   778→          onClick={() => setSidebarOpen(true)}
+   779→          className="fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 active:bg-slate-100"
+   780→          aria-label="Open navigation menu"
+   781→        >
+   782→          <Menu className="size-5 text-slate-700" />
+   783→        </button>
+   784→
+   785→        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+   786→          <SheetContent side="left" className="w-72 p-0">
+   787→            <SheetHeader className="border-b border-slate-100 px-4 py-3">
+   788→              <div className="flex items-center gap-2">
+   789→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+   790→                  <Building2 className="size-4 text-white" />
+   791→                </div>
+   792→                <SheetTitle className="text-sm font-bold text-slate-900">
+   793→                  GHMS
+   794→                </SheetTitle>
+   795→              </div>
+   796→            </SheetHeader>
+   797→            <SidebarContent
+   798→              user={currentUser}
+   799→              currentPage={currentPage}
+   800→              onNavigate={handleNavigate}
+   801→              onLogout={handleLogout}
+   802→              collapsed={false}
+   803→              onToggleCollapse={() => {}}
+   804→            />
+   805→          </SheetContent>
+   806→        </Sheet>
+   807→      </>
+   808→    );
+   809→  }
+   810→
+   811→  // ── Desktop: render as a fixed sidebar ──
+   812→  const collapsed = !sidebarOpen;
+   813→
+   814→  return (
+   815→    <aside
+   816→      className={`relative flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
+   817→        collapsed ? "w-[68px]" : "w-64"
+   818→      }`}
+   819→    >
+   820→      {/* ── Logo / Brand ── */}
+   821→      <div
+   822→        className={`flex h-16 items-center border-b border-slate-200/60 px-4 ${collapsed ? "justify-center" : "gap-3"}`}
+   823→      >
+   824→        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
+   825→          <Building2 className="size-5 text-white" />
+   826→        </div>
+   827→        {!collapsed && (
+   828→          <div className="min-w-0">
+   829→            <h1 className="text-sm font-bold tracking-tight text-slate-900">
+   830→              GHMS
+   831→            </h1>
+   832→            <p className="truncate text-[11px] text-slate-400">
+   833→              Guest House Management
+   834→            </p>
+   835→          </div>
+   836→        )}
+   837→        {/* Expand button when collapsed */}
+   838→        {collapsed && (
+   839→          <button
+   840→            onClick={() => setSidebarOpen(true)}
+   841→            className="absolute -right-3 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50"
+   842→            aria-label="Expand sidebar"
+   843→          >
+   844→            <Menu className="size-3 text-slate-500" />
+   845→          </button>
+   846→        )}
+   847→      </div>
+   848→
+   849→      <SidebarContent
+   850→        user={currentUser}
+   851→        currentPage={currentPage}
+   852→        onNavigate={handleNavigate}
+   853→        onLogout={handleLogout}
+   854→        collapsed={collapsed}
+   855→        onToggleCollapse={() => setSidebarOpen(!sidebarOpen)}
+   856→      />
+   857→    </aside>
+   858→  );
+   859→}

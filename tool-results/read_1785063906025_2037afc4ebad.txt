@@ -1,0 +1,1520 @@
+     1→===== /home/z/my-project/ghms-clone/src/app/api/police-export/route.ts =====
+     2→import { NextRequest, NextResponse } from "next/server";
+     3→import { db } from "@/lib/db";
+     4→import { getAuthContext, requirePolice } from "@/lib/tenant";
+     5→import { logAudit } from "@/lib/audit";
+     6→
+     7→export async function GET(req: NextRequest) {
+     8→  try {
+     9→    const auth = await getAuthContext(req);
+    10→    requirePolice(auth);
+    11→    const { searchParams } = new URL(req.url);
+    12→    const type = searchParams.get("type") || "all";
+    13→    const format = searchParams.get("format") || "json";
+    14→
+    15→    const metadata = {
+    16→      exportedAt: new Date().toISOString(),
+    17→      exportedBy: auth.role || "POLICE",
+    18→      dataSource: "GHMS Police Module",
+    19→    };
+    20→
+    21→    let data: Record<string, unknown> = {};
+    22→
+    23→    if (type === "guests" || type === "all") {
+    24→      const guests = await db.guest.findMany({
+    25→        include: { provider: { select: { name: true } } },
+    26→        orderBy: { createdAt: "desc" },
+    27→        take: 1000,
+    28→      });
+    29→      data.guests = guests.map((g) => ({ name: g.name, phone: g.phone, idNumber: g.idNumber, idType: g.idType, nationality: g.nationality, provider: g.provider?.name, registeredAt: g.createdAt, totalSpent: g.totalSpent, totalStays: g.totalStays }));
+    30→    }
+    31→
+    32→    if (type === "matches" || type === "all") {
+    33→      const matches = await db.suspectMatch.findMany({
+    34→        include: { suspectedPerson: { select: { name: true, severity: true } } },
+    35→        orderBy: { createdAt: "desc" },
+    36→        take: 1000,
+    37→      });
+    38→      data.matches = matches.map((m) => ({ suspectName: m.suspectedPerson.name, severity: m.suspectedPerson.severity, guestName: m.guestName, guestPhone: m.guestPhone, providerName: m.providerName, matchType: m.matchType, detectedAt: m.createdAt }));
+    39→    }
+    40→
+    41→    if (type === "audit" || type === "all") {
+    42→      const logs = await db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 1000 });
+    43→      data.auditLogs = logs;
+    44→    }
+    45→
+    46→    (data as Record<string, unknown>).metadata = metadata;
+    47→    (data as Record<string, unknown>).recordCounts = { guests: Array.isArray(data.guests) ? data.guests.length : 0, matches: Array.isArray(data.matches) ? data.matches.length : 0, auditLogs: Array.isArray(data.auditLogs) ? data.auditLogs.length : 0 };
+    48→
+    49→    if (format === "csv") {
+    50→      // Convert first array to CSV
+    51→      const arr = data.guests || data.matches || [];
+    52→      if (!Array.isArray(arr) || arr.length === 0) {
+    53→        return NextResponse.json({ error: "No data to export" }, { status: 400 });
+    54→      }
+    55→      const headers = Object.keys(arr[0] as Record<string, unknown>);
+    56→      const csv = [
+    57→        headers.join(","),
+    58→        `Export Date,${metadata.exportedAt}`,
+    59→        `Exported By,${metadata.exportedBy}`,
+    60→        "",
+    61→        headers.map((h) => `"${h}"`).join(","),
+    62→        ...(arr as Record<string, unknown>[]).map((row) => headers.map((h) => `"${String(row] || "").replace(/"/g, '""')}"`).join(",")).join("\n"),
+    63→      ].join("\n");
+    64→      return new Response(csv, { headers: { "Content-Type": "text/csv", "Content-Disposition": `attachment; filename="police-export-${Date.now()}.csv"` } });
+    65→    }
+    66→
+    67→    logAudit(req, { action: "EXPORT_DATA", details: `Exported type=${type} format=${format}` });
+    68→    return NextResponse.json(data);
+    69→  } catch (error: unknown) {
+    70→    const message = error instanceof Error ? error.message : "Failed to export data";
+    71→    const status = message.includes("Police") ? 403 : 500;
+    72→    return NextResponse.json({ error: message }, { status });
+    73→  }
+    74→}
+    75→
+    76→===== /home/z/my-project/ghms-clone/src/app/api/police-data-export/route.ts =====
+    77→import { NextRequest, NextResponse } from "next/server";
+    78→import { db } from "@/lib/db";
+    79→import { getAuthContext, requirePolice } from "@/lib/tenant";
+    80→
+    81→export async function GET(req: NextRequest) {
+    82→  try {
+    83→    const auth = await getAuthContext(req);
+    84→    requirePolice(auth);
+    85→
+    86→    const { searchParams } = req.nextUrl;
+    87→    const format = searchParams.get("format") || "json";
+    88→    const entity = searchParams.get("entity") || "all";
+    89→
+    90→    let data: Record<string, unknown> = {};
+    91→
+    92→    if (entity === "all" || entity === "guests") {
+    93→      data.guests = await db.guest.findMany({
+    94→        include: { provider: { select: { name: true } } },
+    95→        orderBy: { createdAt: "desc" },
+    96→      });
+    97→    }
+    98→
+    99→    if (entity === "all" || entity === "reservations") {
+   100→      data.reservations = await db.reservation.findMany({
+   101→        include: {
+   102→          guest: { select: { name: true, phone: true } },
+   103→          room: { select: { number: true } },
+   104→          provider: { select: { name: true } },
+   105→        },
+   106→        orderBy: { createdAt: "desc" },
+   107→      });
+   108→    }
+   109→
+   110→    if (entity === "all" || entity === "suspects") {
+   111→      data.suspectMatches = await db.$queryRawUnsafe(
+   112→        `SELECT sm.*, sp."name" as "suspectName", sp."severity" as "suspectSeverity"
+   113→        FROM "SuspectMatch" sm
+   114→        LEFT JOIN "SuspectedPerson" sp ON sm."suspectedPersonId" = sp."id"
+   115→        ORDER BY sm."createdAt" DESC`
+   116→      );
+   117→    }
+   118→
+   119→    if (entity === "all" || entity === "providers") {
+   120→      data.providers = await db.provider.findMany({
+   121→        orderBy: { createdAt: "desc" },
+   122→      });
+   123→    }
+   124→
+   125→    const metadata = {
+   126→      exportedAt: new Date().toISOString(),
+   127→      exportedBy: auth.role,
+   128→      format,
+   129→      entity,
+   130→      recordCounts: Object.fromEntries(
+   131→        Object.entries(data).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+   132→      ),
+   133→    };
+   134→
+   135→    if (format === "csv") {
+   136→      const firstKey = Object.keys(data)[0];
+   137→      if (!firstKey) return NextResponse.json({ error: "No data to export" }, { status: 404 });
+   138→
+   139→      const records = data[firstKey] as Array<Record<string, unknown>>;
+   140→      if (records.length === 0) return NextResponse.json({ error: "No records to export" }, { status: 404 });
+   141→
+   142→      const headers = Object.keys(records[0]);
+   143→      const csvRows = [
+   144→        headers.join(","),
+   145→        ...records.map((r) =>
+   146→          headers.map((h) => {
+   147→            const val = String(r] ?? "");
+   148→            return val.includes(",") ? `"${val.replace(/"/g, '""')}"` : val;
+   149→          }).join(",")
+   150→        ),
+   151→      ];
+   152→
+   153→      return new NextResponse(csvRows.join("\n"), {
+   154→        headers: {
+   155→          "Content-Type": "text/csv",
+   156→          "Content-Disposition": `attachment; filename="police-export-${firstKey}-${Date.now()}.csv"`,
+   157→        },
+   158→      });
+   159→    }
+   160→
+   161→    return NextResponse.json({ ...data, _metadata: metadata });
+   162→  } catch (error: unknown) {
+   163→    const message = error instanceof Error ? error.message : "Failed to export data";
+   164→    const status = message.includes("Police") ? 403 : 500;
+   165→    return NextResponse.json({ error: message }, { status });
+   166→  }
+   167→}
+   168→
+   169→===== /home/z/my-project/ghms-clone/src/app/api/police-dashboard/route.ts =====
+   170→import { NextRequest, NextResponse } from "next/server";
+   171→import { db } from "@/lib/db";
+   172→import { getAuthContext, requirePolice } from "@/lib/tenant";
+   173→
+   174→export async function GET(req: NextRequest) {
+   175→  try {
+   176→    const auth = await getAuthContext(req);
+   177→    requirePolice(auth);
+   178→
+   179→    // City-wide stats
+   180→    const totalProviders = await db.provider.count();
+   181→    const totalRooms = await db.room.count();
+   182→    const totalGuests = await db.guest.count();
+   183→    const activeReservations = await db.reservation.count({
+   184→      where: { status: { in: ["UPCOMING", "ACTIVE"] } },
+   185→    });
+   186→
+   187→    const revenueResult = await db.reservation.aggregate({
+   188→      _sum: { paidAmount: true },
+   189→    });
+   190→
+   191→    const daytimeRevenueResult = await db.daytimeBooking.aggregate({
+   192→      _sum: { paidAmount: true },
+   193→    });
+   194→
+   195→    const revenue = (revenueResult._sum.paidAmount || 0) + (daytimeRevenueResult._sum.paidAmount || 0);
+   196→
+   197→    // Per-provider breakdown
+   198→    const providers = await db.provider.findMany({
+   199→      include: {
+   200→        _count: {
+   201→          select: {
+   202→            rooms: true,
+   203→            guests: true,
+   204→            reservations: true,
+   205→          },
+   206→        },
+   207→      },
+   208→      orderBy: { name: "asc" },
+   209→    });
+   210→
+   211→    const providerBreakdown = await Promise.all(
+   212→      providers.map(async (p) => {
+   213→        const activeRes = await db.reservation.count({
+   214→          where: { providerId: p.id, status: { in: ["UPCOMING", "ACTIVE"] } },
+   215→        });
+   216→        const paidResult = await db.reservation.aggregate({
+   217→          where: { providerId: p.id },
+   218→          _sum: { paidAmount: true },
+   219→        });
+   220→        const daytimePaidResult = await db.daytimeBooking.aggregate({
+   221→          where: { providerId: p.id },
+   222→          _sum: { paidAmount: true },
+   223→        });
+   224→        return {
+   225→          id: p.id,
+   226→          name: p.name,
+   227→          status: p.status,
+   228→          rooms: p._count.rooms,
+   229→          guests: p._count.guests,
+   230→          totalReservations: p._count.reservations,
+   231→          activeReservations: activeRes,
+   232→          revenue: (paidResult._sum.paidAmount || 0) + (daytimePaidResult._sum.paidAmount || 0),
+   233→        };
+   234→      })
+   235→    );
+   236→
+   237→    return NextResponse.json({
+   238→      totalProviders,
+   239→      totalRooms,
+   240→      totalGuests,
+   241→      activeReservations,
+   242→      revenue,
+   243→      providers: providerBreakdown,
+   244→    });
+   245→  } catch (error: unknown) {
+   246→    const message = error instanceof Error ? error.message : "Failed to fetch police dashboard";
+   247→    const status = message.includes("Police") ? 403 : 500;
+   248→    return NextResponse.json({ error: message }, { status });
+   249→  }
+   250→}
+   251→===== /home/z/my-project/ghms-clone/src/app/api/police-report/route.ts =====
+   252→import { NextRequest, NextResponse } from "next/server";
+   253→import { db } from "@/lib/db";
+   254→import { getAuthContext, requirePolice } from "@/lib/tenant";
+   255→import { logAudit } from "@/lib/audit";
+   256→
+   257→const MONTH_NAMES = [
+   258→  "January", "February", "March", "April", "May", "June",
+   259→  "July", "August", "September", "October", "November", "December",
+   260→];
+   261→
+   262→function escHtml(s: string): string {
+   263→  return s
+   264→    .replace(/&/g, "&amp;")
+   265→    .replace(/</g, "&lt;")
+   266→    .replace(/>/g, "&gt;")
+   267→    .replace(/"/g, "&quot;");
+   268→}
+   269→
+   270→function formatDate(d: Date): string {
+   271→  return d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+   272→}
+   273→
+   274→function severityColor(sev: string): string {
+   275→  switch (sev) {
+   276→    case "CRITICAL": return "#dc2626";
+   277→    case "HIGH": return "#ea580c";
+   278→    case "MEDIUM": return "#ca8a04";
+   279→    case "LOW": return "#16a34a";
+   280→    default: return "#6b7280";
+   281→  }
+   282→}
+   283→
+   284→function riskBadge(risk: string): string {
+   285→  const c = severityColor(risk);
+   286→  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;color:#fff;background:${c}">${escHtml(risk)}</span>`;
+   287→}
+   288→
+   289→export async function GET(req: NextRequest) {
+   290→  try {
+   291→    const auth = await getAuthContext(req);
+   292→    requirePolice(auth);
+   293→
+   294→    const now = new Date();
+   295→    const monthParam = req.nextUrl.searchParams.get("month");
+   296→    const yearParam = req.nextUrl.searchParams.get("year");
+   297→    const month = monthParam ? parseInt(monthParam, 10) : now.getMonth() + 1;
+   298→    const year = yearParam ? parseInt(yearParam, 10) : now.getFullYear();
+   299→
+   300→    if (month < 1 || month > 12) {
+   301→      return NextResponse.json({ error: "Month must be 1-12" }, { status: 400 });
+   302→    }
+   303→    if (year < 2000 || year > 2100) {
+   304→      return NextResponse.json({ error: "Year must be 2000-2100" }, { status: 400 });
+   305→    }
+   306→
+   307→    // Build date range
+   308→    const startDate = new Date(year, month - 1, 1);
+   309→    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+   310→
+   311→    // 1. Suspect Matches in the month
+   312→    const suspectMatches = await db.suspectMatch.findMany({
+   313→      where: { createdAt: { gte: startDate, lte: endDate } },
+   314→      include: { suspectedPerson: true },
+   315→    });
+   316→    const totalMatches = suspectMatches.length;
+   317→
+   318→    // 2. Severity Breakdown
+   319→    const severityBreakdown: Record<string, number> = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
+   320→    suspectMatches.forEach((m) => {
+   321→      const sev = m.suspectedPerson.severity;
+   322→      severityBreakdown[sev] = (severityBreakdown[sev] || 0) + 1;
+   323→    });
+   324→
+   325→    // 3. New Reservations in the month
+   326→    const newReservations = await db.reservation.count({
+   327→      where: { createdAt: { gte: startDate, lte: endDate } },
+   328→    });
+   329→
+   330→    // 4. Hotspot Providers (grouped by suspect match count)
+   331→    const matchGrouped = suspectMatches.reduce<Record<string, { name: string; address: string; count: number; criticalCount: number; highCount: number }>>((acc, m) => {
+   332→      const pid = m.providerId || "unknown";
+   333→      if (!acc[pid]) {
+   334→        acc[pid] = { name: m.providerName || "Unknown Provider", address: "", count: 0, criticalCount: 0, highCount: 0 };
+   335→      }
+   336→      acc[pid].count++;
+   337→      if (m.suspectedPerson.severity === "CRITICAL") acc[pid].criticalCount++;
+   338→      if (m.suspectedPerson.severity === "HIGH") acc[pid].highCount++;
+   339→      return acc;
+   340→    }, {});
+   341→
+   342→    const hotspots = Object.values(matchGrouped).sort((a, b) => b.count - a.count);
+   343→
+   344→    // Fill in addresses from providers
+   345→    for (const h of hotspots) {
+   346→      const prov = await db.provider.findFirst({ where: { name: h.name } });
+   347→      if (prov) h.address = prov.address;
+   348→    }
+   349→
+   350→    // 5. Frequent Stay Alerts in the month
+   351→    const frequentStays = await db.frequentStayAlert.findMany({
+   352→      where: { createdAt: { gte: startDate, lte: endDate } },
+   353→    });
+   354→
+   355→    // 6. Active Geofences
+   356→    const geofences = await db.geofence.findMany({ where: { isActive: true } });
+   357→
+   358→    // 7. System-wide stats
+   359→    const totalProviders = await db.provider.count({ where: { status: "APPROVED" } });
+   360→    const totalGuests = await db.guest.count();
+   361→    const totalRooms = await db.room.count();
+   362→
+   363→    // Log audit
+   364→    logAudit(req, { action: "GENERATE_REPORT", details: `Monthly report for ${MONTH_NAMESonth - 1]} ${year}` });
+   365→
+   366→    // Build HTML Report
+   367→    const monthName = MONTH_NAMESonth - 1];
+   368→    const dateRangeStr = `${monthName} 1 - ${endDate.getDate()}, ${year}`;
+   369→    const generatedAt = formatDate(new Date());
+   370→
+   371→    const criticalPct = totalMatches > 0 ? Math.round((severityBreakdown.CRITICAL / totalMatches) * 100) : 0;
+   372→    const highPct = totalMatches > 0 ? Math.round((severityBreakdown.HIGH / totalMatches) * 100) : 0;
+   373→    const mediumPct = totalMatches > 0 ? Math.round((severityBreakdown.MEDIUM / totalMatches) * 100) : 0;
+   374→    const lowPct = totalMatches > 0 ? Math.round((severityBreakdown.LOW / totalMatches) * 100) : 0;
+   375→
+   376→    // Build hotspot table rows
+   377→    const hotspotRows = hotspots.length > 0
+   378→      ? hotspots.map((h, i) => `
+   379→      <tr>
+   380→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;color:#6b7280">${i + 1}</td>
+   381→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:500">${escHtml(h.name)}</td>
+   382→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px">${escHtml(h.address)}</td>
+   383→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;color:#dc2626">${h.count}</td>
+   384→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">
+   385→          ${h.criticalCount > 0 ? `<span style="color:#dc2626;font-weight:600">${h.criticalCount}</span>` : '<span style="color:#d1d5db">&mdash;</span>'}
+   386→        </td>
+   387→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">
+   388→          ${h.highCount > 0 ? `<span style="color:#ea580c;font-weight:600">${h.highCount}</span>` : '<span style="color:#d1d5db">&mdash;</span>'}
+   389→        </td>
+   390→      </tr>`).join("")
+   391→      : `<tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af">No suspect matches detected this month</td></tr>`;
+   392→
+   393→    // Build frequent stay rows
+   394→    const frequentRows = frequentStays.length > 0
+   395→      ? frequentStays.map((f) => {
+   396→        const provNames: string[] = [];
+   397→        try { provNames.push(...JSON.parse(f.providerNames)); } catch { /* empty */ }
+   398→        return `
+   399→      <tr>
+   400→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:500">${escHtml(f.guestName)}</td>
+   401→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-family:monospace;color:#6b7280;font-size:13px">${escHtml(f.guestPhone || f.guestIdNumber)}</td>
+   402→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600">${f.stayCount}</td>
+   403→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">${f.avgDaysBetween.toFixed(1)}</td>
+   404→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${riskBadge(f.riskLevel)}</td>
+   405→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px">${provNames.map(escHtml).join(", ")}</td>
+   406→      </tr>`;
+   407→      }).join("")
+   408→      : `<tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af">No frequent stay patterns detected this month</td></tr>`;
+   409→
+   410→    // Build geofence rows
+   411→    const geofenceRows = geofences.length > 0
+   412→      ? geofences.map((g) => `
+   413→      <tr>
+   414→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:500">${escHtml(g.name)}</td>
+   415→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px">${escHtml(g.address)}</td>
+   416→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">${g.radius}m</td>
+   417→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb">${riskBadge(g.severity)}</td>
+   418→        <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:center">
+   419→          <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;color:#fff;background:#16a34a">ACTIVE</span>
+   420→        </td>
+   421→      </tr>`).join("")
+   422→      : `<tr><td colspan="5" style="padding:24px;text-align:center;color:#9ca3af">No active geofences configured</td></tr>`;
+   423→
+   424→    // Determine threat assessment level
+   425→    let threatLevel = "LOW";
+   426→    let threatColor = "#16a34a";
+   427→    if (severityBreakdown.CRITICAL > 0 || severityBreakdown.HIGH >= 3) { threatLevel = "ELEVATED"; threatColor = "#dc2626"; }
+   428→    else if (severityBreakdown.HIGH > 0 || severityBreakdown.MEDIUM >= 5) { threatLevel = "MODERATE"; threatColor = "#ca8a04"; }
+   429→
+   430→    // Build recommendations
+   431→    const recommendations: string[] = [];
+   432→    if (severityBreakdown.CRITICAL > 0) {
+   433→      recommendations.push(`<li>Immediate operational response required for <strong>${severityBreakdown.CRITICAL} CRITICAL</strong> severity matches. Coordinate with field units for suspect apprehension.</li>`);
+   434→    }
+   435→    if (hotspots.length > 0 && hotspots[0].count >= 3) {
+   436→      recommendations.push(`<li>Provider <strong>"${escHtml(hotspots[0].name)}"</strong> has accumulated <strong>${hotspots[0].count} suspect matches</strong>. Consider deploying surveillance resources and conducting on-site inspection.</li>`);
+   437→    }
+   438→    if (frequentStays.length > 0) {
+   439→      const highRisk = frequentStays.filter(f => f.riskLevel === "HIGH").length;
+   440→      if (highRisk > 0) {
+   441→        recommendations.push(`<li><strong>${highRisk} high-risk frequent stay patterns</strong> identified. Cross-reference with known networks and consider flagging for enhanced monitoring.</li>`);
+   442→      }
+   443→    }
+   444→    if (geofences.length === 0) {
+   445→      recommendations.push(`<li>No geofences are currently active. Establishing geofences around high-priority zones will improve automated alerting.</li>`);
+   446→    }
+   447→    if (totalMatches === 0 && newReservations > 0) {
+   448→      recommendations.push(`<li>While no suspect matches were detected, ${newReservations} new reservations were processed. Continue routine monitoring.</li>`);
+   449→    }
+   450→    if (recommendations.length === 0) {
+   451→      recommendations.push(`<li>Maintain standard monitoring protocols. No elevated threats detected during this reporting period.</li>`);
+   452→    }
+   453→
+   454→    const html = `<!DOCTYPE html>
+   455→<html lang="en">
+   456→<head>
+   457→<meta charset="UTF-8">
+   458→<meta name="viewport" content="width=device-width, initial-scale=1.0">
+   459→<title>Monthly Intelligence Report — ${monthName} ${year}</title>
+   460→<style>
+   461→  @page { size: A4; margin: 20mm 15mm; }
+   462→  * { margin: 0; padding: 0; box-sizing: border-box; }
+   463→  body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1f2937; background: #fff; font-size: 14px; line-height: 1.5; }
+   464→
+   465→  .header { border-bottom: 4px solid #1e3a5f; padding: 24px 0 20px; margin-bottom: 24px; }
+   466→  .header-inner { display: flex; align-items: center; gap: 16px; }
+   467→  .shield { width: 56px; height: 64px; flex-shrink: 0; }
+   468→  .header-text h1 { font-size: 18px; font-weight: 700; color: #1e3a5f; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1.2; }
+   469→  .header-text h2 { font-size: 13px; font-weight: 600; color: #374151; margin-top: 2px; }
+   470→  .header-meta { display: flex; gap: 24px; margin-top: 8px; font-size: 12px; color: #6b7280; }
+   471→
+   472→  .classification { background: #1e3a5f; color: #fff; text-align: center; padding: 6px 0; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+   473→
+   474→  .threat-banner { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: 8px; margin-bottom: 24px; border: 1px solid ${threatColor}33; background: ${threatColor}0d; }
+   475→  .threat-badge { display: inline-block; padding: 4px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #fff; background: ${threatColor}; letter-spacing: 1px; }
+   476→  .threat-text { font-size: 13px; color: #374151; }
+   477→
+   478→  .section { margin-bottom: 28px; }
+   479→  .section-title { font-size: 15px; font-weight: 700; color: #1e3a5f; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; }
+   480→
+   481→  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+   482→  .kpi-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center; }
+   483→  .kpi-value { font-size: 28px; font-weight: 800; color: #1e3a5f; line-height: 1; }
+   484→  .kpi-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+   485→  .kpi-card.alert .kpi-value { color: #dc2626; }
+   486→  .kpi-card.warn .kpi-value { color: #ca8a04; }
+   487→
+   488→  .severity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+   489→  .severity-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 6px; background: #f9fafb; border: 1px solid #e5e7eb; }
+   490→  .severity-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+   491→  .severity-label { font-size: 12px; font-weight: 600; color: #374151; width: 70px; }
+   492→  .severity-bar-bg { flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+   493→  .severity-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
+   494→  .severity-count { font-size: 13px; font-weight: 700; min-width: 32px; text-align: right; }
+   495→  .severity-pct { font-size: 11px; color: #9ca3af; min-width: 36px; text-align: right; }
+   496→
+   497→  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+   498→  thead th { padding: 10px 12px; background: #f3f4f6; border-bottom: 2px solid #d1d5db; text-align: left; font-size: 11px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; }
+   499→  tbody tr:hover { background: #f9fafb; }
+   500→
+   501→  .rec-list { padding-left: 20px; }
+   502→  .rec-list li { margin-bottom: 10px; font-size: 13px; color: #374151; line-height: 1.6; }
+   503→  .rec-list li strong { color: #1e3a5f; }
+   504→
+   505→  .footer { margin-top: 36px; padding-top: 16px; border-top: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #9ca3af; }
+   506→
+   507→  @media print {
+   508→    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+   509→    .no-print { display: none !important; }
+   510→    .section { break-inside: avoid; }
+   511→    .kpi-grid { break-inside: avoid; }
+   512→    table { break-inside: avoid; }
+   513→  }
+   514→</style>
+   515→</head>
+   516→<body>
+   517→
+   518→<div class="classification">OFFICIAL — LAW ENFORCEMENT SENSITIVE</div>
+   519→
+   520→<div class="header">
+   521→  <div class="header-inner">
+   522→    <svg class="shield" viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+   523→      <path d="M30 2 L56 14 V36 C56 52 44 64 30 68 C16 64 4 52 4 36 V14 L30 2Z" fill="#1e3a5f" stroke="#0f2440" stroke-width="1.5"/>
+   524→      <path d="M30 8 L50 18 V36 C50 48 41 58 30 62 C19 58 10 48 10 36 V18 L30 8Z" fill="#234876"/>
+   525→      <path d="M22 34 L28 40 L40 26" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+   526→    </svg>
+   527→    <div class="header-text">
+   528→      <h1>Ethiopian Federal Police</h1>
+   529→      <h2>Monthly Intelligence Report</h2>
+   530→      <div class="header-meta">
+   531→        <span>Reporting Period: ${dateRangeStr}</span>
+   532→        <span>Generated: ${generatedAt}</span>
+   533→      </div>
+   534→    </div>
+   535→  </div>
+   536→</div>
+   537→
+   538→<div class="threat-banner">
+   539→  <span class="threat-badge">${threatLevel}</span>
+   540→  <span class="threat-text">Overall Threat Assessment for ${monthName} ${year} — ${threatLevel === "LOW" ? "No significant threats identified. Standard operations continue." : threatLevel === "MODERATE" ? "Elevated activity detected. Enhanced monitoring recommended." : "High threat level. Immediate attention and resource deployment advised."}</span>
+   541→</div>
+   542→
+   543→<div class="section">
+   544→  <div class="section-title">1. Executive Summary</div>
+   545→  <div class="kpi-grid">
+   546→    <div class="kpi-card ${totalMatches > 0 ? 'alert' : ''}">
+   547→      <div class="kpi-value">${totalMatches}</div>
+   548→      <div class="kpi-label">Suspect Matches</div>
+   549→    </div>
+   550→    <div class="kpi-card">
+   551→      <div class="kpi-value">${newReservations}</div>
+   552→      <div class="kpi-label">New Reservations</div>
+   553→    </div>
+   554→    <div class="kpi-card ${frequentStays.length > 0 ? 'warn' : ''}">
+   555→      <div class="kpi-value">${frequentStays.length}</div>
+   556→      <div class="kpi-label">Stay Alerts</div>
+   557→    </div>
+   558→    <div class="kpi-card">
+   559→      <div class="kpi-value">${geofences.length}</div>
+   560→      <div class="kpi-label">Active Geofences</div>
+   561→    </div>
+   562→  </div>
+   563→  <p style="font-size:13px;color:#4b5563;line-height:1.7">
+   564→    During ${monthName} ${year}, the Guest House Monitoring System processed <strong>${newReservations}</strong> new reservations across
+   565→    <strong>${totalProviders}</strong> registered providers (${totalGuests} registered guests, ${totalRooms} total rooms).
+   566→    The automated screening system generated <strong>${totalMatches} suspect match alerts</strong>, of which
+   567→    <strong style="color:#dc2626">${severityBreakdown.CRITICAL} CRITICAL</strong> and
+   568→    <strong style="color:#ea580c">${severityBreakdown.HIGH} HIGH</strong> severity.
+   569→    <strong>${frequentStays.length}</strong> frequent stay patterns were flagged for review.
+   570→  </p>
+   571→</div>
+   572→
+   573→<div class="section">
+   574→  <div class="section-title">2. Suspect Activity Analysis — Severity Breakdown</div>
+   575→  <div class="severity-grid">
+   576→    <div class="severity-item">
+   577→      <div class="severity-dot" style="background:#dc2626"></div>
+   578→      <span class="severity-label">CRITICAL</span>
+   579→      <div class="severity-bar-bg"><div class="severity-bar" style="width:${criticalPct}%;background:#dc2626"></div></div>
+   580→      <span class="severity-count" style="color:#dc2626">${severityBreakdown.CRITICAL}</span>
+   581→      <span class="severity-pct">${criticalPct}%</span>
+   582→    </div>
+   583→    <div class="severity-item">
+   584→      <div class="severity-dot" style="background:#ea580c"></div>
+   585→      <span class="severity-label">HIGH</span>
+   586→      <div class="severity-bar-bg"><div class="severity-bar" style="width:${highPct}%;background:#ea580c"></div></div>
+   587→      <span class="severity-count" style="color:#ea580c">${severityBreakdown.HIGH}</span>
+   588→      <span class="severity-pct">${highPct}%</span>
+   589→    </div>
+   590→    <div class="severity-item">
+   591→      <div class="severity-dot" style="background:#ca8a04"></div>
+   592→      <span class="severity-label">MEDIUM</span>
+   593→      <div class="severity-bar-bg"><div class="severity-bar" style="width:${mediumPct}%;background:#ca8a04"></div></div>
+   594→      <span class="severity-count" style="color:#ca8a04">${severityBreakdown.MEDIUM}</span>
+   595→      <span class="severity-pct">${mediumPct}%</span>
+   596→    </div>
+   597→    <div class="severity-item">
+   598→      <div class="severity-dot" style="background:#16a34a"></div>
+   599→      <span class="severity-label">LOW</span>
+   600→      <div class="severity-bar-bg"><div class="severity-bar" style="width:${lowPct}%;background:#16a34a"></div></div>
+   601→      <span class="severity-count" style="color:#16a34a">${severityBreakdown.LOW}</span>
+   602→      <span class="severity-pct">${lowPct}%</span>
+   603→    </div>
+   604→  </div>
+   605→</div>
+   606→
+   607→<div class="section">
+   608→  <div class="section-title">3. Provider Hotspot Rankings</div>
+   609→  <table>
+   610→    <thead>
+   611→      <tr>
+   612→        <th style="width:40px;text-align:center">#</th>
+   613→        <th>Provider Name</th>
+   614→        <th>Address</th>
+   615→        <th style="text-align:center">Total Matches</th>
+   616→        <th style="text-align:center">Critical</th>
+   617→        <th style="text-align:center">High</th>
+   618→      </tr>
+   619→    </thead>
+   620→    <tbody>
+   621→      ${hotspotRows}
+   622→    </tbody>
+   623→  </table>
+   624→</div>
+   625→
+   626→<div class="section">
+   627→  <div class="section-title">4. Frequent Stay Alerts</div>
+   628→  <table>
+   629→    <thead>
+   630→      <tr>
+   631→        <th>Guest Name</th>
+   632→        <th>Phone / ID</th>
+   633→        <th style="text-align:center">Stays</th>
+   634→        <th style="text-align:center">Avg Days</th>
+   635→        <th>Risk</th>
+   636→        <th>Providers Visited</th>
+   637→      </tr>
+   638→    </thead>
+   639→    <tbody>
+   640→      ${frequentRows}
+   641→    </tbody>
+   642→  </table>
+   643→</div>
+   644→
+   645→<div class="section">
+   646→  <div class="section-title">5. Geofence Configuration</div>
+   647→  <table>
+   648→    <thead>
+   649→      <tr>
+   650→        <th>Geofence Name</th>
+   651→        <th>Address</th>
+   652→        <th style="text-align:center">Radius</th>
+   653→        <th>Severity</th>
+   654→        <th style="text-align:center">Status</th>
+   655→      </tr>
+   656→    </thead>
+   657→    <tbody>
+   658→      ${geofenceRows}
+   659→    </tbody>
+   660→  </table>
+   661→</div>
+   662→
+   663→<div class="section">
+   664→  <div class="section-title">6. Recommendations &amp; Action Items</div>
+   665→  <ul class="rec-list">
+   666→    ${recommendations.join("")}
+   667→  </ul>
+   668→</div>
+   669→
+   670→<div class="footer">
+   671→  <span>Ethiopian Federal Police — Guest House Monitoring System</span>
+   672→  <span>Page 1 of 1 | Report ID: RPT-${year}${String(month).padStart(2, "0")}-${Date.now().toString(36).toUpperCase()}</span>
+   673→</div>
+   674→
+   675→<div class="no-print" style="margin-top:24px;text-align:center;padding:16px">
+   676→  <button onclick="window.print()" style="padding:10px 28px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Print / Save as PDF</button>
+   677→</div>
+   678→
+   679→</body>
+   680→</html>`;
+   681→
+   682→    return new NextResponse(html, {
+   683→      status: 200,
+   684→      headers: {
+   685→        "Content-Type": "text/html; charset=utf-8",
+   686→        "Content-Disposition": `attachment; filename="police-report-${year}-${String(month).padStart(2, "0")}.html"`,
+   687→      },
+   688→    });
+   689→  } catch (e: unknown) {
+   690→    const msg = e instanceof Error ? e.message : "Failed to generate report";
+   691→    return NextResponse.json({ error: msg }, { status: 500 });
+   692→  }
+   693→}
+   694→
+   695→===== /home/z/my-project/ghms-clone/src/app/api/police-officers/route.ts =====
+   696→import { NextRequest, NextResponse } from "next/server";
+   697→import { db } from "@/lib/db";
+   698→import { getAuthContext, requirePolice } from "@/lib/tenant";
+   699→import {
+   700→  requirePoliceMinRank,
+   701→  POLICE_RANKS,
+   702→  RANK_LABELS,
+   703→  type PoliceRank,
+   704→} from "@/lib/police-permissions";
+   705→import { logAudit } from "@/lib/audit";
+   706→import { hashPassword } from "@/lib/auth-utils";
+   707→
+   708→// Hierarchy levels — higher number = more authority
+   709→const RANK_HIERARCHY: Record<PoliceRank, number> = {
+   710→  VIEWER: 0,
+   711→  OFFICER: 1,
+   712→  DETECTIVE: 2,
+   713→  ADMIN: 3,
+   714→};
+   715→
+   716→/**
+   717→ * GET /api/police-officers — List all POLICE users
+   718→ * - ADMIN & DETECTIVE: see all officers (with rank info)
+   719→ * - OFFICER & VIEWER: see all officers (read-only listing)
+   720→ * - SUPERUSER: see all police accounts
+   721→ */
+   722→export async function GET(req: NextRequest) {
+   723→  try {
+   724→    const auth = await getAuthContext(req);
+   725→
+   726→    // SUPERUSER can view police accounts too
+   727→    if (auth.role !== "POLICE" && auth.role !== "SUPERUSER") {
+   728→      return NextResponse.json(
+   729→        { error: "Access denied" },
+   730→        { status: 403 }
+   731→      );
+   732→    }
+   733→
+   734→    const officers = await db.user.findMany({
+   735→      where: { role: "POLICE" },
+   736→      select: {
+   737→        id: true,
+   738→        username: true,
+   739→        name: true,
+   740→        role: true,
+   741→        permissions: true,
+   742→        policeRank: true,
+   743→        providerId: true,
+   744→        createdAt: true,
+   745→      },
+   746→      orderBy: { createdAt: "desc" },
+   747→    });
+   748→
+   749→    return NextResponse.json(officers);
+   750→  } catch (error: unknown) {
+   751→    const message = error instanceof Error ? error.message : "Failed to fetch officers";
+   752→    const status = message.includes("Access") ? 403 : 500;
+   753→    return NextResponse.json({ error: message }, { status });
+   754→  }
+   755→}
+   756→
+   757→/**
+   758→ * POST /api/police-officers — Create new police officer
+   759→ * - SUPERUSER: can create any rank (ADMIN, DETECTIVE, OFFICER, VIEWER)
+   760→ * - POLICE ADMIN: can create DETECTIVE, OFFICER, VIEWER
+   761→ * - POLICE DETECTIVE: can create OFFICER, VIEWER
+   762→ * - POLICE OFFICER: can create VIEWER only
+   763→ * - POLICE VIEWER: cannot create
+   764→ */
+   765→export async function POST(req: NextRequest) {
+   766→  try {
+   767→    const auth = await getAuthContext(req);
+   768→
+   769→    if (auth.role === "SUPERUSER") {
+   770→      // SUPERUSER has full rights to manage police
+   771→    } else if (auth.role === "POLICE") {
+   772→      requirePolice(auth);
+   773→      const myRank = (auth.policeRank || "VIEWER") as PoliceRank;
+   774→      const myLevel = RANK_HIERARCHYyRank] || 0;
+   775→
+   776→      // VIEWER cannot create anyone
+   777→      if (myLevel < RANK_HIERARCHY.OFFICER) {
+   778→        return NextResponse.json(
+   779→          { error: `Requires ${RANK_LABELS.OFFICER} rank or higher to create police accounts` },
+   780→          { status: 403 }
+   781→        );
+   782→      }
+   783→    } else {
+   784→      return NextResponse.json(
+   785→        { error: "Access denied" },
+   786→        { status: 403 }
+   787→      );
+   788→    }
+   789→
+   790→    const body = await req.json();
+   791→    const { username, password, name, policeRank } = body;
+   792→
+   793→    if (!username || !password || !name) {
+   794→      return NextResponse.json(
+   795→        { error: "username, password, and name are required" },
+   796→        { status: 400 }
+   797→      );
+   798→    }
+   799→
+   800→    // Validate requested rank
+   801→    const requestedRank = (policeRank && Object.values(POLICE_RANKS).includes(policeRank)
+   802→      ? policeRank
+   803→      : "OFFICER") as PoliceRank;
+   804→
+   805→    // Can only create ranks below your own
+   806→    if (auth.role === "POLICE") {
+   807→      const myRank = (auth.policeRank || "VIEWER") as PoliceRank;
+   808→      const myLevel = RANK_HIERARCHYyRank] || 0;
+   809→      const requestedLevel = RANK_HIERARCHY[requestedRank] || 0;
+   810→
+   811→      if (requestedLevel >= myLevel) {
+   812→        return NextResponse.json(
+   813→          { error: `Cannot create a police account with ${RANK_LABELS[requestedRank]} rank. You can only create ranks below ${RANK_LABELSyRank]}.` },
+   814→          { status: 403 }
+   815→        );
+   816→      }
+   817→    }
+   818→
+   819→    // Check for duplicate username
+   820→    const existing = await db.user.findUnique({ where: { username } });
+   821→    if (existing) {
+   822→      return NextResponse.json(
+   823→        { error: "Username already exists" },
+   824→        { status: 409 }
+   825→      );
+   826→    }
+   827→
+   828→    // Hash the password before storing
+   829→    const hashedPassword = await hashPassword(password);
+   830→
+   831→    const officer = await db.user.create({
+   832→      data: {
+   833→        username,
+   834→        password: hashedPassword,
+   835→        name,
+   836→        role: "POLICE",
+   837→        permissions: JSON.stringify([`police_rank:${requestedRank}`]),
+   838→        policeRank: requestedRank,
+   839→      },
+   840→    });
+   841→
+   842→    await logAudit(req, {
+   843→      action: "CREATE_OFFICER",
+   844→      targetId: officer.id,
+   845→      targetType: "User",
+   846→      details: JSON.stringify({
+   847→        username,
+   848→        name,
+   849→        rank: requestedRank,
+   850→        createdBy: auth.userName || auth.userId,
+   851→        creatorRole: auth.role,
+   852→      }),
+   853→    }).catch(() => {});
+   854→
+   855→    return NextResponse.json(
+   856→      { ...officer, password: undefined },
+   857→      { status: 201 }
+   858→    );
+   859→  } catch (error: unknown) {
+   860→    const message = error instanceof Error ? error.message : "Failed to create officer";
+   861→    const status = message.includes("Access") || message.includes("rank") || message.includes("Cannot") ? 403 : 500;
+   862→    return NextResponse.json({ error: message }, { status });
+   863→  }
+   864→}
+   865→
+   866→/**
+   867→ * PUT /api/police-officers — Update officer (rank, name, password)
+   868→ * - SUPERUSER: can update any officer
+   869→ * - POLICE ADMIN: can update any officer below ADMIN
+   870→ * - POLICE DETECTIVE: can update OFFICER/VIEWER only
+   871→ * - POLICE OFFICER: can update VIEWER only
+   872→ */
+   873→export async function PUT(req: NextRequest) {
+   874→  try {
+   875→    const auth = await getAuthContext(req);
+   876→
+   877→    if (auth.role === "SUPERUSER") {
+   878→      // SUPERUSER has full rights
+   879→    } else if (auth.role === "POLICE") {
+   880→      requirePolice(auth);
+   881→      requirePoliceMinRank(auth, "OFFICER");
+   882→    } else {
+   883→      return NextResponse.json(
+   884→        { error: "Access denied" },
+   885→        { status: 403 }
+   886→      );
+   887→    }
+   888→
+   889→    const body = await req.json();
+   890→    const { id, policeRank, name, password } = body;
+   891→
+   892→    if (!id) {
+   893→      return NextResponse.json({ error: "Officer ID is required" }, { status: 400 });
+   894→    }
+   895→
+   896→    const officer = await db.user.findUnique({ where: { id } });
+   897→    if (!officer || officer.role !== "POLICE") {
+   898→      return NextResponse.json({ error: "Officer not found" }, { status: 404 });
+   899→    }
+   900→
+   901→    // Prevent self-demotion or self-promotion
+   902→    if (auth.role === "POLICE" && officer.id === auth.userId) {
+   903→      return NextResponse.json(
+   904→        { error: "Cannot modify your own account" },
+   905→        { status: 403 }
+   906→      );
+   907→    }
+   908→
+   909→    const updateData: Record<string, unknown> = {};
+   910→
+   911→    // Update rank
+   912→    if (policeRank && Object.values(POLICE_RANKS).includes(policeRank)) {
+   913→      // Can only assign ranks below your own
+   914→      if (auth.role === "POLICE") {
+   915→        const myRank = (auth.policeRank || "VIEWER") as PoliceRank;
+   916→        const myLevel = RANK_HIERARCHYyRank] || 0;
+   917→        const requestedLevel = RANK_HIERARCHY[policeRank as PoliceRank] || 0;
+   918→
+   919→        if (requestedLevel >= myLevel) {
+   920→          return NextResponse.json(
+   921→            { error: `Cannot set rank to ${RANK_LABELS[policeRank as PoliceRank]}. You can only assign ranks below ${RANK_LABELSyRank]}.` },
+   922→            { status: 403 }
+   923→          );
+   924→        }
+   925→      }
+   926→      updateData.permissions = JSON.stringify([`police_rank:${policeRank}`]);
+   927→      updateData.policeRank = policeRank;
+   928→    }
+   929→
+   930→    if (name) {
+   931→      updateData.name = name;
+   932→    }
+   933→
+   934→    if (password) {
+   935→      updateData.password = await hashPassword(password);
+   936→    }
+   937→
+   938→    if (Object.keys(updateData).length === 0) {
+   939→      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+   940→    }
+   941→
+   942→    const updated = await db.user.update({
+   943→      where: { id },
+   944→      data: updateData,
+   945→    });
+   946→
+   947→    await logAudit(req, {
+   948→      action: "UPDATE_OFFICER",
+   949→      targetId: id,
+   950→      targetType: "User",
+   951→      details: JSON.stringify({
+   952→        rank: policeRank,
+   953→        name,
+   954→        updatedBy: auth.userName || auth.userId,
+   955→        creatorRole: auth.role,
+   956→      }),
+   957→    }).catch(() => {});
+   958→
+   959→    return NextResponse.json(updated);
+   960→  } catch (error: unknown) {
+   961→    const message = error instanceof Error ? error.message : "Failed to update officer";
+   962→    const status = message.includes("Access") || message.includes("rank") || message.includes("Cannot") ? 403 : 500;
+   963→    return NextResponse.json({ error: message }, { status });
+   964→  }
+   965→}
+   966→
+   967→/**
+   968→ * DELETE /api/police-officers — Delete officer
+   969→ * - SUPERUSER: can delete any officer
+   970→ * - POLICE ADMIN: can delete any officer below ADMIN (except themselves)
+   971→ * - POLICE DETECTIVE: can delete OFFICER/VIEWER only
+   972→ * - POLICE OFFICER: can delete VIEWER only
+   973→ */
+   974→export async function DELETE(req: NextRequest) {
+   975→  try {
+   976→    const auth = await getAuthContext(req);
+   977→
+   978→    if (auth.role === "SUPERUSER") {
+   979→      // SUPERUSER has full rights
+   980→    } else if (auth.role === "POLICE") {
+   981→      requirePolice(auth);
+   982→      requirePoliceMinRank(auth, "OFFICER");
+   983→    } else {
+   984→      return NextResponse.json(
+   985→        { error: "Access denied" },
+   986→        { status: 403 }
+   987→      );
+   988→    }
+   989→
+   990→    const { searchParams } = new URL(req.url);
+   991→    const id = searchParams.get("id");
+   992→    if (!id) {
+   993→      return NextResponse.json({ error: "Officer ID is required" }, { status: 400 });
+   994→    }
+   995→
+   996→    // Cannot delete yourself
+   997→    if (auth.role === "POLICE" && id === auth.userId) {
+   998→      return NextResponse.json(
+   999→        { error: "Cannot delete your own account" },
+  1000→        { status: 403 }
+  1001→      );
+  1002→    }
+  1003→
+  1004→    const officer = await db.user.findUnique({ where: { id } });
+  1005→    if (!officer || officer.role !== "POLICE") {
+  1006→      return NextResponse.json({ error: "Officer not found" }, { status: 404 });
+  1007→    }
+  1008→
+  1009→    // Can only delete ranks below your own
+  1010→    if (auth.role === "POLICE") {
+  1011→      const myRank = (auth.policeRank || "VIEWER") as PoliceRank;
+  1012→      const myLevel = RANK_HIERARCHYyRank] || 0;
+  1013→      const targetLevel = RANK_HIERARCHY[officer.policeRank as PoliceRank] || 0;
+  1014→
+  1015→      if (targetLevel >= myLevel) {
+  1016→        return NextResponse.json(
+  1017→          { error: `Cannot delete a ${RANK_LABELS[officer.policeRank as PoliceRank] || "officer"}. You can only delete ranks below ${RANK_LABELSyRank]}.` },
+  1018→          { status: 403 }
+  1019→        );
+  1020→      }
+  1021→    }
+  1022→
+  1023→    await db.user.delete({ where: { id } });
+  1024→
+  1025→    await logAudit(req, {
+  1026→      action: "DELETE_OFFICER",
+  1027→      targetId: id,
+  1028→      targetType: "User",
+  1029→      details: JSON.stringify({
+  1030→        username: officer.username,
+  1031→        deletedBy: auth.userName || auth.userId,
+  1032→        creatorRole: auth.role,
+  1033→      }),
+  1034→    }).catch(() => {});
+  1035→
+  1036→    return NextResponse.json({ message: "Officer deleted" });
+  1037→  } catch (error: unknown) {
+  1038→    const message = error instanceof Error ? error.message : "Failed to delete officer";
+  1039→    const status = message.includes("Access") || message.includes("rank") || message.includes("Cannot") ? 403 : 500;
+  1040→    return NextResponse.json({ error: message }, { status });
+  1041→  }
+  1042→}
+  1043→
+  1044→===== /home/z/my-project/ghms-clone/src/app/api/police-alert-config/route.ts =====
+  1045→import { NextRequest, NextResponse } from "next/server";
+  1046→import { db } from "@/lib/db";
+  1047→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1048→import { requirePoliceMinRank } from "@/lib/police-permissions";
+  1049→
+  1050→export async function GET(req: NextRequest) {
+  1051→  try {
+  1052→    const auth = await getAuthContext(req);
+  1053→    requirePolice(auth);
+  1054→    let config = await db.policeAlertConfig.findFirst();
+  1055→    if (!config) {
+  1056→      config = await db.policeAlertConfig.create({ data: {} });
+  1057→    }
+  1058→    return NextResponse.json(config);
+  1059→  } catch (error: unknown) {
+  1060→    const message = error instanceof Error ? error.message : "Failed to fetch alert config";
+  1061→    const status = message.includes("Police") ? 403 : 500;
+  1062→    return NextResponse.json({ error: message }, { status });
+  1063→  }
+  1064→}
+  1065→
+  1066→export async function PUT(req: NextRequest) {
+  1067→  try {
+  1068→    const auth = await getAuthContext(req);
+  1069→    requirePolice(auth);
+  1070→    requirePoliceMinRank(auth, "ADMIN");
+  1071→    const body = await req.json();
+  1072→    let config = await db.policeAlertConfig.findFirst();
+  1073→    if (!config) {
+  1074→      config = await db.policeAlertConfig.create({ data: body });
+  1075→    } else {
+  1076→      config = await db.policeAlertConfig.update({ where: { id: config.id }, data: body });
+  1077→    }
+  1078→    return NextResponse.json(config);
+  1079→  } catch (error: unknown) {
+  1080→    const message = error instanceof Error ? error.message : "Failed to update alert config";
+  1081→    return NextResponse.json({ error: message }, { status: 500 });
+  1082→  }
+  1083→}
+  1084→
+  1085→===== /home/z/my-project/ghms-clone/src/app/api/police-geofences/route.ts =====
+  1086→import { NextRequest, NextResponse } from "next/server";
+  1087→import { db } from "@/lib/db";
+  1088→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1089→import { requirePoliceMinRank } from "@/lib/police-permissions";
+  1090→
+  1091→export async function GET(req: NextRequest) {
+  1092→  try {
+  1093→    const auth = await getAuthContext(req);
+  1094→    requirePolice(auth);
+  1095→    const geofences = await db.geofence.findMany({ orderBy: { createdAt: "desc" } });
+  1096→    return NextResponse.json(geofences);
+  1097→  } catch (error: unknown) {
+  1098→    const message = error instanceof Error ? error.message : "Failed to fetch geofences";
+  1099→    const status = message.includes("Police") ? 403 : 500;
+  1100→    return NextResponse.json({ error: message }, { status });
+  1101→  }
+  1102→}
+  1103→
+  1104→export async function POST(req: NextRequest) {
+  1105→  try {
+  1106→    const auth = await getAuthContext(req);
+  1107→    requirePolice(auth);
+  1108→    requirePoliceMinRank(auth, "ADMIN");
+  1109→    const body = await req.json();
+  1110→    const { name, address, latitude, longitude, radius, severity } = body;
+  1111→    if (!name || latitude === undefined || longitude === undefined) {
+  1112→      return NextResponse.json({ error: "Name, latitude, and longitude are required" }, { status: 400 });
+  1113→    }
+  1114→    const geofence = await db.geofence.create({
+  1115→      data: { name, address: address || "", latitude, longitude, radius: radius || 1000, severity: severity || "HIGH" },
+  1116→    });
+  1117→    return NextResponse.json(geofence, { status: 201 });
+  1118→  } catch (error: unknown) {
+  1119→    const message = error instanceof Error ? error.message : "Failed to create geofence";
+  1120→    return NextResponse.json({ error: message }, { status: 500 });
+  1121→  }
+  1122→}
+  1123→
+  1124→export async function DELETE(req: NextRequest) {
+  1125→  try {
+  1126→    const auth = await getAuthContext(req);
+  1127→    requirePolice(auth);
+  1128→    requirePoliceMinRank(auth, "ADMIN");
+  1129→    const { searchParams } = new URL(req.url);
+  1130→    const id = searchParams.get("id");
+  1131→    if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
+  1132→    await db.geofence.delete({ where: { id } });
+  1133→    return NextResponse.json({ message: "Geofence deleted" });
+  1134→  } catch (error: unknown) {
+  1135→    const message = error instanceof Error ? error.message : "Failed to delete geofence";
+  1136→    return NextResponse.json({ error: message }, { status: 500 });
+  1137→  }
+  1138→}
+  1139→
+  1140→===== /home/z/my-project/ghms-clone/src/app/api/police-geofences/check/route.ts =====
+  1141→import { NextRequest, NextResponse } from "next/server";
+  1142→import { db } from "@/lib/db";
+  1143→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1144→import { logAudit } from "@/lib/audit";
+  1145→
+  1146→/**
+  1147→ * POST /api/police-geofences/check
+  1148→ * Body: { latitude: number, longitude: number }
+  1149→ * Returns: array of breached geofences
+  1150→ */
+  1151→export async function POST(req: NextRequest) {
+  1152→  try {
+  1153→    const auth = await getAuthContext(req);
+  1154→    requirePolice(auth);
+  1155→
+  1156→    const body = await req.json();
+  1157→    const { latitude, longitude } = body;
+  1158→
+  1159→    if (latitude === undefined || longitude === undefined) {
+  1160→      return NextResponse.json(
+  1161→        { error: "latitude and longitude are required" },
+  1162→        { status: 400 }
+  1163→      );
+  1164→    }
+  1165→
+  1166→    const geofences = await db.geofence.findMany({
+  1167→      where: { isActive: true },
+  1168→    });
+  1169→
+  1170→    const R = 6_371_000; // Earth's radius in meters
+  1171→    const toRad = (deg: number) => (deg * Math.PI) / 180;
+  1172→
+  1173→    const breached: {
+  1174→      id: string;
+  1175→      name: string;
+  1176→      severity: string;
+  1177→      distance: number;
+  1178→      radius: number;
+  1179→    }[] = [];
+  1180→
+  1181→    for (const gf of geofences) {
+  1182→      const dLat = toRad(gf.latitude - latitude);
+  1183→      const dLon = toRad(gf.longitude - longitude);
+  1184→      const a =
+  1185→        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+  1186→        Math.cos(toRad(latitude)) *
+  1187→          Math.cos(toRad(gf.latitude)) *
+  1188→          Math.sin(dLon / 2) *
+  1189→          Math.sin(dLon / 2);
+  1190→      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  1191→      const distance = R * c;
+  1192→
+  1193→      if (distance <= gf.radius) {
+  1194→        breached.push({
+  1195→          id: gf.id,
+  1196→          name: gf.name,
+  1197→          severity: gf.severity,
+  1198→          distance: Math.round(distance),
+  1199→          radius: Math.round(gf.radius),
+  1200→        });
+  1201→      }
+  1202→    }
+  1203→
+  1204→    // Create in-app notifications for each breach
+  1205→    for (const b of breached) {
+  1206→      try {
+  1207→        await db.notification.create({
+  1208→          data: {
+  1209→            title: `[GEOFENCE BREACH] ${b.name}`,
+  1210→            message: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)}) is within ${b.distance}m of geofence zone "${b.name}" (radius: ${b.radius}m). Severity: ${b.severity}`,
+  1211→            type: "WARNING",
+  1212→            isRead: false,
+  1213→          },
+  1214→        });
+  1215→      } catch {
+  1216→        // Silent fail for notifications
+  1217→      }
+  1218→    }
+  1219→
+  1220→    // Log the check
+  1221→    await logAudit(req, {
+  1222→      action: "GEOFENCE_CHECK",
+  1223→      details: JSON.stringify({
+  1224→        lat: latitude,
+  1225→        lng: longitude,
+  1226→        breaches: breached.length,
+  1227→      }),
+  1228→    }).catch(() => {});
+  1229→
+  1230→    return NextResponse.json({
+  1231→      checked: true,
+  1232→      latitude,
+  1233→      longitude,
+  1234→      totalGeofences: geofences.length,
+  1235→      activeGeofences: geofences.filter((g) => g.isActive).length,
+  1236→      breaches: breached,
+  1237→      breachCount: breached.length,
+  1238→    });
+  1239→  } catch (error: unknown) {
+  1240→    const message = error instanceof Error ? error.message : "Geofence check failed";
+  1241→    const status = message.includes("Police") ? 403 : 500;
+  1242→    return NextResponse.json({ error: message }, { status });
+  1243→  }
+  1244→}
+  1245→
+  1246→===== /home/z/my-project/ghms-clone/src/app/api/suspect-matches/route.ts =====
+  1247→import { NextRequest, NextResponse } from "next/server";
+  1248→import { db } from "@/lib/db";
+  1249→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1250→import { logAudit } from "@/lib/audit";
+  1251→import { ensureSuspectTables } from "@/lib/suspect-check";
+  1252→
+  1253→export async function GET(req: NextRequest) {
+  1254→  try {
+  1255→    const auth = await getAuthContext(req);
+  1256→    requirePolice(auth);
+  1257→    await ensureSuspectTables();
+  1258→
+  1259→    const { searchParams } = req.nextUrl;
+  1260→    const unreadOnly = searchParams.get("unread") === "true";
+  1261→
+  1262→    const where: Record<string, unknown> = {};
+  1263→    if (unreadOnly) {
+  1264→      where.isRead = false;
+  1265→    }
+  1266→
+  1267→    const matches = await db.suspectMatch.findMany({
+  1268→      where,
+  1269→      include: {
+  1270→        suspectedPerson: {
+  1271→          select: {
+  1272→            id: true,
+  1273→            name: true,
+  1274→            phone: true,
+  1275→            idNumber: true,
+  1276→            severity: true,
+  1277→            description: true,
+  1278→          },
+  1279→        },
+  1280→      },
+  1281→      orderBy: { createdAt: "desc" },
+  1282→      take: 100,
+  1283→    });
+  1284→
+  1285→    // Count unread
+  1286→    const unreadCount = await db.suspectMatch.count({
+  1287→      where: { isRead: false },
+  1288→    });
+  1289→
+  1290→    logAudit(req, { action: "VIEW_MATCHES", details: `Fetched ${matches.length} matches` });
+  1291→    return NextResponse.json({ matches, unreadCount });
+  1292→  } catch (error: unknown) {
+  1293→    const message = error instanceof Error ? error.message : "Failed to fetch suspect matches";
+  1294→    const status = message.includes("Police") ? 403 : 500;
+  1295→    return NextResponse.json({ error: message }, { status });
+  1296→  }
+  1297→}
+  1298→
+  1299→export async function PUT(req: NextRequest) {
+  1300→  try {
+  1301→    const auth = await getAuthContext(req);
+  1302→    requirePolice(auth);
+  1303→    await ensureSuspectTables();
+  1304→
+  1305→    const body = await req.json();
+  1306→    const { ids, markAllRead } = body;
+  1307→
+  1308→    if (markAllRead) {
+  1309→      await db.suspectMatch.updateMany({
+  1310→        where: { isRead: false },
+  1311→        data: { isRead: true },
+  1312→      });
+  1313→      logAudit(req, { action: "MARK_ALL_READ", details: "All suspect matches marked as read" });
+  1314→      return NextResponse.json({ success: true, message: "All matches marked as read" });
+  1315→    }
+  1316→
+  1317→    if (ids && Array.isArray(ids) && ids.length > 0) {
+  1318→      await db.suspectMatch.updateMany({
+  1319→        where: { id: { in: ids } },
+  1320→        data: { isRead: true },
+  1321→      });
+  1322→      logAudit(req, { action: "MARK_READ", details: `Marked ${ids.length} matches as read` });
+  1323→      return NextResponse.json({ success: true });
+  1324→    }
+  1325→
+  1326→    return NextResponse.json({ error: "Provide ids array or markAllRead" }, { status: 400 });
+  1327→  } catch (error: unknown) {
+  1328→    const message = error instanceof Error ? error.message : "Failed to update suspect matches";
+  1329→    const status = message.includes("Police") ? 403 : 500;
+  1330→    return NextResponse.json({ error: message }, { status });
+  1331→  }
+  1332→}
+  1333→===== /home/z/my-project/ghms-clone/src/app/api/suspected-persons/route.ts =====
+  1334→import { NextRequest, NextResponse } from "next/server";
+  1335→import { db } from "@/lib/db";
+  1336→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1337→import { requirePoliceMinRank } from "@/lib/police-permissions";
+  1338→import { ensureSuspectTables } from "@/lib/suspect-check";
+  1339→
+  1340→export async function GET(req: NextRequest) {
+  1341→  try {
+  1342→    const auth = await getAuthContext(req);
+  1343→    requirePolice(auth);
+  1344→    await ensureSuspectTables();
+  1345→
+  1346→    const { searchParams } = req.nextUrl;
+  1347→    const q = searchParams.get("q") || "";
+  1348→    const severity = searchParams.get("severity") || "";
+  1349→    const activeOnly = searchParams.get("active") !== "false";
+  1350→
+  1351→    const where: Record<string, unknown> = {};
+  1352→    if (q) {
+  1353→      where.OR = [
+  1354→        { name: { contains: q } },
+  1355→        { phone: { contains: q } },
+  1356→        { idNumber: { contains: q } },
+  1357→        { description: { contains: q } },
+  1358→      ];
+  1359→    }
+  1360→    if (severity) {
+  1361→      where.severity = severity;
+  1362→    }
+  1363→    if (activeOnly) {
+  1364→      where.is_active = true;
+  1365→    }
+  1366→
+  1367→    const persons = await db.suspectedPerson.findMany({
+  1368→      where,
+  1369→      include: {
+  1370→        _count: { select: { matches: true } },
+  1371→      },
+  1372→      orderBy: { createdAt: "desc" },
+  1373→    });
+  1374→
+  1375→    return NextResponse.json(persons);
+  1376→  } catch (error: unknown) {
+  1377→    const message = error instanceof Error ? error.message : "Failed to fetch suspected persons";
+  1378→    const status = message.includes("Police") ? 403 : 500;
+  1379→    return NextResponse.json({ error: message }, { status });
+  1380→  }
+  1381→}
+  1382→
+  1383→export async function POST(req: NextRequest) {
+  1384→  try {
+  1385→    const auth = await getAuthContext(req);
+  1386→    requirePolice(auth);
+  1387→    requirePoliceMinRank(auth, "DETECTIVE");
+  1388→    await ensureSuspectTables();
+  1389→
+  1390→    const body = await req.json();
+  1391→    const { name, phone, idNumber, idType, nationality, address, description, severity } = body;
+  1392→
+  1393→    if (!name) {
+  1394→      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  1395→    }
+  1396→
+  1397→    const person = await db.suspectedPerson.create({
+  1398→      data: {
+  1399→        name: name.trim(),
+  1400→        phone: phone || "",
+  1401→        idNumber: idNumber || "",
+  1402→        idType: idType || "",
+  1403→        nationality: nationality || "",
+  1404→        address: address || "",
+  1405→        description: description || "",
+  1406→        severity: severity || "MEDIUM",
+  1407→        registeredBy: auth.role,
+  1408→      },
+  1409→      include: {
+  1410→        _count: { select: { matches: true } },
+  1411→      },
+  1412→    });
+  1413→
+  1414→    return NextResponse.json(person, { status: 201 });
+  1415→  } catch (error: unknown) {
+  1416→    const message = error instanceof Error ? error.message : "Failed to create suspected person";
+  1417→    const status = message.includes("Police") ? 403 : message.includes("required") ? 400 : 500;
+  1418→    return NextResponse.json({ error: message }, { status });
+  1419→  }
+  1420→}
+  1421→===== /home/z/my-project/ghms-clone/src/app/api/suspected-persons/[id]/route.ts =====
+  1422→import { NextRequest, NextResponse } from "next/server";
+  1423→import { db } from "@/lib/db";
+  1424→import { getAuthContext, requirePolice } from "@/lib/tenant";
+  1425→import { requirePoliceMinRank } from "@/lib/police-permissions";
+  1426→import { ensureSuspectTables } from "@/lib/suspect-check";
+  1427→
+  1428→export async function GET(
+  1429→  req: NextRequest,
+  1430→  { params }: { params: Promise<{ id: string }> }
+  1431→) {
+  1432→  try {
+  1433→    const auth = await getAuthContext(req);
+  1434→    requirePolice(auth);
+  1435→    await ensureSuspectTables();
+  1436→
+  1437→    const { id } = await params;
+  1438→    const person = await db.suspectedPerson.findUnique({
+  1439→      where: { id },
+  1440→      include: {
+  1441→        matches: {
+  1442→          orderBy: { createdAt: "desc" },
+  1443→          take: 50,
+  1444→        },
+  1445→        _count: { select: { matches: true } },
+  1446→      },
+  1447→    });
+  1448→
+  1449→    if (!person) {
+  1450→      return NextResponse.json({ error: "Suspected person not found" }, { status: 404 });
+  1451→    }
+  1452→
+  1453→    return NextResponse.json(person);
+  1454→  } catch (error: unknown) {
+  1455→    const message = error instanceof Error ? error.message : "Failed to fetch suspected person";
+  1456→    const status = message.includes("Police") ? 403 : 500;
+  1457→    return NextResponse.json({ error: message }, { status });
+  1458→  }
+  1459→}
+  1460→
+  1461→export async function PUT(
+  1462→  req: NextRequest,
+  1463→  { params }: { params: Promise<{ id: string }> }
+  1464→) {
+  1465→  try {
+  1466→    const auth = await getAuthContext(req);
+  1467→    requirePolice(auth);
+  1468→    requirePoliceMinRank(auth, "DETECTIVE");
+  1469→
+  1470→    const { id } = await params;
+  1471→    const body = await req.json();
+  1472→    const { name, phone, idNumber, idType, nationality, address, description, severity, is_active } = body;
+  1473→
+  1474→    const person = await db.suspectedPerson.update({
+  1475→      where: { id },
+  1476→      data: {
+  1477→        ...(name !== undefined ? { name: name.trim() } : {}),
+  1478→        ...(phone !== undefined ? { phone: phone } : {}),
+  1479→        ...(idNumber !== undefined ? { idNumber: idNumber } : {}),
+  1480→        ...(idType !== undefined ? { idType: idType } : {}),
+  1481→        ...(nationality !== undefined ? { nationality: nationality } : {}),
+  1482→        ...(address !== undefined ? { address: address } : {}),
+  1483→        ...(description !== undefined ? { description: description } : {}),
+  1484→        ...(severity !== undefined ? { severity: severity } : {}),
+  1485→        ...(is_active !== undefined ? { is_active: is_active } : {}),
+  1486→      },
+  1487→      include: {
+  1488→        _count: { select: { matches: true } },
+  1489→      },
+  1490→    });
+  1491→
+  1492→    return NextResponse.json(person);
+  1493→  } catch (error: unknown) {
+  1494→    const message = error instanceof Error ? error.message : "Failed to update suspected person";
+  1495→    const status = message.includes("Police") ? 403 : message.includes("not found") ? 404 : 500;
+  1496→    return NextResponse.json({ error: message }, { status });
+  1497→  }
+  1498→}
+  1499→
+  1500→export async function DELETE(
+  1501→  req: NextRequest,
+  1502→  { params }: { params: Promise<{ id: string }> }
+  1503→) {
+  1504→  try {
+  1505→    const auth = await getAuthContext(req);
+  1506→    requirePolice(auth);
+  1507→    requirePoliceMinRank(auth, "DETECTIVE");
+  1508→
+  1509→    const { id } = await params;
+  1510→    // Delete matches first, then the person
+  1511→    await db.suspectMatch.deleteMany({ where: { suspectedPersonId: id } });
+  1512→    await db.suspectedPerson.delete({ where: { id } });
+  1513→
+  1514→    return NextResponse.json({ success: true });
+  1515→  } catch (error: unknown) {
+  1516→    const message = error instanceof Error ? error.message : "Failed to delete suspected person";
+  1517→    const status = message.includes("Police") ? 403 : message.includes("not found") ? 404 : 500;
+  1518→    return NextResponse.json({ error: message }, { status });
+  1519→  }
+  1520→}

@@ -1,0 +1,767 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback } from "react";
+     4→import { useAppStore } from "@/lib/store";
+     5→import {
+     6→  apiGetOwnerAccounts,
+     7→  apiUpdateOwnerAccount,
+     8→} from "@/lib/api";
+     9→import { toast } from "sonner";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Badge } from "@/components/ui/badge";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Label } from "@/components/ui/label";
+    14→import { Skeleton } from "@/components/ui/skeleton";
+    15→import {
+    16→  Card,
+    17→  CardContent,
+    18→  CardHeader,
+    19→  CardTitle,
+    20→  CardDescription,
+    21→} from "@/components/ui/card";
+    22→import {
+    23→  Dialog,
+    24→  DialogContent,
+    25→  DialogHeader,
+    26→  DialogTitle,
+    27→  DialogDescription,
+    28→  DialogFooter,
+    29→} from "@/components/ui/dialog";
+    30→import {
+    31→  Select,
+    32→  SelectContent,
+    33→  SelectItem,
+    34→  SelectTrigger,
+    35→  SelectValue,
+    36→} from "@/components/ui/select";
+    37→import {
+    38→  UserCog,
+    39→  KeyRound,
+    40→  Building2,
+    41→  Shield,
+    42→  Loader2,
+    43→  Eye,
+    44→  EyeOff,
+    45→  Search,
+    46→  Users,
+    47→  Lock,
+    48→  AlertTriangle,
+    49→  CheckCircle2,
+    50→  Clock,
+    51→  Ban,
+    52→  ChevronRight,
+    53→  Info,
+    54→} from "lucide-react";
+    55→
+    56→interface AccountUser {
+    57→  id: string;
+    58→  username: string;
+    59→  name: string;
+    60→  role: string;
+    61→  policeRank?: string;
+    62→  providerId: string | null;
+    63→  permissions?: string;
+    64→  createdAt: string;
+    65→  provider?: { name: string } | null;
+    66→}
+    67→
+    68→interface ProviderWithOwner {
+    69→  id: string;
+    70→  name: string;
+    71→  ownerName: string;
+    72→  phone: string;
+    73→  email: string;
+    74→  status: string;
+    75→  createdAt: string;
+    76→  users: AccountUser[];
+    77→}
+    78→
+    79→interface ApiResponse {
+    80→  providers: ProviderWithOwner[];
+    81→  policeUsers: AccountUser[];
+    82→}
+    83→
+    84→const STATUS_BADGE: Record<string, string> = {
+    85→  APPROVED: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    86→  PENDING: "bg-amber-100 text-amber-700 border-amber-200",
+    87→  REJECTED: "bg-red-100 text-red-700 border-red-200",
+    88→  SUSPENDED: "bg-slate-200 text-slate-700 border-slate-300",
+    89→};
+    90→
+    91→const STATUS_ICON: Record<string, React.ReactNode> = {
+    92→  APPROVED: <CheckCircle2 className="size-4 text-emerald-600" />,
+    93→  PENDING: <Clock className="size-4 text-amber-600" />,
+    94→  REJECTED: <Ban className="size-4 text-red-600" />,
+    95→  SUSPENDED: <AlertTriangle className="size-4 text-slate-600" />,
+    96→};
+    97→
+    98→const ROLE_CONFIG: Record<string, { label: string; badge: string; icon: React.ElementType; description: string }> = {
+    99→  SUPERUSER: {
+   100→    label: "System Admin",
+   101→    badge: "bg-purple-100 text-purple-700 border-purple-200",
+   102→    icon: Lock,
+   103→    description: "System-wide admin. Can manage all accounts and reset credentials. Cannot write to business data.",
+   104→  },
+   105→  OPERATOR: {
+   106→    label: "Operator",
+   107→    badge: "bg-emerald-100 text-emerald-700 border-emerald-200",
+   108→    icon: Building2,
+   109→    description: "Full CRUD for their guesthouse. Can create staff accounts. Cannot access other providers' data.",
+   110→  },
+   111→  STAFF: {
+   112→    label: "Staff",
+   113→    badge: "bg-sky-100 text-sky-700 border-sky-200",
+   114→    icon: Users,
+   115→    description: "Limited access based on assigned permissions. Can only view permitted sections.",
+   116→  },
+   117→  POLICE: {
+   118→    label: "Police",
+   119→    badge: "bg-rose-100 text-rose-700 border-rose-200",
+   120→    icon: Shield,
+   121→    description: "Read-only access to all guesthouses for law enforcement monitoring. Hierarchical ranks control feature access.",
+   122→  },
+   123→};
+   124→
+   125→const POLICE_RANK_BADGE: Record<string, string> = {
+   126→  ADMIN: "bg-amber-100 text-amber-800 border-amber-200",
+   127→  DETECTIVE: "bg-violet-100 text-violet-800 border-violet-200",
+   128→  OFFICER: "bg-sky-100 text-sky-800 border-sky-200",
+   129→  VIEWER: "bg-slate-100 text-slate-600 border-slate-200",
+   130→};
+   131→
+   132→type TabType = "overview" | "owners" | "police";
+   133→
+   134→export default function OwnerAccountsPage() {
+   135→  const { refreshKey } = useAppStore();
+   136→  const [providers, setProviders] = useState<ProviderWithOwner[]>([]);
+   137→  const [policeUsers, setPoliceUsers] = useState<AccountUser[]>([]);
+   138→  const [loading, setLoading] = useState(true);
+   139→  const [search, setSearch] = useState("");
+   140→  const [activeTab, setActiveTab] = useState<TabType>("overview");
+   141→
+   142→  // Reset dialog
+   143→  const [resetOpen, setResetOpen] = useState(false);
+   144→  const [resetUserId, setResetUserId] = useState("");
+   145→  const [resetUsername, setResetUsername] = useState("");
+   146→  const [resetPassword, setResetPassword] = useState("");
+   147→  const [showPassword, setShowPassword] = useState(false);
+   148→  const [saving, setSaving] = useState(false);
+   149→  const [resetLabel, setResetLabel] = useState("");
+   150→  const [resetSublabel, setResetSublabel] = useState("");
+   151→
+   152→  const fetchAccounts = useCallback(async () => {
+   153→    setLoading(true);
+   154→    try {
+   155→      const data: ApiResponse = await apiGetOwnerAccounts();
+   156→      setProviders(data.providers);
+   157→      setPoliceUsers(data.policeUsers);
+   158→    } catch {
+   159→      toast.error("Failed to load accounts");
+   160→    } finally {
+   161→      setLoading(false);
+   162→    }
+   163→  }, []);
+   164→
+   165→  useEffect(() => {
+   166→    fetchAccounts();
+   167→  }, [fetchAccounts, refreshKey]);
+   168→
+   169→  const openOwnerReset = (provider: ProviderWithOwner) => {
+   170→    const ownerUser = provider.users[0];
+   171→    setResetUserId(ownerUser?.id || "");
+   172→    setResetUsername(ownerUser?.username || "");
+   173→    setResetPassword("");
+   174→    setShowPassword(false);
+   175→    setResetLabel(provider.name);
+   176→    setResetSublabel(`${provider.ownerName}  ·  ${provider.phone}`);
+   177→    setResetOpen(true);
+   178→  };
+   179→
+   180→  const openPoliceReset = (police: AccountUser) => {
+   181→    setResetUserId(police.id);
+   182→    setResetUsername(police.username);
+   183→    setResetPassword("");
+   184→    setShowPassword(false);
+   185→    setResetLabel("Police Account");
+   186→    setResetSublabel(police.name);
+   187→    setResetOpen(true);
+   188→  };
+   189→
+   190→  const handleReset = async (e: React.FormEvent) => {
+   191→    e.preventDefault();
+   192→    if (!resetUserId) return;
+   193→
+   194→    if (!resetUsername.trim()) {
+   195→      toast.error("Username is required");
+   196→      return;
+   197→    }
+   198→
+   199→    setSaving(true);
+   200→    try {
+   201→      const updateData: Record<string, unknown> = {};
+   202→      if (resetUsername.trim()) updateData.username = resetUsername.trim();
+   203→      if (resetPassword.trim()) updateData.password = resetPassword.trim();
+   204→
+   205→      if (Object.keys(updateData).length === 0) {
+   206→        toast.error("No changes to save");
+   207→        setSaving(false);
+   208→        return;
+   209→      }
+   210→
+   211→      await apiUpdateOwnerAccount(resetUserId, updateData);
+   212→      toast.success("Credentials updated successfully");
+   213→      setResetOpen(false);
+   214→      fetchAccounts();
+   215→    } catch (err: unknown) {
+   216→      const msg = err instanceof Error ? err.message : "Failed to update credentials";
+   217→      toast.error(msg);
+   218→    } finally {
+   219→      setSaving(false);
+   220→    }
+   221→  };
+   222→
+   223→  const filteredProviders = providers.filter(
+   224→    (p) =>
+   225→      p.name.toLowerCase().includes(search.toLowerCase()) ||
+   226→      p.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+   227→      p.phone.includes(search) ||
+   228→      p.users.some((u) => u.username.toLowerCase().includes(search.toLowerCase()))
+   229→  );
+   230→
+   231→  const filteredPolice = policeUsers.filter(
+   232→    (u) =>
+   233→      u.name.toLowerCase().includes(search.toLowerCase()) ||
+   234→      u.username.toLowerCase().includes(search.toLowerCase())
+   235→  );
+   236→
+   237→  const hasNoResults =
+   238→    (activeTab === "overview" && filteredProviders.length === 0 && filteredPolice.length === 0) ||
+   239→    (activeTab === "owners" && filteredProviders.length === 0) ||
+   240→    (activeTab === "police" && filteredPolice.length === 0);
+   241→
+   242→  // ── Stats for overview ──
+   243→  const totalProviders = providers.length;
+   244→  const approvedProviders = providers.filter((p) => p.status === "APPROVED").length;
+   245→  const pendingProviders = providers.filter((p) => p.status === "PENDING").length;
+   246→  const totalPolice = policeUsers.length;
+   247→
+   248→  if (loading) {
+   249→    return (
+   250→      <div className="space-y-6 p-4 md:p-6">
+   251→        <Skeleton className="h-8 w-64" />
+   252→        <Skeleton className="h-10 w-full max-w-sm" />
+   253→        <div className="space-y-3">
+   254→          {Array.from({ length: 4 }).map((_, i) => (
+   255→            <Skeleton key={i} className="h-24 rounded-lg" />
+   256→          ))}
+   257→        </div>
+   258→      </div>
+   259→    );
+   260→  }
+   261→
+   262→  return (
+   263→    <div className="space-y-6 p-4 md:p-6">
+   264→      {/* Header */}
+   265→      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+   266→        <div>
+   267→          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+   268→          <p className="text-sm text-muted-foreground">
+   269→            Manage user accounts, roles, credentials, and provider approvals.
+   270→          </p>
+   271→        </div>
+   272→      </div>
+   273→
+   274→      {/* ── RBAC Role Reference Cards ── */}
+   275→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+   276→        {Object.entries(ROLE_CONFIG).map(([role, config]) => {
+   277→          const Icon = config.icon;
+   278→          return (
+   279→            <Card key={role} className="border shadow-none">
+   280→              <CardContent className="p-4">
+   281→                <div className="flex items-center gap-3">
+   282→                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+   283→                    <Icon className="size-5 text-primary" />
+   284→                  </div>
+   285→                  <div className="min-w-0">
+   286→                    <Badge variant="outline" className={`text-[10px] font-semibold mb-1 ${config.badge}`}>
+   287→                      {config.label}
+   288→                    </Badge>
+   289→                    <p className="text-xs text-muted-foreground leading-relaxed">{config.description}</p>
+   290→                  </div>
+   291→                </div>
+   292→              </CardContent>
+   293→            </Card>
+   294→          );
+   295→        })}
+   296→      </div>
+   297→
+   298→      {/* ── Stats Bar ── */}
+   299→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   300→        <Card className="shadow-none">
+   301→          <CardContent className="p-4 flex items-center gap-3">
+   302→            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
+   303→              <Building2 className="size-5 text-emerald-600" />
+   304→            </div>
+   305→            <div>
+   306→              <p className="text-2xl font-bold">{totalProviders}</p>
+   307→              <p className="text-xs text-muted-foreground">Total Providers</p>
+   308→            </div>
+   309→          </CardContent>
+   310→        </Card>
+   311→        <Card className="shadow-none">
+   312→          <CardContent className="p-4 flex items-center gap-3">
+   313→            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+   314→              <CheckCircle2 className="size-5 text-green-600" />
+   315→            </div>
+   316→            <div>
+   317→              <p className="text-2xl font-bold">{approvedProviders}</p>
+   318→              <p className="text-xs text-muted-foreground">Approved</p>
+   319→            </div>
+   320→          </CardContent>
+   321→        </Card>
+   322→        <Card className="shadow-none">
+   323→          <CardContent className="p-4 flex items-center gap-3">
+   324→            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+   325→              <Clock className="size-5 text-amber-600" />
+   326→            </div>
+   327→            <div>
+   328→              <p className="text-2xl font-bold">{pendingProviders}</p>
+   329→              <p className="text-xs text-muted-foreground">Pending</p>
+   330→            </div>
+   331→          </CardContent>
+   332→        </Card>
+   333→        <Card className="shadow-none">
+   334→          <CardContent className="p-4 flex items-center gap-3">
+   335→            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100">
+   336→              <Shield className="size-5 text-rose-600" />
+   337→            </div>
+   338→            <div>
+   339→              <p className="text-2xl font-bold">{totalPolice}</p>
+   340→              <p className="text-xs text-muted-foreground">Police Officers</p>
+   341→            </div>
+   342→          </CardContent>
+   343→        </Card>
+   344→      </div>
+   345→
+   346→      {/* ── Tabs ── */}
+   347→      <div className="flex gap-1 rounded-lg border bg-muted/50 p-1 w-fit">
+   348→        {([
+   349→          { key: "overview", label: "Overview", icon: UserCog },
+   350→          { key: "owners", label: "Providers", icon: Building2, count: totalProviders },
+   351→          { key: "police", label: "Police", icon: Shield, count: totalPolice },
+   352→        ] as const).map((tab) => (
+   353→          <button
+   354→            key={tab.key}
+   355→            onClick={() => {
+   356→              setActiveTab(tab.key as TabType);
+   357→              setSearch("");
+   358→            }}
+   359→            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+   360→              activeTab === tab.key
+   361→                ? "bg-background text-foreground shadow-sm"
+   362→                : "text-muted-foreground hover:text-foreground"
+   363→            }`}
+   364→          >
+   365→            <tab.icon className="h-4 w-4" />
+   366→            {tab.label}
+   367→            {"count" in tab && tab.count !== undefined && (
+   368→              <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+   369→                {tab.count}
+   370→              </Badge>
+   371→            )}
+   372→          </button>
+   373→        ))}
+   374→      </div>
+   375→
+   376→      {/* ── Search ── */}
+   377→      <div className="relative max-w-sm">
+   378→        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   379→        <Input
+   380→          placeholder={
+   381→            activeTab === "police"
+   382→              ? "Search by name or username..."
+   383→              : "Search by provider, owner, phone, or username..."
+   384→          }
+   385→          value={search}
+   386→          onChange={(e) => setSearch(e.target.value)}
+   387→          className="pl-9"
+   388→        />
+   389→      </div>
+   390→
+   391→      {hasNoResults ? (
+   392→        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+   393→          <UserCog className="mb-4 h-12 w-12 opacity-30" />
+   394→          <p className="font-medium text-lg">
+   395→            {search ? "No matching accounts" : `No ${activeTab} accounts found`}
+   396→          </p>
+   397→          <p className="text-sm mt-1">
+   398→            {search
+   399→              ? "Try adjusting your search terms."
+   400→              : "Accounts will appear here when providers register or police accounts are created."}
+   401→          </p>
+   402→        </div>
+   403→      ) : activeTab === "overview" ? (
+   404→        /* ─── Overview Tab: Both Owners + Police ─── */
+   405→        <>
+   406→          {/* Providers Section */}
+   407→          <div>
+   408→            <div className="flex items-center gap-2 mb-3">
+   409→              <Building2 className="size-5 text-emerald-600" />
+   410→              <h2 className="text-lg font-semibold">Provider Accounts</h2>
+   411→              <Badge variant="secondary">{filteredProviders.length}</Badge>
+   412→            </div>
+   413→            <div className="space-y-2">
+   414→              {filteredProviders.map((provider) => {
+   415→                const ownerUser = provider.users[0];
+   416→                return (
+   417→                  <div
+   418→                    key={provider.id}
+   419→                    className="flex items-center gap-4 rounded-lg border p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+   420→                    onClick={() => openOwnerReset(provider)}
+   421→                  >
+   422→                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+   423→                      <Building2 className="h-5 w-5 text-primary" />
+   424→                    </div>
+   425→                    <div className="flex-1 min-w-0">
+   426→                      <div className="flex items-center gap-2">
+   427→                        <p className="font-semibold text-sm">{provider.name}</p>
+   428→                        {STATUS_ICON[provider.status]}
+   429→                        <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   430→                          {provider.status}
+   431→                        </Badge>
+   432→                      </div>
+   433→                      <p className="text-xs text-muted-foreground">
+   434→                        {provider.ownerName} · {provider.phone} · <code className="font-mono">{ownerUser?.username || "—"}</code>
+   435→                      </p>
+   436→                    </div>
+   437→                    <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+   438→                      <KeyRound className="h-3.5 w-3.5" />
+   439→                      Reset
+   440→                    </Button>
+   441→                  </div>
+   442→                );
+   443→              })}
+   444→            </div>
+   445→          </div>
+   446→
+   447→          {/* Divider */}
+   448→          <div className="border-t my-4" />
+   449→
+   450→          {/* Police Section */}
+   451→          <div>
+   452→            <div className="flex items-center gap-2 mb-3">
+   453→              <Shield className="size-5 text-rose-600" />
+   454→              <h2 className="text-lg font-semibold">Police Accounts</h2>
+   455→              <Badge variant="secondary">{filteredPolice.length}</Badge>
+   456→            </div>
+   457→            <div className="space-y-2">
+   458→              {filteredPolice.map((police) => (
+   459→                <div
+   460→                  key={police.id}
+   461→                  className="flex items-center gap-4 rounded-lg border p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+   462→                  onClick={() => openPoliceReset(police)}
+   463→                >
+   464→                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+   465→                    <Shield className="h-5 w-5 text-rose-600" />
+   466→                  </div>
+   467→                  <div className="flex-1 min-w-0">
+   468→                    <div className="flex items-center gap-2">
+   469→                      <p className="font-semibold text-sm">{police.name}</p>
+   470→                      <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-200">
+   471→                        POLICE
+   472→                      </Badge>
+   473→                      {police.policeRank && (
+   474→                        <Badge variant="outline" className={POLICE_RANK_BADGE[police.policeRank] || ""}>
+   475→                          {police.policeRank}
+   476→                        </Badge>
+   477→                      )}
+   478→                    </div>
+   479→                    <p className="text-xs text-muted-foreground">
+   480→                      <code className="font-mono">{police.username}</code> · Created {new Date(police.createdAt).toLocaleDateString()}
+   481→                    </p>
+   482→                  </div>
+   483→                  <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+   484→                    <KeyRound className="h-3.5 w-3.5" />
+   485→                    Reset
+   486→                  </Button>
+   487→                </div>
+   488→              ))}
+   489→            </div>
+   490→          </div>
+   491→
+   492→          {/* Security Notice */}
+   493→          <Card className="border-blue-200 bg-blue-50/50">
+   494→            <CardContent className="p-4 flex items-start gap-3">
+   495→              <Info className="size-5 text-blue-600 shrink-0 mt-0.5" />
+   496→              <div>
+   497→                <p className="text-sm font-semibold text-blue-800">Data Security Notice</p>
+   498→                <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+   499→                  All passwords are stored with bcrypt hashing. Authentication uses JWT tokens in httpOnly cookies. 
+   500→                  Role-based access control (RBAC) is enforced on all API endpoints server-side. Every user management 
+   501→                  action is logged in the audit trail.
+   502→                </p>
+   503→              </div>
+   504→            </CardContent>
+   505→          </Card>
+   506→        </>
+   507→      ) : activeTab === "owners" ? (
+   508→        /* ─── Owners Tab ─── */
+   509→        <>
+   510→          <div className="hidden md:block rounded-lg border">
+   511→            <table className="w-full text-sm">
+   512→              <thead>
+   513→                <tr className="border-b bg-muted/50">
+   514→                  <th className="px-4 py-3 text-left font-semibold">Provider</th>
+   515→                  <th className="px-4 py-3 text-left font-semibold">Owner</th>
+   516→                  <th className="px-4 py-3 text-left font-semibold">Username</th>
+   517→                  <th className="px-4 py-3 text-left font-semibold">Phone</th>
+   518→                  <th className="px-4 py-3 text-left font-semibold">Status</th>
+   519→                  <th className="px-4 py-3 text-right font-semibold">Action</th>
+   520→                </tr>
+   521→              </thead>
+   522→              <tbody>
+   523→                {filteredProviders.map((provider) => {
+   524→                  const ownerUser = provider.users[0];
+   525→                  return (
+   526→                    <tr
+   527→                      key={provider.id}
+   528→                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+   529→                    >
+   530→                      <td className="px-4 py-3">
+   531→                        <div className="flex items-center gap-2">
+   532→                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+   533→                            <Building2 className="h-4 w-4 text-primary" />
+   534→                          </div>
+   535→                          <span className="font-medium">{provider.name}</span>
+   536→                        </div>
+   537→                      </td>
+   538→                      <td className="px-4 py-3 text-muted-foreground">
+   539→                        {provider.ownerName}
+   540→                      </td>
+   541→                      <td className="px-4 py-3">
+   542→                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   543→                          {ownerUser?.username || "—"}
+   544→                        </code>
+   545→                      </td>
+   546→                      <td className="px-4 py-3 text-muted-foreground">
+   547→                        {provider.phone}
+   548→                      </td>
+   549→                      <td className="px-4 py-3">
+   550→                        <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   551→                          {provider.status}
+   552→                        </Badge>
+   553→                      </td>
+   554→                      <td className="px-4 py-3 text-right">
+   555→                        <Button
+   556→                          variant="outline"
+   557→                          size="sm"
+   558→                          className="gap-1.5"
+   559→                          onClick={() => openOwnerReset(provider)}
+   560→                        >
+   561→                          <KeyRound className="h-3.5 w-3.5" />
+   562→                          Reset Credentials
+   563→                        </Button>
+   564→                      </td>
+   565→                    </tr>
+   566→                  );
+   567→                })}
+   568→              </tbody>
+   569→            </table>
+   570→          </div>
+   571→
+   572→          {/* Mobile Cards */}
+   573→          <div className="md:hidden space-y-3">
+   574→            {filteredProviders.map((provider) => {
+   575→              const ownerUser = provider.users[0];
+   576→              return (
+   577→                <div key={provider.id} className="rounded-lg border p-4 space-y-3">
+   578→                  <div className="flex items-start justify-between gap-2">
+   579→                    <div className="flex items-center gap-2 min-w-0">
+   580→                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+   581→                        <Building2 className="h-4 w-4 text-primary" />
+   582→                      </div>
+   583→                      <div className="min-w-0">
+   584→                        <p className="font-semibold text-sm truncate">{provider.name}</p>
+   585→                        <p className="text-xs text-muted-foreground">{provider.ownerName}</p>
+   586→                      </div>
+   587→                    </div>
+   588→                    <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   589→                      {provider.status}
+   590→                    </Badge>
+   591→                  </div>
+   592→                  <div className="grid grid-cols-2 gap-2 text-sm">
+   593→                    <div>
+   594→                      <p className="text-xs text-muted-foreground">Username</p>
+   595→                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   596→                        {ownerUser?.username || "—"}
+   597→                      </code>
+   598→                    </div>
+   599→                    <div>
+   600→                      <p className="text-xs text-muted-foreground">Phone</p>
+   601→                      <p className="text-sm">{provider.phone}</p>
+   602→                    </div>
+   603→                  </div>
+   604→                  <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => openOwnerReset(provider)}>
+   605→                    <KeyRound className="h-3.5 w-3.5" />
+   606→                    Reset Credentials
+   607→                  </Button>
+   608→                </div>
+   609→              );
+   610→            })}
+   611→          </div>
+   612→        </>
+   613→      ) : (
+   614→        /* ─── Police Tab ─── */
+   615→        <>
+   616→          <div className="hidden md:block rounded-lg border">
+   617→            <table className="w-full text-sm">
+   618→              <thead>
+   619→                <tr className="border-b bg-muted/50">
+   620→                  <th className="px-4 py-3 text-left font-semibold">Name</th>
+   621→                  <th className="px-4 py-3 text-left font-semibold">Username</th>
+   622→                  <th className="px-4 py-3 text-left font-semibold">Rank</th>
+   623→                  <th className="px-4 py-3 text-left font-semibold">Created</th>
+   624→                  <th className="px-4 py-3 text-right font-semibold">Action</th>
+   625→                </tr>
+   626→              </thead>
+   627→              <tbody>
+   628→                {filteredPolice.map((police) => (
+   629→                  <tr key={police.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+   630→                    <td className="px-4 py-3">
+   631→                      <div className="flex items-center gap-2">
+   632→                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
+   633→                          <Shield className="h-4 w-4 text-rose-600" />
+   634→                        </div>
+   635→                        <span className="font-medium">{police.name}</span>
+   636→                      </div>
+   637→                    </td>
+   638→                    <td className="px-4 py-3">
+   639→                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{police.username}</code>
+   640→                    </td>
+   641→                    <td className="px-4 py-3">
+   642→                      {police.policeRank ? (
+   643→                        <Badge variant="outline" className={POLICE_RANK_BADGE[police.policeRank] || ""}>
+   644→                          {police.policeRank}
+   645→                        </Badge>
+   646→                      ) : (
+   647→                        <span className="text-xs text-muted-foreground">OFFICER</span>
+   648→                      )}
+   649→                    </td>
+   650→                    <td className="px-4 py-3 text-muted-foreground text-xs">
+   651→                      {new Date(police.createdAt).toLocaleDateString()}
+   652→                    </td>
+   653→                    <td className="px-4 py-3 text-right">
+   654→                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openPoliceReset(police)}>
+   655→                        <KeyRound className="h-3.5 w-3.5" />
+   656→                        Reset Credentials
+   657→                      </Button>
+   658→                    </td>
+   659→                  </tr>
+   660→                ))}
+   661→              </tbody>
+   662→            </table>
+   663→          </div>
+   664→
+   665→          {/* Mobile Cards */}
+   666→          <div className="md:hidden space-y-3">
+   667→            {filteredPolice.map((police) => (
+   668→              <div key={police.id} className="rounded-lg border p-4 space-y-3">
+   669→                <div className="flex items-center gap-2">
+   670→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+   671→                    <Shield className="h-4 w-4 text-rose-600" />
+   672→                  </div>
+   673→                  <div className="min-w-0 flex-1">
+   674→                    <p className="font-semibold text-sm truncate">{police.name}</p>
+   675→                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{police.username}</code>
+   676→                  </div>
+   677→                  <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-200">
+   678→                    POLICE
+   679→                  </Badge>
+   680→                </div>
+   681→                <p className="text-xs text-muted-foreground">
+   682→                  Created: {new Date(police.createdAt).toLocaleDateString()}
+   683→                </p>
+   684→                <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => openPoliceReset(police)}>
+   685→                  <KeyRound className="h-3.5 w-3.5" />
+   686→                  Reset Credentials
+   687→                </Button>
+   688→              </div>
+   689→            ))}
+   690→          </div>
+   691→        </>
+   692→      )}
+   693→
+   694→      {/* Reset Credentials Dialog */}
+   695→      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+   696→        <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md max-h-[85vh] overflow-y-auto">
+   697→          <DialogHeader>
+   698→            <DialogTitle className="flex items-center gap-2">
+   699→              <KeyRound className="h-5 w-5 text-primary" />
+   700→              Reset Credentials
+   701→            </DialogTitle>
+   702→            <DialogDescription>
+   703→              Update login credentials for <strong>{resetLabel}</strong>{resetSublabel ? ` — ${resetSublabel}` : ""}.
+   704→              Leave password blank to keep the current password unchanged.
+   705→            </DialogDescription>
+   706→          </DialogHeader>
+   707→          <form onSubmit={handleReset} className="space-y-4">
+   708→            <div className="space-y-2">
+   709→              <Label htmlFor="reset-username">Username *</Label>
+   710→              <Input
+   711→                id="reset-username"
+   712→                placeholder="Enter new username"
+   713→                value={resetUsername}
+   714→                onChange={(e) => setResetUsername(e.target.value)}
+   715→                autoFocus
+   716→              />
+   717→            </div>
+   718→
+   719→            <div className="space-y-2">
+   720→              <Label htmlFor="reset-password">New Password</Label>
+   721→              <div className="relative">
+   722→                <Input
+   723→                  id="reset-password"
+   724→                  type={showPassword ? "text" : "password"}
+   725→                  placeholder="Leave blank to keep current password"
+   726→                  value={resetPassword}
+   727→                  onChange={(e) => setResetPassword(e.target.value)}
+   728→                  className="pr-10"
+   729→                />
+   730→                <button
+   731→                  type="button"
+   732→                  onClick={() => setShowPassword(!showPassword)}
+   733→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   734→                >
+   735→                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   736→                </button>
+   737→              </div>
+   738→              <p className="text-xs text-muted-foreground">
+   739→                Only fill this in if a password reset is requested. The new password will be securely hashed with bcrypt.
+   740→              </p>
+   741→            </div>
+   742→
+   743→            <DialogFooter>
+   744→              <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
+   745→                Cancel
+   746→              </Button>
+   747→              <Button type="submit" disabled={saving} className="gap-2">
+   748→                {saving ? (
+   749→                  <>
+   750→                    <Loader2 className="h-4 w-4 animate-spin" />
+   751→                    Saving...
+   752→                  </>
+   753→                ) : (
+   754→                  <>
+   755→                    <KeyRound className="h-4 w-4" />
+   756→                    Save Credentials
+   757→                  </>
+   758→                )}
+   759→              </Button>
+   760→            </DialogFooter>
+   761→          </form>
+   762→        </DialogContent>
+   763→      </Dialog>
+   764→    </div>
+   765→  );
+   766→}
+   767→

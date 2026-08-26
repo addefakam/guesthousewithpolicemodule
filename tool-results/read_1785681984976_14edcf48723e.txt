@@ -1,0 +1,485 @@
+   501→                                        <div><p className="text-xs text-gray-500">Address</p><p className="text-sm text-gray-900">{g.address}</p></div>
+   502→                                      </div>
+   503→                                    )}
+   504→                                    {g.notes && (
+   505→                                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-sky-50 p-3 border border-sky-100">
+   506→                                        <FileText className="mt-0.5 h-4 w-4 text-sky-500 shrink-0" />
+   507→                                        <div><p className="text-xs font-medium text-sky-800">Notes</p><p className="text-sm text-sky-700">{g.notes}</p></div>
+   508→                                      </div>
+   509→                                    )}
+   510→                                  </TableCell>
+   511→                                </TableRow>
+   512→                              )}
+   513→                            </Fragment>
+   514→                          ))}
+   515→                        </TableBody>
+   516→                      </Table>
+   517→                    </div>
+   518→                    <p className="text-xs text-muted-foreground mt-3 text-center">
+   519→                      {filteredActiveGuests.length} active guest{filteredActiveGuests.length !== 1 ? "s" : ""} · {activeGuests.filter((g) => g.status === "ACTIVE").length} currently staying · {activeGuests.filter((g) => g.status === "UPCOMING").length} upcoming
+   520→                    </p>
+   521→                  </>
+   522→                )}
+   523→              </CardContent>
+   524→            </Card>
+   525→          )}
+   526→
+   527→          {/* Served Guests Section */}
+   528→          {showGuests && (
+   529→            <Card>
+   530→              <CardHeader>
+   531→                <CardTitle className="flex items-center gap-2">
+   532→                  <Users className="h-5 w-5" />
+   533→                  Guests Served ({from} to {to})
+   534→                </CardTitle>
+   535→                <div className="relative mt-2">
+   536→                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+   537→                  <Input
+   538→                    placeholder="Search by name, ID, phone, email..."
+   539→                    value={guestSearch}
+   540→                    onChange={(e) => setGuestSearch(e.target.value)}
+   541→                    className="pl-9"
+   542→                  />
+   543→                </div>
+   544→              </CardHeader>
+   545→              <CardContent>
+   546→                {filteredServedGuests.length === 0 ? (
+   547→                  <p className="text-sm text-muted-foreground text-center py-8">
+   548→                    No guests served in this period.
+   549→                  </p>
+   550→                ) : (
+   551→                  <>
+   552→                    {/* Mobile cards */}
+   553→                    <div className="md:hidden space-y-3">
+   554→                      {filteredServedGuests.map((g, i) => (
+   555→                        <div key={i}>
+   556→                          <div
+   557→                            className="rounded-lg border p-3 space-y-2 cursor-pointer"
+   558→                            onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+   559→                          >
+   560→                            <div className="flex items-center justify-between">
+   561→                              <div className="flex items-center gap-2">
+   562→                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm shrink-0">
+   563→                                  {g.name.charAt(0).toUpperCase()}
+   564→                                </div>
+   565→                                <div>
+   566→                                  <div className="flex items-center gap-1.5">
+   567→                                    <p className="font-semibold text-sm">{g.name}</p>
+   568→                                    {g.vip && <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+   569→                                  </div>
+   570→                                  {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
+   571→                                </div>
+   572→                              </div>
+   573→                              <div className="flex items-center gap-2">
+   574→                                <Badge variant="outline" className="text-xs">{g.visits} visit{g.visits !== 1 ? "s" : ""}</Badge>
+   575→                                {expandedGuestIdx === i ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+   576→                              </div>
+   577→                            </div>
+   578→                            <div className="flex items-center justify-between text-xs">
+   579→                              <span className="text-muted-foreground">Last: {g.lastVisit}</span>
+   580→                              <span className="font-medium">{formatCurrency(g.totalSpent)}</span>
+   581→                            </div>
+   582→                          </div>
+   583→                          {expandedGuestIdx === i && (
+   584→                            <div className="mt-2 ml-4 rounded-lg border border-amber-100 bg-amber-50 p-3 space-y-2">
+   585→                              {g.email && (
+   586→                                <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.email}</span></div>
+   587→                              )}
+   588→                              {(g.idType || g.idNumber) && (
+   589→                                <div className="flex items-center gap-2 text-xs"><CreditCard className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}</span></div>
+   590→                              )}
+   591→                              {g.nationality && (
+   592→                                <div className="flex items-center gap-2 text-xs"><Globe className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.nationality}</span></div>
+   593→                              )}
+   594→                              {g.address && (
+   595→                                <div className="flex items-center gap-2 text-xs"><MapPin className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.address}</span></div>
+   596→                              )}
+   597→                              {g.notes && (
+   598→                                <div className="flex items-start gap-2 text-xs mt-1"><FileText className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" /><span className="text-amber-700">{g.notes}</span></div>
+   599→                              )}
+   600→                              {g.guestSince && (
+   601→                                <p className="text-[10px] text-gray-400 mt-1">Guest since {new Date(g.guestSince).toLocaleDateString()}</p>
+   602→                              )}
+   603→                              {g.rooms.length > 0 && (
+   604→                                <div className="mt-2 pt-2 border-t border-amber-200">
+   605→                                  <p className="text-[10px] font-medium text-gray-500 mb-1">Room History ({g.rooms.length})</p>
+   606→                                  {g.rooms.map((rm, ri) => (
+   607→                                    <div key={ri} className="flex items-center justify-between text-xs py-0.5">
+   608→                                      <span className="text-gray-600">{rm.number}{rm.name ? ` · ${rm.name}` : ""}</span>
+   609→                                      <span className="text-gray-400">{rm.checkIn} → {rm.checkOut}</span>
+   610→                                    </div>
+   611→                                  ))}
+   612→                                </div>
+   613→                              )}
+   614→                            </div>
+   615→                          )}
+   616→                        </div>
+   617→                      ))}
+   618→                    </div>
+   619→                    {/* Desktop table */}
+   620→                    <div className="hidden md:block rounded-xl border bg-white max-h-[500px] overflow-y-auto">
+   621→                      <Table>
+   622→                        <TableHeader>
+   623→                          <TableRow className="bg-gray-50/80">
+   624→                            <TableHead className="w-12"></TableHead>
+   625→                            <TableHead>Guest Name</TableHead>
+   626→                            <TableHead>Phone</TableHead>
+   627→                            <TableHead>ID Number</TableHead>
+   628→                            <TableHead>Nationality</TableHead>
+   629→                            <TableHead className="text-center">VIP</TableHead>
+   630→                            <TableHead className="text-center">Visits</TableHead>
+   631→                            <TableHead>Last Visit</TableHead>
+   632→                            <TableHead className="text-right">Total Spent</TableHead>
+   633→                          </TableRow>
+   634→                        </TableHeader>
+   635→                        <TableBody>
+   636→                          {filteredServedGuests.map((g, i) => (
+   637→                            <Fragment key={i}>
+   638→                              <TableRow
+   639→                                className="cursor-pointer"
+   640→                                onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+   641→                              >
+   642→                                <TableCell>
+   643→                                  {expandedGuestIdx === i ? (
+   644→                                    <ChevronUp className="h-4 w-4 text-gray-400" />
+   645→                                  ) : (
+   646→                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+   647→                                  )}
+   648→                                </TableCell>
+   649→                                <TableCell>
+   650→                                  <div className="flex items-center gap-2">
+   651→                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm">
+   652→                                      {g.name.charAt(0).toUpperCase()}
+   653→                                    </div>
+   654→                                    <div>
+   655→                                      <span className="font-medium text-gray-900">{g.name}</span>
+   656→                                      {g.vip && (
+   657→                                        <span className="ml-1.5">
+   658→                                          <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+   659→                                        </span>
+   660→                                      )}
+   661→                                    </div>
+   662→                                  </div>
+   663→                                </TableCell>
+   664→                                <TableCell className="text-gray-600">{g.phone || "—"}</TableCell>
+   665→                                <TableCell className="text-gray-600 text-xs">{g.idNumber || "—"}</TableCell>
+   666→                                <TableCell className="text-gray-600">{g.nationality || "—"}</TableCell>
+   667→                                <TableCell className="text-center">
+   668→                                  {g.vip ? (
+   669→                                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
+   670→                                      <Star className="mr-1 h-3 w-3 fill-amber-500 text-amber-500" />
+   671→                                      VIP
+   672→                                    </Badge>
+   673→                                  ) : (
+   674→                                    <span className="text-gray-400 text-xs">—</span>
+   675→                                  )}
+   676→                                </TableCell>
+   677→                                <TableCell className="text-center">
+   678→                                  <Badge variant="secondary" className="text-xs">{g.visits}</Badge>
+   679→                                </TableCell>
+   680→                                <TableCell>{g.lastVisit}</TableCell>
+   681→                                <TableCell className="text-right font-medium">{formatCurrency(g.totalSpent)}</TableCell>
+   682→                              </TableRow>
+   683→                              {/* Expanded details row */}
+   684→                              {expandedGuestIdx === i && (
+   685→                                <TableRow className="bg-gray-50/50">
+   686→                                  <TableCell colSpan={9}>
+   687→                                    <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+   688→                                      <div className="flex items-start gap-2">
+   689→                                        <Mail className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   690→                                        <div>
+   691→                                          <p className="text-xs text-gray-500">Email</p>
+   692→                                          <p className="text-sm text-gray-900">{g.email || "—"}</p>
+   693→                                        </div>
+   694→                                      </div>
+   695→                                      <div className="flex items-start gap-2">
+   696→                                        <CreditCard className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   697→                                        <div>
+   698→                                          <p className="text-xs text-gray-500">ID Type / Number</p>
+   699→                                          <p className="text-sm text-gray-900">
+   700→                                            {g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}
+   701→                                          </p>
+   702→                                        </div>
+   703→                                      </div>
+   704→                                      <div className="flex items-start gap-2">
+   705→                                        <Globe className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   706→                                        <div>
+   707→                                          <p className="text-xs text-gray-500">Nationality</p>
+   708→                                          <p className="text-sm text-gray-900">{g.nationality || "—"}</p>
+   709→                                        </div>
+   710→                                      </div>
+   711→                                      <div className="flex items-start gap-2">
+   712→                                        <MapPin className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   713→                                        <div>
+   714→                                          <p className="text-xs text-gray-500">Address</p>
+   715→                                          <p className="text-sm text-gray-900">{g.address || "—"}</p>
+   716→                                        </div>
+   717→                                      </div>
+   718→                                    </div>
+   719→                                    {g.notes && (
+   720→                                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 border border-amber-100">
+   721→                                        <FileText className="mt-0.5 h-4 w-4 text-amber-500 shrink-0" />
+   722→                                        <div>
+   723→                                          <p className="text-xs font-medium text-amber-800">Notes</p>
+   724→                                          <p className="text-sm text-amber-700">{g.notes}</p>
+   725→                                        </div>
+   726→                                      </div>
+   727→                                    )}
+   728→                                    {g.rooms.length > 0 && (
+   729→                                      <div className="mt-3 rounded-lg border p-3">
+   730→                                        <p className="text-xs font-medium text-gray-500 mb-2">Room History ({g.rooms.length} stay{g.rooms.length !== 1 ? "s" : ""})</p>
+   731→                                        <div className="space-y-1">
+   732→                                          {g.rooms.map((rm, ri) => (
+   733→                                            <div key={ri} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 last:border-0">
+   734→                                              <div className="flex items-center gap-2">
+   735→                                                <span className="font-medium text-gray-900">{rm.number}</span>
+   736→                                                {rm.name && <span className="text-gray-400 text-xs">{rm.name}</span>}
+   737→                                                {rm.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{rm.type}</Badge>}
+   738→                                              </div>
+   739→                                              <div className="flex items-center gap-3 text-xs text-gray-500">
+   740→                                                <span>{rm.checkIn} → {rm.checkOut}</span>
+   741→                                                <Badge variant="outline" className={STATUS_COLORS[rm.status] || ""}>{rm.status.replace(/_/g, " ")}</Badge>
+   742→                                              </div>
+   743→                                            </div>
+   744→                                          ))}
+   745→                                        </div>
+   746→                                      </div>
+   747→                                    )}
+   748→                                    {g.guestSince && (
+   749→                                      <p className="mt-3 text-xs text-gray-400">
+   750→                                        Guest since {new Date(g.guestSince).toLocaleDateString()}
+   751→                                      </p>
+   752→                                    )}
+   753→                                  </TableCell>
+   754→                                </TableRow>
+   755→                              )}
+   756→                            </Fragment>
+   757→                          ))}
+   758→                        </TableBody>
+   759→                      </Table>
+   760→                    </div>
+   761→                    <p className="text-xs text-muted-foreground mt-3 text-center">
+   762→                      {filteredServedGuests.length} unique guest{servedGuests.length !== 1 ? "s" : ""} served · Total spent: {formatCurrency(filteredServedGuests.reduce((s, g) => s + g.totalSpent, 0))}
+   763→                    </p>
+   764→                  </>
+   765→                )}
+   766→              </CardContent>
+   767→            </Card>
+   768→          )}
+   769→          {/* Summary Cards */}
+   770→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   771→            <Card>
+   772→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   773→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   774→                  Total Revenue
+   775→                </CardTitle>
+   776→                <DollarSign className="h-4 w-4 text-emerald-500" />
+   777→              </CardHeader>
+   778→              <CardContent>
+   779→                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.revenue)}</p>
+   780→              </CardContent>
+   781→            </Card>
+   782→            <Card>
+   783→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   784→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   785→                  Total Expenses
+   786→                </CardTitle>
+   787→                <TrendingDown className="h-4 w-4 text-rose-500" />
+   788→              </CardHeader>
+   789→              <CardContent>
+   790→                <p className="text-2xl font-bold text-rose-600">{formatCurrency(data.expenses)}</p>
+   791→              </CardContent>
+   792→            </Card>
+   793→            <Card>
+   794→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   795→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   796→                  Net Profit
+   797→                </CardTitle>
+   798→                <TrendingUp className="h-4 w-4 text-blue-500" />
+   799→              </CardHeader>
+   800→              <CardContent>
+   801→                <p
+   802→                  className={`text-2xl font-bold ${data.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+   803→                >
+   804→                  {formatCurrency(data.profit)}
+   805→                </p>
+   806→              </CardContent>
+   807→            </Card>
+   808→            <Card>
+   809→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   810→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   811→                  Avg Occupancy
+   812→                </CardTitle>
+   813→                <Percent className="h-4 w-4 text-violet-500" />
+   814→              </CardHeader>
+   815→              <CardContent>
+   816→                <p className="text-2xl font-bold">{data.occupancyRate}%</p>
+   817→              </CardContent>
+   818→            </Card>
+   819→          </div>
+   820→
+   821→          {/* Revenue vs Expenses Bar Chart */}
+   822→          <Card>
+   823→            <CardHeader>
+   824→              <CardTitle className="flex items-center gap-2">
+   825→                <BarChart3 className="h-5 w-5" />
+   826→                Revenue vs Expenses (Daily)
+   827→              </CardTitle>
+   828→            </CardHeader>
+   829→            <CardContent>
+   830→              {data.dailyRevenue.length === 0 ? (
+   831→                <p className="text-sm text-muted-foreground text-center py-8">
+   832→                  No daily data available for this range.
+   833→                </p>
+   834→              ) : (
+   835→                <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
+   836→                  {data.dailyRevenue.map((d) => (
+   837→                    <div key={d.date} className="flex items-center gap-3 text-sm">
+   838→                      <span className="w-24 shrink-0 text-muted-foreground truncate">
+   839→                        {d.date}
+   840→                      </span>
+   841→                      <div className="flex-1 flex items-center gap-1">
+   842→                        <div
+   843→                          className="h-5 rounded bg-emerald-500 transition-all"
+   844→                          style={{
+   845→                            width: `${Math.max((d.amount / maxDailyRevenue) * 100, 2)}%`,
+   846→                          }}
+   847→                          title={`Revenue: ${formatCurrency(d.amount)}`}
+   848→                        />
+   849→                      </div>
+   850→                      <span className="w-20 text-right font-medium">
+   851→                        {formatCurrency(d.amount)}
+   852→                      </span>
+   853→                    </div>
+   854→                  ))}
+   855→                </div>
+   856→              )}
+   857→            </CardContent>
+   858→          </Card>
+   859→
+   860→
+   861→          {/* Expense Breakdown + Reservation Summary */}
+   862→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   863→            {/* Expense Breakdown */}
+   864→            <Card>
+   865→              <CardHeader>
+   866→                <CardTitle>Expense Breakdown</CardTitle>
+   867→              </CardHeader>
+   868→              <CardContent>
+   869→                {data.expenseBreakdown.length === 0 ? (
+   870→                  <p className="text-sm text-muted-foreground text-center py-8">
+   871→                    No expenses recorded.
+   872→                  </p>
+   873→                ) : (
+   874→                  <div className="space-y-3">
+   875→                    {data.expenseBreakdown.map((item, i) => (
+   876→                      <div key={item.category} className="space-y-1">
+   877→                        <div className="flex items-center justify-between text-sm">
+   878→                          <span className="font-medium">{item.category}</span>
+   879→                          <span>{formatCurrency(item.amount)}</span>
+   880→                        </div>
+   881→                        <div className="h-3 w-full rounded-full bg-muted">
+   882→                          <div
+   883→                            className={`h-3 rounded-full ${EXPENSE_COLORS[i % EXPENSE_COLORS.length]}`}
+   884→                            style={{
+   885→                              width: `${(item.amount / maxExpenseCategory) * 100}%`,
+   886→                            }}
+   887→                          />
+   888→                        </div>
+   889→                      </div>
+   890→                    ))}
+   891→                  </div>
+   892→                )}
+   893→              </CardContent>
+   894→            </Card>
+   895→
+   896→            {/* Reservations Summary */}
+   897→            <Card>
+   898→              <CardHeader>
+   899→                <CardTitle>Reservations by Status</CardTitle>
+   900→              </CardHeader>
+   901→              <CardContent>
+   902→                {statusBreakdown.length === 0 ? (
+   903→                  <p className="text-sm text-muted-foreground text-center py-8">
+   904→                    No reservations in this period.
+   905→                  </p>
+   906→                ) : (
+   907→                  <div className="rounded-lg border">
+   908→                    <Table>
+   909→                      <TableHeader>
+   910→                        <TableRow>
+   911→                          <TableHead>Status</TableHead>
+   912→                          <TableHead className="text-right">Count</TableHead>
+   913→                          <TableHead className="text-right">Revenue</TableHead>
+   914→                        </TableRow>
+   915→                      </TableHeader>
+   916→                      <TableBody>
+   917→                        {statusBreakdown.map((row) => (
+   918→                          <TableRow key={row.status}>
+   919→                            <TableCell>
+   920→                              <Badge
+   921→                                variant="outline"
+   922→                                className={STATUS_COLORS[row.status] || ""}
+   923→                              >
+   924→                                {row.status.replace(/_/g, " ")}
+   925→                              </Badge>
+   926→                            </TableCell>
+   927→                            <TableCell className="text-right">{row.count}</TableCell>
+   928→                            <TableCell className="text-right font-medium">
+   929→                              {formatCurrency(row.revenue)}
+   930→                            </TableCell>
+   931→                          </TableRow>
+   932→                        ))}
+   933→                      </TableBody>
+   934→                    </Table>
+   935→                  </div>
+   936→                )}
+   937→              </CardContent>
+   938→            </Card>
+   939→          </div>
+   940→
+   941→          {/* Daily Revenue Trend Table */}
+   942→          <Card>
+   943→            <CardHeader>
+   944→              <CardTitle>Daily Revenue Trend</CardTitle>
+   945→            </CardHeader>
+   946→            <CardContent>
+   947→              {data.dailyRevenue.length === 0 ? (
+   948→                <p className="text-sm text-muted-foreground text-center py-8">
+   949→                  No daily data available.
+   950→                </p>
+   951→              ) : (
+   952→                <div className="rounded-lg border max-h-72 overflow-y-auto">
+   953→                  <Table>
+   954→                    <TableHeader>
+   955→                      <TableRow>
+   956→                        <TableHead>Date</TableHead>
+   957→                        <TableHead className="text-right">Revenue</TableHead>
+   958→                      </TableRow>
+   959→                    </TableHeader>
+   960→                    <TableBody>
+   961→                      {data.dailyRevenue.map((d) => (
+   962→                        <TableRow key={d.date}>
+   963→                          <TableCell>{d.date}</TableCell>
+   964→                          <TableCell className="text-right font-medium">
+   965→                            {formatCurrency(d.amount)}
+   966→                          </TableCell>
+   967→                        </TableRow>
+   968→                      ))}
+   969→                    </TableBody>
+   970→                  </Table>
+   971→                </div>
+   972→              )}
+   973→            </CardContent>
+   974→          </Card>
+   975→        </>
+   976→      ) : (
+   977→        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+   978→          <BarChart3 className="mb-3 h-10 w-10 opacity-40" />
+   979→          <p className="font-medium">No report data</p>
+   980→          <p className="text-sm">Select a date range and click Apply.</p>
+   981→        </div>
+   982→      )}
+   983→    </div>
+   984→  );
+   985→}

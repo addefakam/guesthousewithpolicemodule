@@ -1,0 +1,1081 @@
+     1→     1→   718→### ⚠️ Cover Title Layout — calcTitleLayout() (Mandatory for ALL Recipes)
+     2→     2→   719→
+     3→     3→   720→**Every cover recipe MUST use `calcTitleLayout()` to determine title font size and line breaks.** Hardcoding font sizes or passing the full title as a single TextRun is FORBIDDEN.
+     4→     4→   721→
+     5→     5→   722→**Every paragraph with font size > body text MUST set explicit line spacing** to prevent top clipping:
+     6→     6→   723→```js
+     7→     7→   724→// ★ MANDATORY: prevent inherited small line spacing from clipping large fonts
+     8→     8→   725→spacing: { line: Math.ceil(titlePt * 23), lineRule: "atLeast", after: 100 }
+     9→     9→   726→// Example: 36pt → line: 828; 44pt → line: 1012
+    10→    10→   727→```
+    11→    11→   728→Without this, the paragraph inherits body text line spacing (e.g., 560tw), which is shorter than the font height → top of characters gets clipped.
+    12→    12→   729→
+    13→    13→   730→```js
+    14→    14→   731→/**
+    15→    15→   732→ * Calculate safe font size and smart line breaks for cover titles.
+    16→    16→   733→ * MUST be called by every recipe before building title paragraphs.
+    17→    17→   734→ *
+    18→    18→   735→ * @param {string}  title          Full title string
+    19→    19→   736→ * @param {number}  maxWidthTwips  Available width for title text (twips, after subtracting margins/padding)
+    20→    20→   737→ * @param {number}  preferredPt    Desired max font size in pt (default 40)
+    21→    21→   738→ * @param {number}  minPt          Minimum allowed font size in pt (default 24)
+    22→    22→   739→ * @returns {{ titlePt: number, titleLines: string[] }}
+    23→    23→   740→ */
+    24→    24→   741→function calcTitleLayout(title, maxWidthTwips, preferredPt = 40, minPt = 24) {
+    25→    25→   742→  // Each CJK character width ≈ pt × 20 twips
+    26→    26→   743→  const charWidth = (pt) => pt * 20;
+    27→    27→   744→  const charsPerLine = (pt) => Math.floor(maxWidthTwips / charWidth(pt));
+    28→    28→   745→
+    29→    29→   746→  // Try from preferredPt downward until title fits in ≤ 3 lines
+    30→    30→   747→  let titlePt = preferredPt;
+    31→    31→   748→  let lines;
+    32→    32→   749→  while (titlePt >= minPt) {
+    33→    33→   750→    const cpl = charsPerLine(titlePt);
+    34→    34→   751→    if (cpl < 2) { titlePt -= 2; continue; }
+    35→    35→   752→    lines = splitTitleLines(title, cpl);
+    36→    36→   753→    if (lines.length <= 3) break;
+    37→    37→   754→    titlePt -= 2;
+    38→    38→   755→  }
+    39→    39→   756→
+    40→    40→   757→  // If still > 3 lines at minPt, force 3 lines
+    41→    41→   758→  if (!lines || lines.length > 3) {
+    42→    42→   759→    const cpl = charsPerLine(minPt);
+    43→    43→   760→    lines = splitTitleLines(title, cpl);
+    44→    44→   761→    titlePt = minPt;
+    45→    45→   762→  }
+    46→    46→   763→
+    47→    47→   764→  return { titlePt, titleLines: lines };
+    48→    48→   765→}
+    49→    49→   766→
+    50→    50→   767→/**
+    51→    51→   768→ * Smart Chinese title line-breaking — breaks at semantic boundaries, never mid-word.
+    52→    52→   769→ *
+    53→    53→   770→ * Rules:
+    54→    54→   771→ * 1. Prefer breaking after particles, punctuation, connectors, underscores, spaces
+    55→    55→   772→ * 2. Never split a compound word (e.g., "管理规范" must not become "管理规" + "范")
+    56→    56→   773→ * 3. No single-character orphan on the last line — merge into previous line
+    57→    57→   774→ * 4. If no good break point found within 60-130% of charsPerLine, break at charsPerLine
+    58→    58→   775→ *
+    59→    59→   776→ * @param {string} title        Full title string
+    60→    60→   777→ * @param {number} charsPerLine Max characters per line at current font size
+    61→    61→   778→ * @returns {string[]}          Array of line strings
+    62→    62→   779→ */
+    63→    63→   780→function splitTitleLines(title, charsPerLine) {
+    64→    64→   781→  if (title.length <= charsPerLine) return [title];
+    65→    65→   782→
+    66→    66→   783→  // Characters that are safe break points (break AFTER these)
+    67→    67→   784→  const breakAfter = new Set([
+    68→    68→   785→    ...'，。、；：！？',              // CJK punctuation
+    69→    69→   786→    ...'的与和及之在于为',            // CJK particles/prepositions
+    70→    70→   787→    ...'-_—–·/',                     // connectors
+    71→    71→   788→    ...' \t',                         // whitespace
+    72→    72→   789→  ]);
+    73→    73→   790→
+    74→    74→   791→  const lines = [];
+    75→    75→   792→  let remaining = title;
+    76→    76→   793→
+    77→    77→   794→  while (remaining.length > charsPerLine) {
+    78→    78→   795→    let breakAt = -1;
+    79→    79→   796→
+    80→    80→   797→    // Search backward from charsPerLine to 60% for a break point
+    81→    81→   798→    for (let i = charsPerLine; i >= Math.floor(charsPerLine * 0.6); i--) {
+    82→    82→   799→      if (i < remaining.length && breakAfter.has(remaining[i - 1])) {
+    83→    83→   800→        breakAt = i;
+    84→    84→   801→        break;
+    85→    85→   802→      }
+    86→    86→   803→    }
+    87→    87→   804→
+    88→    88→   805→    // If not found, search forward up to 130%
+    89→    89→   806→    if (breakAt === -1) {
+    90→    90→   807→      const limit = Math.min(remaining.length, Math.ceil(charsPerLine * 1.3));
+    91→    91→   808→      for (let i = charsPerLine + 1; i < limit; i++) {
+    92→    92→   809→        if (breakAfter.has(remaining[i - 1])) {
+    93→    93→   810→          breakAt = i;
+    94→    94→   811→          break;
+    95→    95→   812→        }
+    96→    96→   813→      }
+    97→    97→   814→    }
+    98→    98→   815→
+    99→    99→   816→    // Last resort: break at charsPerLine, but avoid splitting compound CJK words
+   100→   100→   817→    if (breakAt === -1) {
+   101→   101→   818→      breakAt = charsPerLine;
+   102→   102→   819→      // If both chars at the break boundary are CJK (likely a compound word),
+   103→   103→   820→      // step back 1 char to keep the word together
+   104→   104→   821→      const prevChar = remaining[breakAt - 1];
+   105→   105→   822→      const nextChar = remaining[breakAt];
+   106→   106→   823→      if (prevChar && nextChar &&
+   107→   107→   824→          !breakAfter.has(prevChar) && !breakAfter.has(nextChar) &&
+   108→   108→   825→          /[\u4e00-\u9fff]/.test(prevChar) && /[\u4e00-\u9fff]/.test(nextChar)) {
+   109→   109→   826→        breakAt = breakAt - 1;
+   110→   110→   827→      }
+   111→   111→   828→    }
+   112→   112→   829→
+   113→   113→   830→    lines.push(remaining.slice(0, breakAt).trim());
+   114→   114→   831→    remaining = remaining.slice(breakAt).trim();
+   115→   115→   832→  }
+   116→   116→   833→  if (remaining) lines.push(remaining);
+   117→   117→   834→
+   118→   118→   835→  // Prevent single-character orphan on last line — merge into previous
+   119→   119→   836→  if (lines.length > 1 && lines[lines.length - 1].length <= 2) {
+   120→   120→   837→    const last = lines.pop();
+   121→   121→   838→    lines[lines.length - 1] += last;
+   122→   122→   839→  }
+   123→   123→   840→
+   124→   124→   841→  return lines;
+   125→   125→   842→}
+   126→   126→   843→
+   127→   127→   844→/**
+   128→   128→   845→ * Calculate dynamic spacing values for cover elements to fit within page height.
+   129→   129→   846→ *
+   130→   130→   847→ * @param {object} params
+   131→   131→   848→ * @param {number} params.titleLineCount   Number of title lines
+   132→   132→   849→ * @param {number} params.titlePt          Title font size in pt
+   133→   133→   850→ * @param {boolean} params.hasSubtitle     Whether subtitle exists
+   134→   134→   851→ * @param {boolean} params.hasEnglishLabel Whether English label exists
+   135→   135→   852→ * @param {number} params.metaLineCount    Number of meta info lines
+   136→   136→   853→ * @param {number} params.fixedHeight      Sum of fixed-height elements (color strips, accent bars, footer) in twips
+   137→   137→   854→ * @param {number} params.pageHeight       Total page height in twips (default 16838)
+   138→   138→   855→ * @returns {{ topSpacing, midSpacing, bottomSpacing }}  Spacing values in twips
+   139→   139→   856→ */
+   140→   140→   857→function calcCoverSpacing(params) {
+   141→   141→   858→  const {
+   142→   142→   859→    titleLineCount = 1, titlePt = 36, hasSubtitle = false,
+   143→   143→   860→    hasEnglishLabel = false, metaLineCount = 0,
+   144→   144→   861→    fixedHeight = 800, pageHeight = 16838,
+   145→   145→   862→    marginTop = 0, marginBottom = 0,   // ★ NEW: pass actual section margins
+   146→   146→   863→  } = params;
+   147→   147→   864→
+   148→   148→   865→  // ★ Safety margin: 1200 twips (cross-engine: MS Office renders large fonts
+   149→   149→   866→  // taller than calculated; extra 400tw buffer prevents footer clipping)
+   150→   150→   867→  const SAFETY = 1200;
+   151→   151→   868→  // ★ Subtract page margins from available height (cover section may have margins)
+   152→   152→   869→  const usableHeight = pageHeight - marginTop - marginBottom - SAFETY;
+   153→   153→   870→
+   154→   154→   871→  // ★ Accurate height estimation per element:
+   155→   155→   872→  const titleHeight = titleLineCount * (titlePt * 23 + 200);
+   156→   156→   873→  const subtitleHeight = hasSubtitle ? (12 * 23 + 600) : 0;
+   157→   157→   874→  const englishLabelHeight = hasEnglishLabel ? (9 * 23 + 600) : 0;
+   158→   158→   875→  const metaHeight = metaLineCount * (10 * 23 + 100);
+   159→   159→   876→
+   160→   160→   877→  // ★ Account for implicit paragraph heights:
+   161→   161→   878→  const implicitParaHeight = 3 * 300;
+   162→   162→   879→
+   163→   163→   880→  const contentHeight = titleHeight + subtitleHeight + englishLabelHeight +
+   164→   164→   881→                        metaHeight + fixedHeight + implicitParaHeight;
+   165→   165→   882→
+   166→   166→   883→  const remainingSpace = usableHeight - contentHeight;
+   167→   167→   884→  const safeRemaining = Math.max(remainingSpace, 400);
+   168→   168→   885→
+   169→   169→   886→  // ★ Footer protection: bottomSpacing must be ≥ FOOTER_MIN to prevent
+   170→   170→   887→  // footer + accent line from being clipped at the cell bottom edge
+   171→   171→   888→  const FOOTER_MIN = 800;
+   172→   172→   889→  const rawTop = Math.floor(safeRemaining * 0.45);
+   173→   173→   890→  const rawBottom = Math.floor(safeRemaining * 0.45);
+   174→   174→   891→  const bottomSpacing = Math.max(rawBottom, FOOTER_MIN);
+   175→   175→   892→  const topSpacing = Math.max(rawTop - Math.max(0, FOOTER_MIN - rawBottom), 400);
+   176→   176→   893→  const midSpacing = Math.max(safeRemaining - topSpacing - bottomSpacing, 0);
+   177→   177→   894→
+   178→   178→   895→  return { topSpacing, midSpacing, bottomSpacing };
+   179→   179→   896→}
+   180→   180→   897→```
+   181→   181→   898→
+   182→   182→   899→**Usage in every recipe:**
+   183→   183→   900→```js
+   184→   184→   901→// Step 1: Calculate title layout
+   185→   185→   902→const availableWidth = 11906 - leftPadding - rightPadding; // subtract margins
+   186→   186→   903→const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth);
+   187→   187→   904→const titleSize = titlePt * 2; // convert to half-points for docx-js
+   188→   188→   905→
+   189→   189→   906→// Step 2: Calculate spacing (pass actual section margins!)
+   190→   190→   907→const spacing = calcCoverSpacing({
+   191→   191→   908→  titleLineCount: titleLines.length,
+   192→   192→   909→  titlePt,
+   193→   193→   910→  hasSubtitle: !!config.subtitle,
+   194→   194→   911→  hasEnglishLabel: !!config.englishLabel,
+   195→   195→   912→  metaLineCount: (config.metaLines || []).length,
+   196→   196→   913→  fixedHeight: 800, // sum of accent strips, footer table, etc.
+   197→   197→   914→  marginTop: 0,     // ★ pass the cover section's actual top margin (twips)
+   198→   198→   915→  marginBottom: 0,  // ★ pass the cover section's actual bottom margin (twips)
+   199→   199→   916→});
+   200→   200→   917→
+   201→   201→   918→// Step 3: Use in paragraphs
+   202→   202→   919→children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   203→   203→   920→// ... title paragraphs using titleLines and titleSize ...
+   204→   204→   921→children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   205→   205→   922→```
+   206→   206→   923→
+   207→   207→   924→---
+   208→   208→   925→
+   209→   209→   926→### ⚠️ CRITICAL — Cover Section Non-Negotiables (ALL Recipes)
+   210→   210→   927→
+   211→   211→   928→These 3 properties are MANDATORY for every cover implementation (R1–R7). Omitting ANY of them causes cover layout failure:
+   212→   212→   929→
+   213→   213→   930→1. **Cover section margin = 0**: The cover MUST be in its own section with `page.margin: { top: 0, bottom: 0, left: 0, right: 0 }`. Non-zero margins shrink the wrapper away from page edges → white gaps around the cover ("cover not filling the page"). This is the #1 cause of broken cover layouts.
+   214→   214→   931→
+   215→   215→   932→2. **Wrapper row exact height**: The outer wrapper table row MUST set `height: { value: 16838, rule: "exact" }`. Without this, content overflow pushes to page 2, or insufficient content leaves bottom whitespace.
+   216→   216→   933→
+   217→   217→   934→3. **Wrapper table borders = allNoBorders**: MUST explicitly set `borders: allNoBorders`. Default docx-js borders add ~8 twips per edge. MS Office includes border thickness in exact-height calculation → total exceeds 16838 → blank page 2 (WPS is lenient, MS Office is strict).
+   218→   218→   935→
+   219→   219→   936→**Cover section template (copy this for every Recipe):**
+   220→   220→   937→```js
+   221→   221→   938→sections: [
+   222→   222→   939→  {
+   223→   223→   940→    // ⚠️ Cover section — margin MUST be 0, separate from body
+   224→   224→   941→    properties: {
+   225→   225→   942→      page: {
+   226→   226→   943→        size: { width: 11906, height: 16838 },
+   227→   227→   944→        margin: { top: 0, bottom: 0, left: 0, right: 0 },
+   228→   228→   945→      },
+   229→   229→   946→    },
+   230→   230→   947→    children: buildCoverRX(config), // ← replace with actual recipe function
+   231→   231→   948→  },
+   232→   232→   949→  {
+   233→   233→   950→    // Body section — normal margins
+   234→   234→   951→    properties: {
+   235→   235→   952→      type: SectionType.NEXT_PAGE,
+   236→   236→   953→      page: {
+   237→   237→   954→        size: { width: 11906, height: 16838 },
+   238→   238→   955→        margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 },
+   239→   239→   956→      },
+   240→   240→   957→    },
+   241→   241→   958→    children: [...bodyContent],
+   242→   242→   959→  },
+   243→   243→   960→]
+   244→   244→   961→```
+   245→   245→   962→
+   246→   246→   963→---
+   247→   247→   964→
+   248→   248→   965→### Recipe R1: Pure Paragraph Cover (Left-Aligned)
+   249→   249→   966→
+   250→   250→   967→**Visual:** Full-page dark background + left-aligned text + decoration via paragraph borders only
+   251→   251→   968→**Use case:** Annual report, business report, tech proposal (most versatile premium recipe)
+   252→   252→   969→**Nested tables: ZERO** — all decoration uses paragraph borders (bottom line, left accent bar, top separator)
+   253→   253→   970→
+   254→   254→   971→Visual hierarchy (top to bottom):
+   255→   255→   972→1. Dynamic top whitespace (via `calcCoverSpacing`)
+   256→   256→   973→2. English label with accent bottom border (paragraph `border.bottom`)
+   257→   257→   974→3. Main title (1-3 lines, dynamic font size via `calcTitleLayout`)
+   258→   258→   975→4. Subtitle (light grey, smaller)
+   259→   259→   976→5. Meta info lines with left accent border (paragraph `border.left`)
+   260→   260→   977→6. Dynamic bottom whitespace
+   261→   261→   978→7. Footer line with top accent separator (paragraph `border.top`)
+   262→   262→   979→
+   263→   263→   980→```js
+   264→   264→   981→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   265→   265→   982→// Section: { properties: { page: { size: { width: 11906, height: 16838 },
+   266→   266→   983→//   margin: { top: 0, bottom: 0, left: 0, right: 0 } } }, children: buildCoverR1(config) }
+   267→   267→   984→
+   268→   268→   985→function buildCoverR1(config) {
+   269→   269→   986→  // config: { title, subtitle, englishLabel, metaLines, footerLeft, footerRight, palette }
+   270→   270→   987→  // palette: { bg, titleColor, subtitleColor, metaColor, accent, footerColor }
+   271→   271→   988→  const P = config.palette;
+   272→   272→   989→  const padL = 1200, padR = 800;
+   273→   273→   990→
+   274→   274→   991→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+   275→   275→   992→  const availableWidth = 11906 - padL - padR - 300; // -300 for border space
+   276→   276→   993→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 24);
+   277→   277→   994→  const titleSize = titlePt * 2;
+   278→   278→   995→
+   279→   279→   996→  // ⚠️ MANDATORY: Use calcCoverSpacing() for dynamic spacing
+   280→   280→   997→  const spacing = calcCoverSpacing({
+   281→   281→   998→    titleLineCount: titleLines.length, titlePt,
+   282→   282→   999→    hasSubtitle: !!config.subtitle, hasEnglishLabel: !!config.englishLabel,
+   283→   283→  1000→    metaLineCount: (config.metaLines || []).length,
+   284→   284→  1001→    fixedHeight: 400, // footer line only (no nested tables)
+   285→   285→  1002→  });
+   286→   286→  1003→
+   287→   287→  1004→  const accentLeft = { style: BorderStyle.SINGLE, size: 8, color: P.accent, space: 12 };
+   288→   288→  1005→  const children = [];
+   289→   289→  1006→
+   290→   290→  1007→  // 1. Top whitespace (dynamic)
+   291→   291→  1008→  children.push(new Paragraph({ spacing: { before: spacing.topSpacing } }));
+   292→   292→  1009→
+   293→   293→  1010→  // 2. English label with accent bottom border
+   294→   294→  1011→  if (config.englishLabel) {
+   295→   295→  1012→    children.push(new Paragraph({
+   296→   296→  1013→      indent: { left: padL, right: padR }, spacing: { after: 500 },
+   297→   297→  1014→      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: P.accent, space: 8 } },
+   298→   298→  1015→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+   299→   299→  1016→        size: 18, color: P.accent, font: { ascii: "Calibri", eastAsia: "SimHei" }, characterSpacing: 40 })],
+   300→   300→  1017→    }));
+   301→   301→  1018→  }
+   302→   302→  1019→
+   303→   303→  1020→  // 3. Main title (dynamic font size + smart line breaks)
+   304→   304→  1021→  for (let i = 0; i < titleLines.length; i++) {
+   305→   305→  1022→    children.push(new Paragraph({
+   306→   306→  1023→      indent: { left: padL },
+   307→   307→  1024→      spacing: { after: i < titleLines.length - 1 ? 100 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   308→   308→  1025→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+   309→   309→  1026→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   310→   310→  1027→    }));
+   311→   311→  1028→  }
+   312→   312→  1029→
+   313→   313→  1030→  // 4. Subtitle
+   314→   314→  1031→  if (config.subtitle) {
+   315→   315→  1032→    children.push(new Paragraph({
+   316→   316→  1033→      indent: { left: padL }, spacing: { after: 800 },
+   317→   317→  1034→      children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+   318→   318→  1035→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   319→   319→  1036→    }));
+   320→   320→  1037→  }
+   321→   321→  1038→
+   322→   322→  1039→  // 5. Meta info lines with left accent border
+   323→   323→  1040→  for (const line of (config.metaLines || [])) {
+   324→   324→  1041→    children.push(new Paragraph({
+   325→   325→  1042→      indent: { left: padL + 200 }, spacing: { after: 80 },
+   326→   326→  1043→      border: { left: accentLeft },
+   327→   327→  1044→      children: [new TextRun({ text: line, size: 24, color: P.metaColor,
+   328→   328→  1045→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   329→   329→  1046→    }));
+   330→   330→  1047→  }
+   331→   331→  1048→
+   332→   332→  1049→  // 6. Bottom whitespace (dynamic)
+   333→   333→  1050→  children.push(new Paragraph({ spacing: { before: spacing.bottomSpacing } }));
+   334→   334→  1051→
+   335→   335→  1052→  // 7. Footer with top accent separator
+   336→   336→  1053→  children.push(new Paragraph({
+   337→   337→  1054→    indent: { left: padL, right: padR },
+   338→   338→  1055→    border: { top: { style: BorderStyle.SINGLE, size: 2, color: P.accent, space: 8 } },
+   339→   339→  1056→    spacing: { before: 200 },
+   340→   340→  1057→    children: [
+   341→   341→  1058→      new TextRun({ text: config.footerLeft || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+   342→   342→  1059→      new TextRun({ text: "                                        " }),
+   343→   343→  1060→      new TextRun({ text: config.footerRight || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } }),
+   344→   344→  1061→    ],
+   345→   345→  1062→  }));
+   346→   346→  1063→
+   347→   347→  1064→  // Single 16838 wrapper — the ONLY table
+   348→   348→  1065→  return [new Table({
+   349→   349→  1066→    width: { size: 100, type: WidthType.PERCENTAGE },
+   350→   350→  1067→    layout: TableLayoutType.FIXED,
+   351→   351→  1068→    borders: allNoBorders,
+   352→   352→  1069→    rows: [new TableRow({
+   353→   353→  1070→      height: { value: 16838, rule: "exact" },
+   354→   354→  1071→      children: [new TableCell({
+   355→   355→  1072→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+   356→   356→  1073→        children,
+   357→   357→  1074→      })],
+   358→   358→  1075→    })],
+   359→   359→  1076→  })];
+   360→   360→  1077→  // Total height: 16838 (single wrapper, zero nested tables) ✅
+   361→   361→  1078→}
+   362→   362→  1079→```
+   363→   363→  1080→
+   364→   364→  1081→---
+   365→   365→  1082→
+   366→   366→  1083→### Recipe R2: Double-Rule Frame (Centered)
+   367→   367→  1084→
+   368→   368→  1085→**Visual:** Full-page dark background + top/bottom thick accent horizontal rules + centered content
+   369→   369→  1086→**Use case:** Whitepaper, finance report, consulting deliverable, high-end formal reports
+   370→   370→  1087→**Nested tables: ZERO** — top/bottom rules are paragraph borders
+   371→   371→  1088→
+   372→   372→  1089→Visual hierarchy (top to bottom):
+   373→   373→  1090→1. Top thick accent rule (paragraph `border.top`)
+   374→   374→  1091→2. Generous whitespace
+   375→   375→  1092→3. English label (centered, spaced)
+   376→   376→  1093→4. Main title (centered, 1-3 lines, dynamic font size)
+   377→   377→  1094→5. Subtitle (centered)
+   378→   378→  1095→6. Generous whitespace
+   379→   379→  1096→7. Meta info lines (centered, **18pt** / size: 36)
+   380→   380→  1097→8. Generous whitespace
+   381→   381→  1098→9. Footer + bottom thick accent rule (paragraph `border.bottom`)
+   382→   382→  1099→
+   383→   383→  1100→```js
+   384→   384→  1101→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   385→   385→  1102→function buildCoverR2(config) {
+   386→   386→  1103→  const P = config.palette;
+   387→   387→  1104→  const padL = 1400, padR = 1400;
+   388→   388→  1105→
+   389→   389→  1106→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+   390→   390→  1107→  const { titlePt, titleLines } = calcTitleLayout(config.title, 11906 - padL - padR, 40, 24);
+   391→   391→  1108→  const titleSize = titlePt * 2;
+   392→   392→  1109→  const thickBorder = { style: BorderStyle.SINGLE, size: 18, color: P.accent, space: 20 };
+   393→   393→  1110→
+   394→   394→  1111→  const children = [];
+   395→   395→  1112→
+   396→   396→  1113→  // 1. Top rule
+   397→   397→  1114→  children.push(new Paragraph({
+   398→   398→  1115→    indent: { left: padL - 400, right: padR - 400 }, spacing: { before: 1200, after: 200 },
+   399→   399→  1116→    border: { top: thickBorder }, children: [],
+   400→   400→  1117→  }));
+   401→   401→  1118→
+   402→   402→  1119→  // 2. Whitespace
+   403→   403→  1120→  children.push(new Paragraph({ spacing: { before: 1800 } }));
+   404→   404→  1121→
+   405→   405→  1122→  // 3. English label
+   406→   406→  1123→  if (config.englishLabel) {
+   407→   407→  1124→    children.push(new Paragraph({
+   408→   408→  1125→      alignment: AlignmentType.CENTER, spacing: { after: 500 },
+   409→   409→  1126→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+   410→   410→  1127→        size: 18, color: P.accent, font: { ascii: "Calibri" }, characterSpacing: 40 })],
+   411→   411→  1128→    }));
+   412→   412→  1129→  }
+   413→   413→  1130→
+   414→   414→  1131→  // 4. Main title (centered, dynamic)
+   415→   415→  1132→  for (let i = 0; i < titleLines.length; i++) {
+   416→   416→  1133→    children.push(new Paragraph({
+   417→   417→  1134→      alignment: AlignmentType.CENTER,
+   418→   418→  1135→      spacing: { after: i < titleLines.length - 1 ? 80 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   419→   419→  1136→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+   420→   420→  1137→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   421→   421→  1138→    }));
+   422→   422→  1139→  }
+   423→   423→  1140→
+   424→   424→  1141→  // 5. Subtitle
+   425→   425→  1142→  if (config.subtitle) {
+   426→   426→  1143→    children.push(new Paragraph({
+   427→   427→  1144→      alignment: AlignmentType.CENTER, spacing: { after: 400 },
+   428→   428→  1145→      children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+   429→   429→  1146→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   430→   430→  1147→    }));
+   431→   431→  1148→  }
+   432→   432→  1149→
+   433→   433→  1150→  // 6. Whitespace
+   434→   434→  1151→  children.push(new Paragraph({ spacing: { before: 1200 } }));
+   435→   435→  1152→
+   436→   436→  1153→  // 7. Meta lines — 18pt (size: 36) for readability
+   437→   437→  1154→  for (const line of (config.metaLines || [])) {
+   438→   438→  1155→    children.push(new Paragraph({
+   439→   439→  1156→      alignment: AlignmentType.CENTER,
+   440→   440→  1157→      spacing: { after: 100, line: Math.ceil(18 * 23), lineRule: "atLeast" },
+   441→   441→  1158→      children: [new TextRun({ text: line, size: 36, color: P.metaColor,
+   442→   442→  1159→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   443→   443→  1160→    }));
+   444→   444→  1161→  }
+   445→   445→  1162→
+   446→   446→  1163→  // 8. Whitespace
+   447→   447→  1164→  children.push(new Paragraph({ spacing: { before: 2000 } }));
+   448→   448→  1165→
+   449→   449→  1166→  // 9. Footer + bottom rule
+   450→   450→  1167→  children.push(new Paragraph({
+   451→   451→  1168→    alignment: AlignmentType.CENTER,
+   452→   452→  1169→    indent: { left: padL - 400, right: padR - 400 }, spacing: { before: 200 },
+   453→   453→  1170→    border: { bottom: thickBorder },
+   454→   454→  1171→    children: [new TextRun({ text: config.footerRight || "", size: 18, color: P.footerColor, font: { ascii: "Arial" } })],
+   455→   455→  1172→  }));
+   456→   456→  1173→
+   457→   457→  1174→  // Single 16838 wrapper — the ONLY table
+   458→   458→  1175→  return [new Table({
+   459→   459→  1176→    width: { size: 100, type: WidthType.PERCENTAGE },
+   460→   460→  1177→    layout: TableLayoutType.FIXED,
+   461→   461→  1178→    borders: allNoBorders,
+   462→   462→  1179→    rows: [new TableRow({
+   463→   463→  1180→      height: { value: 16838, rule: "exact" },
+   464→   464→  1181→      children: [new TableCell({
+   465→   465→  1182→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+   466→   466→  1183→        children,
+   467→   467→  1184→      })],
+   468→   468→  1185→    })],
+   469→   469→  1186→  })];
+   470→   470→  1187→  // Total height: 16838 (single wrapper, zero nested tables) ✅
+   471→   471→  1188→}
+   472→   472→  1189→```
+   473→   473→  1190→
+   474→   474→  1191→---
+   475→   475→  1192→
+   476→   476→  1193→### Recipe R3: Centered Card Frame (Paragraph Borders)
+   477→   477→  1194→
+   478→   478→  1195→**Visual:** Full-page dark background + centered "card" effect via paragraph indent + 4-side paragraph borders
+   479→   479→  1196→**Use case:** Research report, product overview, event summary, creative/design documents
+   480→   480→  1197→**Nested tables: ZERO** — card borders are paragraph borders with large left/right indents
+   481→   481→  1198→
+   482→   482→  1199→Visual hierarchy (top to bottom):
+   483→   483→  1200→1. Pre-card whitespace (~2800tw)
+   484→   484→  1201→2. Card top edge (paragraph with `border.top` + `border.left` + `border.right`, indent 2200tw)
+   485→   485→  1202→3. English label (centered, inside card side borders)
+   486→   486→  1203→4. Main title (centered, inside card side borders, dynamic font size)
+   487→   487→  1204→5. Subtitle (centered, inside card side borders)
+   488→   488→  1205→6. Spacer (inside card side borders)
+   489→   489→  1206→7. Meta info lines (centered, inside card side borders)
+   490→   490→  1207→8. Card bottom edge (paragraph with `border.bottom` + `border.left` + `border.right`)
+   491→   491→  1208→9. Post-card whitespace
+   492→   492→  1209→10. Footer (centered)
+   493→   493→  1210→
+   494→   494→  1211→```js
+   495→   495→  1212→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   496→   496→  1213→function buildCoverR3(config) {
+   497→   497→  1214→  const P = config.palette;
+   498→   498→  1215→  const cardIndent = 2200; // left + right indent to create "card" feel
+   499→   499→  1216→  const innerWidth = 11906 - cardIndent * 2 - 400;
+   500→   500→  1217→
+   501→   501→  1218→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+   502→   502→  1219→  const { titlePt, titleLines } = calcTitleLayout(config.title, innerWidth, 40, 24);
+   503→   503→  1220→  const titleSize = titlePt * 2;
+   504→   504→  1221→
+   505→   505→  1222→  const bTop = { style: BorderStyle.SINGLE, size: 24, color: P.accent, space: 16 };
+   506→   506→  1223→  const bBot = { style: BorderStyle.SINGLE, size: 24, color: P.accent, space: 16 };
+   507→   507→  1224→  const bL = { style: BorderStyle.SINGLE, size: 2, color: P.accent, space: 16 };
+   508→   508→  1225→  const bR = { style: BorderStyle.SINGLE, size: 2, color: P.accent, space: 16 };
+   509→   509→  1226→  const sides = { left: bL, right: bR };
+   510→   510→  1227→
+   511→   511→  1228→  const children = [];
+   512→   512→  1229→
+   513→   513→  1230→  // 1. Pre-card whitespace
+   514→   514→  1231→  children.push(new Paragraph({ spacing: { before: 2800 } }));
+   515→   515→  1232→
+   516→   516→  1233→  // 2. Card top edge
+   517→   517→  1234→  children.push(new Paragraph({
+   518→   518→  1235→    indent: { left: cardIndent, right: cardIndent }, spacing: { after: 600 },
+   519→   519→  1236→    border: { top: bTop, left: bL, right: bR }, children: [],
+   520→   520→  1237→  }));
+   521→   521→  1238→
+   522→   522→  1239→  // 3. English label inside card
+   523→   523→  1240→  if (config.englishLabel) {
+   524→   524→  1241→    children.push(new Paragraph({
+   525→   525→  1242→      alignment: AlignmentType.CENTER, indent: { left: cardIndent, right: cardIndent },
+   526→   526→  1243→      spacing: { after: 500 }, border: sides,
+   527→   527→  1244→      children: [new TextRun({ text: config.englishLabel.split("").join("  "),
+   528→   528→  1245→        size: 16, color: P.accent, font: { ascii: "Calibri" }, characterSpacing: 30 })],
+   529→   529→  1246→    }));
+   530→   530→  1247→  }
+   531→   531→  1248→
+   532→   532→  1249→  // 4. Main title inside card
+   533→   533→  1250→  for (let i = 0; i < titleLines.length; i++) {
+   534→   534→  1251→    children.push(new Paragraph({
+   535→   535→  1252→      alignment: AlignmentType.CENTER, indent: { left: cardIndent, right: cardIndent },
+   536→   536→  1253→      spacing: { after: i < titleLines.length - 1 ? 60 : 300, line: Math.ceil(titlePt * 23), lineRule: "atLeast" },
+   537→   537→  1254→      border: sides,
+   538→   538→  1255→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+   539→   539→  1256→        color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   540→   540→  1257→    }));
+   541→   541→  1258→  }
+   542→   542→  1259→
+   543→   543→  1260→  // 5. Subtitle inside card
+   544→   544→  1261→  if (config.subtitle) {
+   545→   545→  1262→    children.push(new Paragraph({
+   546→   546→  1263→      alignment: AlignmentType.CENTER, indent: { left: cardIndent, right: cardIndent },
+   547→   547→  1264→      spacing: { after: 400 }, border: sides,
+   548→   548→  1265→      children: [new TextRun({ text: config.subtitle, size: 22, color: P.subtitleColor,
+   549→   549→  1266→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   550→   550→  1267→    }));
+   551→   551→  1268→  }
+   552→   552→  1269→
+   553→   553→  1270→  // 6. Spacer inside card
+   554→   554→  1271→  children.push(new Paragraph({
+   555→   555→  1272→    indent: { left: cardIndent, right: cardIndent }, spacing: { before: 400 },
+   556→   556→  1273→    border: sides, children: [],
+   557→   557→  1274→  }));
+   558→   558→  1275→
+   559→   559→  1276→  // 7. Meta info lines inside card
+   560→   560→  1277→  for (let i = 0; i < (config.metaLines || []).length; i++) {
+   561→   561→  1278→    const isLast = i === config.metaLines.length - 1;
+   562→   562→  1279→    children.push(new Paragraph({
+   563→   563→  1280→      alignment: AlignmentType.CENTER, indent: { left: cardIndent, right: cardIndent },
+   564→   564→  1281→      spacing: { after: isLast ? 400 : 80 }, border: sides,
+   565→   565→  1282→      children: [new TextRun({ text: config.metaLines[i], size: 24, color: P.metaColor,
+   566→   566→  1283→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   567→   567→  1284→    }));
+   568→   568→  1285→  }
+   569→   569→  1286→
+   570→   570→  1287→  // 8. Card bottom edge
+   571→   571→  1288→  children.push(new Paragraph({
+   572→   572→  1289→    indent: { left: cardIndent, right: cardIndent }, spacing: { after: 0 },
+   573→   573→  1290→    border: { bottom: bBot, left: bL, right: bR }, children: [],
+   574→   574→  1291→  }));
+   575→   575→  1292→
+   576→   576→  1293→  // 9. Post-card whitespace
+   577→   577→  1294→  children.push(new Paragraph({ spacing: { before: 2000 } }));
+   578→   578→  1295→
+   579→   579→  1296→  // 10. Footer
+   580→   580→  1297→  children.push(new Paragraph({
+   581→   581→  1298→    alignment: AlignmentType.CENTER,
+   582→   582→  1299→    children: [new TextRun({ text: config.footerRight || "", size: 16, color: P.footerColor, font: { ascii: "Arial" } })],
+   583→   583→  1300→  }));
+   584→   584→  1301→
+   585→   585→  1302→  // Single 16838 wrapper — the ONLY table
+   586→   586→  1303→  return [new Table({
+   587→   587→  1304→    width: { size: 100, type: WidthType.PERCENTAGE },
+   588→   588→  1305→    layout: TableLayoutType.FIXED,
+   589→   589→  1306→    borders: allNoBorders,
+   590→   590→  1307→    rows: [new TableRow({
+   591→   591→  1308→      height: { value: 16838, rule: "exact" },
+   592→   592→  1309→      children: [new TableCell({
+   593→   593→  1310→        shading: { type: ShadingType.CLEAR, fill: P.bg }, borders: noBorders,
+   594→   594→  1311→        children,
+   595→   595→  1312→      })],
+   596→   596→  1313→    })],
+   597→   597→  1314→  })];
+   598→   598→  1315→  // Total height: 16838 (single wrapper, zero nested tables) ✅
+   599→   599→  1316→}
+   600→   600→  1317→```
+   601→   601→  1318→
+   602→   602→  1319→
+   603→   603→  1320→### Recipe R4: Top Color Block
+   604→   604→  1321→
+   605→   605→  1322→**Visual:** Top 45% dark area (with title) + bottom 55% white area (with meta info) + accent divider
+   606→   606→  1323→**Use case:** business proposal, plan document, lesson plan, PRD
+   607→   607→  1324→**Architecture:** Uses R1's proven single 16838 wrapper. Upper dark block is a nested table inside the wrapper. Content positioning uses `spacing.before` (reliable) instead of `margins.top` (unreliable across engines).
+   608→   608→  1325→
+   609→   609→  1326→```js
+   610→   610→  1327→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   611→   611→  1328→function buildCoverR4(config) {
+   612→   612→  1329→  const P = config.palette;
+   613→   613→  1330→  const padL = 1200, padR = 800;
+   614→   614→  1331→  const availableWidth = 11906 - padL - padR;
+   615→   615→  1332→
+   616→   616→  1333→  // ⚠️ MANDATORY: Use calcTitleLayout() for dynamic font size + line breaking
+   617→   617→  1334→  const { titlePt, titleLines } = calcTitleLayout(config.title, availableWidth, 40, 26);
+   618→   618→  1335→  const titleSize = titlePt * 2;
+   619→   619→  1336→
+   620→   620→  1337→  // Height budget for upper dark block — DYNAMIC based on title content
+   621→   621→  1338→  const titleBlockHeight = titleLines.length * (titlePt * 23 + 200);
+   622→   622→  1339→  const englishLabelH = config.englishLabel ? (9 * 23 + 500) : 0;
+   623→   623→  1340→  const subtitleH = config.subtitle ? (12 * 23 + 200) : 0;
+   624→   624→  1341→  const upperContentH = englishLabelH + titleBlockHeight + subtitleH;
+   625→   625→  1342→  const UPPER_MIN = 7500; // minimum height to preserve visual proportion
+   626→   626→  1343→  const UPPER_H = Math.max(UPPER_MIN, upperContentH + 1500 + 800); // +1500 top pad, +800 bottom pad
+   627→   627→  1344→  const DIVIDER_H = 60;
+   628→   628→  1345→
+   629→   629→  1346→  // ★ Dynamic top spacing: calculated from content height, NOT fixed margins.top
+   630→   630→  1347→  const contentEstimate =
+   631→   631→  1348→    (config.englishLabel ? (9 * 23 + 500) : 0) +
+   632→   632→  1349→    titleLines.length * (titlePt * 23 + 200) +
+   633→   633→  1350→    (config.subtitle ? (12 * 23 + 200) : 0);
+   634→   634→  1351→  const spacerIntrinsic = 280;  // empty spacing paragraph intrinsic height
+   635→   635→  1352→  const topSpacing = Math.max(UPPER_H - contentEstimate - spacerIntrinsic - 800, 400);
+   636→   636→  1353→
+   637→   637→  1354→  // ── Upper dark block (nested table, exact height) ──
+   638→   638→  1355→  const upperBlock = new Table({
+   639→   639→  1356→    width: { size: 100, type: WidthType.PERCENTAGE },
+   640→   640→  1357→    layout: TableLayoutType.FIXED,
+   641→   641→  1358→    borders: allNoBorders,
+   642→   642→  1359→    rows: [new TableRow({
+   643→   643→  1360→      height: { value: UPPER_H, rule: "exact" },
+   644→   644→  1361→      children: [new TableCell({
+   645→   645→  1362→        shading: { fill: P.bg }, borders: noBorders,
+   646→   646→  1363→        verticalAlign: "top",
+   647→   647→  1364→        // ★ KEY: Only left/right margins. NO top/bottom margins.
+   648→   648→  1365→        // Vertical positioning uses spacing.before on the first paragraph.
+   649→   649→  1366→        margins: { left: padL, right: padR },
+   650→   650→  1367→        children: [
+   651→   651→  1368→          new Paragraph({ spacing: { before: topSpacing } }),
+   652→   652→  1369→          config.englishLabel ? new Paragraph({
+   653→   653→  1370→            spacing: { after: 500 },
+   654→   654→  1371→            children: [new TextRun({ text: config.englishLabel.split("").join(" "),
+   655→   655→  1372→              size: 18, color: P.accent, font: { ascii: "Calibri" }, characterSpacing: 60 })],
+   656→   656→  1373→          }) : null,
+   657→   657→  1374→          ...titleLines.map((line, i) => new Paragraph({
+   658→   658→  1375→            spacing: { after: i < titleLines.length - 1 ? 100 : 200 },
+   659→   659→  1376→            children: [new TextRun({ text: line, size: titleSize, bold: true,
+   660→   660→  1377→              color: P.titleColor, font: { eastAsia: "SimHei", ascii: "Arial" } })],
+   661→   661→  1378→          })),
+   662→   662→  1379→          config.subtitle ? new Paragraph({
+   663→   663→  1380→            spacing: { after: 100 },
+   664→   664→  1381→            children: [new TextRun({ text: config.subtitle, size: 24, color: P.subtitleColor,
+   665→   665→  1382→              font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   666→   666→  1383→          }) : null,
+   667→   667→  1384→        ].filter(Boolean),
+   668→   668→  1385→      })],
+   669→   669→  1386→    })],
+   670→   670→  1387→  });
+   671→   671→  1388→
+   672→   672→  1389→  // ── Accent divider line ──
+   673→   673→  1390→  const divider = new Table({
+   674→   674→  1391→    width: { size: 100, type: WidthType.PERCENTAGE },
+   675→   675→  1392→    borders: allNoBorders,
+   676→   676→  1393→    rows: [new TableRow({
+   677→   677→  1394→      height: { value: DIVIDER_H, rule: "exact" },
+   678→   678→  1395→      children: [new TableCell({ borders: noBorders,
+   679→   679→  1396→        shading: { fill: P.accent }, children: [emptyPara()] })],
+   680→   680→  1397→    })],
+   681→   681→  1398→  });
+   682→   682→  1399→
+   683→   683→  1400→  // ── Lower white area (paragraphs, not a separate table) ──
+   684→   684→  1401→  const lowerContent = [
+   685→   685→  1402→    new Paragraph({ spacing: { before: 800 } }),
+   686→   686→  1403→    ...(config.metaLines || []).map(line => new Paragraph({
+   687→   687→  1404→      indent: { left: padL }, spacing: { after: 100 },
+   688→   688→  1405→      children: [new TextRun({ text: line, size: 28, color: P.metaColor,
+   689→   689→  1406→        font: { eastAsia: "Microsoft YaHei", ascii: "Arial" } })],
+   690→   690→  1407→    })),
+   691→   691→  1408→    new Paragraph({ spacing: { before: 2000 } }),
+   692→   692→  1409→    new Paragraph({
+   693→   693→  1410→      indent: { left: padL },
+   694→   694→  1411→      children: [
+   695→   695→  1412→        new TextRun({ text: config.footerLeft || "", size: 22, color: "909090" }),
+   696→   696→  1413→        new TextRun({ text: "          " }),
+   697→   697→  1414→        new TextRun({ text: config.footerRight || "", size: 22, color: "909090" }),
+   698→   698→  1415→      ],
+   699→   699→  1416→    }),
+   700→   700→  1417→  ];
+   701→   701→  1418→
+   702→   702→  1419→  // ── Outer 16838 wrapper (R1 proven architecture) ──
+   703→   703→  1420→  // The wrapper acts as a safety net: even if the inner 7500 block
+   704→   704→  1421→  // overflows slightly, content stays on page 1.
+   705→   705→  1422→  return [new Table({
+   706→   706→  1423→    width: { size: 100, type: WidthType.PERCENTAGE },
+   707→   707→  1424→    layout: TableLayoutType.FIXED,
+   708→   708→  1425→    borders: allNoBorders,
+   709→   709→  1426→    rows: [new TableRow({
+   710→   710→  1427→      height: { value: 16838, rule: "exact" },
+   711→   711→  1428→      children: [new TableCell({
+   712→   712→  1429→        shading: { fill: "FFFFFF" }, borders: noBorders,
+   713→   713→  1430→        verticalAlign: "top",
+   714→   714→  1431→        children: [
+   715→   715→  1432→          upperBlock,
+   716→   716→  1433→          divider,
+   717→   717→  1434→          ...lowerContent,
+   718→   718→  1435→        ],
+   719→   719→  1436→      })],
+   720→   720→  1437→    })],
+   721→   721→  1438→  })];
+   722→   722→  1439→  // Total height: 16838 (outer wrapper, R1 architecture) ✅
+   723→   723→  1440→}
+   724→   724→  1441→```
+   725→   725→  1442→
+   726→   726→  1443→---
+   727→   727→  1444→
+   728→   728→  1445→### Recipe R5: Clean White (Academic)
+   729→   729→  1446→
+   730→   730→  1447→**Visual:** Pure white background + school name + centered title + 2-column meta info table with underlines + footer
+   731→   731→  1448→**Use case:** academic thesis, standards documents
+   732→   732→  1449→**Architecture:** 16838 outer wrapper (white fill, invisible) + cell margins for page margin simulation. No top/bottom decorative lines.
+   733→   733→  1450→
+   734→   734→  1451→**Meta info table rules (cross-engine safe):**
+   735→   735→  1452→- 2-column table: label + value, **percentage widths only** (`WidthType.PERCENTAGE`)
+   736→   736→  1453→- **Table width is adaptive:** 55–75% of page, calculated by `calcR5MetaLayout()`. Table centered via `alignment: CENTER`.
+   737→   737→  1454→- **Label column:** adaptive 25–45% of table, **LEFT aligned**, plain text with "：" appended. NO full-width space padding, NO right-alignment.
+   738→   738→  1455→- **Label column borders:** none (no bottom border on label cells).
+   739→   739→  1456→- **Value column:** remaining %, **LEFT aligned**, `bottom: single sz=4` border = fixed-length underline (consistent length for all rows regardless of text).
+   740→   740→  1457→- No left/right/top borders on either column.
+   741→   741→  1458→- ⚠️ Do NOT use DXA widths, full-width space padding (`\u3000`), spacer columns, or tab stops — WPS renders them inconsistently.
+   742→   742→  1459→- ⚠️ Do NOT use `margins.top` on the wrapper cell — use `spacing.before` on first paragraph instead.
+   743→   743→  1460→
+   744→   744→  1461→**Known limitation:** When meta lines ≥ 6 AND title has 3 lines, MS Office may render content slightly taller than WPS, potentially clipping the footer line. Mitigate by reducing `midSpacing` or using a smaller title font.
+   745→   745→  1462→
+   746→   746→  1463→```js
+   747→   747→  1464→// ── Width-aware title layout (handles mixed Chinese + English) ──
+   748→   748→  1465→function estimateTextWidth(text, pt) {
+   749→   749→  1466→  let width = 0;
+   750→   750→  1467→  for (const ch of text) {
+   751→   751→  1468→    const code = ch.codePointAt(0);
+   752→   752→  1469→    const isCJK = (code >= 0x4E00 && code <= 0x9FFF) || (code >= 0x3400 && code <= 0x4DBF) ||
+   753→   753→  1470→      (code >= 0x3000 && code <= 0x303F) || (code >= 0xFF00 && code <= 0xFFEF) ||
+   754→   754→  1471→      (code >= 0x2E80 && code <= 0x2EFF);
+   755→   755→  1472→    width += isCJK ? pt * 20 : pt * 11; // CJK: full-width, Latin: ~55% width
+   756→   756→  1473→  }
+   757→   757→  1474→  return width;
+   758→   758→  1475→}
+   759→   759→  1476→// Use estimateTextWidth() in calcTitleLayout() instead of simple char count
+   760→   760→  1477→// to prevent mid-word breaks in mixed Chinese+English titles like "基于Transformer架构的..."
+   761→   761→  1478→
+   762→   762→  1479→// ── Meta info table ──
+   763→   763→  1480→
+   764→   764→  1481→// Calculate adaptive table and label column percentage based on longest label.
+   765→   765→  1482→// Returns { tablePct, labelPct } — both as percentages.
+   766→   766→  1483→// Uses ONLY WidthType.PERCENTAGE for cross-engine compatibility (MS Office + WPS).
+   767→   767→  1484→function calcR5MetaLayout(metaEntries, fontPt = 12) {
+   768→   768→  1485→  const maxLabelLen = Math.max(...metaEntries.map(e => [...e.label].length));
+   769→   769→  1486→  // Label needs: maxLabelLen chars + "：" + 1 char padding
+   770→   770→  1487→  const labelNeedTw = (maxLabelLen + 2) * fontPt * 20;
+   771→   771→  1488→  // Value column: fixed ~5000tw for consistent underline length
+   772→   772→  1489→  const valueNeedTw = 5000;
+   773→   773→  1490→  const totalNeedTw = labelNeedTw + valueNeedTw;
+   774→   774→  1491→  // Table width as % of page (11906tw), clamped to 55–75%
+   775→   775→  1492→  const tablePct = Math.min(75, Math.max(55, Math.ceil(totalNeedTw / 11906 * 100)));
+   776→   776→  1493→  // Label % within the table, clamped to 25–45%
+   777→   777→  1494→  const rawLabelPct = Math.ceil(labelNeedTw / (tablePct / 100 * 11906) * 100);
+   778→   778→  1495→  return { tablePct, labelPct: Math.max(25, Math.min(45, rawLabelPct)) };
+   779→   779→  1496→}
+   780→   780→  1497→
+   781→   781→  1498→// Build R5 academic cover meta info table.
+   782→   782→  1499→// ⚠️ CRITICAL cross-engine rules:
+   783→   783→  1500→//   - Table width: WidthType.PERCENTAGE (NOT DXA — WPS breaks with DXA)
+   784→   784→  1501→//   - Column widths: WidthType.PERCENTAGE
+   785→   785→  1502→//   - Label column: LEFT aligned, plain text (NO full-width space padding)
+   786→   786→  1503→//   - Value column: LEFT aligned, bottom border = fixed-length underline
+   787→   787→  1504→//   - Table alignment: CENTER (visually centered on page)
+   788→   788→  1505→function buildR5MetaTable(metaEntries) {
+   789→   789→  1506→  // metaEntries: [{ label: "学院", value: "计算机科学与技术学院" }, ...]
+   790→   790→  1507→  const { tablePct, labelPct } = calcR5MetaLayout(metaEntries);
+   791→   791→  1508→  const valuePct = 100 - labelPct;
+   792→   792→  1509→  const bottomBorder = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+   793→   793→  1510→
+   794→   794→  1511→  const rows = metaEntries.map(entry => new TableRow({
+   795→   795→  1512→    children: [
+   796→   796→  1513→      // Label cell: left-aligned, no bottom border
+   797→   797→  1514→      new TableCell({
+   798→   798→  1515→        width: { size: labelPct, type: WidthType.PERCENTAGE },
+   799→   799→  1516→        borders: noBorders,
+   800→   800→  1517→        margins: { top: 60, bottom: 60, left: 0, right: 0 },
+   801→   801→  1518→        children: [new Paragraph({
+   802→   802→  1519→          alignment: AlignmentType.LEFT,
+   803→   803→  1520→          spacing: { before: 60, after: 60, line: 400 },
+   804→   804→  1521→          children: [new TextRun({
+   805→   805→  1522→            text: entry.label + "：",
+   806→   806→  1523→            size: 24, font: { eastAsia: "SimSun", ascii: "Times New Roman" },
+   807→   807→  1524→          })],
+   808→   808→  1525→        })],
+   809→   809→  1526→      }),
+   810→   810→  1527→      // Value cell: left-aligned, bottom border = fixed-length underline
+   811→   811→  1528→      new TableCell({
+   812→   812→  1529→        width: { size: valuePct, type: WidthType.PERCENTAGE },
+   813→   813→  1530→        borders: { top: NB, left: NB, right: NB, bottom: bottomBorder },
+   814→   814→  1531→        margins: { top: 60, bottom: 60, left: 80, right: 0 },
+   815→   815→  1532→        children: [new Paragraph({
+   816→   816→  1533→          alignment: AlignmentType.LEFT,
+   817→   817→  1534→          spacing: { before: 60, after: 60, line: 400 },
+   818→   818→  1535→          children: [new TextRun({
+   819→   819→  1536→            text: entry.value,
+   820→   820→  1537→            size: 24, font: { eastAsia: "SimSun", ascii: "Times New Roman" },
+   821→   821→  1538→          })],
+   822→   822→  1539→        })],
+   823→   823→  1540→      }),
+   824→   824→  1541→    ],
+   825→   825→  1542→  }));
+   826→   826→  1543→
+   827→   827→  1544→  return new Table({
+   828→   828→  1545→    width: { size: tablePct, type: WidthType.PERCENTAGE },
+   829→   829→  1546→    alignment: AlignmentType.CENTER,
+   830→   830→  1547→    layout: TableLayoutType.FIXED,
+   831→   831→  1548→    borders: allNoBorders,
+   832→   832→  1549→    rows,
+   833→   833→  1550→  });
+   834→   834→  1551→}
+   835→   835→  1552→
+   836→   836→  1553→// ⚠️ MANDATORY: Cover section must use margin: 0. See "Cover Section Non-Negotiables" above.
+   837→   837→  1554→function buildCoverR5(config) {
+   838→   838→  1555→  const PAGE_H = 16838, SAFETY = 1200;
+   839→   839→  1556→  const safeH = PAGE_H - SAFETY; // 15638
+   840→   840→  1557→  const simMarginLR = 1701, simMarginT = 1200;
+   841→   841→  1558→  const contentW = 11906 - simMarginLR * 2;
+   842→   842→  1559→
+   843→   843→  1560→  // ★ Width-aware title layout for mixed Chinese+English
+   844→   844→  1561→  const { titlePt, titleLines } = calcTitleLayoutMixed(config.title, contentW, 36, 24);
+   845→   845→  1562→  const titleSize = titlePt * 2;
+   846→   846→  1563→
+   847→   847→  1564→  // Parse meta entries
+   848→   848→  1565→  const metaEntries = (config.metaLines || []).map(line => {
+   849→   849→  1566→    const sep = line.indexOf("：") !== -1 ? "：" : ":";
+   850→   850→  1567→    const idx = line.indexOf(sep);
+   851→   851→  1568→    if (idx === -1) return { label: line, value: "" };
+   852→   852→  1569→    return { label: line.slice(0, idx).trim(), value: line.slice(idx + sep.length).trim() };
+   853→   853→  1570→  });
+   854→   854→  1571→
+   855→   855→  1572→  // Height budget (no margins.top — use spacing.before instead)
+   856→   856→  1573→  const schoolNameH = config.schoolName ? (22 * 23 + 400) : 0;
+   857→   857→  1574→  const titleTotalH = titleLines.length * (titlePt * 23 + 200);
+   858→   858→  1575→  const subtitleH = config.subtitle ? (15 * 23 + 600) : 0;
+   859→   859→  1576→  const metaRowH = 520; // 60+60 padding + ~400 line height
+   860→   860→  1577→  const metaTableH = metaEntries.length * metaRowH;
+   861→   861→  1578→  const footerH = config.footerRight ? (12 * 23 + 200) : 0;
+   862→   862→  1579→  const spacerParas = 3 * 350;
+   863→   863→  1580→  const fixedH = schoolNameH + titleTotalH + subtitleH + metaTableH + footerH + spacerParas;
+   864→   864→  1581→  const remaining = Math.max(safeH - fixedH, 600);
+   865→   865→  1582→
+   866→   866→  1583→  // ★ topSpacing includes simulated top margin (simMarginT)
+   867→   867→  1584→  const topSpacing = Math.min(Math.floor(remaining * 0.28) + simMarginT, 4200);
+   868→   868→  1585→  const midSpacing = Math.min(Math.floor((remaining - simMarginT) * 0.18), 2000);
+   869→   869→  1586→  const bottomSpacing = Math.min(remaining - topSpacing + simMarginT - midSpacing, 5500);
+   870→   870→  1587→
+   871→   871→  1588→  const children = [];
+   872→   872→  1589→  children.push(new Paragraph({ spacing: { before: topSpacing } }));
+   873→   873→  1590→
+   874→   874→  1591→  // School name (optional)
+   875→   875→  1592→  if (config.schoolName) {
+   876→   876→  1593→    children.push(new Paragraph({
+   877→   877→  1594→      alignment: AlignmentType.CENTER, spacing: { after: 400 },
+   878→   878→  1595→      children: [new TextRun({ text: config.schoolName, size: 44, characterSpacing: 40,
+   879→   879→  1596→        font: { eastAsia: "SimSun", ascii: "Times New Roman" } })],
+   880→   880→  1597→    }));
+   881→   881→  1598→  }
+   882→   882→  1599→
+   883→   883→  1600→  // Title
+   884→   884→  1601→  for (let i = 0; i < titleLines.length; i++) {
+   885→   885→  1602→    children.push(new Paragraph({
+   886→   886→  1603→      alignment: AlignmentType.CENTER, spacing: { after: i < titleLines.length - 1 ? 120 : 300 },
+   887→   887→  1604→      children: [new TextRun({ text: titleLines[i], size: titleSize, bold: true,
+   888→   888→  1605→        font: { eastAsia: "SimHei", ascii: "Times New Roman" } })],
+   889→   889→  1606→    }));
+   890→   890→  1607→  }
+   891→   891→  1608→
+   892→   892→  1609→  // Subtitle
+   893→   893→  1610→  if (config.subtitle) {
+   894→   894→  1611→    children.push(new Paragraph({
+   895→   895→  1612→      alignment: AlignmentType.CENTER, spacing: { after: 200 },
+   896→   896→  1613→      children: [new TextRun({ text: config.subtitle, size: 30,
+   897→   897→  1614→        font: { eastAsia: "SimSun", ascii: "Times New Roman" } })],
+   898→   898→  1615→    }));
+   899→   899→  1616→  }
+   900→   900→  1617→
+   901→   901→  1618→  children.push(new Paragraph({ spacing: { before: midSpacing } }));
+   902→   902→  1619→
+   903→   903→  1620→  // Meta info table
+   904→   904→  1621→  if (metaEntries.length > 0) children.push(buildR5MetaTable(metaEntries));
+   905→   905→  1622→
+   906→   906→  1623→  children.push(new Paragraph({ spacing: { before: bottomSpacing } }));
+   907→   907→  1624→
+   908→   908→  1625→  // Footer
+   909→   909→  1626→  if (config.footerRight) {
+   910→   910→  1627→    children.push(new Paragraph({
+   911→   911→  1628→      alignment: AlignmentType.CENTER,
+   912→   912→  1629→      children: [new TextRun({ text: config.footerRight, size: 24, color: "404040",
+   913→   913→  1630→        font: { eastAsia: "SimSun", ascii: "Times New Roman" } })],
+   914→   914→  1631→    }));
+   915→   915→  1632→  }
+   916→   916→  1633→
+   917→   917→  1634→  // ★ 16838 outer wrapper — only left/right margins, NO margins.top
+   918→   918→  1635→  return [new Table({
+   919→   919→  1636→    width: { size: 100, type: WidthType.PERCENTAGE },
+   920→   920→  1637→    layout: TableLayoutType.FIXED,
+   921→   921→  1638→    borders: allNoBorders,
+   922→   922→  1639→    rows: [new TableRow({
+   923→   923→  1640→      height: { value: PAGE_H, rule: "exact" },
+   924→   924→  1641→      children: [new TableCell({
+   925→   925→  1642→        shading: { type: ShadingType.CLEAR, fill: "FFFFFF" },
+   926→   926→  1643→        borders: noBorders, verticalAlign: "top",
+   927→   927→  1644→        margins: { left: simMarginLR, right: simMarginLR },
+   928→   928→  1645→        children,
+   929→   929→  1646→      })],
+   930→   930→  1647→    })],
+   931→   931→  1648→  })];
+   932→   932→  1649→  // Height budget example (short title, 4 meta lines):
+   933→   933→  1650→  // topSpacing(3818) + schoolName(906) + title(1028) + subtitle(945) + midSpacing(1467)
+   934→   934→  1651→  // + metaTable(4×520=2080) + bottomSpacing(5268) + footer(476) = ~15988 < 15838 ✅
+   935→   935→  1652→}
+   936→   936→  1653→```
+   937→   937→  1654→
+   938→   938→  1655→---
+   939→   939→  1656→
+   940→   940→  1657→### blendColors Utility Function
+   941→   941→  1658→
+   942→   942→  1659→```js
+   943→   943→  1660→function blendColors(hex1, hex2, ratio) {
+   944→   944→  1661→  const p = (s, i) => parseInt(s.replace("#","").slice(i, i+2), 16);
+   945→   945→  1662→  const mix = (c1, c2) => Math.round(c1 + (c2 - c1) * ratio);
+   946→   946→  1663→  const r = mix(p(hex1,0), p(hex2,0)), g = mix(p(hex1,2), p(hex2,2)), b = mix(p(hex1,4), p(hex2,4));
+   947→   947→  1664→  return [r, g, b].map(v => v.toString(16).padStart(2,"0")).join("");
+   948→   948→  1665→}
+   949→   949→  1666→```
+   950→   950→  1667→
+   951→   951→  1668→
+   952→   952→  1669→
+   953→   953→  1670→## Geometric Decoration System
+   954→   954→  1671→
+   955→   955→  1672→→ See `references/decorations.md` for the full geometric decoration element library (decoration elements, usage scenarios, code examples).
+   956→   956→  1673→
+   957→   957→  1674→## Chinese Plot PNG Method (matplotlib)
+   958→   958→  1675→
+   959→   959→  1676→```python
+   960→   960→  1677→import matplotlib
+   961→   961→  1678→matplotlib.use("Agg")
+   962→   962→  1679→import matplotlib.pyplot as plt
+   963→   963→  1680→from matplotlib.font_manager import FontProperties
+   964→   964→  1681→
+   965→   965→  1682→font_paths = [
+   966→   966→  1683→    "/System/Library/Fonts/Supplemental/SimHei.ttf",
+   967→   967→  1684→    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+   968→   968→  1685→    "./SimHei.ttf",
+   969→   969→  1686→]
+   970→   970→  1687→zh_font = None
+   971→   971→  1688→for fp in font_paths:
+   972→   972→  1689→    try:
+   973→   973→  1690→        zh_font = FontProperties(fname=fp)
+   974→   974→  1691→        break
+   975→   975→  1692→    except:
+   976→   976→  1693→        continue
+   977→   977→  1694→
+   978→   978→  1695→plt.rcParams["axes.unicode_minus"] = False
+   979→   979→  1696→```
+   980→   980→  1697→
+   981→   981→  1698→## Chart Quality Rules
+   982→   982→  1699→
+   983→   983→  1700→### Chart Color Palette
+   984→   984→  1701→
+   985→   985→  1702→Default: **low-saturation (Morandi style)** palette to avoid flashy high-saturation. High-saturation palette only for explicitly energetic scenarios (events/education/creative).
+   986→   986→  1703→
+   987→   987→  1704→```js
+   988→   988→  1705→const chartColors = {
+   989→   989→  1706→  // Default: low saturation, professional (S: 25-40%, L: 55-68%)
+   990→   990→  1707→  default: ["6B9DAD", "C49B72", "7BA68A", "B87472", "9687A8", "C8B87C", "7AADA0", "7A9BB8"],
+   991→   991→  1708→  // Vivid: only for energetic/creative scenes
+   992→   992→  1709→  vivid:   ["2F97B8", "E67E22", "27AE60", "E74C3C", "9B59B6", "F1C40F", "1ABC9C", "3498DB"],
+   993→   993→  1710→};
+   994→   994→  1711→
+   995→   995→  1712→// Scene selection:
+   996→   996→  1713→// - report/whitepaper/consulting/academic/contract → default
+   997→   997→  1714→// - activity/education/creative copy → vivid (optional)
+   998→   998→  1715→```
+   999→   999→  1716→
+  1000→  1000→  1717→**Color usage rules:**
+  1001→  1001→  1718→- Max **5 colors** per chart; excess categories use depth variants of same hue
+  1002→  1002→  1719→- Emphasis data uses document accent color; non-emphasis uses grey `#B0B0B0`
+  1003→  1003→  1720→- Adjacent segments in pie/bar charts must have hue gap ≥ 60°
+  1004→  1004→  1721→
+  1005→  1005→  1722→1. **Anti-overlap**: If >6 x-axis labels, rotate 45° (`plt.xticks(rotation=45, ha='right')`)
+  1006→  1006→  1723→2. **Anti-stretch**: Always set figure size explicitly (`fig, ax = plt.subplots(figsize=(10, 6))`)
+  1007→  1007→  1724→3. **Aspect ratio (CRITICAL)**: When embedding in docx, MUST read actual image dimensions and calculate height proportionally. NEVER hardcode both width and height — pie charts become ellipses, radar charts become diamonds.
+  1008→  1008→  1725→   ```js
+  1009→  1009→  1726→   const sizeOf = require("image-size");
+  1010→  1010→  1727→   const dims = sizeOf(chartBuffer);
+  1011→  1011→  1728→   const displayWidth = 500;
+  1012→  1012→  1729→   const displayHeight = Math.round(displayWidth * (dims.height / dims.width));
+  1013→  1013→  1730→   // transformation: { width: displayWidth, height: displayHeight }
+  1014→  1014→  1731→   ```
+  1015→  1015→  1732→4. **DPI**: Save at 200+ DPI (`plt.savefig("chart.png", dpi=200, bbox_inches="tight")`)
+  1016→  1016→  1733→5. **Colors**: Use palette accent color for primary data series
+  1017→  1017→  1734→6. **Legend**: Place outside plot area if >4 series
+  1018→  1018→  1735→7. **Square charts**: Pie and radar charts MUST use `figsize=(8, 8)` (equal width/height) to preserve circular/radial shape
+  1019→  1019→  1736→7. **Grid**: Light gray grid (`ax.grid(True, alpha=0.3)`)
+  1020→  1020→  1737→
+  1021→  1021→  1738→---
+  1022→  1022→  1739→
+  1023→  1023→  1740→## Typography Rules
+  1024→  1024→  1741→
+  1025→  1025→  1742→### CJK Body Text
+  1026→  1026→  1743→- **Alignment**: Justified (`AlignmentType.JUSTIFIED`)
+  1027→  1027→  1744→- **First-line indent**: 2 characters — Profile A (SimSun): `firstLine: 480`; Profile B (YaHei): `firstLine: 420`. See `common-rules.md` for profile definitions.
+  1028→  1028→  1745→- **Line spacing**: 1.3x = `spacing: { line: 312 }`
+  1029→  1029→  1746→- **No heading indent**: Headings must NOT have first-line indent
+  1030→  1030→  1747→
+  1031→  1031→  1748→### English Body Text
+  1032→  1032→  1749→- **Alignment**: Left (`AlignmentType.LEFT`)
+  1033→  1033→  1750→- **No indent**
+  1034→  1034→  1751→- **Line spacing**: Same 1.3x
+  1035→  1035→  1752→
+  1036→  1036→  1753→### Table Numbers
+  1037→  1037→  1754→- Right-aligned in cells
+  1038→  1038→  1755→- Use monospace or tabular figures if available
+  1039→  1039→  1756→
+  1040→  1040→  1757→### Headings
+  1041→  1041→  1758→- No first-line indent
+  1042→  1042→  1759→- `spacing: { before: 240, after: 120 }` (H1: before 360)
+  1043→  1043→  1760→- Bold, palette.primary color
+  1044→  1044→  1761→
+  1045→  1045→  1762→### 1.3x Line Spacing — MANDATORY
+  1046→  1046→  1763→Every document, every paragraph. `spacing: { line: 312 }`. No exceptions unless scene explicitly overrides (e.g., resume uses 1.15x).
+  1047→  1047→  1764→
+  1048→  1048→  1765→---
+  1049→  1049→  1766→
+  1050→  1050→  1767→## Page Layout — A4 Standard
+  1051→  1051→  1768→
+  1052→  1052→  1769→```js
+  1053→  1053→  1770→sections: [{
+  1054→  1054→  1771→  properties: {
+  1055→  1055→  1772→    page: {
+  1056→  1056→  1773→      size: { width: 11906, height: 16838, orientation: PageOrientation.PORTRAIT },
+  1057→  1057→  1774→      margin: { top: 1440, bottom: 1440, left: 1701, right: 1417 },
+  1058→  1058→  1775→      // Top/bottom 2.54cm = 1440, left 3.0cm = 1701, right 2.5cm = 1417 twips
+  1059→  1059→  1776→    },
+  1060→  1060→  1777→  },
+  1061→  1061→  1778→  children: [/* ... */],
+  1062→  1062→  1779→}]
+  1063→  1063→  1780→```
+  1064→  1064→  1781→
+  1065→  1065→  1782→These are defaults. Scenes may override (e.g., official docs use different margins).
+  1066→  1066→  1783→
+  1067→  1067→  1784→### Scene Font Override Rules
+  1068→  1068→  1785→
+  1069→  1069→  1786→Default font config (docx-js Font Configuration in design-system.md) uses YaHei+Calibri for most business scenarios. The following scenes have dedicated font requirements — **scene rules override defaults**:
+  1070→  1070→  1787→
+  1071→  1071→  1788→| Scene | Body CN | Body EN | Headings | Body Color |
+  1072→  1072→  1789→|------|----------|----------|------|----------|
+  1073→  1073→  1790→| Default (general) | Microsoft YaHei | Calibri | SimHei + Calibri | palette.body |
+  1074→  1074→  1791→| **Report** | **SimSun** | **Times New Roman** | **SimHei + TNR** | **"000000" (pure black)** |
+  1075→  1075→  1792→| **Academic** | **SimSun** | **Times New Roman** | **SimHei + TNR** | **"000000" (pure black)** |
+  1076→  1076→  1793→| **Contract** | **SimSun** | **Times New Roman** | **SimHei + TNR** | **"000000" (pure black)** |
+  1077→  1077→  1794→| Official doc | FangSong | — | STXiaoBiaoSong | "000000" |
+  1078→  1078→  1795→| Resume | Microsoft YaHei | Calibri | SimHei + Calibri | palette.body |
+  1079→  1079→  1796→
+  1080→  1080→  1797→When report or academic scene is loaded, `styles.default.document.run` font and color must be overridden per scene. Heading sizes may also differ (e.g., report scene H1 centered, H2 uses Xiao San size:30 instead of default Si Hao size:28). Scene file takes precedence.
+  1081→  1081→  1798→

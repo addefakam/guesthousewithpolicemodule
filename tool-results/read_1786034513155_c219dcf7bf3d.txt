@@ -1,0 +1,659 @@
+   650→        setPageSize={pagination.setPageSize}
+   651→      />
+   652→
+   653→      {/* Provider Detail Dialog */}
+   654→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   655→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   656→          <DialogHeader>
+   657→            <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+   658→              <Building2 className="h-5 w-5" /> {selectedProvider?.name}
+   659→            </DialogTitle>
+   660→            <DialogDescription className="text-xs sm:text-sm">Registration details</DialogDescription>
+   661→          </DialogHeader>
+   662→          {selectedProvider && (
+   663→            <div className="space-y-4">
+   664→              <div className="flex items-center gap-3">
+   665→                <StatusBadge status={selectedProvider.status} />
+   666→                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">{selectedProvider.type.replace(/_/g, " ")}</span>
+   667→                {(selectedProvider.latitude !== 9.02 || selectedProvider.longitude !== 38.75) && (
+   668→                  <span className="flex items-center gap-1 text-[10px] text-emerald-600"><Crosshair className="h-3 w-3" /> {selectedProvider.latitude.toFixed(4)}, {selectedProvider.longitude.toFixed(4)}</span>
+   669→                )}
+   670→              </div>
+   671→              <Separator />
+   672→              <div className="space-y-3 text-sm">
+   673→                <div className="flex items-center gap-2.5">
+   674→                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+   675→                  <div>
+   676→                    <p className="text-[10px] text-muted-foreground">Owner</p>
+   677→                    <p className="font-medium">{selectedProvider.ownerName}</p>
+   678→                  </div>
+   679→                </div>
+   680→                <div className="flex items-center gap-2.5">
+   681→                  <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+   682→                  <div>
+   683→                    <p className="text-[10px] text-muted-foreground">Phone</p>
+   684→                    <p className="font-medium">{selectedProvider.phone}</p>
+   685→                  </div>
+   686→                </div>
+   687→                {selectedProvider.email && (
+   688→                  <div className="flex items-center gap-2.5">
+   689→                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+   690→                    <div>
+   691→                      <p className="text-[10px] text-muted-foreground">Email</p>
+   692→                      <p className="font-medium">{selectedProvider.email}</p>
+   693→                    </div>
+   694→                  </div>
+   695→                )}
+   696→                {selectedProvider.address && (
+   697→                  <div className="flex items-start gap-2.5">
+   698→                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+   699→                    <div>
+   700→                      <p className="text-[10px] text-muted-foreground">Address</p>
+   701→                      <p className="font-medium">{selectedProvider.address}</p>
+   702→                    </div>
+   703→                  </div>
+   704→                )}
+   705→                {selectedProvider.licenseNo && (
+   706→                  <div className="flex items-center gap-2.5">
+   707→                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+   708→                    <div>
+   709→                      <p className="text-[10px] text-muted-foreground">License No</p>
+   710→                      <p className="font-mono font-medium">{selectedProvider.licenseNo}</p>
+   711→                    </div>
+   712→                  </div>
+   713→                )}
+   714→                <div className="flex items-center gap-2.5">
+   715→                  <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+   716→                  <div>
+   717→                    <p className="text-[10px] text-muted-foreground">Registered</p>
+   718→                    <p className="font-medium">{formatDate(selectedProvider.createdAt)}</p>
+   719→                  </div>
+   720→                </div>
+   721→                {selectedProvider.approvedAt && (
+   722→                  <div className="flex items-center gap-2.5">
+   723→                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+   724→                    <div>
+   725→                      <p className="text-[10px] text-muted-foreground">Approved {selectedProvider.approvedBy ? `by ${selectedProvider.approvedBy}` : ""}</p>
+   726→                      <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
+   727→                    </div>
+   728→                  </div>
+   729→                )}
+   730→              </div>
+   731→              <div className="flex gap-2">
+   732→                {!isSuperuser && selectedProvider.status === "APPROVED" && (
+   733→                  <Button size="sm" variant="outline" onClick={() => { setDetailOpen(false); openCoordPicker(selectedProvider); }}>
+   734→                    <MapPinned className="mr-1 h-3.5 w-3.5" /> Set Map Location
+   735→                  </Button>
+   736→                )}
+   737→                {selectedProvider.status === "APPROVED" && (
+   738→                  <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => { setDetailOpen(false); openSuspend(selectedProvider); }}>
+   739→                    <Ban className="h-3.5 w-3.5" /> Suspend
+   740→                  </Button>
+   741→                )}
+   742→                {selectedProvider.status === "SUSPENDED" && (
+   743→                  <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => { setDetailOpen(false); setConfirmAction({ provider: selectedProvider, action: "REACTIVATE" }); }}>
+   744→                    <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+   745→                  </Button>
+   746→                )}
+   747→                {selectedProvider.licenseFile && (
+   748→                  <a href={selectedProvider.licenseFile} target="_blank" rel="noopener noreferrer"
+   749→                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs sm:text-sm font-medium text-primary hover:bg-muted">
+   750→                    <FileText className="h-4 w-4" /> View License
+   751→                  </a>
+   752→                )}
+   753→              </div>
+   754→              {selectedProvider.rejectionReason && (
+   755→                <>
+   756→                  <Separator />
+   757→                  <div className="space-y-1.5">
+   758→                    <Label className="text-red-600 text-xs">Rejection Reason</Label>
+   759→                    <p className="rounded-lg bg-red-50 p-3 text-xs sm:text-sm text-red-800">{selectedProvider.rejectionReason}</p>
+   760→                  </div>
+   761→                </>
+   762→              )}
+   763→              {selectedProvider.status === "SUSPENDED" && (selectedProvider as any).suspensionReason && (
+   764→                <>
+   765→                  <Separator />
+   766→                  <div className="space-y-1.5">
+   767→                    <Label className="text-orange-600 text-xs">Suspension Reason</Label>
+   768→                    <p className="rounded-lg bg-orange-50 p-3 text-xs sm:text-sm text-orange-800">{(selectedProvider as any).suspensionReason}</p>
+   769→                    {(selectedProvider as any).suspendedBy && (
+   770→                      <p className="text-[11px] text-slate-500">Suspended by: {(selectedProvider as any).suspendedBy}</p>
+   771→                    )}
+   772→                    {(selectedProvider as any).suspendedAt && (
+   773→                      <p className="text-[11px] text-slate-500">Suspended on: {formatDate((selectedProvider as any).suspendedAt)}</p>
+   774→                    )}
+   775→                  </div>
+   776→                </>
+   777→              )}
+   778→            </div>
+   779→          )}
+   780→        </DialogContent>
+   781→      </Dialog>
+   782→
+   783→      {/* Coordinate Picker Dialog */}
+   784→      <Dialog open={coordOpen} onOpenChange={setCoordOpen}>
+   785→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   786→          <DialogHeader>
+   787→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   788→              <MapPinned className="h-5 w-5" /> Set Location — {coordProvider?.name}
+   789→            </DialogTitle>
+   790→            <DialogDescription className="text-xs sm:text-sm">
+   791→              {coordProvider?.address ? `Address: ${coordProvider.address}` : "No address set for this provider"}
+   792→            </DialogDescription>
+   793→          </DialogHeader>
+   794→          {coordProvider && (
+   795→            <div className="space-y-4">
+   796→              {/* Map Picker */}
+   797→              <CoordinatePicker
+   798→                latitude={editLat}
+   799→                longitude={editLng}
+   800→                address={coordProvider.address || ""}
+   801→                onChange={(lat, lng) => { setEditLat(lat); setEditLng(lng); }}
+   802→              />
+   803→
+   804→              {/* Manual input + Geocode */}
+   805→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   806→                <div className="space-y-1.5">
+   807→                  <Label className="text-xs">Latitude</Label>
+   808→                  <Input type="number" step="0.0001" value={editLat} onChange={(e) => setEditLat(parseFloat(e.target.value) || 9.02)} className="text-xs font-mono" />
+   809→                </div>
+   810→                <div className="space-y-1.5">
+   811→                  <Label className="text-xs">Longitude</Label>
+   812→                  <Input type="number" step="0.0001" value={editLng} onChange={(e) => setEditLng(parseFloat(e.target.value) || 38.75)} className="text-xs font-mono" />
+   813→                </div>
+   814→              </div>
+   815→
+   816→              <DialogFooter className="flex-col gap-2 sm:flex-row">
+   817→                {coordProvider.address && (
+   818→                  <Button variant="outline" onClick={geocodeSingle} disabled={geocodingOne} className="w-full sm:w-auto">
+   819→                    <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingOne ? "animate-spin" : ""}`} />
+   820→                    {geocodingOne ? "Looking up..." : "Auto-detect from Address"}
+   821→                  </Button>
+   822→                )}
+   823→                <Button variant="outline" onClick={() => setCoordOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+   824→                <Button onClick={saveCoordinates} disabled={savingCoord} className="w-full sm:w-auto">
+   825→                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${savingCoord ? "animate-spin" : ""}`} />
+   826→                  {savingCoord ? "Saving..." : "Save Location"}
+   827→                </Button>
+   828→              </DialogFooter>
+   829→            </div>
+   830→          )}
+   831→        </DialogContent>
+   832→      </Dialog>
+   833→
+   834→      {/* Batch Geocode Dialog */}
+   835→      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+   836→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   837→          <DialogHeader>
+   838→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   839→              <Globe className="h-5 w-5" /> Batch Geocode All Providers
+   840→            </DialogTitle>
+   841→            <DialogDescription className="text-xs sm:text-sm">
+   842→              Automatically converts provider addresses to GPS coordinates using OpenStreetMap.
+   843→            </DialogDescription>
+   844→          </DialogHeader>
+   845→          <div className="space-y-4">
+   846→            <div className="rounded-lg border bg-amber-50 p-3 text-xs text-amber-800">
+   847→              <p className="font-medium mb-1">How it works:</p>
+   848→              <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+   849→                <li>Only processes APPROVED providers with an address</li>
+   850→                <li>Skips providers that already have real coordinates set</li>
+   851→                <li>Uses OpenStreetMap Nominatim (free, no API key needed)</li>
+   852→                <li>Takes ~1-2 seconds per provider due to rate limiting</li>
+   853→              </ul>
+   854→            </div>
+   855→            {!batchResult ? (
+   856→              <div className="flex justify-end gap-2">
+   857→                <Button variant="outline" onClick={() => setBatchOpen(false)}>Cancel</Button>
+   858→                <Button onClick={batchGeocode} disabled={geocodingAll}>
+   859→                  <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingAll ? "animate-spin" : ""}`} />
+   860→                  {geocodingAll ? "Geocoding..." : "Start Geocoding"}
+   861→                </Button>
+   862→              </div>
+   863→            ) : (
+   864→              <div className="space-y-3">
+   865→                <div className="grid grid-cols-3 gap-2">
+   866→                  <div className="rounded-lg border p-2.5 text-center">
+   867→                    <p className="text-lg font-bold text-emerald-600">{batchResult.updated}</p>
+   868→                    <p className="text-[10px] text-muted-foreground">Updated</p>
+   869→                  </div>
+   870→                  <div className="rounded-lg border p-2.5 text-center">
+   871→                    <p className="text-lg font-bold text-red-600">{batchResult.failed}</p>
+   872→                    <p className="text-[10px] text-muted-foreground">Failed</p>
+   873→                  </div>
+   874→                  <div className="rounded-lg border p-2.5 text-center">
+   875→                    <p className="text-lg font-bold">{batchResult.total}</p>
+   876→                    <p className="text-[10px] text-muted-foreground">Processed</p>
+   877→                  </div>
+   878→                </div>
+   879→                {batchResult.results && (
+   880→                  <div className="max-h-40 overflow-y-auto rounded-lg border divide-y">
+   881→                    {batchResult.results.map((r: any, i: number) => (
+   882→                      <div key={i} className="flex items-center justify-between p-2 text-xs">
+   883→                        <div className="min-w-0">
+   884→                          <p className="font-medium truncate">{r.name}</p>
+   885→                          <p className="text-[10px] text-muted-foreground truncate">{r.address}</p>
+   886→                        </div>
+   887→                        {r.error ? (
+   888→                          <span className="text-red-600 shrink-0">Failed</span>
+   889→                        ) : (
+   890→                          <span className="font-mono text-emerald-600 shrink-0">{r.lat?.toFixed(4)}, {r.lng?.toFixed(4)}</span>
+   891→                        )}
+   892→                      </div>
+   893→                    ))}
+   894→                  </div>
+   895→                )}
+   896→                <div className="flex justify-end">
+   897→                  <Button onClick={() => { setBatchOpen(false); setBatchResult(null); }}>Done</Button>
+   898→                </div>
+   899→              </div>
+   900→            )}
+   901→          </div>
+   902→        </DialogContent>
+   903→      </Dialog>
+   904→
+   905→      {/* Reject Dialog */}
+   906→      <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
+   907→        <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   908→          <DialogHeader>
+   909→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
+   910→              <XCircle className="h-5 w-5" /> Reject Provider
+   911→            </DialogTitle>
+   912→            <DialogDescription className="text-xs sm:text-sm">
+   913→              Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+   914→            </DialogDescription>
+   915→          </DialogHeader>
+   916→          <div className="space-y-2">
+   917→            <Label htmlFor="reject-reason" className="text-xs sm:text-sm">Rejection Reason *</Label>
+   918→            <Textarea id="reject-reason" placeholder="Enter the reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
+   919→          </div>
+   920→          <DialogFooter className="flex-col gap-2 sm:flex-row">
+   921→            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">Cancel</Button>
+   922→            <Button variant="destructive" onClick={handleReject} disabled={actioning || !rejectReason.trim()} className="w-full sm:w-auto">
+   923→              {actioning ? "Rejecting..." : "Confirm Rejection"}
+   924→            </Button>
+   925→          </DialogFooter>
+   926→        </DialogContent>
+   927→      </Dialog>
+   928→
+   929→      {/* Confirm Approve/Suspend Dialog */}
+   930→      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+   931→        <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
+   932→          <AlertDialogHeader>
+   933→            <AlertDialogTitle className="text-base sm:text-lg">
+   934→              {confirmAction?.action === "APPROVED" ? "Approve Provider" : confirmAction?.action === "REACTIVATE" ? "Reactivate Provider" : "Suspend Provider"}
+   935→            </AlertDialogTitle>
+   936→            <AlertDialogDescription className="text-xs sm:text-sm">
+   937→              {confirmAction?.action === "APPROVED"
+   938→                ? `Are you sure you want to approve "${confirmAction?.provider.name}"?`
+   939→                : confirmAction?.action === "REACTIVATE"
+   940→                ? `Are you sure you want to reactivate "${confirmAction?.provider.name}"? The guesthouse will regain full access.`
+   941→                : `Are you sure you want to suspend "${confirmAction?.provider.name}"?`}
+   942→            </AlertDialogDescription>
+   943→          </AlertDialogHeader>
+   944→          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+   945→            <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+   946→            <AlertDialogAction
+   947→              onClick={() => confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)}
+   948→              disabled={actioning}
+   949→              className={
+   950→                confirmAction?.action === "APPROVED"
+   951→                  ? "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
+   952→                  : confirmAction?.action === "REACTIVATE"
+   953→                  ? "w-full sm:w-auto bg-teal-600 hover:bg-teal-700 focus:ring-teal-600"
+   954→                  : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
+   955→              }
+   956→            >
+   957→              {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : confirmAction?.action === "REACTIVATE" ? "Reactivate" : "Suspend"}
+   958→            </AlertDialogAction>
+   959→          </AlertDialogFooter>
+   960→        </AlertDialogContent>
+   961→      </AlertDialog>
+   962→
+   963→      {/* Register Guesthouse Dialog (SUPERUSER) */}
+   964→      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+   965→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   966→          <DialogHeader>
+   967→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   968→              <Building2 className="h-5 w-5" /> Register New Guesthouse
+   969→            </DialogTitle>
+   970→            <DialogDescription className="text-xs sm:text-sm">
+   971→              Add a new guesthouse. It will be automatically approved and an operator account will be created.
+   972→            </DialogDescription>
+   973→          </DialogHeader>
+   974→
+   975→          <div className="space-y-4 mt-2">
+   976→            {/* Guesthouse Info Section */}
+   977→            <div className="space-y-1">
+   978→              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Guesthouse Information</p>
+   979→              <Separator />
+   980→            </div>
+   981→
+   982→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   983→              <div className="grid gap-1.5 sm:col-span-2">
+   984→                <Label className="text-sm">Guesthouse Name <span className="text-rose-500">*</span></Label>
+   985→                <Input
+   986→                  value={registerForm.name}
+   987→                  onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
+   988→                  placeholder="e.g. Sunshine Guest House"
+   989→                  className="bg-slate-50"
+   990→                />
+   991→              </div>
+   992→              <div className="grid gap-1.5">
+   993→                <Label className="text-sm">Owner Name <span className="text-rose-500">*</span></Label>
+   994→                <Input
+   995→                  value={registerForm.ownerName}
+   996→                  onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
+   997→                  placeholder="Full name of the owner"
+   998→                  className="bg-slate-50"
+   999→                />
+  1000→              </div>
+  1001→              <div className="grid gap-1.5">
+  1002→                <Label className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+  1003→                <Input
+  1004→                  value={registerForm.phone}
+  1005→                  onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
+  1006→                  placeholder="+251..."
+  1007→                  className="bg-slate-50"
+  1008→                />
+  1009→              </div>
+  1010→              <div className="grid gap-1.5">
+  1011→                <Label className="text-sm">Email <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1012→                <Input
+  1013→                  type="email"
+  1014→                  value={registerForm.email}
+  1015→                  onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
+  1016→                  placeholder="owner@email.com"
+  1017→                  className="bg-slate-50"
+  1018→                />
+  1019→              </div>
+  1020→              <div className="grid gap-1.5">
+  1021→                <Label className="text-sm">Type</Label>
+  1022→                <div className="flex flex-wrap gap-1.5">
+  1023→                  {GUESTHOUSE_TYPES.map((t) => (
+  1024→                    <button
+  1025→                      key={t.value}
+  1026→                      type="button"
+  1027→                      onClick={() => setRegisterForm((f) => ({ ...f, type: t.value }))}
+  1028→                      className={`rounded-lg border-2 px-3 py-1.5 text-xs font-medium transition-all ${
+  1029→                        registerForm.type === t.value
+  1030→                          ? "border-primary bg-primary/5 text-primary"
+  1031→                          : "border-slate-200 text-slate-500 hover:border-slate-300"
+  1032→                      }`}
+  1033→                    >
+  1034→                      {t.label}
+  1035→                    </button>
+  1036→                  ))}
+  1037→                </div>
+  1038→              </div>
+  1039→              <div className="grid gap-1.5 sm:col-span-2">
+  1040→                <Label className="text-sm">Address <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1041→                <Input
+  1042→                  value={registerForm.address}
+  1043→                  onChange={(e) => setRegisterForm((f) => ({ ...f, address: e.target.value }))}
+  1044→                  onBlur={async () => {
+  1045→                    const addr = registerForm.address.trim();
+  1046→                    if (!addr) return;
+  1047→                    try {
+  1048→                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + ", Ethiopia")}&limit=1`, { headers: { "User-Agent": "GHMS-Registration/1.0" } });
+  1049→                      const data = await res.json();
+  1050→                      if (data?.length > 0) setRegisterForm((f) => ({ ...f, address: data[0].display_name }));
+  1051→                    } catch { /* keep original */ }
+  1052→                  }}
+  1053→                  placeholder="Street, city, sub-city"
+  1054→                  className="bg-slate-50"
+  1055→                />
+  1056→                <p className="text-[11px] text-slate-400">Address will be auto-normalized when you click away.</p>
+  1057→              </div>
+  1058→              <div className="grid gap-1.5 sm:col-span-2">
+  1059→                <Label className="text-sm">License No <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1060→                <Input
+  1061→                  value={registerForm.licenseNo}
+  1062→                  onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
+  1063→                  placeholder="Business license number"
+  1064→                  className="bg-slate-50"
+  1065→                />
+  1066→              </div>
+  1067→              <div className="grid gap-1.5 sm:col-span-2">
+  1068→                <Label className="text-sm">Upload License <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1069→                {!registerForm.licenseFileData ? (
+  1070→                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 transition-colors hover:border-primary/40 hover:bg-primary/5">
+  1071→                    <Upload className="h-8 w-8 text-slate-400" />
+  1072→                    <div className="text-center">
+  1073→                      <p className="text-sm font-medium text-slate-600">Click to upload license document</p>
+  1074→                      <p className="text-[11px] text-slate-400 mt-0.5">PDF, Image, or any document (max 5MB)</p>
+  1075→                    </div>
+  1076→                    <input
+  1077→                      type="file"
+  1078→                      className="hidden"
+  1079→                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+  1080→                      onChange={async (e) => {
+  1081→                        const file = e.target.files?.[0];
+  1082→                        if (!file) return;
+  1083→                        if (file.size > 5 * 1024 * 1024) {
+  1084→                          toast.error("File size must be under 5MB");
+  1085→                          return;
+  1086→                        }
+  1087→                        const reader = new FileReader();
+  1088→                        reader.onload = () => {
+  1089→                          const base64 = reader.result as string;
+  1090→                          setRegisterForm((f) => ({
+  1091→                            ...f,
+  1092→                            licenseFileData: base64,
+  1093→                            licenseFileName: file.name,
+  1094→                          }));
+  1095→                        };
+  1096→                        reader.readAsDataURL(file);
+  1097→                      }}
+  1098→                    />
+  1099→                  </label>
+  1100→                ) : (
+  1101→                  <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+  1102→                    <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
+  1103→                    <div className="min-w-0 flex-1">
+  1104→                      <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
+  1105→                      <p className="text-[11px] text-emerald-600">License uploaded</p>
+  1106→                    </div>
+  1107→                    <button
+  1108→                      type="button"
+  1109→                      onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
+  1110→                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
+  1111→                    >
+  1112→                      <X className="h-3.5 w-3.5 text-slate-500" />
+  1113→                    </button>
+  1114→                  </div>
+  1115→                )}
+  1116→              </div>
+  1117→            </div>
+  1118→
+  1119→            {/* Operator Account Section */}
+  1120→            <div className="space-y-1">
+  1121→              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operator Login Account</p>
+  1122→              <p className="text-[11px] text-slate-400">An operator account will be created with access to manage this guesthouse.</p>
+  1123→              <Separator />
+  1124→            </div>
+  1125→
+  1126→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1127→              <div className="grid gap-1.5">
+  1128→                <Label className="text-sm flex items-center gap-1.5">
+  1129→                  <User className="h-3.5 w-3.5 text-slate-400" />
+  1130→                  Username <span className="text-rose-500">*</span>
+  1131→                </Label>
+  1132→                <Input
+  1133→                  value={registerForm.username}
+  1134→                  onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
+  1135→                  placeholder="operator_username"
+  1136→                  className="bg-slate-50"
+  1137→                  autoComplete="off"
+  1138→                />
+  1139→              </div>
+  1140→              <div className="grid gap-1.5">
+  1141→                <Label className="text-sm flex items-center gap-1.5">
+  1142→                  <KeyRound className="h-3.5 w-3.5 text-slate-400" />
+  1143→                  Password <span className="text-rose-500">*</span>
+  1144→                </Label>
+  1145→                <Input
+  1146→                  type="password"
+  1147→                  value={registerForm.password}
+  1148→                  onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
+  1149→                  placeholder="Min 4 characters"
+  1150→                  className="bg-slate-50"
+  1151→                  autoComplete="new-password"
+  1152→                />
+  1153→              </div>
+  1154→            </div>
+  1155→
+  1156→            {/* Info banner */}
+  1157→            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+  1158→              <div className="flex items-start gap-2">
+  1159→                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+  1160→                <p className="text-xs text-emerald-800">
+  1161→                  This guesthouse will be <strong>automatically approved</strong> since you are registering it as System Admin. The operator can log in immediately after registration.
+  1162→                </p>
+  1163→              </div>
+  1164→            </div>
+  1165→
+  1166→            {/* Actions */}
+  1167→            <div className="flex items-center justify-end gap-2 pt-2">
+  1168→              <Button
+  1169→                variant="outline"
+  1170→                onClick={() => { setRegisterOpen(false); setRegisterForm(emptyRegisterForm); }}
+  1171→                disabled={registering}
+  1172→                className="w-full sm:w-auto"
+  1173→              >
+  1174→                Cancel
+  1175→              </Button>
+  1176→              <Button
+  1177→                className="gap-1.5 w-full sm:w-auto"
+  1178→                onClick={handleRegister}
+  1179→                disabled={registering}
+  1180→              >
+  1181→                {registering ? (
+  1182→                  <>
+  1183→                    <Loader2 className="h-4 w-4 animate-spin" />
+  1184→                    Registering...
+  1185→                  </>
+  1186→                ) : (
+  1187→                  <>
+  1188→                    <UserPlus className="h-4 w-4" />
+  1189→                    Register &amp; Approve
+  1190→                  </>
+  1191→                )}
+  1192→              </Button>
+  1193→            </div>
+  1194→          </div>
+  1195→        </DialogContent>
+  1196→      </Dialog>
+  1197→
+  1198→      {/* Suspend Provider Dialog (with reason + notification) */}
+  1199→      <Dialog open={!!suspendDialog} onOpenChange={(open) => { if (!open) setSuspendDialog(null); }}>
+  1200→        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+  1201→          <DialogHeader>
+  1202→            <DialogTitle className="flex items-center gap-2 text-rose-700">
+  1203→              <Ban className="h-5 w-5" />
+  1204→              Suspend Guesthouse
+  1205→            </DialogTitle>
+  1206→            <DialogDescription className="text-xs sm:text-sm">
+  1207→              Suspend this provider and send them a notification with the reason.
+  1208→            </DialogDescription>
+  1209→          </DialogHeader>
+  1210→          {suspendDialog && (
+  1211→            <div className="space-y-4">
+  1212→              {/* Provider info summary */}
+  1213→              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+  1214→                <div className="flex items-center gap-3">
+  1215→                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+  1216→                    <Building2 className="h-5 w-5 text-rose-600" />
+  1217→                  </div>
+  1218→                  <div className="min-w-0 flex-1">
+  1219→                    <p className="text-sm font-bold text-slate-900 truncate">{suspendDialog.name}</p>
+  1220→                    <p className="text-xs text-slate-500">{suspendDialog.ownerName} &middot; {suspendDialog.phone}</p>
+  1221→                    {suspendDialog.address && (
+  1222→                      <p className="text-[11px] text-slate-400 truncate">{suspendDialog.address}</p>
+  1223→                    )}
+  1224→                  </div>
+  1225→                </div>
+  1226→              </div>
+  1227→
+  1228→              {/* Suspension Reason (required) */}
+  1229→              <div>
+  1230→                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+  1231→                  Reason for Suspension <span className="text-rose-500">*</span>
+  1232→                </Label>
+  1233→                <Textarea
+  1234→                  value={suspensionReason}
+  1235→                  onChange={(e) => setSuspensionReason(e.target.value)}
+  1236→                  placeholder="Write the detailed reason for suspending this guesthouse..."
+  1237→                  className="min-h-[100px] resize-none"
+  1238→                  maxLength={1000}
+  1239→                />
+  1240→                <p className="mt-1 text-[11px] text-slate-400 text-right">{suspensionReason.length}/1000</p>
+  1241→              </div>
+  1242→
+  1243→              {/* Short Message to Provider */}
+  1244→              <div>
+  1245→                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+  1246→                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+  1247→                </Label>
+  1248→                <Textarea
+  1249→                  value={providerMessage}
+  1250→                  onChange={(e) => setProviderMessage(e.target.value)}
+  1251→                  placeholder="Short message that will be sent to the provider about their suspension..."
+  1252→                  className="min-h-[80px] resize-none"
+  1253→                  maxLength={500}
+  1254→                />
+  1255→                <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
+  1256→                <p className="mt-1 text-[11px] text-slate-500">
+  1257→                  If empty, a default notification with the suspension reason will be sent automatically.
+  1258→                </p>
+  1259→              </div>
+  1260→
+  1261→              {/* Warning */}
+  1262→              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+  1263→                <div className="flex items-start gap-2">
+  1264→                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+  1265→                  <p className="text-xs text-amber-800">
+  1266→                    This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
+  1267→                    Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+  1268→                  </p>
+  1269→                </div>
+  1270→              </div>
+  1271→
+  1272→              {/* Actions */}
+  1273→              <div className="flex items-center justify-end gap-2 pt-2">
+  1274→                <Button
+  1275→                  variant="outline"
+  1276→                  onClick={() => setSuspendDialog(null)}
+  1277→                  disabled={suspending}
+  1278→                  className="w-full sm:w-auto"
+  1279→                >
+  1280→                  Cancel
+  1281→                </Button>
+  1282→                <Button
+  1283→                  variant="destructive"
+  1284→                  className="gap-1.5 w-full sm:w-auto"
+  1285→                  onClick={handleSuspend}
+  1286→                  disabled={suspending || !suspensionReason.trim()}
+  1287→                >
+  1288→                  {suspending ? (
+  1289→                    <>
+  1290→                      <Loader2 className="h-4 w-4 animate-spin" />
+  1291→                      Suspending...
+  1292→                    </>
+  1293→                  ) : (
+  1294→                    <>
+  1295→                      <Send className="h-4 w-4" />
+  1296→                      Suspend &amp; Send Notification
+  1297→                    </>
+  1298→                  )}
+  1299→                </Button>
+  1300→              </div>
+  1301→            </div>
+  1302→          )}
+  1303→        </DialogContent>
+  1304→      </Dialog>
+  1305→    </div>
+  1306→  );
+  1307→}
+  1308→

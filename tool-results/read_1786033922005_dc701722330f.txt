@@ -1,0 +1,1285 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback, useMemo } from "react";
+     4→     4→import { usePagination } from "@/hooks/use-pagination";
+     5→     5→import { PaginationControls } from "@/components/shared/pagination-controls";
+     6→     6→import { useAppStore } from "@/lib/store";
+     7→     7→import { req, apiGetProviders, apiUpdateProvider, apiGeocodeAddress, apiGeocodeBatch, apiPoliceSuspendProvider, apiSuperCreateProvider } from "@/lib/api";
+     8→     8→import { toast } from "sonner";
+     9→     9→import { Button } from "@/components/ui/button";
+    10→    10→import { Badge } from "@/components/ui/badge";
+    11→    11→import { Label } from "@/components/ui/label";
+    12→    12→import { Textarea } from "@/components/ui/textarea";
+    13→    13→import { Input } from "@/components/ui/input";
+    14→    14→import { Skeleton } from "@/components/ui/skeleton";
+    15→    15→import { Separator } from "@/components/ui/separator";
+    16→    16→import {
+    17→    17→  Table,
+    18→    18→  TableBody,
+    19→    19→  TableCell,
+    20→    20→  TableHead,
+    21→    21→  TableHeader,
+    22→    22→  TableRow,
+    23→    23→} from "@/components/ui/table";
+    24→    24→import {
+    25→    25→  Dialog,
+    26→    26→  DialogContent,
+    27→    27→  DialogHeader,
+    28→    28→  DialogTitle,
+    29→    29→  DialogDescription,
+    30→    30→  DialogFooter,
+    31→    31→} from "@/components/ui/dialog";
+    32→    32→import {
+    33→    33→  AlertDialog,
+    34→    34→  AlertDialogContent,
+    35→    35→  AlertDialogHeader,
+    36→    36→  AlertDialogTitle,
+    37→    37→  AlertDialogDescription,
+    38→    38→  AlertDialogFooter,
+    39→    39→  AlertDialogAction,
+    40→    40→  AlertDialogCancel,
+    41→    41→} from "@/components/ui/alert-dialog";
+    42→    42→import {
+    43→    43→  Building2,
+    44→    44→  CheckCircle2,
+    45→    45→  XCircle,
+    46→    46→  Ban,
+    47→    47→  Eye,
+    48→    48→  Phone,
+    49→    49→  Mail,
+    50→    50→  MapPin,
+    51→    51→  FileText,
+    52→    52→  Calendar,
+    53→    53→  ShieldCheck,
+    54→    54→  User,
+    55→    55→  Globe,
+    56→    56→  MapPinned,
+    57→    57→  RefreshCw,
+    58→    58→  Crosshair,
+    59→    59→  Send,
+    60→    60→  AlertTriangle,
+    61→    61→  Loader2,
+    62→    62→  UserPlus,
+    63→    63→  KeyRound,
+    64→    64→  Upload,
+    65→    65→  X,
+    66→    66→  RotateCcw,
+    67→    67→} from "lucide-react";
+    68→    68→import dynamic from "next/dynamic";
+    69→    69→
+    70→    70→const CoordinatePicker = dynamic(() => import("@/components/shared/coordinate-picker"), {
+    71→    71→  ssr: false,
+    72→    72→  loading: () => <Skeleton className="h-[250px] w-full rounded-lg" />,
+    73→    73→});
+    74→    74→
+    75→    75→interface Provider {
+    76→    76→  id: string;
+    77→    77→  name: string;
+    78→    78→  ownerName: string;
+    79→    79→  phone: string;
+    80→    80→  email: string;
+    81→    81→  address: string;
+    82→    82→  type: string;
+    83→    83→  licenseNo: string;
+    84→    84→  licenseFile: string;
+    85→    85→  status: string;
+    86→    86→  approvedBy: string | null;
+    87→    87→  approvedAt: string | null;
+    88→    88→  rejectionReason: string;
+    89→    89→  latitude: number;
+    90→    90→  longitude: number;
+    91→    91→  createdAt: string;
+    92→    92→  updatedAt: string;
+    93→    93→  suspensionReason?: string;
+    94→    94→  suspendedAt?: string | null;
+    95→    95→  suspendedBy?: string;
+    96→    96→}
+    97→    97→
+    98→    98→const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    99→    99→  PENDING: { label: "Pending", variant: "secondary" },
+   100→   100→  APPROVED: { label: "Approved", variant: "default" },
+   101→   101→  REJECTED: { label: "Rejected", variant: "destructive" },
+   102→   102→  SUSPENDED: { label: "Suspended", variant: "outline" },
+   103→   103→};
+   104→   104→
+   105→   105→const STATUS_BADGE_CLASS: Record<string, string> = {
+   106→   106→  PENDING: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200",
+   107→   107→  APPROVED: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200",
+   108→   108→  REJECTED: "bg-red-100 text-red-800 hover:bg-red-100 border-red-200",
+   109→   109→  SUSPENDED: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200",
+   110→   110→};
+   111→   111→
+   112→   112→function StatusBadge({ status }: { status: string }) {
+   113→   113→  const cfg = STATUS_CONFIG[status] || { label: status, variant: "secondary" as const };
+   114→   114→  return (
+   115→   115→    <Badge variant={cfg.variant} className={STATUS_BADGE_CLASS[status] || ""}>
+   116→   116→      {cfg.label}
+   117→   117→    </Badge>
+   118→   118→  );
+   119→   119→}
+   120→   120→
+   121→   121→const GUESTHOUSE_TYPES = [
+   122→   122→  { value: "GUEST_HOUSE", label: "Guest House" },
+   123→   123→  { value: "HOTEL", label: "Hotel" },
+   124→   124→  { value: "HOSTEL", label: "Hostel" },
+   125→   125→  { value: "LODGE", label: "Lodge" },
+   126→   126→  { value: "RESORT", label: "Resort" },
+   127→   127→];
+   128→   128→
+   129→   129→interface RegisterForm {
+   130→   130→  name: string;
+   131→   131→  ownerName: string;
+   132→   132→  phone: string;
+   133→   133→  email: string;
+   134→   134→  address: string;
+   135→   135→  type: string;
+   136→   136→  licenseNo: string;
+   137→   137→  licenseFileData: string;
+   138→   138→  licenseFileName: string;
+   139→   139→  username: string;
+   140→   140→  password: string;
+   141→   141→}
+   142→   142→
+   143→   143→const emptyRegisterForm: RegisterForm = {
+   144→   144→  name: "",
+   145→   145→  ownerName: "",
+   146→   146→  phone: "",
+   147→   147→  email: "",
+   148→   148→  address: "",
+   149→   149→  type: "GUEST_HOUSE",
+   150→   150→  licenseNo: "",
+   151→   151→  licenseFileData: "",
+   152→   152→  licenseFileName: "",
+   153→   153→  username: "",
+   154→   154→  password: "",
+   155→   155→};
+   156→   156→
+   157→   157→export default function ProvidersPage() {
+   158→   158→  const { refreshKey, triggerRefresh, currentUser } = useAppStore();
+   159→   159→  const isSuperuser = currentUser?.role === "SUPERUSER";
+   160→   160→  const [providers, setProviders] = useState<Provider[]>([]);
+   161→   161→  const [loading, setLoading] = useState(true);
+   162→   162→  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+   163→   163→  const [detailOpen, setDetailOpen] = useState(false);
+   164→   164→
+   165→   165→  // Registration form
+   166→   166→  const [registerOpen, setRegisterOpen] = useState(false);
+   167→   167→  const [registerForm, setRegisterForm] = useState<RegisterForm>(emptyRegisterForm);
+   168→   168→  const [registering, setRegistering] = useState(false);
+   169→   169→
+   170→   170→  // Coordinate editing
+   171→   171→  const [coordProvider, setCoordProvider] = useState<Provider | null>(null);
+   172→   172→  const [coordOpen, setCoordOpen] = useState(false);
+   173→   173→  const [editLat, setEditLat] = useState(9.02);
+   174→   174→  const [editLng, setEditLng] = useState(38.75);
+   175→   175→  const [savingCoord, setSavingCoord] = useState(false);
+   176→   176→  const [geocodingOne, setGeocodingOne] = useState(false);
+   177→   177→
+   178→   178→  // Batch geocode
+   179→   179→  const [geocodingAll, setGeocodingAll] = useState(false);
+   180→   180→  const [batchResult, setBatchResult] = useState<{ updated: number; failed: number; total: number; results?: any[] } | null>(null);
+   181→   181→  const [batchOpen, setBatchOpen] = useState(false);
+   182→   182→
+   183→   183→  // Action dialogs
+   184→   184→  const [rejectDialog, setRejectDialog] = useState<Provider | null>(null);
+   185→   185→  const [rejectReason, setRejectReason] = useState("");
+   186→   186→  const [confirmAction, setConfirmAction] = useState<{ provider: Provider; action: string } | null>(null);
+   187→   187→  const [actioning, setActioning] = useState(false);
+   188→   188→
+   189→   189→  // Suspension dialog (with reason + notification)
+   190→   190→  const [suspendDialog, setSuspendDialog] = useState<Provider | null>(null);
+   191→   191→  const [suspensionReason, setSuspensionReason] = useState("");
+   192→   192→  const [providerMessage, setProviderMessage] = useState("");
+   193→   193→  const [suspending, setSuspending] = useState(false);
+   194→   194→
+   195→   195→  const pagination = usePagination({ totalItems: providers.length, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
+   196→   196→  const paginatedProviders = useMemo(() => pagination.paginate(providers), [providers, pagination]);
+   197→   197→
+   198→   198→  const fetchProviders = useCallback(async () => {
+   199→   199→    try {
+   200→   200→      setLoading(true);
+   201→   201→      const data = await apiGetProviders();
+   202→   202→      setProviders(Array.isArray(data) ? data : []);
+   203→   203→    } catch (err: unknown) {
+   204→   204→      const message = err instanceof Error ? err.message : "Failed to load providers";
+   205→   205→      toast.error(message);
+   206→   206→    } finally {
+   207→   207→      setLoading(false);
+   208→   208→    }
+   209→   209→  }, []);
+   210→   210→
+   211→   211→  useEffect(() => {
+   212→   212→    fetchProviders();
+   213→   213→  }, [fetchProviders, refreshKey]);
+   214→   214→
+   215→   215→  const openDetail = (provider: Provider) => {
+   216→   216→    setSelectedProvider(provider);
+   217→   217→    setDetailOpen(true);
+   218→   218→  };
+   219→   219→
+   220→   220→  const openReject = (provider: Provider) => {
+   221→   221→    setRejectDialog(provider);
+   222→   222→    setRejectReason("");
+   223→   223→  };
+   224→   224→
+   225→   225→  const openCoordPicker = (provider: Provider) => {
+   226→   226→    setCoordProvider(provider);
+   227→   227→    setEditLat(provider.latitude || 9.02);
+   228→   228→    setEditLng(provider.longitude || 38.75);
+   229→   229→    setCoordOpen(true);
+   230→   230→  };
+   231→   231→
+   232→   232→  const geocodeSingle = async () => {
+   233→   233→    if (!coordProvider || !coordProvider.address) {
+   234→   234→      toast.error("Provider has no address to geocode");
+   235→   235→      return;
+   236→   236→    }
+   237→   237→    try {
+   238→   238→      setGeocodingOne(true);
+   239→   239→      const result: any = await apiGeocodeAddress(coordProvider.address);
+   240→   240→      if (result.lat && result.lng) {
+   241→   241→        setEditLat(result.lat);
+   242→   242→        setEditLng(result.lng);
+   243→   243→        toast.success(`Found: ${result.lat.toFixed(4)}, ${result.lng.toFixed(4)}`);
+   244→   244→      } else {
+   245→   245→        toast.error("Could not find coordinates for this address");
+   246→   246→      }
+   247→   247→    } catch {
+   248→   248→      toast.error("Geocoding failed");
+   249→   249→    } finally {
+   250→   250→      setGeocodingOne(false);
+   251→   251→    }
+   252→   252→  };
+   253→   253→
+   254→   254→  const saveCoordinates = async () => {
+   255→   255→    if (!coordProvider) return;
+   256→   256→    try {
+   257→   257→      setSavingCoord(true);
+   258→   258→      await apiUpdateProvider(coordProvider.id, { status: coordProvider.status, latitude: editLat, longitude: editLng });
+   259→   259→      toast.success("Coordinates updated");
+   260→   260→      setCoordOpen(false);
+   261→   261→      triggerRefresh();
+   262→   262→    } catch {
+   263→   263→      toast.error("Failed to save coordinates");
+   264→   264→    } finally {
+   265→   265→      setSavingCoord(false);
+   266→   266→    }
+   267→   267→  };
+   268→   268→
+   269→   269→  const batchGeocode = async () => {
+   270→   270→    try {
+   271→   271→      setGeocodingAll(true);
+   272→   272→      const result: any = await apiGeocodeBatch();
+   273→   273→      setBatchResult(result);
+   274→   274→      toast.success(result.message || `Geocoded ${result.updated} providers`);
+   275→   275→      triggerRefresh();
+   276→   276→    } catch {
+   277→   277→      toast.error("Batch geocoding failed");
+   278→   278→    } finally {
+   279→   279→      setGeocodingAll(false);
+   280→   280→    }
+   281→   281→  };
+   282→   282→
+   283→   283→  const handleReject = async () => {
+   284→   284→    if (!rejectDialog || !rejectReason.trim()) {
+   285→   285→      toast.error("Rejection reason is required");
+   286→   286→      return;
+   287→   287→    }
+   288→   288→    try {
+   289→   289→      setActioning(true);
+   290→   290→      await apiUpdateProvider(rejectDialog.id, { status: "REJECTED", rejectionReason: rejectReason.trim() });
+   291→   291→      toast.success("Provider rejected");
+   292→   292→      setRejectDialog(null);
+   293→   293→      setRejectReason("");
+   294→   294→      triggerRefresh();
+   295→   295→    } catch (err: unknown) {
+   296→   296→      const message = err instanceof Error ? err.message : "Failed to reject provider";
+   297→   297→      toast.error(message);
+   298→   298→    } finally {
+   299→   299→      setActioning(false);
+   300→   300→    }
+   301→   301→  };
+   302→   302→
+   303→   303→  const handleStatusAction = async (provider: Provider, status: string) => {
+   304→   304→    try {
+   305→   305→      setActioning(true);
+   306→   306→      if (status === "REACTIVATE") {
+   307→   307→        await req(`/api/providers/${provider.id}/reactivate`, { method: "POST" });
+   308→   308→        toast.success(`"${provider.name}" has been reactivated and is fully active`);
+   309→   309→      } else {
+   310→   310→        await apiUpdateProvider(provider.id, { status });
+   311→   311→        toast.success(`Provider ${status.toLowerCase()}`);
+   312→   312→      }
+   313→   313→      setConfirmAction(null);
+   314→   314→      triggerRefresh();
+   315→   315→    } catch (err: unknown) {
+   316→   316→      const message = err instanceof Error ? err.message : "Failed to update provider";
+   317→   317→      toast.error(message);
+   318→   318→    } finally {
+   319→   319→      setActioning(false);
+   320→   320→    }
+   321→   321→  };
+   322→   322→
+   323→   323→  const openSuspend = (provider: Provider) => {
+   324→   324→    setSuspendDialog(provider);
+   325→   325→    setSuspensionReason("");
+   326→   326→    setProviderMessage("");
+   327→   327→  };
+   328→   328→
+   329→   329→  const handleRegister = async () => {
+   330→   330→    if (!registerForm.name.trim() || !registerForm.ownerName.trim() || !registerForm.phone.trim()) {
+   331→   331→      toast.error("Guesthouse name, owner name, and phone are required");
+   332→   332→      return;
+   333→   333→    }
+   334→   334→    if (!registerForm.username.trim() || !registerForm.password.trim()) {
+   335→   335→      toast.error("Operator username and password are required");
+   336→   336→      return;
+   337→   337→    }
+   338→   338→    if (registerForm.password.trim().length < 4) {
+   339→   339→      toast.error("Password must be at least 4 characters");
+   340→   340→      return;
+   341→   341→    }
+   342→   342→    try {
+   343→   343→      setRegistering(true);
+   344→   344→      await apiSuperCreateProvider({
+   345→   345→        ...registerForm,
+   346→   346→        licenseFile: registerForm.licenseFileData || undefined,
+   347→   347→      });
+   348→   348→      toast.success(`"${registerForm.name}" registered and approved successfully`);
+   349→   349→      setRegisterOpen(false);
+   350→   350→      setRegisterForm(emptyRegisterForm);
+   351→   351→      triggerRefresh();
+   352→   352→    } catch (err: unknown) {
+   353→   353→      toast.error(err instanceof Error ? err.message : "Failed to register guesthouse");
+   354→   354→    } finally {
+   355→   355→      setRegistering(false);
+   356→   356→    }
+   357→   357→  };
+   358→   358→
+   359→   359→  const handleSuspend = async () => {
+   360→   360→    if (!suspendDialog) return;
+   361→   361→    if (!suspensionReason.trim()) {
+   362→   362→      toast.error("Please provide a reason for suspension");
+   363→   363→      return;
+   364→   364→    }
+   365→   365→    try {
+   366→   366→      setSuspending(true);
+   367→   367→      await apiPoliceSuspendProvider({
+   368→   368→        providerId: suspendDialog.id,
+   369→   369→        suspensionReason: suspensionReason.trim(),
+   370→   370→        providerMessage: providerMessage.trim() || undefined,
+   371→   371→      });
+   372→   372→      toast.success(`"${suspendDialog.name}" has been suspended. Notification sent to provider.`);
+   373→   373→      setSuspendDialog(null);
+   374→   374→      setSuspensionReason("");
+   375→   375→      setProviderMessage("");
+   376→   376→      triggerRefresh();
+   377→   377→    } catch (err: unknown) {
+   378→   378→      toast.error(err instanceof Error ? err.message : "Failed to suspend provider");
+   379→   379→    } finally {
+   380→   380→      setSuspending(false);
+   381→   381→    }
+   382→   382→  };
+   383→   383→
+   384→   384→  const formatDate = (dateStr: string | null) => {
+   385→   385→    if (!dateStr) return "—";
+   386→   386→    return new Date(dateStr).toLocaleDateString("en-US", {
+   387→   387→      year: "numeric",
+   388→   388→      month: "short",
+   389→   389→      day: "numeric",
+   390→   390→    });
+   391→   391→  };
+   392→   392→
+   393→   393→  const approvedCount = providers.filter((p) => p.status === "APPROVED").length;
+   394→   394→  const pendingCount = providers.filter((p) => p.status === "PENDING").length;
+   395→   395→  const withCoords = providers.filter(
+   396→   396→    (p) => p.latitude !== 9.02 || p.longitude !== 38.75,
+   397→   397→  ).length;
+   398→   398→
+   399→   399→  return (
+   400→   400→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   401→   401→      {/* Summary Cards */}
+   402→   402→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+   403→   403→        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+   404→   404→          <div className="flex items-center gap-2 sm:gap-3">
+   405→   405→            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-slate-100">
+   406→   406→              <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+   407→   407→            </div>
+   408→   408→            <div>
+   409→   409→              <p className="text-[10px] sm:text-sm text-muted-foreground">Total</p>
+   410→   410→              <p className="text-lg sm:text-2xl font-bold">{providers.length}</p>
+   411→   411→            </div>
+   412→   412→          </div>
+   413→   413→        </div>
+   414→   414→        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+   415→   415→          <div className="flex items-center gap-2 sm:gap-3">
+   416→   416→            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-50">
+   417→   417→              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+   418→   418→            </div>
+   419→   419→            <div>
+   420→   420→              <p className="text-[10px] sm:text-sm text-muted-foreground">Approved</p>
+   421→   421→              <p className="text-lg sm:text-2xl font-bold text-emerald-600">{approvedCount}</p>
+   422→   422→            </div>
+   423→   423→          </div>
+   424→   424→        </div>
+   425→   425→        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+   426→   426→          <div className="flex items-center gap-2 sm:gap-3">
+   427→   427→            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-yellow-50">
+   428→   428→              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+   429→   429→            </div>
+   430→   430→            <div>
+   431→   431→              <p className="text-[10px] sm:text-sm text-muted-foreground">Pending</p>
+   432→   432→              <p className="text-lg sm:text-2xl font-bold text-yellow-600">{pendingCount}</p>
+   433→   433→            </div>
+   434→   434→          </div>
+   435→   435→        </div>
+   436→   436→        <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+   437→   437→          <div className="flex items-center gap-2 sm:gap-3">
+   438→   438→            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-blue-50">
+   439→   439→              <MapPinned className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+   440→   440→            </div>
+   441→   441→            <div>
+   442→   442→              <p className="text-[10px] sm:text-sm text-muted-foreground">With Coords</p>
+   443→   443→              <p className="text-lg sm:text-2xl font-bold text-blue-600">{withCoords}/{providers.length}</p>
+   444→   444→            </div>
+   445→   445→          </div>
+   446→   446→        </div>
+   447→   447→      </div>
+   448→   448→
+   449→   449→      {/* Geocode All Button */}
+   450→   450→      <div className="flex items-center justify-between">
+   451→   451→        <div>
+   452→   452→          <h2 className="text-base sm:text-lg font-semibold">
+   453→   453→            {isSuperuser ? "Guesthouses" : "Provider Applications"}
+   454→   454→          </h2>
+   455→   455→          <p className="text-xs sm:text-sm text-muted-foreground">
+   456→   456→            {isSuperuser
+   457→   457→              ? "Register new guesthouses and manage existing ones."
+   458→   458→              : "Manage registrations, licensing, and map locations"}
+   459→   459→          </p>
+   460→   460→        </div>
+   461→   461→        <div className="flex gap-2">
+   462→   462→          {isSuperuser && (
+   463→   463→            <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
+   464→   464→              <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
+   465→   465→            </Button>
+   466→   466→          )}
+   467→   467→          {!isSuperuser && (
+   468→   468→            <Button variant="outline" size="sm" onClick={() => setBatchOpen(true)} disabled={geocodingAll}>
+   469→   469→              <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingAll ? "animate-spin" : ""}`} />
+   470→   470→              {geocodingAll ? "Geocoding..." : "Geocode All"}
+   471→   471→            </Button>
+   472→   472→          )}
+   473→   473→        </div>
+   474→   474→      </div>
+   475→   475→
+   476→   476→      {/* Providers Table/Cards */}
+   477→   477→      <div className="rounded-xl border bg-card shadow-sm">
+   478→   478→        {loading ? (
+   479→   479→          <div className="space-y-3 p-4 sm:p-6">
+   480→   480→            {Array.from({ length: 5 }).map((_, i) => (
+   481→   481→              <Skeleton key={i} className="h-20 w-full sm:h-12" />
+   482→   482→            ))}
+   483→   483→          </div>
+   484→   484→        ) : providers.length === 0 ? (
+   485→   485→          <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+   486→   486→            <Building2 className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+   487→   487→            <p className="text-xs sm:text-sm text-muted-foreground">No providers registered yet</p>
+   488→   488→          </div>
+   489→   489→        ) : (
+   490→   490→          <>
+   491→   491→            {/* Mobile/Tablet: Card layout */}
+   492→   492→            <div className="divide-y lg:hidden">
+   493→   493→              {paginatedProviders.map((provider) => (
+   494→   494→                <div key={provider.id} className={`p-3 sm:p-4 ${provider.status === "SUSPENDED" ? "bg-orange-50/60" : ""}`}>
+   495→   495→                  <div className="flex items-start justify-between gap-2">
+   496→   496→                    <button className="min-w-0 flex-1 text-left" onClick={() => openDetail(provider)}>
+   497→   497→                      <div className="flex items-center gap-2">
+   498→   498→                        <p className="truncate text-sm font-medium">{provider.name}</p>
+   499→   499→                        <StatusBadge status={provider.status} />
+   500→   500→                      </div>
+   501→   501→                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+   502→   502→                        <span className="flex items-center gap-1"><User className="h-3 w-3" /> {provider.ownerName}</span>
+   503→   503→                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {provider.phone}</span>
+   504→   504→                      </div>
+   505→   505→                      {provider.address && (
+   506→   506→                        <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+   507→   507→                          <MapPin className="h-3 w-3" /> {provider.address}
+   508→   508→                        </div>
+   509→   509→                      )}
+   510→   510→                      <div className="mt-1 flex items-center gap-2 text-[10px]">
+   511→   511→                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{provider.type.replace(/_/g, " ")}</span>
+   512→   512→                        {(provider.latitude !== 9.02 || provider.longitude !== 38.75) ? (
+   513→   513→                          <span className="flex items-center gap-0.5 text-emerald-600"><Crosshair className="h-2.5 w-2.5" /> {provider.latitude.toFixed(4)}, {provider.longitude.toFixed(4)}</span>
+   514→   514→                        ) : (
+   515→   515→                          <span className="text-muted-foreground">No coordinates</span>
+   516→   516→                        )}
+   517→   517→                      </div>
+   518→   518→                    </button>
+   519→   519→                  </div>
+   520→   520→
+   521→   521→                  <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5 flex-wrap">
+   522→   522→                    <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100" onClick={() => openDetail(provider)}>
+   523→   523→                      <Eye className="h-3.5 w-3.5" /> Details
+   524→   524→                    </button>
+   525→   525→                    {!isSuperuser && (
+   526→   526→                      <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50" onClick={() => openCoordPicker(provider)}>
+   527→   527→                        <MapPinned className="h-3.5 w-3.5" /> Set Location
+   528→   528→                      </button>
+   529→   529→                    )}
+   530→   530→                    {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+   531→   531→                      <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
+   532→   532→                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+   533→   533→                      </button>
+   534→   534→                    )}
+   535→   535→                    {provider.status === "SUSPENDED" && (
+   536→   536→                      <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
+   537→   537→                        <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+   538→   538→                      </button>
+   539→   539→                    )}
+   540→   540→                    {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+   541→   541→                      <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
+   542→   542→                        <XCircle className="h-3.5 w-3.5" /> Reject
+   543→   543→                      </button>
+   544→   544→                    )}
+   545→   545→                    {provider.status === "APPROVED" && (
+   546→   546→                      <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
+   547→   547→                        <Ban className="h-3.5 w-3.5" /> Suspend
+   548→   548→                      </button>
+   549→   549→                    )}
+   550→   550→                  </div>
+   551→   551→                </div>
+   552→   552→              ))}
+   553→   553→            </div>
+   554→   554→
+   555→   555→            {/* Desktop: Table layout */}
+   556→   556→            <div className="hidden lg:block overflow-x-auto">
+   557→   557→              <Table>
+   558→   558→                <TableHeader>
+   559→   559→                  <TableRow>
+   560→   560→                    <TableHead>Provider Name</TableHead>
+   561→   561→                    <TableHead>Address</TableHead>
+   562→   562→                    <TableHead>Owner</TableHead>
+   563→   563→                    <TableHead>Phone</TableHead>
+   564→   564→                    <TableHead>Coordinates</TableHead>
+   565→   565→                    <TableHead>Status</TableHead>
+   566→   566→                    <TableHead className="text-right">Actions</TableHead>
+   567→   567→                  </TableRow>
+   568→   568→                </TableHeader>
+   569→   569→                <TableBody>
+   570→   570→                  {paginatedProviders.map((provider) => (
+   571→   571→                    <TableRow key={provider.id} className={`cursor-pointer hover:bg-muted/50 ${provider.status === "SUSPENDED" ? "bg-orange-50/70 hover:bg-orange-100/60" : ""}`} onClick={() => openDetail(provider)}>
+   572→   572→                      <TableCell className="font-medium">{provider.name}</TableCell>
+   573→   573→                      <TableCell className="max-w-[150px] truncate text-xs">{provider.address || "—"}</TableCell>
+   574→   574→                      <TableCell>{provider.ownerName}</TableCell>
+   575→   575→                      <TableCell>{provider.phone}</TableCell>
+   576→   576→                      <TableCell>
+   577→   577→                        {(provider.latitude !== 9.02 || provider.longitude !== 38.75) ? (
+   578→   578→                          <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-600">
+   579→   579→                            <Crosshair className="h-3 w-3" /> {provider.latitude.toFixed(4)}, {provider.longitude.toFixed(4)}
+   580→   580→                          </span>
+   581→   581→                        ) : (
+   582→   582→                          <span className="text-[10px] text-muted-foreground">Not set</span>
+   583→   583→                        )}
+   584→   584→                      </TableCell>
+   585→   585→                      <TableCell><StatusBadge status={provider.status} /></TableCell>
+   586→   586→                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+   587→   587→                        <div className="flex items-center justify-end gap-1">
+   588→   588→                          {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+   589→   589→                            <Button size="sm" variant="ghost" className="h-8 text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
+   590→   590→                              <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+   591→   591→                            </Button>
+   592→   592→                          )}
+   593→   593→                          {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+   594→   594→                            <Button size="sm" variant="ghost" className="h-8 text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
+   595→   595→                              <XCircle className="mr-1 h-4 w-4" /> Reject
+   596→   596→                            </Button>
+   597→   597→                          )}
+   598→   598→                          {provider.status === "APPROVED" && (
+   599→   599→                            <Button size="sm" variant="ghost" className="h-8 text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
+   600→   600→                              <Ban className="mr-1 h-4 w-4" /> Suspend
+   601→   601→                            </Button>
+   602→   602→                          )}
+   603→   603→                          {provider.status === "SUSPENDED" && (
+   604→   604→                            <Button size="sm" variant="ghost" className="h-8 text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
+   605→   605→                              <RotateCcw className="mr-1 h-4 w-4" /> Reactivate
+   606→   606→                            </Button>
+   607→   607→                          )}
+   608→   608→                        </div>
+   609→   609→                      </TableCell>
+   610→   610→                    </TableRow>
+   611→   611→                  ))}
+   612→   612→                </TableBody>
+   613→   613→              </Table>
+   614→   614→            </div>
+   615→   615→          </>
+   616→   616→        )}
+   617→   617→      </div>
+   618→   618→
+   619→   619→      <PaginationControls
+   620→   620→        currentPage={pagination.currentPage}
+   621→   621→        totalPages={pagination.totalPages}
+   622→   622→        pageSize={pagination.pageSize}
+   623→   623→        pageSizeOptions={pagination.pageSizeOptions}
+   624→   624→        totalItems={providers.length}
+   625→   625→        rangeInfo={pagination.rangeInfo}
+   626→   626→        goToPage={pagination.goToPage}
+   627→   627→        setPageSize={pagination.setPageSize}
+   628→   628→      />
+   629→   629→
+   630→   630→      {/* Provider Detail Dialog */}
+   631→   631→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   632→   632→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   633→   633→          <DialogHeader>
+   634→   634→            <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+   635→   635→              <Building2 className="h-5 w-5" /> {selectedProvider?.name}
+   636→   636→            </DialogTitle>
+   637→   637→            <DialogDescription className="text-xs sm:text-sm">Registration details</DialogDescription>
+   638→   638→          </DialogHeader>
+   639→   639→          {selectedProvider && (
+   640→   640→            <div className="space-y-4">
+   641→   641→              <div className="flex items-center gap-3">
+   642→   642→                <StatusBadge status={selectedProvider.status} />
+   643→   643→                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">{selectedProvider.type.replace(/_/g, " ")}</span>
+   644→   644→                {(selectedProvider.latitude !== 9.02 || selectedProvider.longitude !== 38.75) && (
+   645→   645→                  <span className="flex items-center gap-1 text-[10px] text-emerald-600"><Crosshair className="h-3 w-3" /> {selectedProvider.latitude.toFixed(4)}, {selectedProvider.longitude.toFixed(4)}</span>
+   646→   646→                )}
+   647→   647→              </div>
+   648→   648→              <Separator />
+   649→   649→              <div className="space-y-3 text-sm">
+   650→   650→                <div className="flex items-center gap-2.5">
+   651→   651→                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+   652→   652→                  <div>
+   653→   653→                    <p className="text-[10px] text-muted-foreground">Owner</p>
+   654→   654→                    <p className="font-medium">{selectedProvider.ownerName}</p>
+   655→   655→                  </div>
+   656→   656→                </div>
+   657→   657→                <div className="flex items-center gap-2.5">
+   658→   658→                  <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+   659→   659→                  <div>
+   660→   660→                    <p className="text-[10px] text-muted-foreground">Phone</p>
+   661→   661→                    <p className="font-medium">{selectedProvider.phone}</p>
+   662→   662→                  </div>
+   663→   663→                </div>
+   664→   664→                {selectedProvider.email && (
+   665→   665→                  <div className="flex items-center gap-2.5">
+   666→   666→                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+   667→   667→                    <div>
+   668→   668→                      <p className="text-[10px] text-muted-foreground">Email</p>
+   669→   669→                      <p className="font-medium">{selectedProvider.email}</p>
+   670→   670→                    </div>
+   671→   671→                  </div>
+   672→   672→                )}
+   673→   673→                {selectedProvider.address && (
+   674→   674→                  <div className="flex items-start gap-2.5">
+   675→   675→                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+   676→   676→                    <div>
+   677→   677→                      <p className="text-[10px] text-muted-foreground">Address</p>
+   678→   678→                      <p className="font-medium">{selectedProvider.address}</p>
+   679→   679→                    </div>
+   680→   680→                  </div>
+   681→   681→                )}
+   682→   682→                {selectedProvider.licenseNo && (
+   683→   683→                  <div className="flex items-center gap-2.5">
+   684→   684→                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+   685→   685→                    <div>
+   686→   686→                      <p className="text-[10px] text-muted-foreground">License No</p>
+   687→   687→                      <p className="font-mono font-medium">{selectedProvider.licenseNo}</p>
+   688→   688→                    </div>
+   689→   689→                  </div>
+   690→   690→                )}
+   691→   691→                <div className="flex items-center gap-2.5">
+   692→   692→                  <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+   693→   693→                  <div>
+   694→   694→                    <p className="text-[10px] text-muted-foreground">Registered</p>
+   695→   695→                    <p className="font-medium">{formatDate(selectedProvider.createdAt)}</p>
+   696→   696→                  </div>
+   697→   697→                </div>
+   698→   698→                {selectedProvider.approvedAt && (
+   699→   699→                  <div className="flex items-center gap-2.5">
+   700→   700→                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+   701→   701→                    <div>
+   702→   702→                      <p className="text-[10px] text-muted-foreground">Approved {selectedProvider.approvedBy ? `by ${selectedProvider.approvedBy}` : ""}</p>
+   703→   703→                      <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
+   704→   704→                    </div>
+   705→   705→                  </div>
+   706→   706→                )}
+   707→   707→              </div>
+   708→   708→              <div className="flex gap-2">
+   709→   709→                {!isSuperuser && selectedProvider.status === "APPROVED" && (
+   710→   710→                  <Button size="sm" variant="outline" onClick={() => { setDetailOpen(false); openCoordPicker(selectedProvider); }}>
+   711→   711→                    <MapPinned className="mr-1 h-3.5 w-3.5" /> Set Map Location
+   712→   712→                  </Button>
+   713→   713→                )}
+   714→   714→                {selectedProvider.status === "APPROVED" && (
+   715→   715→                  <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => { setDetailOpen(false); openSuspend(selectedProvider); }}>
+   716→   716→                    <Ban className="h-3.5 w-3.5" /> Suspend
+   717→   717→                  </Button>
+   718→   718→                )}
+   719→   719→                {selectedProvider.status === "SUSPENDED" && (
+   720→   720→                  <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => { setDetailOpen(false); setConfirmAction({ provider: selectedProvider, action: "REACTIVATE" }); }}>
+   721→   721→                    <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+   722→   722→                  </Button>
+   723→   723→                )}
+   724→   724→                {selectedProvider.licenseFile && (
+   725→   725→                  <a href={selectedProvider.licenseFile} target="_blank" rel="noopener noreferrer"
+   726→   726→                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs sm:text-sm font-medium text-primary hover:bg-muted">
+   727→   727→                    <FileText className="h-4 w-4" /> View License
+   728→   728→                  </a>
+   729→   729→                )}
+   730→   730→              </div>
+   731→   731→              {selectedProvider.rejectionReason && (
+   732→   732→                <>
+   733→   733→                  <Separator />
+   734→   734→                  <div className="space-y-1.5">
+   735→   735→                    <Label className="text-red-600 text-xs">Rejection Reason</Label>
+   736→   736→                    <p className="rounded-lg bg-red-50 p-3 text-xs sm:text-sm text-red-800">{selectedProvider.rejectionReason}</p>
+   737→   737→                  </div>
+   738→   738→                </>
+   739→   739→              )}
+   740→   740→              {selectedProvider.status === "SUSPENDED" && (selectedProvider as any).suspensionReason && (
+   741→   741→                <>
+   742→   742→                  <Separator />
+   743→   743→                  <div className="space-y-1.5">
+   744→   744→                    <Label className="text-orange-600 text-xs">Suspension Reason</Label>
+   745→   745→                    <p className="rounded-lg bg-orange-50 p-3 text-xs sm:text-sm text-orange-800">{(selectedProvider as any).suspensionReason}</p>
+   746→   746→                    {(selectedProvider as any).suspendedBy && (
+   747→   747→                      <p className="text-[11px] text-slate-500">Suspended by: {(selectedProvider as any).suspendedBy}</p>
+   748→   748→                    )}
+   749→   749→                    {(selectedProvider as any).suspendedAt && (
+   750→   750→                      <p className="text-[11px] text-slate-500">Suspended on: {formatDate((selectedProvider as any).suspendedAt)}</p>
+   751→   751→                    )}
+   752→   752→                  </div>
+   753→   753→                </>
+   754→   754→              )}
+   755→   755→            </div>
+   756→   756→          )}
+   757→   757→        </DialogContent>
+   758→   758→      </Dialog>
+   759→   759→
+   760→   760→      {/* Coordinate Picker Dialog */}
+   761→   761→      <Dialog open={coordOpen} onOpenChange={setCoordOpen}>
+   762→   762→        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   763→   763→          <DialogHeader>
+   764→   764→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   765→   765→              <MapPinned className="h-5 w-5" /> Set Location — {coordProvider?.name}
+   766→   766→            </DialogTitle>
+   767→   767→            <DialogDescription className="text-xs sm:text-sm">
+   768→   768→              {coordProvider?.address ? `Address: ${coordProvider.address}` : "No address set for this provider"}
+   769→   769→            </DialogDescription>
+   770→   770→          </DialogHeader>
+   771→   771→          {coordProvider && (
+   772→   772→            <div className="space-y-4">
+   773→   773→              {/* Map Picker */}
+   774→   774→              <CoordinatePicker
+   775→   775→                latitude={editLat}
+   776→   776→                longitude={editLng}
+   777→   777→                address={coordProvider.address || ""}
+   778→   778→                onChange={(lat, lng) => { setEditLat(lat); setEditLng(lng); }}
+   779→   779→              />
+   780→   780→
+   781→   781→              {/* Manual input + Geocode */}
+   782→   782→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   783→   783→                <div className="space-y-1.5">
+   784→   784→                  <Label className="text-xs">Latitude</Label>
+   785→   785→                  <Input type="number" step="0.0001" value={editLat} onChange={(e) => setEditLat(parseFloat(e.target.value) || 9.02)} className="text-xs font-mono" />
+   786→   786→                </div>
+   787→   787→                <div className="space-y-1.5">
+   788→   788→                  <Label className="text-xs">Longitude</Label>
+   789→   789→                  <Input type="number" step="0.0001" value={editLng} onChange={(e) => setEditLng(parseFloat(e.target.value) || 38.75)} className="text-xs font-mono" />
+   790→   790→                </div>
+   791→   791→              </div>
+   792→   792→
+   793→   793→              <DialogFooter className="flex-col gap-2 sm:flex-row">
+   794→   794→                {coordProvider.address && (
+   795→   795→                  <Button variant="outline" onClick={geocodeSingle} disabled={geocodingOne} className="w-full sm:w-auto">
+   796→   796→                    <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingOne ? "animate-spin" : ""}`} />
+   797→   797→                    {geocodingOne ? "Looking up..." : "Auto-detect from Address"}
+   798→   798→                  </Button>
+   799→   799→                )}
+   800→   800→                <Button variant="outline" onClick={() => setCoordOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+   801→   801→                <Button onClick={saveCoordinates} disabled={savingCoord} className="w-full sm:w-auto">
+   802→   802→                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${savingCoord ? "animate-spin" : ""}`} />
+   803→   803→                  {savingCoord ? "Saving..." : "Save Location"}
+   804→   804→                </Button>
+   805→   805→              </DialogFooter>
+   806→   806→            </div>
+   807→   807→          )}
+   808→   808→        </DialogContent>
+   809→   809→      </Dialog>
+   810→   810→
+   811→   811→      {/* Batch Geocode Dialog */}
+   812→   812→      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+   813→   813→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   814→   814→          <DialogHeader>
+   815→   815→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   816→   816→              <Globe className="h-5 w-5" /> Batch Geocode All Providers
+   817→   817→            </DialogTitle>
+   818→   818→            <DialogDescription className="text-xs sm:text-sm">
+   819→   819→              Automatically converts provider addresses to GPS coordinates using OpenStreetMap.
+   820→   820→            </DialogDescription>
+   821→   821→          </DialogHeader>
+   822→   822→          <div className="space-y-4">
+   823→   823→            <div className="rounded-lg border bg-amber-50 p-3 text-xs text-amber-800">
+   824→   824→              <p className="font-medium mb-1">How it works:</p>
+   825→   825→              <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+   826→   826→                <li>Only processes APPROVED providers with an address</li>
+   827→   827→                <li>Skips providers that already have real coordinates set</li>
+   828→   828→                <li>Uses OpenStreetMap Nominatim (free, no API key needed)</li>
+   829→   829→                <li>Takes ~1-2 seconds per provider due to rate limiting</li>
+   830→   830→              </ul>
+   831→   831→            </div>
+   832→   832→            {!batchResult ? (
+   833→   833→              <div className="flex justify-end gap-2">
+   834→   834→                <Button variant="outline" onClick={() => setBatchOpen(false)}>Cancel</Button>
+   835→   835→                <Button onClick={batchGeocode} disabled={geocodingAll}>
+   836→   836→                  <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingAll ? "animate-spin" : ""}`} />
+   837→   837→                  {geocodingAll ? "Geocoding..." : "Start Geocoding"}
+   838→   838→                </Button>
+   839→   839→              </div>
+   840→   840→            ) : (
+   841→   841→              <div className="space-y-3">
+   842→   842→                <div className="grid grid-cols-3 gap-2">
+   843→   843→                  <div className="rounded-lg border p-2.5 text-center">
+   844→   844→                    <p className="text-lg font-bold text-emerald-600">{batchResult.updated}</p>
+   845→   845→                    <p className="text-[10px] text-muted-foreground">Updated</p>
+   846→   846→                  </div>
+   847→   847→                  <div className="rounded-lg border p-2.5 text-center">
+   848→   848→                    <p className="text-lg font-bold text-red-600">{batchResult.failed}</p>
+   849→   849→                    <p className="text-[10px] text-muted-foreground">Failed</p>
+   850→   850→                  </div>
+   851→   851→                  <div className="rounded-lg border p-2.5 text-center">
+   852→   852→                    <p className="text-lg font-bold">{batchResult.total}</p>
+   853→   853→                    <p className="text-[10px] text-muted-foreground">Processed</p>
+   854→   854→                  </div>
+   855→   855→                </div>
+   856→   856→                {batchResult.results && (
+   857→   857→                  <div className="max-h-40 overflow-y-auto rounded-lg border divide-y">
+   858→   858→                    {batchResult.results.map((r: any, i: number) => (
+   859→   859→                      <div key={i} className="flex items-center justify-between p-2 text-xs">
+   860→   860→                        <div className="min-w-0">
+   861→   861→                          <p className="font-medium truncate">{r.name}</p>
+   862→   862→                          <p className="text-[10px] text-muted-foreground truncate">{r.address}</p>
+   863→   863→                        </div>
+   864→   864→                        {r.error ? (
+   865→   865→                          <span className="text-red-600 shrink-0">Failed</span>
+   866→   866→                        ) : (
+   867→   867→                          <span className="font-mono text-emerald-600 shrink-0">{r.lat?.toFixed(4)}, {r.lng?.toFixed(4)}</span>
+   868→   868→                        )}
+   869→   869→                      </div>
+   870→   870→                    ))}
+   871→   871→                  </div>
+   872→   872→                )}
+   873→   873→                <div className="flex justify-end">
+   874→   874→                  <Button onClick={() => { setBatchOpen(false); setBatchResult(null); }}>Done</Button>
+   875→   875→                </div>
+   876→   876→              </div>
+   877→   877→            )}
+   878→   878→          </div>
+   879→   879→        </DialogContent>
+   880→   880→      </Dialog>
+   881→   881→
+   882→   882→      {/* Reject Dialog */}
+   883→   883→      <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
+   884→   884→        <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   885→   885→          <DialogHeader>
+   886→   886→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
+   887→   887→              <XCircle className="h-5 w-5" /> Reject Provider
+   888→   888→            </DialogTitle>
+   889→   889→            <DialogDescription className="text-xs sm:text-sm">
+   890→   890→              Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+   891→   891→            </DialogDescription>
+   892→   892→          </DialogHeader>
+   893→   893→          <div className="space-y-2">
+   894→   894→            <Label htmlFor="reject-reason" className="text-xs sm:text-sm">Rejection Reason *</Label>
+   895→   895→            <Textarea id="reject-reason" placeholder="Enter the reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
+   896→   896→          </div>
+   897→   897→          <DialogFooter className="flex-col gap-2 sm:flex-row">
+   898→   898→            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">Cancel</Button>
+   899→   899→            <Button variant="destructive" onClick={handleReject} disabled={actioning || !rejectReason.trim()} className="w-full sm:w-auto">
+   900→   900→              {actioning ? "Rejecting..." : "Confirm Rejection"}
+   901→   901→            </Button>
+   902→   902→          </DialogFooter>
+   903→   903→        </DialogContent>
+   904→   904→      </Dialog>
+   905→   905→
+   906→   906→      {/* Confirm Approve/Suspend Dialog */}
+   907→   907→      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+   908→   908→        <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
+   909→   909→          <AlertDialogHeader>
+   910→   910→            <AlertDialogTitle className="text-base sm:text-lg">
+   911→   911→              {confirmAction?.action === "APPROVED" ? "Approve Provider" : confirmAction?.action === "REACTIVATE" ? "Reactivate Provider" : "Suspend Provider"}
+   912→   912→            </AlertDialogTitle>
+   913→   913→            <AlertDialogDescription className="text-xs sm:text-sm">
+   914→   914→              {confirmAction?.action === "APPROVED"
+   915→   915→                ? `Are you sure you want to approve "${confirmAction?.provider.name}"?`
+   916→   916→                : confirmAction?.action === "REACTIVATE"
+   917→   917→                ? `Are you sure you want to reactivate "${confirmAction?.provider.name}"? The guesthouse will regain full access.`
+   918→   918→                : `Are you sure you want to suspend "${confirmAction?.provider.name}"?`}
+   919→   919→            </AlertDialogDescription>
+   920→   920→          </AlertDialogHeader>
+   921→   921→          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+   922→   922→            <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+   923→   923→            <AlertDialogAction
+   924→   924→              onClick={() => confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)}
+   925→   925→              disabled={actioning}
+   926→   926→              className={
+   927→   927→                confirmAction?.action === "APPROVED"
+   928→   928→                  ? "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
+   929→   929→                  : confirmAction?.action === "REACTIVATE"
+   930→   930→                  ? "w-full sm:w-auto bg-teal-600 hover:bg-teal-700 focus:ring-teal-600"
+   931→   931→                  : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
+   932→   932→              }
+   933→   933→            >
+   934→   934→              {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : confirmAction?.action === "REACTIVATE" ? "Reactivate" : "Suspend"}
+   935→   935→            </AlertDialogAction>
+   936→   936→          </AlertDialogFooter>
+   937→   937→        </AlertDialogContent>
+   938→   938→      </AlertDialog>
+   939→   939→
+   940→   940→      {/* Register Guesthouse Dialog (SUPERUSER) */}
+   941→   941→      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+   942→   942→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   943→   943→          <DialogHeader>
+   944→   944→            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+   945→   945→              <Building2 className="h-5 w-5" /> Register New Guesthouse
+   946→   946→            </DialogTitle>
+   947→   947→            <DialogDescription className="text-xs sm:text-sm">
+   948→   948→              Add a new guesthouse. It will be automatically approved and an operator account will be created.
+   949→   949→            </DialogDescription>
+   950→   950→          </DialogHeader>
+   951→   951→
+   952→   952→          <div className="space-y-4 mt-2">
+   953→   953→            {/* Guesthouse Info Section */}
+   954→   954→            <div className="space-y-1">
+   955→   955→              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Guesthouse Information</p>
+   956→   956→              <Separator />
+   957→   957→            </div>
+   958→   958→
+   959→   959→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   960→   960→              <div className="grid gap-1.5 sm:col-span-2">
+   961→   961→                <Label className="text-sm">Guesthouse Name <span className="text-rose-500">*</span></Label>
+   962→   962→                <Input
+   963→   963→                  value={registerForm.name}
+   964→   964→                  onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
+   965→   965→                  placeholder="e.g. Sunshine Guest House"
+   966→   966→                  className="bg-slate-50"
+   967→   967→                />
+   968→   968→              </div>
+   969→   969→              <div className="grid gap-1.5">
+   970→   970→                <Label className="text-sm">Owner Name <span className="text-rose-500">*</span></Label>
+   971→   971→                <Input
+   972→   972→                  value={registerForm.ownerName}
+   973→   973→                  onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
+   974→   974→                  placeholder="Full name of the owner"
+   975→   975→                  className="bg-slate-50"
+   976→   976→                />
+   977→   977→              </div>
+   978→   978→              <div className="grid gap-1.5">
+   979→   979→                <Label className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+   980→   980→                <Input
+   981→   981→                  value={registerForm.phone}
+   982→   982→                  onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
+   983→   983→                  placeholder="+251..."
+   984→   984→                  className="bg-slate-50"
+   985→   985→                />
+   986→   986→              </div>
+   987→   987→              <div className="grid gap-1.5">
+   988→   988→                <Label className="text-sm">Email <span className="text-slate-400 font-normal">(optional)</span></Label>
+   989→   989→                <Input
+   990→   990→                  type="email"
+   991→   991→                  value={registerForm.email}
+   992→   992→                  onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
+   993→   993→                  placeholder="owner@email.com"
+   994→   994→                  className="bg-slate-50"
+   995→   995→                />
+   996→   996→              </div>
+   997→   997→              <div className="grid gap-1.5">
+   998→   998→                <Label className="text-sm">Type</Label>
+   999→   999→                <div className="flex flex-wrap gap-1.5">
+  1000→  1000→                  {GUESTHOUSE_TYPES.map((t) => (
+  1001→  1001→                    <button
+  1002→  1002→                      key={t.value}
+  1003→  1003→                      type="button"
+  1004→  1004→                      onClick={() => setRegisterForm((f) => ({ ...f, type: t.value }))}
+  1005→  1005→                      className={`rounded-lg border-2 px-3 py-1.5 text-xs font-medium transition-all ${
+  1006→  1006→                        registerForm.type === t.value
+  1007→  1007→                          ? "border-primary bg-primary/5 text-primary"
+  1008→  1008→                          : "border-slate-200 text-slate-500 hover:border-slate-300"
+  1009→  1009→                      }`}
+  1010→  1010→                    >
+  1011→  1011→                      {t.label}
+  1012→  1012→                    </button>
+  1013→  1013→                  ))}
+  1014→  1014→                </div>
+  1015→  1015→              </div>
+  1016→  1016→              <div className="grid gap-1.5 sm:col-span-2">
+  1017→  1017→                <Label className="text-sm">Address <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1018→  1018→                <Input
+  1019→  1019→                  value={registerForm.address}
+  1020→  1020→                  onChange={(e) => setRegisterForm((f) => ({ ...f, address: e.target.value }))}
+  1021→  1021→                  onBlur={async () => {
+  1022→  1022→                    const addr = registerForm.address.trim();
+  1023→  1023→                    if (!addr) return;
+  1024→  1024→                    try {
+  1025→  1025→                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr + ", Ethiopia")}&limit=1`, { headers: { "User-Agent": "GHMS-Registration/1.0" } });
+  1026→  1026→                      const data = await res.json();
+  1027→  1027→                      if (data?.length > 0) setRegisterForm((f) => ({ ...f, address: data[0].display_name }));
+  1028→  1028→                    } catch { /* keep original */ }
+  1029→  1029→                  }}
+  1030→  1030→                  placeholder="Street, city, sub-city"
+  1031→  1031→                  className="bg-slate-50"
+  1032→  1032→                />
+  1033→  1033→                <p className="text-[11px] text-slate-400">Address will be auto-normalized when you click away.</p>
+  1034→  1034→              </div>
+  1035→  1035→              <div className="grid gap-1.5 sm:col-span-2">
+  1036→  1036→                <Label className="text-sm">License No <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1037→  1037→                <Input
+  1038→  1038→                  value={registerForm.licenseNo}
+  1039→  1039→                  onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
+  1040→  1040→                  placeholder="Business license number"
+  1041→  1041→                  className="bg-slate-50"
+  1042→  1042→                />
+  1043→  1043→              </div>
+  1044→  1044→              <div className="grid gap-1.5 sm:col-span-2">
+  1045→  1045→                <Label className="text-sm">Upload License <span className="text-slate-400 font-normal">(optional)</span></Label>
+  1046→  1046→                {!registerForm.licenseFileData ? (
+  1047→  1047→                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 transition-colors hover:border-primary/40 hover:bg-primary/5">
+  1048→  1048→                    <Upload className="h-8 w-8 text-slate-400" />
+  1049→  1049→                    <div className="text-center">
+  1050→  1050→                      <p className="text-sm font-medium text-slate-600">Click to upload license document</p>
+  1051→  1051→                      <p className="text-[11px] text-slate-400 mt-0.5">PDF, Image, or any document (max 5MB)</p>
+  1052→  1052→                    </div>
+  1053→  1053→                    <input
+  1054→  1054→                      type="file"
+  1055→  1055→                      className="hidden"
+  1056→  1056→                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+  1057→  1057→                      onChange={async (e) => {
+  1058→  1058→                        const file = e.target.files?.[0];
+  1059→  1059→                        if (!file) return;
+  1060→  1060→                        if (file.size > 5 * 1024 * 1024) {
+  1061→  1061→                          toast.error("File size must be under 5MB");
+  1062→  1062→                          return;
+  1063→  1063→                        }
+  1064→  1064→                        const reader = new FileReader();
+  1065→  1065→                        reader.onload = () => {
+  1066→  1066→                          const base64 = reader.result as string;
+  1067→  1067→                          setRegisterForm((f) => ({
+  1068→  1068→                            ...f,
+  1069→  1069→                            licenseFileData: base64,
+  1070→  1070→                            licenseFileName: file.name,
+  1071→  1071→                          }));
+  1072→  1072→                        };
+  1073→  1073→                        reader.readAsDataURL(file);
+  1074→  1074→                      }}
+  1075→  1075→                    />
+  1076→  1076→                  </label>
+  1077→  1077→                ) : (
+  1078→  1078→                  <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+  1079→  1079→                    <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
+  1080→  1080→                    <div className="min-w-0 flex-1">
+  1081→  1081→                      <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
+  1082→  1082→                      <p className="text-[11px] text-emerald-600">License uploaded</p>
+  1083→  1083→                    </div>
+  1084→  1084→                    <button
+  1085→  1085→                      type="button"
+  1086→  1086→                      onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
+  1087→  1087→                      className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
+  1088→  1088→                    >
+  1089→  1089→                      <X className="h-3.5 w-3.5 text-slate-500" />
+  1090→  1090→                    </button>
+  1091→  1091→                  </div>
+  1092→  1092→                )}
+  1093→  1093→              </div>
+  1094→  1094→            </div>
+  1095→  1095→
+  1096→  1096→            {/* Operator Account Section */}
+  1097→  1097→            <div className="space-y-1">
+  1098→  1098→              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operator Login Account</p>
+  1099→  1099→              <p className="text-[11px] text-slate-400">An operator account will be created with access to manage this guesthouse.</p>
+  1100→  1100→              <Separator />
+  1101→  1101→            </div>
+  1102→  1102→
+  1103→  1103→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1104→  1104→              <div className="grid gap-1.5">
+  1105→  1105→                <Label className="text-sm flex items-center gap-1.5">
+  1106→  1106→                  <User className="h-3.5 w-3.5 text-slate-400" />
+  1107→  1107→                  Username <span className="text-rose-500">*</span>
+  1108→  1108→                </Label>
+  1109→  1109→                <Input
+  1110→  1110→                  value={registerForm.username}
+  1111→  1111→                  onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
+  1112→  1112→                  placeholder="operator_username"
+  1113→  1113→                  className="bg-slate-50"
+  1114→  1114→                  autoComplete="off"
+  1115→  1115→                />
+  1116→  1116→              </div>
+  1117→  1117→              <div className="grid gap-1.5">
+  1118→  1118→                <Label className="text-sm flex items-center gap-1.5">
+  1119→  1119→                  <KeyRound className="h-3.5 w-3.5 text-slate-400" />
+  1120→  1120→                  Password <span className="text-rose-500">*</span>
+  1121→  1121→                </Label>
+  1122→  1122→                <Input
+  1123→  1123→                  type="password"
+  1124→  1124→                  value={registerForm.password}
+  1125→  1125→                  onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
+  1126→  1126→                  placeholder="Min 4 characters"
+  1127→  1127→                  className="bg-slate-50"
+  1128→  1128→                  autoComplete="new-password"
+  1129→  1129→                />
+  1130→  1130→              </div>
+  1131→  1131→            </div>
+  1132→  1132→
+  1133→  1133→            {/* Info banner */}
+  1134→  1134→            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+  1135→  1135→              <div className="flex items-start gap-2">
+  1136→  1136→                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+  1137→  1137→                <p className="text-xs text-emerald-800">
+  1138→  1138→                  This guesthouse will be <strong>automatically approved</strong> since you are registering it as System Admin. The operator can log in immediately after registration.
+  1139→  1139→                </p>
+  1140→  1140→              </div>
+  1141→  1141→            </div>
+  1142→  1142→
+  1143→  1143→            {/* Actions */}
+  1144→  1144→            <div className="flex items-center justify-end gap-2 pt-2">
+  1145→  1145→              <Button
+  1146→  1146→                variant="outline"
+  1147→  1147→                onClick={() => { setRegisterOpen(false); setRegisterForm(emptyRegisterForm); }}
+  1148→  1148→                disabled={registering}
+  1149→  1149→                className="w-full sm:w-auto"
+  1150→  1150→              >
+  1151→  1151→                Cancel
+  1152→  1152→              </Button>
+  1153→  1153→              <Button
+  1154→  1154→                className="gap-1.5 w-full sm:w-auto"
+  1155→  1155→                onClick={handleRegister}
+  1156→  1156→                disabled={registering}
+  1157→  1157→              >
+  1158→  1158→                {registering ? (
+  1159→  1159→                  <>
+  1160→  1160→                    <Loader2 className="h-4 w-4 animate-spin" />
+  1161→  1161→                    Registering...
+  1162→  1162→                  </>
+  1163→  1163→                ) : (
+  1164→  1164→                  <>
+  1165→  1165→                    <UserPlus className="h-4 w-4" />
+  1166→  1166→                    Register &amp; Approve
+  1167→  1167→                  </>
+  1168→  1168→                )}
+  1169→  1169→              </Button>
+  1170→  1170→            </div>
+  1171→  1171→          </div>
+  1172→  1172→        </DialogContent>
+  1173→  1173→      </Dialog>
+  1174→  1174→
+  1175→  1175→      {/* Suspend Provider Dialog (with reason + notification) */}
+  1176→  1176→      <Dialog open={!!suspendDialog} onOpenChange={(open) => { if (!open) setSuspendDialog(null); }}>
+  1177→  1177→        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+  1178→  1178→          <DialogHeader>
+  1179→  1179→            <DialogTitle className="flex items-center gap-2 text-rose-700">
+  1180→  1180→              <Ban className="h-5 w-5" />
+  1181→  1181→              Suspend Guesthouse
+  1182→  1182→            </DialogTitle>
+  1183→  1183→            <DialogDescription className="text-xs sm:text-sm">
+  1184→  1184→              Suspend this provider and send them a notification with the reason.
+  1185→  1185→            </DialogDescription>
+  1186→  1186→          </DialogHeader>
+  1187→  1187→          {suspendDialog && (
+  1188→  1188→            <div className="space-y-4">
+  1189→  1189→              {/* Provider info summary */}
+  1190→  1190→              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+  1191→  1191→                <div className="flex items-center gap-3">
+  1192→  1192→                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+  1193→  1193→                    <Building2 className="h-5 w-5 text-rose-600" />
+  1194→  1194→                  </div>
+  1195→  1195→                  <div className="min-w-0 flex-1">
+  1196→  1196→                    <p className="text-sm font-bold text-slate-900 truncate">{suspendDialog.name}</p>
+  1197→  1197→                    <p className="text-xs text-slate-500">{suspendDialog.ownerName} &middot; {suspendDialog.phone}</p>
+  1198→  1198→                    {suspendDialog.address && (
+  1199→  1199→                      <p className="text-[11px] text-slate-400 truncate">{suspendDialog.address}</p>
+  1200→  1200→                    )}
+  1201→  1201→                  </div>
+  1202→  1202→                </div>
+  1203→  1203→              </div>
+  1204→  1204→
+  1205→  1205→              {/* Suspension Reason (required) */}
+  1206→  1206→              <div>
+  1207→  1207→                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+  1208→  1208→                  Reason for Suspension <span className="text-rose-500">*</span>
+  1209→  1209→                </Label>
+  1210→  1210→                <Textarea
+  1211→  1211→                  value={suspensionReason}
+  1212→  1212→                  onChange={(e) => setSuspensionReason(e.target.value)}
+  1213→  1213→                  placeholder="Write the detailed reason for suspending this guesthouse..."
+  1214→  1214→                  className="min-h-[100px] resize-none"
+  1215→  1215→                  maxLength={1000}
+  1216→  1216→                />
+  1217→  1217→                <p className="mt-1 text-[11px] text-slate-400 text-right">{suspensionReason.length}/1000</p>
+  1218→  1218→              </div>
+  1219→  1219→
+  1220→  1220→              {/* Short Message to Provider */}
+  1221→  1221→              <div>
+  1222→  1222→                <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+  1223→  1223→                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+  1224→  1224→                </Label>
+  1225→  1225→                <Textarea
+  1226→  1226→                  value={providerMessage}
+  1227→  1227→                  onChange={(e) => setProviderMessage(e.target.value)}
+  1228→  1228→                  placeholder="Short message that will be sent to the provider about their suspension..."
+  1229→  1229→                  className="min-h-[80px] resize-none"
+  1230→  1230→                  maxLength={500}
+  1231→  1231→                />
+  1232→  1232→                <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
+  1233→  1233→                <p className="mt-1 text-[11px] text-slate-500">
+  1234→  1234→                  If empty, a default notification with the suspension reason will be sent automatically.
+  1235→  1235→                </p>
+  1236→  1236→              </div>
+  1237→  1237→
+  1238→  1238→              {/* Warning */}
+  1239→  1239→              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+  1240→  1240→                <div className="flex items-start gap-2">
+  1241→  1241→                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+  1242→  1242→                  <p className="text-xs text-amber-800">
+  1243→  1243→                    This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
+  1244→  1244→                    Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+  1245→  1245→                  </p>
+  1246→  1246→                </div>
+  1247→  1247→              </div>
+  1248→  1248→
+  1249→  1249→              {/* Actions */}
+  1250→  1250→              <div className="flex items-center justify-end gap-2 pt-2">
+  1251→  1251→                <Button
+  1252→  1252→                  variant="outline"
+  1253→  1253→                  onClick={() => setSuspendDialog(null)}
+  1254→  1254→                  disabled={suspending}
+  1255→  1255→                  className="w-full sm:w-auto"
+  1256→  1256→                >
+  1257→  1257→                  Cancel
+  1258→  1258→                </Button>
+  1259→  1259→                <Button
+  1260→  1260→                  variant="destructive"
+  1261→  1261→                  className="gap-1.5 w-full sm:w-auto"
+  1262→  1262→                  onClick={handleSuspend}
+  1263→  1263→                  disabled={suspending || !suspensionReason.trim()}
+  1264→  1264→                >
+  1265→  1265→                  {suspending ? (
+  1266→  1266→                    <>
+  1267→  1267→                      <Loader2 className="h-4 w-4 animate-spin" />
+  1268→  1268→                      Suspending...
+  1269→  1269→                    </>
+  1270→  1270→                  ) : (
+  1271→  1271→                    <>
+  1272→  1272→                      <Send className="h-4 w-4" />
+  1273→  1273→                      Suspend &amp; Send Notification
+  1274→  1274→                    </>
+  1275→  1275→                  )}
+  1276→  1276→                </Button>
+  1277→  1277→              </div>
+  1278→  1278→            </div>
+  1279→  1279→          )}
+  1280→  1280→        </DialogContent>
+  1281→  1281→      </Dialog>
+  1282→  1282→    </div>
+  1283→  1283→  );
+  1284→  1284→}
+  1285→  1285→

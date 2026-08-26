@@ -1,0 +1,1081 @@
+suspicious depth at line 196 : -3 const paginatedProviders = useMemo(() => pagination.paginate(providers), [providers, pagination]);
+suspicious depth at line 197 : -3 
+suspicious depth at line 198 : -4 const fetchProviders = useCallback(async () => {
+suspicious depth at line 199 : -4 try {
+suspicious depth at line 200 : -4 setLoading(true);
+suspicious depth at line 201 : -4 const data = await apiGetProviders();
+suspicious depth at line 202 : -4 setProviders(Array.isArray(data) ? data : []);
+suspicious depth at line 203 : -4 } catch (err: unknown) {
+suspicious depth at line 204 : -4 const message = err instanceof Error ? err.message : "Failed to load providers";
+suspicious depth at line 205 : -4 toast.error(message);
+suspicious depth at line 206 : -4 } finally {
+suspicious depth at line 207 : -4 setLoading(false);
+suspicious depth at line 208 : -4 }
+suspicious depth at line 209 : -4 }, []);
+suspicious depth at line 210 : -4 
+suspicious depth at line 211 : -5 useEffect(() => {
+suspicious depth at line 212 : -5 fetchProviders();
+suspicious depth at line 213 : -5 }, [fetchProviders, refreshKey]);
+suspicious depth at line 214 : -5 
+suspicious depth at line 215 : -6 const openDetail = (provider: Provider) => {
+suspicious depth at line 216 : -6 setSelectedProvider(provider);
+suspicious depth at line 217 : -6 setDetailOpen(true);
+suspicious depth at line 218 : -6 };
+suspicious depth at line 219 : -6 
+suspicious depth at line 220 : -7 const openReject = (provider: Provider) => {
+suspicious depth at line 221 : -7 setRejectDialog(provider);
+suspicious depth at line 222 : -7 setRejectReason("");
+suspicious depth at line 223 : -7 };
+suspicious depth at line 224 : -7 
+suspicious depth at line 225 : -8 const openCoordPicker = (provider: Provider) => {
+suspicious depth at line 226 : -8 setCoordProvider(provider);
+suspicious depth at line 227 : -8 setEditLat(provider.latitude || 9.02);
+suspicious depth at line 228 : -8 setEditLng(provider.longitude || 38.75);
+suspicious depth at line 229 : -8 setCoordOpen(true);
+suspicious depth at line 230 : -8 };
+suspicious depth at line 231 : -8 
+suspicious depth at line 232 : -9 const geocodeSingle = async () => {
+suspicious depth at line 233 : -9 if (!coordProvider || !coordProvider.address) {
+suspicious depth at line 234 : -9 toast.error("Provider has no address to geocode");
+suspicious depth at line 235 : -9 return;
+suspicious depth at line 236 : -9 }
+suspicious depth at line 237 : -9 try {
+suspicious depth at line 238 : -9 setGeocodingOne(true);
+suspicious depth at line 239 : -9 const result: any = await apiGeocodeAddress(coordProvider.address);
+suspicious depth at line 240 : -9 if (result.lat && result.lng) {
+suspicious depth at line 241 : -9 setEditLat(result.lat);
+suspicious depth at line 242 : -9 setEditLng(result.lng);
+suspicious depth at line 243 : -9 toast.success(`Found: ${result.lat.toFixed(4)}, ${result.lng.toFixed(4)}`);
+suspicious depth at line 244 : -9 } else {
+suspicious depth at line 245 : -9 toast.error("Could not find coordinates for this address");
+suspicious depth at line 246 : -9 }
+suspicious depth at line 247 : -9 } catch {
+suspicious depth at line 248 : -9 toast.error("Geocoding failed");
+suspicious depth at line 249 : -9 } finally {
+suspicious depth at line 250 : -9 setGeocodingOne(false);
+suspicious depth at line 251 : -9 }
+suspicious depth at line 252 : -9 };
+suspicious depth at line 253 : -9 
+suspicious depth at line 254 : -10 const saveCoordinates = async () => {
+suspicious depth at line 255 : -10 if (!coordProvider) return;
+suspicious depth at line 256 : -10 try {
+suspicious depth at line 257 : -10 setSavingCoord(true);
+suspicious depth at line 258 : -10 await apiUpdateProvider(coordProvider.id, { status: coordProvider.status, latitude: editLat, longitude: editLng });
+suspicious depth at line 259 : -10 toast.success("Coordinates updated");
+suspicious depth at line 260 : -10 setCoordOpen(false);
+suspicious depth at line 261 : -10 triggerRefresh();
+suspicious depth at line 262 : -10 } catch {
+suspicious depth at line 263 : -10 toast.error("Failed to save coordinates");
+suspicious depth at line 264 : -10 } finally {
+suspicious depth at line 265 : -10 setSavingCoord(false);
+suspicious depth at line 266 : -10 }
+suspicious depth at line 267 : -10 };
+suspicious depth at line 268 : -10 
+suspicious depth at line 269 : -11 const batchGeocode = async () => {
+suspicious depth at line 270 : -11 try {
+suspicious depth at line 271 : -11 setGeocodingAll(true);
+suspicious depth at line 272 : -11 const result: any = await apiGeocodeBatch();
+suspicious depth at line 273 : -11 setBatchResult(result);
+suspicious depth at line 274 : -11 toast.success(result.message || `Geocoded ${result.updated} providers`);
+suspicious depth at line 275 : -11 triggerRefresh();
+suspicious depth at line 276 : -11 } catch {
+suspicious depth at line 277 : -11 toast.error("Batch geocoding failed");
+suspicious depth at line 278 : -11 } finally {
+suspicious depth at line 279 : -11 setGeocodingAll(false);
+suspicious depth at line 280 : -11 }
+suspicious depth at line 281 : -11 };
+suspicious depth at line 282 : -11 
+suspicious depth at line 283 : -12 const handleReject = async () => {
+suspicious depth at line 284 : -12 if (!rejectDialog || !rejectReason.trim()) {
+suspicious depth at line 285 : -12 toast.error("Rejection reason is required");
+suspicious depth at line 286 : -12 return;
+suspicious depth at line 287 : -12 }
+suspicious depth at line 288 : -12 try {
+suspicious depth at line 289 : -12 setActioning(true);
+suspicious depth at line 290 : -12 await apiUpdateProvider(rejectDialog.id, { status: "REJECTED", rejectionReason: rejectReason.trim() });
+suspicious depth at line 291 : -12 toast.success("Provider rejected");
+suspicious depth at line 292 : -12 setRejectDialog(null);
+suspicious depth at line 293 : -12 setRejectReason("");
+suspicious depth at line 294 : -12 triggerRefresh();
+suspicious depth at line 295 : -12 } catch (err: unknown) {
+suspicious depth at line 296 : -12 const message = err instanceof Error ? err.message : "Failed to reject provider";
+suspicious depth at line 297 : -12 toast.error(message);
+suspicious depth at line 298 : -12 } finally {
+suspicious depth at line 299 : -12 setActioning(false);
+suspicious depth at line 300 : -12 }
+suspicious depth at line 301 : -12 };
+suspicious depth at line 302 : -12 
+suspicious depth at line 303 : -13 const handleStatusAction = async (provider: Provider, status: string) => {
+suspicious depth at line 304 : -13 try {
+suspicious depth at line 305 : -13 setActioning(true);
+suspicious depth at line 306 : -13 if (status === "REACTIVATE") {
+suspicious depth at line 307 : -13 // Police reactivates: set back to APPROVED and clear suspension fields
+suspicious depth at line 308 : -13 await apiUpdateProvider(provider.id, { status: "APPROVED" });
+suspicious depth at line 309 : -13 toast.success(`"${provider.name}" has been reactivated`);
+suspicious depth at line 310 : -13 } else {
+suspicious depth at line 311 : -13 await apiUpdateProvider(provider.id, { status });
+suspicious depth at line 312 : -13 toast.success(`Provider ${status.toLowerCase()}`);
+suspicious depth at line 313 : -13 }
+suspicious depth at line 314 : -13 setConfirmAction(null);
+suspicious depth at line 315 : -13 triggerRefresh();
+suspicious depth at line 316 : -13 } catch (err: unknown) {
+suspicious depth at line 317 : -13 const message = err instanceof Error ? err.message : "Failed to update provider";
+suspicious depth at line 318 : -13 toast.error(message);
+suspicious depth at line 319 : -13 } finally {
+suspicious depth at line 320 : -13 setActioning(false);
+suspicious depth at line 321 : -13 }
+suspicious depth at line 322 : -13 };
+suspicious depth at line 323 : -13 
+suspicious depth at line 324 : -14 const openSuspend = (provider: Provider) => {
+suspicious depth at line 325 : -14 setSuspendDialog(provider);
+suspicious depth at line 326 : -14 setSuspensionReason("");
+suspicious depth at line 327 : -14 setProviderMessage("");
+suspicious depth at line 328 : -14 };
+suspicious depth at line 329 : -14 
+suspicious depth at line 330 : -15 const handleRegister = async () => {
+suspicious depth at line 331 : -15 if (!registerForm.name.trim() || !registerForm.ownerName.trim() || !registerForm.phone.trim()) {
+suspicious depth at line 332 : -15 toast.error("Guesthouse name, owner name, and phone are required");
+suspicious depth at line 333 : -15 return;
+suspicious depth at line 334 : -15 }
+suspicious depth at line 335 : -15 if (!registerForm.username.trim() || !registerForm.password.trim()) {
+suspicious depth at line 336 : -15 toast.error("Operator username and password are required");
+suspicious depth at line 337 : -15 return;
+suspicious depth at line 338 : -15 }
+suspicious depth at line 339 : -14 if (registerForm.password.trim().length < 4) {
+suspicious depth at line 340 : -14 toast.error("Password must be at least 4 characters");
+suspicious depth at line 341 : -14 return;
+suspicious depth at line 342 : -14 }
+suspicious depth at line 343 : -14 try {
+suspicious depth at line 344 : -14 setRegistering(true);
+suspicious depth at line 345 : -14 await apiSuperCreateProvider({
+suspicious depth at line 346 : -14 ...registerForm,
+suspicious depth at line 347 : -14 licenseFile: registerForm.licenseFileData || undefined,
+suspicious depth at line 348 : -14 });
+suspicious depth at line 349 : -14 toast.success(`"${registerForm.name}" registered and approved successfully`);
+suspicious depth at line 350 : -14 setRegisterOpen(false);
+suspicious depth at line 351 : -14 setRegisterForm(emptyRegisterForm);
+suspicious depth at line 352 : -14 triggerRefresh();
+suspicious depth at line 353 : -14 } catch (err: unknown) {
+suspicious depth at line 354 : -14 toast.error(err instanceof Error ? err.message : "Failed to register guesthouse");
+suspicious depth at line 355 : -14 } finally {
+suspicious depth at line 356 : -14 setRegistering(false);
+suspicious depth at line 357 : -14 }
+suspicious depth at line 358 : -14 };
+suspicious depth at line 359 : -14 
+suspicious depth at line 360 : -15 const handleSuspend = async () => {
+suspicious depth at line 361 : -15 if (!suspendDialog) return;
+suspicious depth at line 362 : -15 if (!suspensionReason.trim()) {
+suspicious depth at line 363 : -15 toast.error("Please provide a reason for suspension");
+suspicious depth at line 364 : -15 return;
+suspicious depth at line 365 : -15 }
+suspicious depth at line 366 : -15 try {
+suspicious depth at line 367 : -15 setSuspending(true);
+suspicious depth at line 368 : -15 await apiPoliceSuspendProvider({
+suspicious depth at line 369 : -15 providerId: suspendDialog.id,
+suspicious depth at line 370 : -15 suspensionReason: suspensionReason.trim(),
+suspicious depth at line 371 : -15 providerMessage: providerMessage.trim() || undefined,
+suspicious depth at line 372 : -15 });
+suspicious depth at line 373 : -15 toast.success(`"${suspendDialog.name}" has been suspended. Notification sent to provider.`);
+suspicious depth at line 374 : -15 setSuspendDialog(null);
+suspicious depth at line 375 : -15 setSuspensionReason("");
+suspicious depth at line 376 : -15 setProviderMessage("");
+suspicious depth at line 377 : -15 triggerRefresh();
+suspicious depth at line 378 : -15 } catch (err: unknown) {
+suspicious depth at line 379 : -15 toast.error(err instanceof Error ? err.message : "Failed to suspend provider");
+suspicious depth at line 380 : -15 } finally {
+suspicious depth at line 381 : -15 setSuspending(false);
+suspicious depth at line 382 : -15 }
+suspicious depth at line 383 : -15 };
+suspicious depth at line 384 : -15 
+suspicious depth at line 385 : -16 const formatDate = (dateStr: string | null) => {
+suspicious depth at line 386 : -16 if (!dateStr) return "—";
+suspicious depth at line 387 : -16 return new Date(dateStr).toLocaleDateString("en-US", {
+suspicious depth at line 388 : -16 year: "numeric",
+suspicious depth at line 389 : -16 month: "short",
+suspicious depth at line 390 : -16 day: "numeric",
+suspicious depth at line 391 : -16 });
+suspicious depth at line 392 : -16 };
+suspicious depth at line 393 : -16 
+suspicious depth at line 394 : -17 const approvedCount = providers.filter((p) => p.status === "APPROVED").length;
+suspicious depth at line 395 : -18 const pendingCount = providers.filter((p) => p.status === "PENDING").length;
+suspicious depth at line 396 : -18 const withCoords = providers.filter(
+suspicious depth at line 397 : -19 (p) => p.latitude !== 9.02 || p.longitude !== 38.75,
+suspicious depth at line 398 : -19 ).length;
+suspicious depth at line 399 : -19 
+suspicious depth at line 400 : -19 return (
+suspicious depth at line 401 : -19 <div className="space-y-4 p-3 sm:p-4 md:p-6">
+suspicious depth at line 402 : -19 {/* Summary Cards */}
+suspicious depth at line 403 : -19 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+suspicious depth at line 404 : -19 <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+suspicious depth at line 405 : -19 <div className="flex items-center gap-2 sm:gap-3">
+suspicious depth at line 406 : -19 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-slate-100">
+suspicious depth at line 407 : -19 <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
+suspicious depth at line 408 : -19 </div>
+suspicious depth at line 409 : -19 <div>
+suspicious depth at line 410 : -19 <p className="text-[10px] sm:text-sm text-muted-foreground">Total</p>
+suspicious depth at line 411 : -19 <p className="text-lg sm:text-2xl font-bold">{providers.length}</p>
+suspicious depth at line 412 : -19 </div>
+suspicious depth at line 413 : -19 </div>
+suspicious depth at line 414 : -19 </div>
+suspicious depth at line 415 : -19 <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+suspicious depth at line 416 : -19 <div className="flex items-center gap-2 sm:gap-3">
+suspicious depth at line 417 : -19 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-50">
+suspicious depth at line 418 : -19 <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+suspicious depth at line 419 : -19 </div>
+suspicious depth at line 420 : -19 <div>
+suspicious depth at line 421 : -19 <p className="text-[10px] sm:text-sm text-muted-foreground">Approved</p>
+suspicious depth at line 422 : -19 <p className="text-lg sm:text-2xl font-bold text-emerald-600">{approvedCount}</p>
+suspicious depth at line 423 : -19 </div>
+suspicious depth at line 424 : -19 </div>
+suspicious depth at line 425 : -19 </div>
+suspicious depth at line 426 : -19 <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+suspicious depth at line 427 : -19 <div className="flex items-center gap-2 sm:gap-3">
+suspicious depth at line 428 : -19 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-yellow-50">
+suspicious depth at line 429 : -19 <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+suspicious depth at line 430 : -19 </div>
+suspicious depth at line 431 : -19 <div>
+suspicious depth at line 432 : -19 <p className="text-[10px] sm:text-sm text-muted-foreground">Pending</p>
+suspicious depth at line 433 : -19 <p className="text-lg sm:text-2xl font-bold text-yellow-600">{pendingCount}</p>
+suspicious depth at line 434 : -19 </div>
+suspicious depth at line 435 : -19 </div>
+suspicious depth at line 436 : -19 </div>
+suspicious depth at line 437 : -19 <div className="rounded-xl border bg-card p-3 sm:p-4 shadow-sm">
+suspicious depth at line 438 : -19 <div className="flex items-center gap-2 sm:gap-3">
+suspicious depth at line 439 : -19 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-blue-50">
+suspicious depth at line 440 : -19 <MapPinned className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+suspicious depth at line 441 : -19 </div>
+suspicious depth at line 442 : -19 <div>
+suspicious depth at line 443 : -19 <p className="text-[10px] sm:text-sm text-muted-foreground">With Coords</p>
+suspicious depth at line 444 : -19 <p className="text-lg sm:text-2xl font-bold text-blue-600">{withCoords}/{providers.length}</p>
+suspicious depth at line 445 : -19 </div>
+suspicious depth at line 446 : -19 </div>
+suspicious depth at line 447 : -19 </div>
+suspicious depth at line 448 : -19 </div>
+suspicious depth at line 449 : -19 
+suspicious depth at line 450 : -19 {/* Geocode All Button */}
+suspicious depth at line 451 : -19 <div className="flex items-center justify-between">
+suspicious depth at line 452 : -19 <div>
+suspicious depth at line 453 : -19 <h2 className="text-base sm:text-lg font-semibold">
+suspicious depth at line 454 : -19 {isSuperuser ? "Guesthouses" : "Provider Applications"}
+suspicious depth at line 455 : -19 </h2>
+suspicious depth at line 456 : -19 <p className="text-xs sm:text-sm text-muted-foreground">
+suspicious depth at line 457 : -19 {isSuperuser
+suspicious depth at line 458 : -19 ? "Register new guesthouses and manage existing ones."
+suspicious depth at line 459 : -19 : "Manage registrations, licensing, and map locations"}
+suspicious depth at line 460 : -19 </p>
+suspicious depth at line 461 : -19 </div>
+suspicious depth at line 462 : -19 <div className="flex gap-2">
+suspicious depth at line 463 : -19 {isSuperuser && (
+suspicious depth at line 464 : -20 <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
+suspicious depth at line 465 : -20 <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
+suspicious depth at line 466 : -20 </Button>
+suspicious depth at line 467 : -20 )}
+suspicious depth at line 468 : -20 {!isSuperuser && (
+suspicious depth at line 469 : -21 <Button variant="outline" size="sm" onClick={() => setBatchOpen(true)} disabled={geocodingAll}>
+suspicious depth at line 470 : -21 <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingAll ? "animate-spin" : ""}`} />
+suspicious depth at line 471 : -21 {geocodingAll ? "Geocoding..." : "Geocode All"}
+suspicious depth at line 472 : -21 </Button>
+suspicious depth at line 473 : -21 )}
+suspicious depth at line 474 : -21 </div>
+suspicious depth at line 475 : -21 </div>
+suspicious depth at line 476 : -21 
+suspicious depth at line 477 : -21 {/* Providers Table/Cards */}
+suspicious depth at line 478 : -21 <div className="rounded-xl border bg-card shadow-sm">
+suspicious depth at line 479 : -21 {loading ? (
+suspicious depth at line 480 : -21 <div className="space-y-3 p-4 sm:p-6">
+suspicious depth at line 481 : -22 {Array.from({ length: 5 }).map((_, i) => (
+suspicious depth at line 482 : -22 <Skeleton key={i} className="h-20 w-full sm:h-12" />
+suspicious depth at line 483 : -22 ))}
+suspicious depth at line 484 : -22 </div>
+suspicious depth at line 485 : -22 ) : providers.length === 0 ? (
+suspicious depth at line 486 : -22 <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+suspicious depth at line 487 : -22 <Building2 className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+suspicious depth at line 488 : -22 <p className="text-xs sm:text-sm text-muted-foreground">No providers registered yet</p>
+suspicious depth at line 489 : -22 </div>
+suspicious depth at line 490 : -22 ) : (
+suspicious depth at line 491 : -22 <>
+suspicious depth at line 492 : -22 {/* Mobile/Tablet: Card layout */}
+suspicious depth at line 493 : -22 <div className="divide-y lg:hidden">
+suspicious depth at line 494 : -23 {paginatedProviders.map((provider) => (
+suspicious depth at line 495 : -23 <div key={provider.id} className={`p-3 sm:p-4 ${provider.status === "SUSPENDED" ? "bg-orange-50/60" : ""}`}>
+suspicious depth at line 496 : -23 <div className="flex items-start justify-between gap-2">
+suspicious depth at line 497 : -24 <button className="min-w-0 flex-1 text-left" onClick={() => openDetail(provider)}>
+suspicious depth at line 498 : -24 <div className="flex items-center gap-2">
+suspicious depth at line 499 : -24 <p className="truncate text-sm font-medium">{provider.name}</p>
+suspicious depth at line 500 : -24 <StatusBadge status={provider.status} />
+suspicious depth at line 501 : -24 </div>
+suspicious depth at line 502 : -24 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+suspicious depth at line 503 : -24 <span className="flex items-center gap-1"><User className="h-3 w-3" /> {provider.ownerName}</span>
+suspicious depth at line 504 : -24 <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {provider.phone}</span>
+suspicious depth at line 505 : -24 </div>
+suspicious depth at line 506 : -24 {provider.address && (
+suspicious depth at line 507 : -24 <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+suspicious depth at line 508 : -24 <MapPin className="h-3 w-3" /> {provider.address}
+suspicious depth at line 509 : -24 </div>
+suspicious depth at line 510 : -24 )}
+suspicious depth at line 511 : -24 <div className="mt-1 flex items-center gap-2 text-[10px]">
+suspicious depth at line 512 : -24 <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{provider.type.replace(/_/g, " ")}</span>
+suspicious depth at line 513 : -24 {(provider.latitude !== 9.02 || provider.longitude !== 38.75) ? (
+suspicious depth at line 514 : -24 <span className="flex items-center gap-0.5 text-emerald-600"><Crosshair className="h-2.5 w-2.5" /> {provider.latitude.toFixed(4)}, {provider.longitude.toFixed(4)}</span>
+suspicious depth at line 515 : -24 ) : (
+suspicious depth at line 516 : -24 <span className="text-muted-foreground">No coordinates</span>
+suspicious depth at line 517 : -24 )}
+suspicious depth at line 518 : -24 </div>
+suspicious depth at line 519 : -24 </button>
+suspicious depth at line 520 : -24 </div>
+suspicious depth at line 521 : -24 
+suspicious depth at line 522 : -24 <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5 flex-wrap">
+suspicious depth at line 523 : -25 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100" onClick={() => openDetail(provider)}>
+suspicious depth at line 524 : -25 <Eye className="h-3.5 w-3.5" /> Details
+suspicious depth at line 525 : -25 </button>
+suspicious depth at line 526 : -25 {!isSuperuser && (
+suspicious depth at line 527 : -26 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50" onClick={() => openCoordPicker(provider)}>
+suspicious depth at line 528 : -26 <MapPinned className="h-3.5 w-3.5" /> Set Location
+suspicious depth at line 529 : -26 </button>
+suspicious depth at line 530 : -26 )}
+suspicious depth at line 531 : -26 {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+suspicious depth at line 532 : -27 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
+suspicious depth at line 533 : -27 <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+suspicious depth at line 534 : -27 </button>
+suspicious depth at line 535 : -27 )}
+suspicious depth at line 536 : -27 {provider.status === "SUSPENDED" && (
+suspicious depth at line 537 : -28 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
+suspicious depth at line 538 : -28 <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+suspicious depth at line 539 : -28 </button>
+suspicious depth at line 540 : -28 )}
+suspicious depth at line 541 : -28 {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+suspicious depth at line 542 : -29 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
+suspicious depth at line 543 : -29 <XCircle className="h-3.5 w-3.5" /> Reject
+suspicious depth at line 544 : -29 </button>
+suspicious depth at line 545 : -29 )}
+suspicious depth at line 546 : -29 {provider.status === "APPROVED" && (
+suspicious depth at line 547 : -30 <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
+suspicious depth at line 548 : -30 <Ban className="h-3.5 w-3.5" /> Suspend
+suspicious depth at line 549 : -30 </button>
+suspicious depth at line 550 : -30 )}
+suspicious depth at line 551 : -30 </div>
+suspicious depth at line 552 : -30 </div>
+suspicious depth at line 553 : -30 ))}
+suspicious depth at line 554 : -30 </div>
+suspicious depth at line 555 : -30 
+suspicious depth at line 556 : -30 {/* Desktop: Table layout */}
+suspicious depth at line 557 : -30 <div className="hidden lg:block overflow-x-auto">
+suspicious depth at line 558 : -30 <Table>
+suspicious depth at line 559 : -30 <TableHeader>
+suspicious depth at line 560 : -30 <TableRow>
+suspicious depth at line 561 : -30 <TableHead>Provider Name</TableHead>
+suspicious depth at line 562 : -30 <TableHead>Address</TableHead>
+suspicious depth at line 563 : -30 <TableHead>Owner</TableHead>
+suspicious depth at line 564 : -30 <TableHead>Phone</TableHead>
+suspicious depth at line 565 : -30 <TableHead>Coordinates</TableHead>
+suspicious depth at line 566 : -30 <TableHead>Status</TableHead>
+suspicious depth at line 567 : -30 <TableHead className="text-right">Actions</TableHead>
+suspicious depth at line 568 : -30 </TableRow>
+suspicious depth at line 569 : -30 </TableHeader>
+suspicious depth at line 570 : -30 <TableBody>
+suspicious depth at line 571 : -31 {paginatedProviders.map((provider) => (
+suspicious depth at line 572 : -32 <TableRow key={provider.id} className={`cursor-pointer hover:bg-muted/50 ${provider.status === "SUSPENDED" ? "bg-orange-50/70 hover:bg-orange-100/60" : ""}`} onClick={() => openDetail(provider)}>
+suspicious depth at line 573 : -32 <TableCell className="font-medium">{provider.name}</TableCell>
+suspicious depth at line 574 : -32 <TableCell className="max-w-[150px] truncate text-xs">{provider.address || "—"}</TableCell>
+suspicious depth at line 575 : -32 <TableCell>{provider.ownerName}</TableCell>
+suspicious depth at line 576 : -32 <TableCell>{provider.phone}</TableCell>
+suspicious depth at line 577 : -32 <TableCell>
+suspicious depth at line 578 : -32 {(provider.latitude !== 9.02 || provider.longitude !== 38.75) ? (
+suspicious depth at line 579 : -32 <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-600">
+suspicious depth at line 580 : -32 <Crosshair className="h-3 w-3" /> {provider.latitude.toFixed(4)}, {provider.longitude.toFixed(4)}
+suspicious depth at line 581 : -32 </span>
+suspicious depth at line 582 : -32 ) : (
+suspicious depth at line 583 : -32 <span className="text-[10px] text-muted-foreground">Not set</span>
+suspicious depth at line 584 : -32 )}
+suspicious depth at line 585 : -32 </TableCell>
+suspicious depth at line 586 : -32 <TableCell><StatusBadge status={provider.status} /></TableCell>
+suspicious depth at line 587 : -33 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+suspicious depth at line 588 : -33 <div className="flex items-center justify-end gap-1">
+suspicious depth at line 589 : -33 {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+suspicious depth at line 590 : -34 <Button size="sm" variant="ghost" className="h-8 text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
+suspicious depth at line 591 : -34 <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+suspicious depth at line 592 : -34 </Button>
+suspicious depth at line 593 : -34 )}
+suspicious depth at line 594 : -34 {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+suspicious depth at line 595 : -35 <Button size="sm" variant="ghost" className="h-8 text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
+suspicious depth at line 596 : -35 <XCircle className="mr-1 h-4 w-4" /> Reject
+suspicious depth at line 597 : -35 </Button>
+suspicious depth at line 598 : -35 )}
+suspicious depth at line 599 : -35 {provider.status === "APPROVED" && (
+suspicious depth at line 600 : -36 <Button size="sm" variant="ghost" className="h-8 text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
+suspicious depth at line 601 : -36 <Ban className="mr-1 h-4 w-4" /> Suspend
+suspicious depth at line 602 : -36 </Button>
+suspicious depth at line 603 : -36 )}
+suspicious depth at line 604 : -36 {provider.status === "SUSPENDED" && (
+suspicious depth at line 605 : -37 <Button size="sm" variant="ghost" className="h-8 text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
+suspicious depth at line 606 : -37 <RotateCcw className="mr-1 h-4 w-4" /> Reactivate
+suspicious depth at line 607 : -37 </Button>
+suspicious depth at line 608 : -37 )}
+suspicious depth at line 609 : -37 </div>
+suspicious depth at line 610 : -37 </TableCell>
+suspicious depth at line 611 : -37 </TableRow>
+suspicious depth at line 612 : -37 ))}
+suspicious depth at line 613 : -37 </TableBody>
+suspicious depth at line 614 : -37 </Table>
+suspicious depth at line 615 : -37 </div>
+suspicious depth at line 616 : -37 </>
+suspicious depth at line 617 : -37 )}
+suspicious depth at line 618 : -37 </div>
+suspicious depth at line 619 : -37 
+suspicious depth at line 620 : -36 <PaginationControls
+suspicious depth at line 621 : -36 currentPage={pagination.currentPage}
+suspicious depth at line 622 : -36 totalPages={pagination.totalPages}
+suspicious depth at line 623 : -36 pageSize={pagination.pageSize}
+suspicious depth at line 624 : -36 pageSizeOptions={pagination.pageSizeOptions}
+suspicious depth at line 625 : -36 totalItems={providers.length}
+suspicious depth at line 626 : -36 rangeInfo={pagination.rangeInfo}
+suspicious depth at line 627 : -36 goToPage={pagination.goToPage}
+suspicious depth at line 628 : -36 setPageSize={pagination.setPageSize}
+suspicious depth at line 629 : -37 />
+suspicious depth at line 630 : -37 
+suspicious depth at line 631 : -37 {/* Provider Detail Dialog */}
+suspicious depth at line 632 : -37 <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+suspicious depth at line 633 : -37 <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 634 : -37 <DialogHeader>
+suspicious depth at line 635 : -37 <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
+suspicious depth at line 636 : -37 <Building2 className="h-5 w-5" /> {selectedProvider?.name}
+suspicious depth at line 637 : -37 </DialogTitle>
+suspicious depth at line 638 : -37 <DialogDescription className="text-xs sm:text-sm">Registration details</DialogDescription>
+suspicious depth at line 639 : -37 </DialogHeader>
+suspicious depth at line 640 : -37 {selectedProvider && (
+suspicious depth at line 641 : -37 <div className="space-y-4">
+suspicious depth at line 642 : -37 <div className="flex items-center gap-3">
+suspicious depth at line 643 : -37 <StatusBadge status={selectedProvider.status} />
+suspicious depth at line 644 : -37 <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">{selectedProvider.type.replace(/_/g, " ")}</span>
+suspicious depth at line 645 : -37 {(selectedProvider.latitude !== 9.02 || selectedProvider.longitude !== 38.75) && (
+suspicious depth at line 646 : -37 <span className="flex items-center gap-1 text-[10px] text-emerald-600"><Crosshair className="h-3 w-3" /> {selectedProvider.latitude.toFixed(4)}, {selectedProvider.longitude.toFixed(4)}</span>
+suspicious depth at line 647 : -37 )}
+suspicious depth at line 648 : -37 </div>
+suspicious depth at line 649 : -37 <Separator />
+suspicious depth at line 650 : -37 <div className="space-y-3 text-sm">
+suspicious depth at line 651 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 652 : -37 <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 653 : -37 <div>
+suspicious depth at line 654 : -37 <p className="text-[10px] text-muted-foreground">Owner</p>
+suspicious depth at line 655 : -37 <p className="font-medium">{selectedProvider.ownerName}</p>
+suspicious depth at line 656 : -37 </div>
+suspicious depth at line 657 : -37 </div>
+suspicious depth at line 658 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 659 : -37 <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 660 : -37 <div>
+suspicious depth at line 661 : -37 <p className="text-[10px] text-muted-foreground">Phone</p>
+suspicious depth at line 662 : -37 <p className="font-medium">{selectedProvider.phone}</p>
+suspicious depth at line 663 : -37 </div>
+suspicious depth at line 664 : -37 </div>
+suspicious depth at line 665 : -37 {selectedProvider.email && (
+suspicious depth at line 666 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 667 : -37 <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 668 : -37 <div>
+suspicious depth at line 669 : -37 <p className="text-[10px] text-muted-foreground">Email</p>
+suspicious depth at line 670 : -37 <p className="font-medium">{selectedProvider.email}</p>
+suspicious depth at line 671 : -37 </div>
+suspicious depth at line 672 : -37 </div>
+suspicious depth at line 673 : -37 )}
+suspicious depth at line 674 : -37 {selectedProvider.address && (
+suspicious depth at line 675 : -37 <div className="flex items-start gap-2.5">
+suspicious depth at line 676 : -37 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 677 : -37 <div>
+suspicious depth at line 678 : -37 <p className="text-[10px] text-muted-foreground">Address</p>
+suspicious depth at line 679 : -37 <p className="font-medium">{selectedProvider.address}</p>
+suspicious depth at line 680 : -37 </div>
+suspicious depth at line 681 : -37 </div>
+suspicious depth at line 682 : -37 )}
+suspicious depth at line 683 : -37 {selectedProvider.licenseNo && (
+suspicious depth at line 684 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 685 : -37 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 686 : -37 <div>
+suspicious depth at line 687 : -37 <p className="text-[10px] text-muted-foreground">License No</p>
+suspicious depth at line 688 : -37 <p className="font-mono font-medium">{selectedProvider.licenseNo}</p>
+suspicious depth at line 689 : -37 </div>
+suspicious depth at line 690 : -37 </div>
+suspicious depth at line 691 : -37 )}
+suspicious depth at line 692 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 693 : -37 <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+suspicious depth at line 694 : -37 <div>
+suspicious depth at line 695 : -37 <p className="text-[10px] text-muted-foreground">Registered</p>
+suspicious depth at line 696 : -37 <p className="font-medium">{formatDate(selectedProvider.createdAt)}</p>
+suspicious depth at line 697 : -37 </div>
+suspicious depth at line 698 : -37 </div>
+suspicious depth at line 699 : -37 {selectedProvider.approvedAt && (
+suspicious depth at line 700 : -37 <div className="flex items-center gap-2.5">
+suspicious depth at line 701 : -37 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+suspicious depth at line 702 : -37 <div>
+suspicious depth at line 703 : -37 <p className="text-[10px] text-muted-foreground">Approved {selectedProvider.approvedBy ? `by ${selectedProvider.approvedBy}` : ""}</p>
+suspicious depth at line 704 : -37 <p className="font-medium">{formatDate(selectedProvider.approvedAt)}</p>
+suspicious depth at line 705 : -37 </div>
+suspicious depth at line 706 : -37 </div>
+suspicious depth at line 707 : -37 )}
+suspicious depth at line 708 : -37 </div>
+suspicious depth at line 709 : -37 <div className="flex gap-2">
+suspicious depth at line 710 : -37 {!isSuperuser && selectedProvider.status === "APPROVED" && (
+suspicious depth at line 711 : -38 <Button size="sm" variant="outline" onClick={() => { setDetailOpen(false); openCoordPicker(selectedProvider); }}>
+suspicious depth at line 712 : -38 <MapPinned className="mr-1 h-3.5 w-3.5" /> Set Map Location
+suspicious depth at line 713 : -38 </Button>
+suspicious depth at line 714 : -38 )}
+suspicious depth at line 715 : -38 {selectedProvider.status === "APPROVED" && (
+suspicious depth at line 716 : -39 <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => { setDetailOpen(false); openSuspend(selectedProvider); }}>
+suspicious depth at line 717 : -39 <Ban className="h-3.5 w-3.5" /> Suspend
+suspicious depth at line 718 : -39 </Button>
+suspicious depth at line 719 : -39 )}
+suspicious depth at line 720 : -39 {selectedProvider.status === "SUSPENDED" && (
+suspicious depth at line 721 : -40 <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => { setDetailOpen(false); setConfirmAction({ provider: selectedProvider, action: "REACTIVATE" }); }}>
+suspicious depth at line 722 : -40 <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+suspicious depth at line 723 : -40 </Button>
+suspicious depth at line 724 : -40 )}
+suspicious depth at line 725 : -40 {selectedProvider.licenseFile && (
+suspicious depth at line 726 : -39 <a href={selectedProvider.licenseFile} target="_blank" rel="noopener noreferrer"
+suspicious depth at line 727 : -40 className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs sm:text-sm font-medium text-primary hover:bg-muted">
+suspicious depth at line 728 : -40 <FileText className="h-4 w-4" /> View License
+suspicious depth at line 729 : -40 </a>
+suspicious depth at line 730 : -40 )}
+suspicious depth at line 731 : -40 </div>
+suspicious depth at line 732 : -40 {selectedProvider.rejectionReason && (
+suspicious depth at line 733 : -40 <>
+suspicious depth at line 734 : -40 <Separator />
+suspicious depth at line 735 : -40 <div className="space-y-1.5">
+suspicious depth at line 736 : -40 <Label className="text-red-600 text-xs">Rejection Reason</Label>
+suspicious depth at line 737 : -40 <p className="rounded-lg bg-red-50 p-3 text-xs sm:text-sm text-red-800">{selectedProvider.rejectionReason}</p>
+suspicious depth at line 738 : -40 </div>
+suspicious depth at line 739 : -40 </>
+suspicious depth at line 740 : -40 )}
+suspicious depth at line 741 : -40 {selectedProvider.status === "SUSPENDED" && (selectedProvider as any).suspensionReason && (
+suspicious depth at line 742 : -40 <>
+suspicious depth at line 743 : -40 <Separator />
+suspicious depth at line 744 : -40 <div className="space-y-1.5">
+suspicious depth at line 745 : -40 <Label className="text-orange-600 text-xs">Suspension Reason</Label>
+suspicious depth at line 746 : -40 <p className="rounded-lg bg-orange-50 p-3 text-xs sm:text-sm text-orange-800">{(selectedProvider as any).suspensionReason}</p>
+suspicious depth at line 747 : -40 {(selectedProvider as any).suspendedBy && (
+suspicious depth at line 748 : -40 <p className="text-[11px] text-slate-500">Suspended by: {(selectedProvider as any).suspendedBy}</p>
+suspicious depth at line 749 : -40 )}
+suspicious depth at line 750 : -40 {(selectedProvider as any).suspendedAt && (
+suspicious depth at line 751 : -40 <p className="text-[11px] text-slate-500">Suspended on: {formatDate((selectedProvider as any).suspendedAt)}</p>
+suspicious depth at line 752 : -40 )}
+suspicious depth at line 753 : -40 </div>
+suspicious depth at line 754 : -40 </>
+suspicious depth at line 755 : -40 )}
+suspicious depth at line 756 : -40 </div>
+suspicious depth at line 757 : -40 )}
+suspicious depth at line 758 : -40 </DialogContent>
+suspicious depth at line 759 : -40 </Dialog>
+suspicious depth at line 760 : -40 
+suspicious depth at line 761 : -40 {/* Coordinate Picker Dialog */}
+suspicious depth at line 762 : -40 <Dialog open={coordOpen} onOpenChange={setCoordOpen}>
+suspicious depth at line 763 : -40 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 764 : -40 <DialogHeader>
+suspicious depth at line 765 : -40 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+suspicious depth at line 766 : -40 <MapPinned className="h-5 w-5" /> Set Location — {coordProvider?.name}
+suspicious depth at line 767 : -40 </DialogTitle>
+suspicious depth at line 768 : -40 <DialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 769 : -40 {coordProvider?.address ? `Address: ${coordProvider.address}` : "No address set for this provider"}
+suspicious depth at line 770 : -40 </DialogDescription>
+suspicious depth at line 771 : -40 </DialogHeader>
+suspicious depth at line 772 : -40 {coordProvider && (
+suspicious depth at line 773 : -40 <div className="space-y-4">
+suspicious depth at line 774 : -40 {/* Map Picker */}
+suspicious depth at line 775 : -39 <CoordinatePicker
+suspicious depth at line 776 : -39 latitude={editLat}
+suspicious depth at line 777 : -39 longitude={editLng}
+suspicious depth at line 778 : -39 address={coordProvider.address || ""}
+suspicious depth at line 779 : -40 onChange={(lat, lng) => { setEditLat(lat); setEditLng(lng); }}
+suspicious depth at line 780 : -41 />
+suspicious depth at line 781 : -41 
+suspicious depth at line 782 : -41 {/* Manual input + Geocode */}
+suspicious depth at line 783 : -41 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+suspicious depth at line 784 : -41 <div className="space-y-1.5">
+suspicious depth at line 785 : -41 <Label className="text-xs">Latitude</Label>
+suspicious depth at line 786 : -42 <Input type="number" step="0.0001" value={editLat} onChange={(e) => setEditLat(parseFloat(e.target.value) || 9.02)} className="text-xs font-mono" />
+suspicious depth at line 787 : -42 </div>
+suspicious depth at line 788 : -42 <div className="space-y-1.5">
+suspicious depth at line 789 : -42 <Label className="text-xs">Longitude</Label>
+suspicious depth at line 790 : -43 <Input type="number" step="0.0001" value={editLng} onChange={(e) => setEditLng(parseFloat(e.target.value) || 38.75)} className="text-xs font-mono" />
+suspicious depth at line 791 : -43 </div>
+suspicious depth at line 792 : -43 </div>
+suspicious depth at line 793 : -43 
+suspicious depth at line 794 : -43 <DialogFooter className="flex-col gap-2 sm:flex-row">
+suspicious depth at line 795 : -43 {coordProvider.address && (
+suspicious depth at line 796 : -43 <Button variant="outline" onClick={geocodeSingle} disabled={geocodingOne} className="w-full sm:w-auto">
+suspicious depth at line 797 : -43 <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingOne ? "animate-spin" : ""}`} />
+suspicious depth at line 798 : -43 {geocodingOne ? "Looking up..." : "Auto-detect from Address"}
+suspicious depth at line 799 : -43 </Button>
+suspicious depth at line 800 : -43 )}
+suspicious depth at line 801 : -44 <Button variant="outline" onClick={() => setCoordOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+suspicious depth at line 802 : -44 <Button onClick={saveCoordinates} disabled={savingCoord} className="w-full sm:w-auto">
+suspicious depth at line 803 : -44 <RefreshCw className={`mr-1 h-3.5 w-3.5 ${savingCoord ? "animate-spin" : ""}`} />
+suspicious depth at line 804 : -44 {savingCoord ? "Saving..." : "Save Location"}
+suspicious depth at line 805 : -44 </Button>
+suspicious depth at line 806 : -44 </DialogFooter>
+suspicious depth at line 807 : -44 </div>
+suspicious depth at line 808 : -44 )}
+suspicious depth at line 809 : -44 </DialogContent>
+suspicious depth at line 810 : -44 </Dialog>
+suspicious depth at line 811 : -44 
+suspicious depth at line 812 : -44 {/* Batch Geocode Dialog */}
+suspicious depth at line 813 : -44 <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+suspicious depth at line 814 : -44 <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 815 : -44 <DialogHeader>
+suspicious depth at line 816 : -44 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+suspicious depth at line 817 : -44 <Globe className="h-5 w-5" /> Batch Geocode All Providers
+suspicious depth at line 818 : -44 </DialogTitle>
+suspicious depth at line 819 : -44 <DialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 820 : -44 Automatically converts provider addresses to GPS coordinates using OpenStreetMap.
+suspicious depth at line 821 : -44 </DialogDescription>
+suspicious depth at line 822 : -44 </DialogHeader>
+suspicious depth at line 823 : -44 <div className="space-y-4">
+suspicious depth at line 824 : -44 <div className="rounded-lg border bg-amber-50 p-3 text-xs text-amber-800">
+suspicious depth at line 825 : -44 <p className="font-medium mb-1">How it works:</p>
+suspicious depth at line 826 : -44 <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+suspicious depth at line 827 : -44 <li>Only processes APPROVED providers with an address</li>
+suspicious depth at line 828 : -44 <li>Skips providers that already have real coordinates set</li>
+suspicious depth at line 829 : -44 <li>Uses OpenStreetMap Nominatim (free, no API key needed)</li>
+suspicious depth at line 830 : -44 <li>Takes ~1-2 seconds per provider due to rate limiting</li>
+suspicious depth at line 831 : -44 </ul>
+suspicious depth at line 832 : -44 </div>
+suspicious depth at line 833 : -44 {!batchResult ? (
+suspicious depth at line 834 : -44 <div className="flex justify-end gap-2">
+suspicious depth at line 835 : -45 <Button variant="outline" onClick={() => setBatchOpen(false)}>Cancel</Button>
+suspicious depth at line 836 : -45 <Button onClick={batchGeocode} disabled={geocodingAll}>
+suspicious depth at line 837 : -45 <Globe className={`mr-1 h-3.5 w-3.5 ${geocodingAll ? "animate-spin" : ""}`} />
+suspicious depth at line 838 : -45 {geocodingAll ? "Geocoding..." : "Start Geocoding"}
+suspicious depth at line 839 : -45 </Button>
+suspicious depth at line 840 : -45 </div>
+suspicious depth at line 841 : -45 ) : (
+suspicious depth at line 842 : -45 <div className="space-y-3">
+suspicious depth at line 843 : -45 <div className="grid grid-cols-3 gap-2">
+suspicious depth at line 844 : -45 <div className="rounded-lg border p-2.5 text-center">
+suspicious depth at line 845 : -45 <p className="text-lg font-bold text-emerald-600">{batchResult.updated}</p>
+suspicious depth at line 846 : -45 <p className="text-[10px] text-muted-foreground">Updated</p>
+suspicious depth at line 847 : -45 </div>
+suspicious depth at line 848 : -45 <div className="rounded-lg border p-2.5 text-center">
+suspicious depth at line 849 : -45 <p className="text-lg font-bold text-red-600">{batchResult.failed}</p>
+suspicious depth at line 850 : -45 <p className="text-[10px] text-muted-foreground">Failed</p>
+suspicious depth at line 851 : -45 </div>
+suspicious depth at line 852 : -45 <div className="rounded-lg border p-2.5 text-center">
+suspicious depth at line 853 : -45 <p className="text-lg font-bold">{batchResult.total}</p>
+suspicious depth at line 854 : -45 <p className="text-[10px] text-muted-foreground">Processed</p>
+suspicious depth at line 855 : -45 </div>
+suspicious depth at line 856 : -45 </div>
+suspicious depth at line 857 : -45 {batchResult.results && (
+suspicious depth at line 858 : -45 <div className="max-h-40 overflow-y-auto rounded-lg border divide-y">
+suspicious depth at line 859 : -46 {batchResult.results.map((r: any, i: number) => (
+suspicious depth at line 860 : -46 <div key={i} className="flex items-center justify-between p-2 text-xs">
+suspicious depth at line 861 : -46 <div className="min-w-0">
+suspicious depth at line 862 : -46 <p className="font-medium truncate">{r.name}</p>
+suspicious depth at line 863 : -46 <p className="text-[10px] text-muted-foreground truncate">{r.address}</p>
+suspicious depth at line 864 : -46 </div>
+suspicious depth at line 865 : -46 {r.error ? (
+suspicious depth at line 866 : -46 <span className="text-red-600 shrink-0">Failed</span>
+suspicious depth at line 867 : -46 ) : (
+suspicious depth at line 868 : -46 <span className="font-mono text-emerald-600 shrink-0">{r.lat?.toFixed(4)}, {r.lng?.toFixed(4)}</span>
+suspicious depth at line 869 : -46 )}
+suspicious depth at line 870 : -46 </div>
+suspicious depth at line 871 : -46 ))}
+suspicious depth at line 872 : -46 </div>
+suspicious depth at line 873 : -46 )}
+suspicious depth at line 874 : -46 <div className="flex justify-end">
+suspicious depth at line 875 : -47 <Button onClick={() => { setBatchOpen(false); setBatchResult(null); }}>Done</Button>
+suspicious depth at line 876 : -47 </div>
+suspicious depth at line 877 : -47 </div>
+suspicious depth at line 878 : -47 )}
+suspicious depth at line 879 : -47 </div>
+suspicious depth at line 880 : -47 </DialogContent>
+suspicious depth at line 881 : -47 </Dialog>
+suspicious depth at line 882 : -47 
+suspicious depth at line 883 : -47 {/* Reject Dialog */}
+suspicious depth at line 884 : -48 <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
+suspicious depth at line 885 : -48 <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 886 : -48 <DialogHeader>
+suspicious depth at line 887 : -48 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
+suspicious depth at line 888 : -48 <XCircle className="h-5 w-5" /> Reject Provider
+suspicious depth at line 889 : -48 </DialogTitle>
+suspicious depth at line 890 : -48 <DialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 891 : -48 Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+suspicious depth at line 892 : -48 </DialogDescription>
+suspicious depth at line 893 : -48 </DialogHeader>
+suspicious depth at line 894 : -48 <div className="space-y-2">
+suspicious depth at line 895 : -48 <Label htmlFor="reject-reason" className="text-xs sm:text-sm">Rejection Reason *</Label>
+suspicious depth at line 896 : -49 <Textarea id="reject-reason" placeholder="Enter the reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
+suspicious depth at line 897 : -49 </div>
+suspicious depth at line 898 : -49 <DialogFooter className="flex-col gap-2 sm:flex-row">
+suspicious depth at line 899 : -50 <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">Cancel</Button>
+suspicious depth at line 900 : -50 <Button variant="destructive" onClick={handleReject} disabled={actioning || !rejectReason.trim()} className="w-full sm:w-auto">
+suspicious depth at line 901 : -50 {actioning ? "Rejecting..." : "Confirm Rejection"}
+suspicious depth at line 902 : -50 </Button>
+suspicious depth at line 903 : -50 </DialogFooter>
+suspicious depth at line 904 : -50 </DialogContent>
+suspicious depth at line 905 : -50 </Dialog>
+suspicious depth at line 906 : -50 
+suspicious depth at line 907 : -50 {/* Confirm Approve/Suspend Dialog */}
+suspicious depth at line 908 : -51 <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+suspicious depth at line 909 : -51 <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 910 : -51 <AlertDialogHeader>
+suspicious depth at line 911 : -51 <AlertDialogTitle className="text-base sm:text-lg">
+suspicious depth at line 912 : -51 {confirmAction?.action === "APPROVED" ? "Approve Provider" : confirmAction?.action === "REACTIVATE" ? "Reactivate Provider" : "Suspend Provider"}
+suspicious depth at line 913 : -51 </AlertDialogTitle>
+suspicious depth at line 914 : -51 <AlertDialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 915 : -51 {confirmAction?.action === "APPROVED"
+suspicious depth at line 916 : -51 ? `Are you sure you want to approve "${confirmAction?.provider.name}"?`
+suspicious depth at line 917 : -51 : confirmAction?.action === "REACTIVATE"
+suspicious depth at line 918 : -51 ? `Are you sure you want to reactivate "${confirmAction?.provider.name}"? The guesthouse will regain full access.`
+suspicious depth at line 919 : -51 : `Are you sure you want to suspend "${confirmAction?.provider.name}"?`}
+suspicious depth at line 920 : -51 </AlertDialogDescription>
+suspicious depth at line 921 : -51 </AlertDialogHeader>
+suspicious depth at line 922 : -51 <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+suspicious depth at line 923 : -51 <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+suspicious depth at line 924 : -50 <AlertDialogAction
+suspicious depth at line 925 : -51 onClick={() => confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)}
+suspicious depth at line 926 : -51 disabled={actioning}
+suspicious depth at line 927 : -51 className={
+suspicious depth at line 928 : -51 confirmAction?.action === "APPROVED"
+suspicious depth at line 929 : -51 ? "w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-600"
+suspicious depth at line 930 : -51 : confirmAction?.action === "REACTIVATE"
+suspicious depth at line 931 : -51 ? "w-full sm:w-auto bg-teal-600 hover:bg-teal-700 focus:ring-teal-600"
+suspicious depth at line 932 : -51 : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
+suspicious depth at line 933 : -51 }
+suspicious depth at line 934 : -52 >
+suspicious depth at line 935 : -52 {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : confirmAction?.action === "REACTIVATE" ? "Reactivate" : "Suspend"}
+suspicious depth at line 936 : -52 </AlertDialogAction>
+suspicious depth at line 937 : -52 </AlertDialogFooter>
+suspicious depth at line 938 : -52 </AlertDialogContent>
+suspicious depth at line 939 : -52 </AlertDialog>
+suspicious depth at line 940 : -52 
+suspicious depth at line 941 : -52 {/* Register Guesthouse Dialog (SUPERUSER) */}
+suspicious depth at line 942 : -52 <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+suspicious depth at line 943 : -52 <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 944 : -52 <DialogHeader>
+suspicious depth at line 945 : -52 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+suspicious depth at line 946 : -52 <Building2 className="h-5 w-5" /> Register New Guesthouse
+suspicious depth at line 947 : -52 </DialogTitle>
+suspicious depth at line 948 : -52 <DialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 949 : -52 Add a new guesthouse. It will be automatically approved and an operator account will be created.
+suspicious depth at line 950 : -52 </DialogDescription>
+suspicious depth at line 951 : -52 </DialogHeader>
+suspicious depth at line 952 : -52 
+suspicious depth at line 953 : -52 <div className="space-y-4 mt-2">
+suspicious depth at line 954 : -52 {/* Guesthouse Info Section */}
+suspicious depth at line 955 : -52 <div className="space-y-1">
+suspicious depth at line 956 : -52 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Guesthouse Information</p>
+suspicious depth at line 957 : -52 <Separator />
+suspicious depth at line 958 : -52 </div>
+suspicious depth at line 959 : -52 
+suspicious depth at line 960 : -52 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+suspicious depth at line 961 : -52 <div className="grid gap-1.5 sm:col-span-2">
+suspicious depth at line 962 : -52 <Label className="text-sm">Guesthouse Name <span className="text-rose-500">*</span></Label>
+suspicious depth at line 963 : -51 <Input
+suspicious depth at line 964 : -51 value={registerForm.name}
+suspicious depth at line 965 : -53 onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
+suspicious depth at line 966 : -53 placeholder="e.g. Sunshine Guest House"
+suspicious depth at line 967 : -53 className="bg-slate-50"
+suspicious depth at line 968 : -54 />
+suspicious depth at line 969 : -54 </div>
+suspicious depth at line 970 : -54 <div className="grid gap-1.5">
+suspicious depth at line 971 : -54 <Label className="text-sm">Owner Name <span className="text-rose-500">*</span></Label>
+suspicious depth at line 972 : -53 <Input
+suspicious depth at line 973 : -53 value={registerForm.ownerName}
+suspicious depth at line 974 : -55 onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
+suspicious depth at line 975 : -55 placeholder="Full name of the owner"
+suspicious depth at line 976 : -55 className="bg-slate-50"
+suspicious depth at line 977 : -56 />
+suspicious depth at line 978 : -56 </div>
+suspicious depth at line 979 : -56 <div className="grid gap-1.5">
+suspicious depth at line 980 : -56 <Label className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+suspicious depth at line 981 : -55 <Input
+suspicious depth at line 982 : -55 value={registerForm.phone}
+suspicious depth at line 983 : -57 onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
+suspicious depth at line 984 : -57 placeholder="+251..."
+suspicious depth at line 985 : -57 className="bg-slate-50"
+suspicious depth at line 986 : -58 />
+suspicious depth at line 987 : -58 </div>
+suspicious depth at line 988 : -58 <div className="grid gap-1.5">
+suspicious depth at line 989 : -58 <Label className="text-sm">Email <span className="text-slate-400 font-normal">(optional)</span></Label>
+suspicious depth at line 990 : -57 <Input
+suspicious depth at line 991 : -57 type="email"
+suspicious depth at line 992 : -57 value={registerForm.email}
+suspicious depth at line 993 : -59 onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
+suspicious depth at line 994 : -59 placeholder="owner@email.com"
+suspicious depth at line 995 : -59 className="bg-slate-50"
+suspicious depth at line 996 : -60 />
+suspicious depth at line 997 : -60 </div>
+suspicious depth at line 998 : -60 <div className="grid gap-1.5">
+suspicious depth at line 999 : -60 <Label className="text-sm">Type</Label>
+suspicious depth at line 1000 : -60 <div className="flex flex-wrap gap-1.5">
+suspicious depth at line 1001 : -61 {GUESTHOUSE_TYPES.map((t) => (
+suspicious depth at line 1002 : -60 <button
+suspicious depth at line 1003 : -60 key={t.value}
+suspicious depth at line 1004 : -60 type="button"
+suspicious depth at line 1005 : -62 onClick={() => setRegisterForm((f) => ({ ...f, type: t.value }))}
+suspicious depth at line 1006 : -62 className={`rounded-lg border-2 px-3 py-1.5 text-xs font-medium transition-all ${
+suspicious depth at line 1007 : -62 registerForm.type === t.value
+suspicious depth at line 1008 : -62 ? "border-primary bg-primary/5 text-primary"
+suspicious depth at line 1009 : -62 : "border-slate-200 text-slate-500 hover:border-slate-300"
+suspicious depth at line 1010 : -62 }`}
+suspicious depth at line 1011 : -63 >
+suspicious depth at line 1012 : -63 {t.label}
+suspicious depth at line 1013 : -63 </button>
+suspicious depth at line 1014 : -63 ))}
+suspicious depth at line 1015 : -63 </div>
+suspicious depth at line 1016 : -63 </div>
+suspicious depth at line 1017 : -63 <div className="grid gap-1.5 sm:col-span-2">
+suspicious depth at line 1018 : -63 <Label className="text-sm">Address <span className="text-slate-400 font-normal">(optional)</span></Label>
+suspicious depth at line 1019 : -62 <Input
+suspicious depth at line 1020 : -62 value={registerForm.address}
+suspicious depth at line 1021 : -64 onChange={(e) => setRegisterForm((f) => ({ ...f, address: e.target.value }))}
+suspicious depth at line 1022 : -64 placeholder="Street, city, sub-city"
+suspicious depth at line 1023 : -64 className="bg-slate-50"
+suspicious depth at line 1024 : -65 />
+suspicious depth at line 1025 : -65 </div>
+suspicious depth at line 1026 : -65 <div className="grid gap-1.5 sm:col-span-2">
+suspicious depth at line 1027 : -65 <Label className="text-sm">License No <span className="text-slate-400 font-normal">(optional)</span></Label>
+suspicious depth at line 1028 : -64 <Input
+suspicious depth at line 1029 : -64 value={registerForm.licenseNo}
+suspicious depth at line 1030 : -66 onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
+suspicious depth at line 1031 : -66 placeholder="Business license number"
+suspicious depth at line 1032 : -66 className="bg-slate-50"
+suspicious depth at line 1033 : -67 />
+suspicious depth at line 1034 : -67 </div>
+suspicious depth at line 1035 : -67 <div className="grid gap-1.5 sm:col-span-2">
+suspicious depth at line 1036 : -67 <Label className="text-sm">Upload License <span className="text-slate-400 font-normal">(optional)</span></Label>
+suspicious depth at line 1037 : -67 {!registerForm.licenseFileData ? (
+suspicious depth at line 1038 : -67 <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 transition-colors hover:border-primary/40 hover:bg-primary/5">
+suspicious depth at line 1039 : -67 <Upload className="h-8 w-8 text-slate-400" />
+suspicious depth at line 1040 : -67 <div className="text-center">
+suspicious depth at line 1041 : -67 <p className="text-sm font-medium text-slate-600">Click to upload license document</p>
+suspicious depth at line 1042 : -67 <p className="text-[11px] text-slate-400 mt-0.5">PDF, Image, or any document (max 5MB)</p>
+suspicious depth at line 1043 : -67 </div>
+suspicious depth at line 1044 : -66 <input
+suspicious depth at line 1045 : -66 type="file"
+suspicious depth at line 1046 : -66 className="hidden"
+suspicious depth at line 1047 : -66 accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx"
+suspicious depth at line 1048 : -67 onChange={async (e) => {
+suspicious depth at line 1049 : -67 const file = e.target.files?.[0];
+suspicious depth at line 1050 : -67 if (!file) return;
+suspicious depth at line 1051 : -68 if (file.size > 5 * 1024 * 1024) {
+suspicious depth at line 1052 : -68 toast.error("File size must be under 5MB");
+suspicious depth at line 1053 : -68 return;
+suspicious depth at line 1054 : -68 }
+suspicious depth at line 1055 : -68 const reader = new FileReader();
+suspicious depth at line 1056 : -69 reader.onload = () => {
+suspicious depth at line 1057 : -69 const base64 = reader.result as string;
+suspicious depth at line 1058 : -70 setRegisterForm((f) => ({
+suspicious depth at line 1059 : -70 ...f,
+suspicious depth at line 1060 : -70 licenseFileData: base64,
+suspicious depth at line 1061 : -70 licenseFileName: file.name,
+suspicious depth at line 1062 : -70 }));
+suspicious depth at line 1063 : -70 };
+suspicious depth at line 1064 : -70 reader.readAsDataURL(file);
+suspicious depth at line 1065 : -70 }}
+suspicious depth at line 1066 : -71 />
+suspicious depth at line 1067 : -71 </label>
+suspicious depth at line 1068 : -71 ) : (
+suspicious depth at line 1069 : -71 <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+suspicious depth at line 1070 : -71 <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
+suspicious depth at line 1071 : -71 <div className="min-w-0 flex-1">
+suspicious depth at line 1072 : -71 <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
+suspicious depth at line 1073 : -71 <p className="text-[11px] text-emerald-600">License uploaded</p>
+suspicious depth at line 1074 : -71 </div>
+suspicious depth at line 1075 : -70 <button
+suspicious depth at line 1076 : -70 type="button"
+suspicious depth at line 1077 : -72 onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
+suspicious depth at line 1078 : -72 className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
+suspicious depth at line 1079 : -73 >
+suspicious depth at line 1080 : -73 <X className="h-3.5 w-3.5 text-slate-500" />
+suspicious depth at line 1081 : -73 </button>
+suspicious depth at line 1082 : -73 </div>
+suspicious depth at line 1083 : -73 )}
+suspicious depth at line 1084 : -73 </div>
+suspicious depth at line 1085 : -73 </div>
+suspicious depth at line 1086 : -73 
+suspicious depth at line 1087 : -73 {/* Operator Account Section */}
+suspicious depth at line 1088 : -73 <div className="space-y-1">
+suspicious depth at line 1089 : -73 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operator Login Account</p>
+suspicious depth at line 1090 : -73 <p className="text-[11px] text-slate-400">An operator account will be created with access to manage this guesthouse.</p>
+suspicious depth at line 1091 : -73 <Separator />
+suspicious depth at line 1092 : -73 </div>
+suspicious depth at line 1093 : -73 
+suspicious depth at line 1094 : -73 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+suspicious depth at line 1095 : -73 <div className="grid gap-1.5">
+suspicious depth at line 1096 : -73 <Label className="text-sm flex items-center gap-1.5">
+suspicious depth at line 1097 : -73 <User className="h-3.5 w-3.5 text-slate-400" />
+suspicious depth at line 1098 : -73 Username <span className="text-rose-500">*</span>
+suspicious depth at line 1099 : -73 </Label>
+suspicious depth at line 1100 : -72 <Input
+suspicious depth at line 1101 : -72 value={registerForm.username}
+suspicious depth at line 1102 : -74 onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
+suspicious depth at line 1103 : -74 placeholder="operator_username"
+suspicious depth at line 1104 : -74 className="bg-slate-50"
+suspicious depth at line 1105 : -74 autoComplete="off"
+suspicious depth at line 1106 : -75 />
+suspicious depth at line 1107 : -75 </div>
+suspicious depth at line 1108 : -75 <div className="grid gap-1.5">
+suspicious depth at line 1109 : -75 <Label className="text-sm flex items-center gap-1.5">
+suspicious depth at line 1110 : -75 <KeyRound className="h-3.5 w-3.5 text-slate-400" />
+suspicious depth at line 1111 : -75 Password <span className="text-rose-500">*</span>
+suspicious depth at line 1112 : -75 </Label>
+suspicious depth at line 1113 : -74 <Input
+suspicious depth at line 1114 : -74 type="password"
+suspicious depth at line 1115 : -74 value={registerForm.password}
+suspicious depth at line 1116 : -76 onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
+suspicious depth at line 1117 : -76 placeholder="Min 4 characters"
+suspicious depth at line 1118 : -76 className="bg-slate-50"
+suspicious depth at line 1119 : -76 autoComplete="new-password"
+suspicious depth at line 1120 : -77 />
+suspicious depth at line 1121 : -77 </div>
+suspicious depth at line 1122 : -77 </div>
+suspicious depth at line 1123 : -77 
+suspicious depth at line 1124 : -77 {/* Info banner */}
+suspicious depth at line 1125 : -77 <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+suspicious depth at line 1126 : -77 <div className="flex items-start gap-2">
+suspicious depth at line 1127 : -77 <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+suspicious depth at line 1128 : -77 <p className="text-xs text-emerald-800">
+suspicious depth at line 1129 : -77 This guesthouse will be <strong>automatically approved</strong> since you are registering it as System Admin. The operator can log in immediately after registration.
+suspicious depth at line 1130 : -77 </p>
+suspicious depth at line 1131 : -77 </div>
+suspicious depth at line 1132 : -77 </div>
+suspicious depth at line 1133 : -77 
+suspicious depth at line 1134 : -77 {/* Actions */}
+suspicious depth at line 1135 : -77 <div className="flex items-center justify-end gap-2 pt-2">
+suspicious depth at line 1136 : -76 <Button
+suspicious depth at line 1137 : -76 variant="outline"
+suspicious depth at line 1138 : -77 onClick={() => { setRegisterOpen(false); setRegisterForm(emptyRegisterForm); }}
+suspicious depth at line 1139 : -77 disabled={registering}
+suspicious depth at line 1140 : -77 className="w-full sm:w-auto"
+suspicious depth at line 1141 : -78 >
+suspicious depth at line 1142 : -78 Cancel
+suspicious depth at line 1143 : -78 </Button>
+suspicious depth at line 1144 : -77 <Button
+suspicious depth at line 1145 : -77 className="gap-1.5 w-full sm:w-auto"
+suspicious depth at line 1146 : -77 onClick={handleRegister}
+suspicious depth at line 1147 : -77 disabled={registering}
+suspicious depth at line 1148 : -78 >
+suspicious depth at line 1149 : -78 {registering ? (
+suspicious depth at line 1150 : -78 <>
+suspicious depth at line 1151 : -78 <Loader2 className="h-4 w-4 animate-spin" />
+suspicious depth at line 1152 : -78 Registering...
+suspicious depth at line 1153 : -78 </>
+suspicious depth at line 1154 : -78 ) : (
+suspicious depth at line 1155 : -78 <>
+suspicious depth at line 1156 : -78 <UserPlus className="h-4 w-4" />
+suspicious depth at line 1157 : -78 Register &amp; Approve
+suspicious depth at line 1158 : -78 </>
+suspicious depth at line 1159 : -78 )}
+suspicious depth at line 1160 : -78 </Button>
+suspicious depth at line 1161 : -78 </div>
+suspicious depth at line 1162 : -78 </div>
+suspicious depth at line 1163 : -78 </DialogContent>
+suspicious depth at line 1164 : -78 </Dialog>
+suspicious depth at line 1165 : -78 
+suspicious depth at line 1166 : -78 {/* Suspend Provider Dialog (with reason + notification) */}
+suspicious depth at line 1167 : -79 <Dialog open={!!suspendDialog} onOpenChange={(open) => { if (!open) setSuspendDialog(null); }}>
+suspicious depth at line 1168 : -79 <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+suspicious depth at line 1169 : -79 <DialogHeader>
+suspicious depth at line 1170 : -79 <DialogTitle className="flex items-center gap-2 text-rose-700">
+suspicious depth at line 1171 : -79 <Ban className="h-5 w-5" />
+suspicious depth at line 1172 : -79 Suspend Guesthouse
+suspicious depth at line 1173 : -79 </DialogTitle>
+suspicious depth at line 1174 : -79 <DialogDescription className="text-xs sm:text-sm">
+suspicious depth at line 1175 : -79 Suspend this provider and send them a notification with the reason.
+suspicious depth at line 1176 : -79 </DialogDescription>
+suspicious depth at line 1177 : -79 </DialogHeader>
+suspicious depth at line 1178 : -79 {suspendDialog && (
+suspicious depth at line 1179 : -79 <div className="space-y-4">
+suspicious depth at line 1180 : -79 {/* Provider info summary */}
+suspicious depth at line 1181 : -79 <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+suspicious depth at line 1182 : -79 <div className="flex items-center gap-3">
+suspicious depth at line 1183 : -79 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+suspicious depth at line 1184 : -79 <Building2 className="h-5 w-5 text-rose-600" />
+suspicious depth at line 1185 : -79 </div>
+suspicious depth at line 1186 : -79 <div className="min-w-0 flex-1">
+suspicious depth at line 1187 : -79 <p className="text-sm font-bold text-slate-900 truncate">{suspendDialog.name}</p>
+suspicious depth at line 1188 : -79 <p className="text-xs text-slate-500">{suspendDialog.ownerName} &middot; {suspendDialog.phone}</p>
+suspicious depth at line 1189 : -79 {suspendDialog.address && (
+suspicious depth at line 1190 : -79 <p className="text-[11px] text-slate-400 truncate">{suspendDialog.address}</p>
+suspicious depth at line 1191 : -79 )}
+suspicious depth at line 1192 : -79 </div>
+suspicious depth at line 1193 : -79 </div>
+suspicious depth at line 1194 : -79 </div>
+suspicious depth at line 1195 : -79 
+suspicious depth at line 1196 : -79 {/* Suspension Reason (required) */}
+suspicious depth at line 1197 : -79 <div>
+suspicious depth at line 1198 : -79 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+suspicious depth at line 1199 : -79 Reason for Suspension <span className="text-rose-500">*</span>
+suspicious depth at line 1200 : -79 </Label>
+suspicious depth at line 1201 : -78 <Textarea
+suspicious depth at line 1202 : -78 value={suspensionReason}
+suspicious depth at line 1203 : -79 onChange={(e) => setSuspensionReason(e.target.value)}
+suspicious depth at line 1204 : -79 placeholder="Write the detailed reason for suspending this guesthouse..."
+suspicious depth at line 1205 : -79 className="min-h-[100px] resize-none"
+suspicious depth at line 1206 : -79 maxLength={1000}
+suspicious depth at line 1207 : -80 />
+suspicious depth at line 1208 : -80 <p className="mt-1 text-[11px] text-slate-400 text-right">{suspensionReason.length}/1000</p>
+suspicious depth at line 1209 : -80 </div>
+suspicious depth at line 1210 : -80 
+suspicious depth at line 1211 : -80 {/* Short Message to Provider */}
+suspicious depth at line 1212 : -80 <div>
+suspicious depth at line 1213 : -80 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
+suspicious depth at line 1214 : -80 Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+suspicious depth at line 1215 : -80 </Label>
+suspicious depth at line 1216 : -79 <Textarea
+suspicious depth at line 1217 : -79 value={providerMessage}
+suspicious depth at line 1218 : -80 onChange={(e) => setProviderMessage(e.target.value)}
+suspicious depth at line 1219 : -80 placeholder="Short message that will be sent to the provider about their suspension..."
+suspicious depth at line 1220 : -80 className="min-h-[80px] resize-none"
+suspicious depth at line 1221 : -80 maxLength={500}
+suspicious depth at line 1222 : -81 />
+suspicious depth at line 1223 : -81 <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
+suspicious depth at line 1224 : -81 <p className="mt-1 text-[11px] text-slate-500">
+suspicious depth at line 1225 : -81 If empty, a default notification with the suspension reason will be sent automatically.
+suspicious depth at line 1226 : -81 </p>
+suspicious depth at line 1227 : -81 </div>
+suspicious depth at line 1228 : -81 
+suspicious depth at line 1229 : -81 {/* Warning */}
+suspicious depth at line 1230 : -81 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+suspicious depth at line 1231 : -81 <div className="flex items-start gap-2">
+suspicious depth at line 1232 : -81 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+suspicious depth at line 1233 : -81 <p className="text-xs text-amber-800">
+suspicious depth at line 1234 : -81 This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
+suspicious depth at line 1235 : -81 Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+suspicious depth at line 1236 : -81 </p>
+suspicious depth at line 1237 : -81 </div>
+suspicious depth at line 1238 : -81 </div>
+suspicious depth at line 1239 : -81 
+suspicious depth at line 1240 : -81 {/* Actions */}
+suspicious depth at line 1241 : -81 <div className="flex items-center justify-end gap-2 pt-2">
+suspicious depth at line 1242 : -80 <Button
+suspicious depth at line 1243 : -80 variant="outline"
+suspicious depth at line 1244 : -81 onClick={() => setSuspendDialog(null)}
+suspicious depth at line 1245 : -81 disabled={suspending}
+suspicious depth at line 1246 : -81 className="w-full sm:w-auto"
+suspicious depth at line 1247 : -82 >
+suspicious depth at line 1248 : -82 Cancel
+suspicious depth at line 1249 : -82 </Button>
+suspicious depth at line 1250 : -81 <Button
+suspicious depth at line 1251 : -81 variant="destructive"
+suspicious depth at line 1252 : -81 className="gap-1.5 w-full sm:w-auto"
+suspicious depth at line 1253 : -81 onClick={handleSuspend}
+suspicious depth at line 1254 : -81 disabled={suspending || !suspensionReason.trim()}
+suspicious depth at line 1255 : -82 >
+suspicious depth at line 1256 : -82 {suspending ? (
+suspicious depth at line 1257 : -82 <>
+suspicious depth at line 1258 : -82 <Loader2 className="h-4 w-4 animate-spin" />
+suspicious depth at line 1259 : -82 Suspending...
+suspicious depth at line 1260 : -82 </>
+suspicious depth at line 1261 : -82 ) : (
+suspicious depth at line 1262 : -82 <>
+suspicious depth at line 1263 : -82 <Send className="h-4 w-4" />
+suspicious depth at line 1264 : -82 Suspend &amp; Send Notification
+suspicious depth at line 1265 : -82 </>
+suspicious depth at line 1266 : -82 )}
+suspicious depth at line 1267 : -82 </Button>
+suspicious depth at line 1268 : -82 </div>
+suspicious depth at line 1269 : -82 </div>
+suspicious depth at line 1270 : -82 )}
+suspicious depth at line 1271 : -82 </DialogContent>
+suspicious depth at line 1272 : -82 </Dialog>
+suspicious depth at line 1273 : -82 </div>
+suspicious depth at line 1274 : -82 );
+suspicious depth at line 1275 : -82 }
+suspicious depth at line 1276 : -82 

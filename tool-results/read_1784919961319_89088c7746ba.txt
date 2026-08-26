@@ -1,0 +1,700 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, type FormEvent } from "react";
+     4→import { useAppStore } from "@/lib/store";
+     5→import {
+     6→  apiGetSuspectedPersons,
+     7→  apiCreateSuspectedPerson,
+     8→  apiUpdateSuspectedPerson,
+     9→  apiDeleteSuspectedPerson,
+    10→} from "@/lib/api";
+    11→import { toast } from "sonner";
+    12→import { Badge } from "@/components/ui/badge";
+    13→import { Button } from "@/components/ui/button";
+    14→import { Input } from "@/components/ui/input";
+    15→import { Label } from "@/components/ui/label";
+    16→import { Textarea } from "@/components/ui/textarea";
+    17→import { Skeleton } from "@/components/ui/skeleton";
+    18→import { Separator } from "@/components/ui/separator";
+    19→import {
+    20→  Table,
+    21→  TableBody,
+    22→  TableCell,
+    23→  TableHead,
+    24→  TableHeader,
+    25→  TableRow,
+    26→} from "@/components/ui/table";
+    27→import {
+    28→  Dialog,
+    29→  DialogContent,
+    30→  DialogHeader,
+    31→  DialogTitle,
+    32→  DialogDescription,
+    33→  DialogFooter,
+    34→} from "@/components/ui/dialog";
+    35→import {
+    36→  Select,
+    37→  SelectContent,
+    38→  SelectItem,
+    39→  SelectTrigger,
+    40→  SelectValue,
+    41→} from "@/components/ui/select";
+    42→import {
+    43→  Search,
+    44→  Plus,
+    45→  UserX,
+    46→  Pencil,
+    47→  Trash2,
+    48→  Eye,
+    49→  Phone,
+    50→  Globe,
+    51→  MapPin,
+    52→  FileWarning,
+    53→  ShieldAlert,
+    54→  AlertTriangle,
+    55→} from "lucide-react";
+    56→
+    57→interface SuspectedPerson {
+    58→  id: string;
+    59→  name: string;
+    60→  phone: string;
+    61→  idNumber: string;
+    62→  idType: string;
+    63→  nationality: string;
+    64→  address: string;
+    65→  description: string;
+    66→  severity: string;
+    67→  is_active: boolean;
+    68→  registeredBy: string;
+    69→  createdAt: string;
+    70→  updatedAt: string;
+    71→  _count: { matches: number };
+    72→}
+    73→
+    74→interface PersonWithHistory extends SuspectedPerson {
+    75→  matches?: MatchRecord[];
+    76→}
+    77→
+    78→interface MatchRecord {
+    79→  id: string;
+    80→  matchType: string;
+    81→  guestName: string;
+    82→  guestPhone: string;
+    83→  providerName: string;
+    84→  createdAt: string;
+    85→  details: string;
+    86→}
+    87→
+    88→const SEVERITY_STYLES: Record<string, string> = {
+    89→  LOW: "bg-slate-100 text-slate-700 border-slate-200",
+    90→  MEDIUM: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    91→  HIGH: "bg-orange-100 text-orange-800 border-orange-200",
+    92→  CRITICAL: "bg-red-100 text-red-800 border-red-200",
+    93→};
+    94→
+    95→const MATCH_TYPE_LABELS: Record<string, string> = {
+    96→  RESERVATION: "Reservation",
+    97→  DAYTIME_BOOKING: "Daytime",
+    98→  GUEST_CHECKIN: "Check-in",
+    99→};
+   100→
+   101→function formatDate(dateStr: string) {
+   102→  return new Date(dateStr).toLocaleDateString("en-US", {
+   103→    month: "short",
+   104→    day: "numeric",
+   105→    year: "numeric",
+   106→  });
+   107→}
+   108→
+   109→function formatDateTime(dateStr: string) {
+   110→  return new Date(dateStr).toLocaleString("en-US", {
+   111→    month: "short",
+   112→    day: "numeric",
+   113→    hour: "2-digit",
+   114→    minute: "2-digit",
+   115→  });
+   116→}
+   117→
+   118→const emptyForm = {
+   119→  name: "",
+   120→  phone: "",
+   121→  idNumber: "",
+   122→  idType: "",
+   123→  nationality: "",
+   124→  address: "",
+   125→  description: "",
+   126→  severity: "MEDIUM",
+   127→};
+   128→
+   129→export default function SuspectedPersonsPage() {
+   130→  const { refreshKey } = useAppStore();
+   131→  const [persons, setPersons] = useState<SuspectedPerson[]>([]);
+   132→  const [search, setSearch] = useState("");
+   133→  const [loading, setLoading] = useState(true);
+   134→
+   135→  // Dialogs
+   136→  const [formOpen, setFormOpen] = useState(false);
+   137→  const [editingId, setEditingId] = useState<string | null>(null);
+   138→  const [form, setForm] = useState(emptyForm);
+   139→  const [formLoading, setFormLoading] = useState(false);
+   140→
+   141→  const [detailOpen, setDetailOpen] = useState(false);
+   142→  const [detailPerson, setDetailPerson] = useState<PersonWithHistory | null>(null);
+   143→  const [detailLoading, setDetailLoading] = useState(false);
+   144→
+   145→  const [deleteOpen, setDeleteOpen] = useState(false);
+   146→  const [deleteId, setDeleteId] = useState<string | null>(null);
+   147→  const [deleteLoading, setDeleteLoading] = useState(false);
+   148→
+   149→  const fetchPersons = useCallback(async () => {
+   150→    try {
+   151→      setLoading(true);
+   152→      const query = search ? `q=${encodeURIComponent(search)}` : "";
+   153→      const data = await apiGetSuspectedPersons(query);
+   154→      setPersons(Array.isArray(data) ? data : []);
+   155→    } catch (err: unknown) {
+   156→      const message = err instanceof Error ? err.message : "Failed to load suspected persons";
+   157→      toast.error(message);
+   158→    } finally {
+   159→      setLoading(false);
+   160→    }
+   161→  }, [search]);
+   162→
+   163→  useEffect(() => {
+   164→    const timer = setTimeout(() => fetchPersons(), 300);
+   165→    return () => clearTimeout(timer);
+   166→  }, [fetchPersons, refreshKey]);
+   167→
+   168→  const openAdd = () => {
+   169→    setEditingId(null);
+   170→    setForm(emptyForm);
+   171→    setFormOpen(true);
+   172→  };
+   173→
+   174→  const openEdit = (person: SuspectedPerson) => {
+   175→    setEditingId(person.id);
+   176→    setForm({
+   177→      name: person.name,
+   178→      phone: person.phone,
+   179→      idNumber: person.idNumber,
+   180→      idType: person.idType,
+   181→      nationality: person.nationality,
+   182→      address: person.address,
+   183→      description: person.description,
+   184→      severity: person.severity,
+   185→    });
+   186→    setFormOpen(true);
+   187→  };
+   188→
+   189→  const handleSubmit = async (e: FormEvent) => {
+   190→    e.preventDefault();
+   191→    if (!form.name.trim()) {
+   192→      toast.error("Name is required");
+   193→      return;
+   194→    }
+   195→    setFormLoading(true);
+   196→    try {
+   197→      if (editingId) {
+   198→        const updated = await apiUpdateSuspectedPerson(editingId, form);
+   199→        setPersons((prev) =>
+   200→          prev.map((p) => (p.id === editingId ? { ...p, ...updated } : p))
+   201→        );
+   202→        toast.success("Suspected person updated");
+   203→      } else {
+   204→        const created = await apiCreateSuspectedPerson(form);
+   205→        setPersons((prev) => [created, ...prev]);
+   206→        toast.success("Suspected person added");
+   207→      }
+   208→      setFormOpen(false);
+   209→    } catch (err: unknown) {
+   210→      const message = err instanceof Error ? err.message : "Operation failed";
+   211→      toast.error(message);
+   212→    } finally {
+   213→      setFormLoading(false);
+   214→    }
+   215→  };
+   216→
+   217→  const openDetail = async (person: SuspectedPerson) => {
+   218→    setDetailPerson(person);
+   219→    setDetailOpen(true);
+   220→    setDetailLoading(true);
+   221→    try {
+   222→      // Fetch full person with match history
+   223→      const res = await fetch(`/api/suspected-persons/${person.id}`, {
+   224→        headers: { "Content-Type": "application/json" },
+   225→      });
+   226→      if (res.ok) {
+   227→        const data = await res.json();
+   228→        setDetailPerson(data);
+   229→      }
+   230→    } catch {
+   231→      // Keep the basic person data
+   232→    } finally {
+   233→      setDetailLoading(false);
+   234→    }
+   235→  };
+   236→
+   237→  const confirmDelete = (id: string) => {
+   238→    setDeleteId(id);
+   239→    setDeleteOpen(true);
+   240→  };
+   241→
+   242→  const handleDelete = async () => {
+   243→    if (!deleteId) return;
+   244→    setDeleteLoading(true);
+   245→    try {
+   246→      await apiDeleteSuspectedPerson(deleteId);
+   247→      setPersons((prev) => prev.filter((p) => p.id !== deleteId));
+   248→      toast.success("Suspected person deleted");
+   249→      setDeleteOpen(false);
+   250→    } catch (err: unknown) {
+   251→      toast.error("Failed to delete");
+   252→    } finally {
+   253→      setDeleteLoading(false);
+   254→    }
+   255→  };
+   256→
+   257→  const toggleActive = async (person: SuspectedPerson) => {
+   258→    try {
+   259→      const updated = await apiUpdateSuspectedPerson(person.id, { is_active: !person.is_active });
+   260→      setPersons((prev) =>
+   261→        prev.map((p) => (p.id === person.id ? { ...p, is_active: updated.is_active } : p))
+   262→      );
+   263→      toast.success(updated.is_active ? "Reactivated" : "Deactivated");
+   264→    } catch {
+   265→      toast.error("Failed to update status");
+   266→    }
+   267→  };
+   268→
+   269→  return (
+   270→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   271→      {/* Header */}
+   272→      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+   273→        <div>
+   274→          <h2 className="text-base sm:text-lg font-semibold">Suspected Persons</h2>
+   275→          <p className="text-xs sm:text-sm text-muted-foreground">
+   276→            Register and manage persons of interest
+   277→          </p>
+   278→        </div>
+   279→        <div className="flex items-center gap-2">
+   280→          <div className="relative flex-1 sm:w-64">
+   281→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   282→            <Input
+   283→              placeholder="Search name, phone, ID..."
+   284→              value={search}
+   285→              onChange={(e) => setSearch(e.target.value)}
+   286→              className="pl-9 h-9 sm:h-10"
+   287→            />
+   288→          </div>
+   289→          <Button onClick={openAdd} className="h-9 sm:h-10 shrink-0">
+   290→            <Plus className="mr-1 h-4 w-4" />
+   291→            <span className="hidden sm:inline">Add</span>
+   292→          </Button>
+   293→        </div>
+   294→      </div>
+   295→
+   296→      {/* Count */}
+   297→      {!loading && persons.length > 0 && (
+   298→        <p className="text-xs text-muted-foreground px-1">
+   299→          {persons.length} person{persons.length !== 1 ? "s" : ""} registered
+   300→        </p>
+   301→      )}
+   302→
+   303→      {/* List */}
+   304→      <div className="rounded-xl border bg-card shadow-sm">
+   305→        {loading ? (
+   306→          <div className="space-y-3 p-4 sm:p-6">
+   307→            {Array.from({ length: 4 }).map((_, i) => (
+   308→              <Skeleton key={i} className="h-20 w-full sm:h-12" />
+   309→            ))}
+   310→          </div>
+   311→        ) : persons.length === 0 ? (
+   312→          <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+   313→            <UserX className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
+   314→            <p className="text-xs sm:text-sm text-muted-foreground">
+   315→              {search ? "No matches found" : "No suspected persons registered yet"}
+   316→            </p>
+   317→            <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground/70">
+   318→              Add persons to monitor — system will alert when they make reservations
+   319→            </p>
+   320→          </div>
+   321→        ) : (
+   322→          <>
+   323→            {/* Mobile: Card layout */}
+   324→            <div className="divide-y md:hidden">
+   325→              {persons.map((person) => (
+   326→                <div key={person.id} className="p-3 space-y-2">
+   327→                  <div className="flex items-start gap-3">
+   328→                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+   329→                      !person.is_active ? "bg-slate-100" : person.severity === "CRITICAL" ? "bg-red-100" : person.severity === "HIGH" ? "bg-orange-100" : "bg-yellow-100"
+   330→                    }`}>
+   331→                      <UserX className={`h-4 w-4 ${
+   332→                        !person.is_active ? "text-slate-400" : person.severity === "CRITICAL" ? "text-red-600" : person.severity === "HIGH" ? "text-orange-600" : "text-yellow-600"
+   333→                      }`} />
+   334→                    </div>
+   335→                    <div className="min-w-0 flex-1">
+   336→                      <div className="flex items-center gap-1.5">
+   337→                        <p className={`truncate text-sm font-medium ${!person.is_active ? "text-muted-foreground line-through" : ""}`}>
+   338→                          {person.name}
+   339→                        </p>
+   340→                        <Badge variant="outline" className={`shrink-0 text-[9px] ${SEVERITY_STYLES[person.severity] || ""}`}>
+   341→                          {person.severity}
+   342→                        </Badge>
+   343→                        {!person.is_active && (
+   344→                          <Badge variant="outline" className="shrink-0 text-[9px] bg-slate-50 text-slate-400 border-slate-200">
+   345→                            Inactive
+   346→                          </Badge>
+   347→                        )}
+   348→                      </div>
+   349→                      {person.phone && (
+   350→                        <p className="text-xs text-muted-foreground font-mono">{person.phone}</p>
+   351→                      )}
+   352→                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+   353→                        {person.idNumber && (
+   354→                          <span className="text-[10px] text-muted-foreground">ID: {person.idNumber}</span>
+   355→                        )}
+   356→                        <span className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
+   357→                          <ShieldAlert className="h-2.5 w-2.5" />
+   358→                          {person._count.matches} match{person._count.matches !== 1 ? "es" : ""}
+   359→                        </span>
+   360→                      </div>
+   361→                    </div>
+   362→                  </div>
+   363→                  <div className="flex justify-end gap-1.5 pl-12">
+   364→                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openDetail(person)}>
+   365→                      <Eye className="h-3.5 w-3.5" />
+   366→                    </Button>
+   367→                    <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => openEdit(person)}>
+   368→                      <Pencil className="h-3.5 w-3.5" />
+   369→                    </Button>
+   370→                    <Button
+   371→                      variant="ghost"
+   372→                      size="sm"
+   373→                      className="h-7 text-xs px-2"
+   374→                      onClick={() => toggleActive(person)}
+   375→                    >
+   376→                      {person.is_active ? "Deactivate" : "Activate"}
+   377→                    </Button>
+   378→                    <Button
+   379→                      variant="ghost"
+   380→                      size="sm"
+   381→                      className="h-7 text-xs px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+   382→                      onClick={() => confirmDelete(person.id)}
+   383→                    >
+   384→                      <Trash2 className="h-3.5 w-3.5" />
+   385→                    </Button>
+   386→                  </div>
+   387→                </div>
+   388→              ))}
+   389→            </div>
+   390→
+   391→            {/* Desktop: Table layout */}
+   392→            <div className="hidden md:block overflow-x-auto">
+   393→              <Table>
+   394→                <TableHeader>
+   395→                  <TableRow>
+   396→                    <TableHead>Name</TableHead>
+   397→                    <TableHead>Phone</TableHead>
+   398→                    <TableHead>ID Number</TableHead>
+   399→                    <TableHead>Nationality</TableHead>
+   400→                    <TableHead>Severity</TableHead>
+   401→                    <TableHead className="text-center">Matches</TableHead>
+   402→                    <TableHead>Status</TableHead>
+   403→                    <TableHead>Registered</TableHead>
+   404→                    <TableHead className="text-right">Actions</TableHead>
+   405→                  </TableRow>
+   406→                </TableHeader>
+   407→                <TableBody>
+   408→                  {persons.map((person) => (
+   409→                    <TableRow key={person.id} className={!person.is_active ? "opacity-60" : ""}>
+   410→                      <TableCell className="font-medium">{person.name}</TableCell>
+   411→                      <TableCell className="font-mono text-sm">{person.phone || "—"}</TableCell>
+   412→                      <TableCell className="font-mono text-sm">{person.idNumber || "—"}</TableCell>
+   413→                      <TableCell>{person.nationality || "—"}</TableCell>
+   414→                      <TableCell>
+   415→                        <Badge variant="outline" className={SEVERITY_STYLES[person.severity] || ""}>
+   416→                          {person.severity}
+   417→                        </Badge>
+   418→                      </TableCell>
+   419→                      <TableCell className="text-center">
+   420→                        {person._count.matches > 0 ? (
+   421→                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 text-xs">
+   422→                            {person._count.matches}
+   423→                          </Badge>
+   424→                        ) : (
+   425→                          <span className="text-muted-foreground">0</span>
+   426→                        )}
+   427→                      </TableCell>
+   428→                      <TableCell>
+   429→                        <Badge variant={person.is_active ? "outline" : "secondary"} className={person.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ""}>
+   430→                          {person.is_active ? "Active" : "Inactive"}
+   431→                        </Badge>
+   432→                      </TableCell>
+   433→                      <TableCell className="text-sm text-muted-foreground">{formatDate(person.createdAt)}</TableCell>
+   434→                      <TableCell>
+   435→                        <div className="flex justify-end gap-1">
+   436→                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openDetail(person)} title="View">
+   437→                            <Eye className="h-3.5 w-3.5" />
+   438→                          </Button>
+   439→                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(person)} title="Edit">
+   440→                            <Pencil className="h-3.5 w-3.5" />
+   441→                          </Button>
+   442→                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => toggleActive(person)} title={person.is_active ? "Deactivate" : "Activate"}>
+   443→                            <AlertTriangle className="h-3.5 w-3.5" />
+   444→                          </Button>
+   445→                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => confirmDelete(person.id)} title="Delete">
+   446→                            <Trash2 className="h-3.5 w-3.5" />
+   447→                          </Button>
+   448→                        </div>
+   449→                      </TableCell>
+   450→                    </TableRow>
+   451→                  ))}
+   452→                </TableBody>
+   453→              </Table>
+   454→            </div>
+   455→          </>
+   456→        )}
+   457→      </div>
+   458→
+   459→      {/* Add/Edit Dialog */}
+   460→      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+   461→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   462→          <DialogHeader>
+   463→            <DialogTitle>{editingId ? "Edit Suspected Person" : "Register Suspected Person"}</DialogTitle>
+   464→            <DialogDescription>
+   465→              {editingId ? "Update suspect details" : "Add a new person to monitor across all service providers"}
+   466→            </DialogDescription>
+   467→          </DialogHeader>
+   468→          <form onSubmit={handleSubmit} className="space-y-4">
+   469→            <div className="grid gap-2">
+   470→              <Label htmlFor="sp-name">Full Name *</Label>
+   471→              <Input
+   472→                id="sp-name"
+   473→                placeholder="Full name of the suspected person"
+   474→                value={form.name}
+   475→                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+   476→                autoFocus
+   477→              />
+   478→            </div>
+   479→
+   480→            <div className="grid grid-cols-2 gap-3">
+   481→              <div className="grid gap-2">
+   482→                <Label htmlFor="sp-phone">Phone</Label>
+   483→                <Input
+   484→                  id="sp-phone"
+   485→                  placeholder="Phone number"
+   486→                  value={form.phone}
+   487→                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+   488→                />
+   489→              </div>
+   490→              <div className="grid gap-2">
+   491→                <Label htmlFor="sp-severity">Severity</Label>
+   492→                <Select value={form.severity} onValueChange={(v) => setForm((f) => ({ ...f, severity: v }))}>
+   493→                  <SelectTrigger id="sp-severity">
+   494→                    <SelectValue />
+   495→                  </SelectTrigger>
+   496→                  <SelectContent>
+   497→                    <SelectItem value="LOW">Low</SelectItem>
+   498→                    <SelectItem value="MEDIUM">Medium</SelectItem>
+   499→                    <SelectItem value="HIGH">High</SelectItem>
+   500→                    <SelectItem value="CRITICAL">Critical</SelectItem>
+   501→                  </SelectContent>
+   502→                </Select>
+   503→              </div>
+   504→            </div>
+   505→
+   506→            <div className="grid grid-cols-2 gap-3">
+   507→              <div className="grid gap-2">
+   508→                <Label htmlFor="sp-idtype">ID Type</Label>
+   509→                <Select value={form.idType} onValueChange={(v) => setForm((f) => ({ ...f, idType: v }))}>
+   510→                  <SelectTrigger id="sp-idtype">
+   511→                    <SelectValue placeholder="Select type" />
+   512→                  </SelectTrigger>
+   513→                  <SelectContent>
+   514→                    <SelectItem value="National_ID">National ID</SelectItem>
+   515→                    <SelectItem value="Passport">Passport</SelectItem>
+   516→                    <SelectItem value="Driver_License">Driver License</SelectItem>
+   517→                    <SelectItem value="Military_ID">Military ID</SelectItem>
+   518→                    <SelectItem value="Other">Other</SelectItem>
+   519→                  </SelectContent>
+   520→                </Select>
+   521→              </div>
+   522→              <div className="grid gap-2">
+   523→                <Label htmlFor="sp-idnumber">ID Number</Label>
+   524→                <Input
+   525→                  id="sp-idnumber"
+   526→                  placeholder="ID number"
+   527→                  value={form.idNumber}
+   528→                  onChange={(e) => setForm((f) => ({ ...f, idNumber: e.target.value }))}
+   529→                />
+   530→              </div>
+   531→            </div>
+   532→
+   533→            <div className="grid grid-cols-2 gap-3">
+   534→              <div className="grid gap-2">
+   535→                <Label htmlFor="sp-nationality">Nationality</Label>
+   536→                <Input
+   537→                  id="sp-nationality"
+   538→                  placeholder="e.g. Ethiopian"
+   539→                  value={form.nationality}
+   540→                  onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))}
+   541→                />
+   542→              </div>
+   543→              <div className="grid gap-2">
+   544→                <Label htmlFor="sp-address">Address</Label>
+   545→                <Input
+   546→                  id="sp-address"
+   547→                  placeholder="Last known address"
+   548→                  value={form.address}
+   549→                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+   550→                />
+   551→              </div>
+   552→            </div>
+   553→
+   554→            <div className="grid gap-2">
+   555→              <Label htmlFor="sp-description">Description / Reason</Label>
+   556→              <Textarea
+   557→                id="sp-description"
+   558→                placeholder="Why is this person suspected? Include any relevant details for officers..."
+   559→                value={form.description}
+   560→                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+   561→                rows={3}
+   562→              />
+   563→            </div>
+   564→
+   565→            <div className="flex justify-end gap-2 pt-2">
+   566→              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+   567→                Cancel
+   568→              </Button>
+   569→              <Button type="submit" disabled={formLoading} className="bg-red-600 hover:bg-red-700 text-white">
+   570→                {formLoading ? "Saving..." : editingId ? "Update" : "Register Suspect"}
+   571→              </Button>
+   572→            </div>
+   573→          </form>
+   574→        </DialogContent>
+   575→      </Dialog>
+   576→
+   577→      {/* Detail / History Dialog */}
+   578→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   579→        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   580→          <DialogHeader>
+   581→            <DialogTitle className="flex items-center gap-2">
+   582→              <UserX className="h-5 w-5 text-red-600" />
+   583→              {detailPerson?.name}
+   584→            </DialogTitle>
+   585→            <DialogDescription className="flex items-center gap-2">
+   586→              <Badge variant="outline" className={SEVERITY_STYLES[detailPerson?.severity || ""] || ""}>
+   587→                {detailPerson?.severity}
+   588→              </Badge>
+   589→              {!detailPerson?.is_active && (
+   590→                <Badge variant="secondary">Inactive</Badge>
+   591→              )}
+   592→            </DialogDescription>
+   593→          </DialogHeader>
+   594→          {detailPerson && (
+   595→            <div className="space-y-4">
+   596→              <div className="space-y-3 text-sm">
+   597→                {detailPerson.phone && (
+   598→                  <div className="flex items-center gap-2.5">
+   599→                    <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+   600→                    <div>
+   601→                      <p className="text-[10px] text-muted-foreground">Phone</p>
+   602→                      <p className="font-mono font-medium">{detailPerson.phone}</p>
+   603→                    </div>
+   604→                  </div>
+   605→                )}
+   606→                {detailPerson.idNumber && (
+   607→                  <div className="flex items-center gap-2.5">
+   608→                    <FileWarning className="h-4 w-4 shrink-0 text-muted-foreground" />
+   609→                    <div>
+   610→                      <p className="text-[10px] text-muted-foreground">{detailPerson.idType || "ID Number"}</p>
+   611→                      <p className="font-mono font-medium">{detailPerson.idNumber}</p>
+   612→                    </div>
+   613→                  </div>
+   614→                )}
+   615→                {detailPerson.nationality && (
+   616→                  <div className="flex items-center gap-2.5">
+   617→                    <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+   618→                    <p className="font-medium">{detailPerson.nationality}</p>
+   619→                  </div>
+   620→                )}
+   621→                {detailPerson.address && (
+   622→                  <div className="flex items-center gap-2.5">
+   623→                    <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+   624→                    <p className="font-medium">{detailPerson.address}</p>
+   625→                  </div>
+   626→                )}
+   627→                {detailPerson.description && (
+   628→                  <div className="rounded-lg bg-muted/50 p-3 text-xs">{detailPerson.description}</div>
+   629→                )}
+   630→              </div>
+   631→
+   632→              <Separator />
+   633→
+   634→              {/* Match History */}
+   635→              <div>
+   636→                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   637→                  Match History ({detailPerson._count?.matches || 0})
+   638→                </p>
+   639→                {detailLoading ? (
+   640→                  <div className="space-y-2">
+   641→                    {Array.from({ length: 3 }).map((_, i) => (
+   642→                      <Skeleton key={i} className="h-12 w-full" />
+   643→                    ))}
+   644→                  </div>
+   645→                ) : !detailPerson.matches || detailPerson.matches.length === 0 ? (
+   646→                  <p className="text-xs text-muted-foreground text-center py-4">No matches yet</p>
+   647→                ) : (
+   648→                  <div className="space-y-2 max-h-60 overflow-y-auto">
+   649→                    {detailPerson.matches.map((match) => (
+   650→                      <div key={match.id} className="rounded-lg border p-2.5 space-y-1.5">
+   651→                        <div className="flex items-center justify-between">
+   652→                          <p className="text-sm font-medium">{match.guestName}</p>
+   653→                          <Badge variant="outline" className="text-[9px]">
+   654→                            {MATCH_TYPE_LABELS[match.matchType] || match.matchType}
+   655→                          </Badge>
+   656→                        </div>
+   657→                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+   658→                          <span className="flex items-center gap-1">
+   659→                            <Globe className="h-2.5 w-2.5" /> {match.providerName}
+   660→                          </span>
+   661→                          {match.guestPhone && <span>{match.guestPhone}</span>}
+   662→                          <span>{formatDateTime(match.createdAt)}</span>
+   663→                        </div>
+   664→                      </div>
+   665→                    ))}
+   666→                  </div>
+   667→                )}
+   668→              </div>
+   669→            </div>
+   670→          )}
+   671→        </DialogContent>
+   672→      </Dialog>
+   673→
+   674→      {/* Delete Confirmation */}
+   675→      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+   676→        <DialogContent className="max-w-sm mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
+   677→          <DialogHeader>
+   678→            <DialogTitle className="flex items-center gap-2 text-red-700">
+   679→              <Trash2 className="h-5 w-5" />
+   680→              Delete Suspected Person
+   681→            </DialogTitle>
+   682→            <DialogDescription>
+   683→              This will permanently remove this person and all their match history. This action cannot be undone.
+   684→            </DialogDescription>
+   685→          </DialogHeader>
+   686→          <DialogFooter className="gap-2">
+   687→            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+   688→            <Button
+   689→              variant="destructive"
+   690→              onClick={handleDelete}
+   691→              disabled={deleteLoading}
+   692→            >
+   693→              {deleteLoading ? "Deleting..." : "Delete Permanently"}
+   694→            </Button>
+   695→          </DialogFooter>
+   696→        </DialogContent>
+   697→      </Dialog>
+   698→    </div>
+   699→  );
+   700→}

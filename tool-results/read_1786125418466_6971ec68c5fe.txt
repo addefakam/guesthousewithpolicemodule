@@ -1,0 +1,586 @@
+    17→} from "@/lib/bishoftu-admin-divisions";
+    18→
+    19→import {
+    20→  Card,
+    21→  CardContent,
+    22→  CardHeader,
+    23→  CardTitle,
+    24→  CardDescription,
+    25→} from "@/components/ui/card";
+    26→import { Button } from "@/components/ui/button";
+    27→import { Input } from "@/components/ui/input";
+    28→import { Label } from "@/components/ui/label";
+    29→import { Checkbox } from "@/components/ui/checkbox";
+    30→import {
+    31→  Tabs,
+    32→  TabsContent,
+    33→  TabsList,
+    34→  TabsTrigger,
+    35→} from "@/components/ui/tabs";
+    36→import {
+    37→  Select,
+    38→  SelectContent,
+    39→  SelectItem,
+    40→  SelectTrigger,
+    41→  SelectValue,
+    42→} from "@/components/ui/select";
+    43→
+    44→export default function LoginPage() {
+    45→  const { setCurrentUser, setCurrentPage } = useAppStore();
+    46→
+    47→  const [activeTab, setActiveTab] = useState("login");
+    48→
+    49→  // ── Login state ──
+    50→  const [loginUsername, setLoginUsername] = useState("");
+    51→  const [loginPassword, setLoginPassword] = useState("");
+    52→  const [loginLoading, setLoginLoading] = useState(false);
+    53→
+    54→  // ── Register state ──
+    55→  const [regName, setRegName] = useState("");
+    56→  const [regPhone, setRegPhone] = useState("");
+    57→  const [regEmail, setRegEmail] = useState("");
+    58→  const [regGuestHouseName, setRegGuestHouseName] = useState("");
+    59→  const [regSubcity, setRegSubcity] = useState("");
+    60→  const [regWoreda, setRegWoreda] = useState("");
+    61→  const [regAddress, setRegAddress] = useState("");
+    62→  const [regType, setRegType] = useState("");
+    63→  const [regLicenseNo, setRegLicenseNo] = useState("");
+    64→  const [regLicenseFile, setRegLicenseFile] = useState<File | null>(null);
+    65→  const [regUsername, setRegUsername] = useState("");
+    66→  const [regPassword, setRegPassword] = useState("");
+    67→  const [regLoading, setRegLoading] = useState(false);
+    68→  const [regAgreed, setRegAgreed] = useState(false);
+    69→  const [showAgreement, setShowAgreement] = useState(false);
+    70→  const fileInputRef = useRef<HTMLInputElement>(null);
+    71→
+    72→  // Derived: woredas for the selected sub-city
+    73→  const availableWoredas = regSubcity ? getWoredas(regSubcity) : [];
+    74→
+    75→  // ── Login handler ──
+    76→  async function handleLogin(e: FormEvent) {
+    77→    e.preventDefault();
+    78→    if (!loginUsername.trim() || !loginPassword.trim()) {
+    79→      toast.error("Please enter both username and password.");
+    80→      return;
+    81→    }
+    82→    setLoginLoading(true);
+    83→    try {
+    84→      const resp = await apiAuth({
+    85→        username: loginUsername.trim(),
+    86→        password: loginPassword,
+    87→      });
+    88→      const userData = resp.user;
+    89→      setCurrentUser({ ...userData, providerName: resp.providerName });
+    90→      // Route based on role
+    91→      const page = userData.role === "POLICE" ? "police-dashboard" : userData.role === "SUPERUSER" ? "super-admin-dashboard" : "dashboard";
+    92→      setCurrentPage(page);
+    93→      toast.success(`Welcome back, ${userData.name}!`);
+    94→    } catch (err: unknown) {
+    95→      const message =
+    96→        err instanceof Error ? err.message : "Login failed. Please try again.";
+    97→      toast.error(message);
+    98→    } finally {
+    99→      setLoginLoading(false);
+   100→    }
+   101→  }
+   102→
+   103→  // ── Register handler ──
+   104→  async function handleRegister(e: FormEvent) {
+   105→    e.preventDefault();
+   106→    if (
+   107→      !regName.trim() ||
+   108→      !regPhone.trim() ||
+   109→      !regEmail.trim() ||
+   110→      !regGuestHouseName.trim() ||
+   111→      !regSubcity ||
+   112→      !regWoreda ||
+   113→      !regType ||
+   114→      !regLicenseNo.trim() ||
+   115→      !regUsername.trim() ||
+   116→      !regPassword.trim()
+   117→    ) {
+   118→      toast.error("Please fill in all required fields.");
+   119→      return;
+   120→    }
+   121→    if (!regAgreed) {
+   122→      toast.error("Please accept the Guest House Service Registration and Time Use Agreement to continue.");
+   123→      return;
+   124→    }
+   125→    setRegLoading(true);
+   126→    try {
+   127→      const formData = new FormData();
+   128→      formData.append("name", regGuestHouseName.trim());   // backend 'name' = guest house name
+   129→      formData.append("ownerName", regName.trim());         // backend 'ownerName' = owner full name
+   130→      formData.append("phone", regPhone.trim());
+   131→      formData.append("email", regEmail.trim());
+   132→      // Compose a readable full address from the dropdowns + optional street detail
+   133→      const fullAddress = composeBishoftuAddress(regSubcity, regWoreda) + (regAddress.trim() ? `, ${regAddress.trim()}` : "");
+   134→      formData.append("address", fullAddress);
+   135→      formData.append("subcity", regSubcity);
+   136→      formData.append("woreda", regWoreda);
+   137→      formData.append("type", regType);
+   138→      formData.append("licenseNo", regLicenseNo.trim());
+   139→      formData.append("username", regUsername.trim());
+   140→      formData.append("password", regPassword);
+   141→      if (regLicenseFile) {
+   142→        formData.append("licenseFile", regLicenseFile);
+   143→      }
+   144→
+   145→      await apiRegisterProvider(formData);
+   146→      toast.success(
+   147→        "Registration submitted successfully! An admin will review and activate your account."
+   148→      );
+   149→      // Reset form
+   150→      setRegName("");
+   151→      setRegPhone("");
+   152→      setRegEmail("");
+   153→      setRegGuestHouseName("");
+   154→      setRegSubcity("");
+   155→      setRegWoreda("");
+   156→      setRegAddress("");
+   157→      setRegType("");
+   158→      setRegLicenseNo("");
+   159→      setRegUsername("");
+   160→      setRegPassword("");
+   161→      setRegAgreed(false);
+   162→      setRegLicenseFile(null);
+   163→      if (fileInputRef.current) fileInputRef.current.value = "";
+   164→      setActiveTab("login");
+   165→    } catch (err: unknown) {
+   166→      const message =
+   167→        err instanceof Error
+   168→          ? err.message
+   169→          : "Registration failed. Please try again.";
+   170→      toast.error(message);
+   171→    } finally {
+   172→      setRegLoading(false);
+   173→    }
+   174→  }
+   175→
+   176→  return (
+   177→    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4 py-12">
+   178→      {/* Subtle decorative blobs */}
+   179→      <div className="pointer-events-none absolute -top-40 -left-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+   180→      <div className="pointer-events-none absolute -bottom-40 -right-40 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl" />
+   181→      <div className="pointer-events-none absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500/5 blur-3xl" />
+   182→
+   183→      <Card className="relative z-10 w-full max-w-lg border-0 shadow-2xl">
+   184→        <CardHeader className="space-y-2 pb-2 text-center">
+   185→          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
+   186→            <Building2 className="size-7 text-white" />
+   187→          </div>
+   188→          <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+   189→            Guest House Management
+   190→          </CardTitle>
+   191→          <CardDescription className="text-slate-500">
+   192→            Sign in to your account or register a new guest house
+   193→          </CardDescription>
+   194→        </CardHeader>
+   195→
+   196→        <CardContent className="pt-4">
+   197→          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+   198→            <TabsList className="mb-6 grid w-full grid-cols-2">
+   199→              <TabsTrigger value="login" className="gap-1.5">
+   200→                <LogIn className="size-3.5" />
+   201→                Login
+   202→              </TabsTrigger>
+   203→              <TabsTrigger value="register" className="gap-1.5">
+   204→                <UserPlus className="size-3.5" />
+   205→                Register
+   206→              </TabsTrigger>
+   207→            </TabsList>
+   208→
+   209→            {/* ─── Login Tab ─── */}
+   210→            <TabsContent value="login">
+   211→              <form onSubmit={handleLogin} className="grid gap-4">
+   212→                <div className="grid gap-2">
+   213→                  <Label htmlFor="login-username">Username</Label>
+   214→                  <div className="relative">
+   215→                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+   216→                    <Input
+   217→                      id="login-username"
+   218→                      placeholder="Enter your username"
+   219→                      value={loginUsername}
+   220→                      onChange={(e) => setLoginUsername(e.target.value)}
+   221→                      className="pl-9"
+   222→                      autoComplete="username"
+   223→                      autoFocus
+   224→                    />
+   225→                  </div>
+   226→                </div>
+   227→                <div className="grid gap-2">
+   228→                  <Label htmlFor="login-password">Password</Label>
+   229→                  <div className="relative">
+   230→                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+   231→                    <Input
+   232→                      id="login-password"
+   233→                      type="password"
+   234→                      placeholder="Enter your password"
+   235→                      value={loginPassword}
+   236→                      onChange={(e) => setLoginPassword(e.target.value)}
+   237→                      className="pl-9"
+   238→                      autoComplete="current-password"
+   239→                    />
+   240→                  </div>
+   241→                </div>
+   242→                <Button
+   243→                  type="submit"
+   244→                  className="mt-1 w-full bg-gradient-to-r from-emerald-600 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-700"
+   245→                  disabled={loginLoading}
+   246→                >
+   247→                  {loginLoading ? (
+   248→                    <span className="flex items-center gap-2">
+   249→                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+   250→                      Signing in...
+   251→                    </span>
+   252→                  ) : (
+   253→                    "Sign In"
+   254→                  )}
+   255→                </Button>
+   256→              </form>
+   257→            </TabsContent>
+   258→
+   259→            {/* ─── Register Tab ─── */}
+   260→            <TabsContent value="register">
+   261→              <form onSubmit={handleRegister} className="grid gap-4">
+   262→                {/* Contact Information */}
+   263→                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+   264→                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+   265→                    Contact Information
+   266→                  </p>
+   267→                  <div className="grid gap-3">
+   268→                    <div className="grid gap-2">
+   269→                      <Label htmlFor="reg-name">Full Name *</Label>
+   270→                      <Input
+   271→                        id="reg-name"
+   272→                        placeholder="Your full name"
+   273→                        value={regName}
+   274→                        onChange={(e) => setRegName(e.target.value)}
+   275→                      />
+   276→                    </div>
+   277→                    <div className="grid grid-cols-2 gap-3">
+   278→                      <div className="grid gap-2">
+   279→                        <Label htmlFor="reg-phone">Phone *</Label>
+   280→                        <Input
+   281→                          id="reg-phone"
+   282→                          placeholder="Phone number"
+   283→                          value={regPhone}
+   284→                          onChange={(e) => setRegPhone(e.target.value)}
+   285→                        />
+   286→                      </div>
+   287→                      <div className="grid gap-2">
+   288→                        <Label htmlFor="reg-email">Email *</Label>
+   289→                        <Input
+   290→                          id="reg-email"
+   291→                          type="email"
+   292→                          placeholder="Email address"
+   293→                          value={regEmail}
+   294→                          onChange={(e) => setRegEmail(e.target.value)}
+   295→                        />
+   296→                      </div>
+   297→                    </div>
+   298→                  </div>
+   299→                </div>
+   300→
+   301→                {/* Guest House Details */}
+   302→                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+   303→                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+   304→                    Guest House Details
+   305→                  </p>
+   306→                  <div className="grid gap-3">
+   307→                    <div className="grid gap-2">
+   308→                      <Label htmlFor="reg-gh-name">Guest House Name *</Label>
+   309→                      <Input
+   310→                        id="reg-gh-name"
+   311→                        placeholder="Name of your guest house"
+   312→                        value={regGuestHouseName}
+   313→                        onChange={(e) => setRegGuestHouseName(e.target.value)}
+   314→                      />
+   315→                    </div>
+   316→                    <div className="grid grid-cols-2 gap-3">
+   317→                      <div className="grid gap-2">
+   318→                        <Label htmlFor="reg-type">Type *</Label>
+   319→                        <Select value={regType} onValueChange={setRegType}>
+   320→                          <SelectTrigger id="reg-type" className="w-full">
+   321→                            <SelectValue placeholder="Select type" />
+   322→                          </SelectTrigger>
+   323→                          <SelectContent>
+   324→                            <SelectItem value="GUEST_HOUSE">
+   325→                              Guest House
+   326→                            </SelectItem>
+   327→                            <SelectItem value="HOTEL">Hotel</SelectItem>
+   328→                            <SelectItem value="LODGE">Lodge</SelectItem>
+   329→                            <SelectItem value="HOMESTAY">Homestay</SelectItem>
+   330→                            <SelectItem value="RESORT">Resort</SelectItem>
+   331→                            <SelectItem value="DHARAMSHALA">
+   332→                              Dharamshala
+   333→                            </SelectItem>
+   334→                            <SelectItem value="OTHER">Other</SelectItem>
+   335→                          </SelectContent>
+   336→                        </Select>
+   337→                      </div>
+   338→                      <div className="grid gap-2">
+   339→                        <Label htmlFor="reg-license">License No. *</Label>
+   340→                        <Input
+   341→                          id="reg-license"
+   342→                          placeholder="License number"
+   343→                          value={regLicenseNo}
+   344→                          onChange={(e) => setRegLicenseNo(e.target.value)}
+   345→                        />
+   346→                      </div>
+   347→                    </div>
+   348→                    <div className="grid gap-2">
+   349→                      <Label htmlFor="reg-license-file">
+   350→                        Upload License Document
+   351→                      </Label>
+   352→                      <div
+   353→                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50"
+   354→                        onClick={() => fileInputRef.current?.click()}
+   355→                        onKeyDown={(e) => {
+   356→                          if (e.key === "Enter" || e.key === " ")
+   357→                            fileInputRef.current?.click();
+   358→                        }}
+   359→                        role="button"
+   360→                        tabIndex={0}
+   361→                      >
+   362→                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+   363→                          <Upload className="size-4 text-slate-500" />
+   364→                        </div>
+   365→                        <div className="flex-1 overflow-hidden">
+   366→                          <p className="truncate text-sm font-medium text-slate-700">
+   367→                            {regLicenseFile
+   368→                              ? regLicenseFile.name
+   369→                              : "Click to upload license document"}
+   370→                          </p>
+   371→                          <p className="text-xs text-slate-400">
+   372→                            {regLicenseFile
+   373→                              ? `${(regLicenseFile.size / 1024).toFixed(1)} KB`
+   374→                              : "PDF, JPG, or PNG (max 5MB)"}
+   375→                          </p>
+   376→                        </div>
+   377→                      </div>
+   378→                      <input
+   379→                        ref={fileInputRef}
+   380→                        type="file"
+   381→                        accept=".pdf,.jpg,.jpeg,.png"
+   382→                        className="hidden"
+   383→                        onChange={(e) => {
+   384→                          const file = e.target.files?.[0] ?? null;
+   385→                          if (file && file.size > 5 * 1024 * 1024) {
+   386→                            toast.error("File size must be under 5MB.");
+   387→                            return;
+   388→                          }
+   389→                          setRegLicenseFile(file);
+   390→                        }}
+   391→                      />
+   392→                    </div>
+   393→                  </div>
+   394→                </div>
+   395→
+   396→                {/* Location — Bishoftu Address */}
+   397→                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+   398→                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+   399→                    Location <span className="text-red-400">*</span>
+   400→                  </p>
+   401→                  <div className="grid gap-3">
+   402→                    {/* City (fixed) */}
+   403→                    <div className="grid gap-2">
+   404→                      <Label>City</Label>
+   405→                      <div className="flex h-9 items-center rounded-md border border-slate-200 bg-slate-100 px-3 text-sm font-medium text-slate-600">
+   406→                        <MapPin className="mr-2 size-3.5 text-emerald-500" />
+   407→                        Bishoftu
+   408→                      </div>
+   409→                    </div>
+   410→
+   411→                    {/* Sub-city dropdown */}
+   412→                    <div className="grid grid-cols-2 gap-3">
+   413→                      <div className="grid gap-2">
+   414→                        <Label htmlFor="reg-subcity">Sub-City *</Label>
+   415→                        <Select
+   416→                          value={regSubcity}
+   417→                          onValueChange={(val) => {
+   418→                            setRegSubcity(val);
+   419→                            setRegWoreda(""); // reset woreda when sub-city changes
+   420→                          }}
+   421→                        >
+   422→                          <SelectTrigger id="reg-subcity" className="w-full">
+   423→                            <SelectValue placeholder="Select sub-city" />
+   424→                          </SelectTrigger>
+   425→                          <SelectContent>
+   426→                            {BISHOFTU_SUBCITIES.map((sc) => (
+   427→                              <SelectItem key={sc.name} value={sc.name}>
+   428→                                {sc.name}
+   429→                              </SelectItem>
+   430→                            ))}
+   431→                          </SelectContent>
+   432→                        </Select>
+   433→                      </div>
+   434→
+   435→                      {/* Woreda dropdown (cascading) */}
+   436→                      <div className="grid gap-2">
+   437→                        <Label htmlFor="reg-woreda">Woreda *</Label>
+   438→                        <Select
+   439→                          value={regWoreda}
+   440→                          onValueChange={setRegWoreda}
+   441→                          disabled={!regSubcity}
+   442→                        >
+   443→                          <SelectTrigger id="reg-woreda" className="w-full">
+   444→                            <SelectValue
+   445→                              placeholder={regSubcity ? "Select woreda" : "Select sub-city first"}
+   446→                            />
+   447→                          </SelectTrigger>
+   448→                          <SelectContent>
+   449→                            {availableWoredas.map((w) => (
+   450→                              <SelectItem key={w.name} value={w.name}>
+   451→                                {w.name}
+   452→                              </SelectItem>
+   453→                            ))}
+   454→                          </SelectContent>
+   455→                        </Select>
+   456→                      </div>
+   457→                    </div>
+   458→
+   459→                    {/* Street address (optional detail) */}
+   460→                    <div className="grid gap-2">
+   461→                      <Label htmlFor="reg-address">Street / Additional Detail</Label>
+   462→                      <Input
+   463→                        id="reg-address"
+   464→                        placeholder="House number, street name, landmark (optional)"
+   465→                        value={regAddress}
+   466→                        onChange={(e) => setRegAddress(e.target.value)}
+   467→                      />
+   468→                    </div>
+   469→                  </div>
+   470→                </div>
+   471→
+   472→                {/* Login Credentials */}
+   473→                <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+   474→                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+   475→                    Desired Login Credentials
+   476→                  </p>
+   477→                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   478→                    <div className="grid gap-2">
+   479→                      <Label htmlFor="reg-username">Username *</Label>
+   480→                      <Input
+   481→                        id="reg-username"
+   482→                        placeholder="Desired username"
+   483→                        value={regUsername}
+   484→                        onChange={(e) => setRegUsername(e.target.value)}
+   485→                      />
+   486→                    </div>
+   487→                    <div className="grid gap-2">
+   488→                      <Label htmlFor="reg-password">Password *</Label>
+   489→                      <Input
+   490→                        id="reg-password"
+   491→                        type="password"
+   492→                        placeholder="Password"
+   493→                        value={regPassword}
+   494→                        onChange={(e) => setRegPassword(e.target.value)}
+   495→                      />
+   496→                    </div>
+   497→                  </div>
+   498→                </div>
+   499→
+   500→                {/* Agreement Acceptance */}
+   501→                <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+   502→                  <div className="flex items-start gap-3">
+   503→                    <Checkbox
+   504→                      id="reg-agree"
+   505→                      checked={regAgreed}
+   506→                      onCheckedChange={(checked) => setRegAgreed(checked === true)}
+   507→                      className="mt-0.5"
+   508→                    />
+   509→                    <Label htmlFor="reg-agree" className="text-sm leading-relaxed text-slate-600 cursor-pointer">
+   510→                      I have read and agree to the{" "}
+   511→                      <button
+   512→                        type="button"
+   513→                        onClick={() => setShowAgreement(true)}
+   514→                        className="inline-flex items-center gap-1 font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:text-emerald-800 hover:decoration-emerald-500"
+   515→                      >
+   516→                        <FileText className="size-3.5" />
+   517→                        Guest House Service Registration and Time Use Agreement
+   518→                      </button>
+   519→                    </Label>
+   520→                  </div>
+   521→                </div>
+   522→
+   523→                <Button
+   524→                  type="submit"
+   525→                  className="mt-1 w-full bg-gradient-to-r from-emerald-600 to-teal-600 font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-700"
+   526→                  disabled={regLoading}
+   527→                >
+   528→                  {regLoading ? (
+   529→                    <span className="flex items-center gap-2">
+   530→                      <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+   531→                      Submitting...
+   532→                    </span>
+   533→                  ) : (
+   534→                    <span className="flex items-center gap-2">
+   535→                      <UserPlus className="size-4" />
+   536→                      Register Guest House
+   537→                    </span>
+   538→                  )}
+   539→                </Button>
+   540→
+   541→                <p className="text-center text-xs text-slate-400">
+   542→                  Your registration will be reviewed by an administrator before
+   543→                  activation.
+   544→                </p>
+   545→
+   546→                {/* Agreement Modal */}
+   547→                {showAgreement && (
+   548→                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+   549→                    <div className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+   550→                      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+   551→                        <h3 className="text-lg font-bold text-slate-900">Guest House Service Registration and Time Use Agreement</h3>
+   552→                        <button
+   553→                          type="button"
+   554→                          onClick={() => setShowAgreement(false)}
+   555→                          className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+   556→                        >
+   557→                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+   558→                        </button>
+   559→                      </div>
+   560→                      <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: "calc(85vh - 140px)" }}>
+   561→                        <div className="prose prose-sm max-w-none text-slate-700">
+   562→                          <p className="mb-3"><strong>Article 1 — Definitions:</strong> "Platform" means the Guest House Management System. "Establishment" means your guest house. "Service Period" means your active subscription duration. "Trial Period" means the 15-day free access. "Grace Period" means 2 extra days after expiry for renewal.</p>
+   563→                          <p className="mb-3"><strong>Article 2 — Scope:</strong> The Platform provides room management, guest reservation and check-in/check-out tracking, guest registration, daytime service booking, expense tracking, housekeeping scheduling, and regulatory reporting. Minimum 95% uptime is guaranteed.</p>
+   564→                          <p className="mb-3"><strong>Article 3 — Registration:</strong> You must provide accurate business details and a valid license. Applications are reviewed by the regulatory authority. Rejected applications may be resubmitted within 30 days.</p>
+   565→                          <p className="mb-3"><strong>Article 4 — Subscription & Time of Use:</strong> After the 15-day trial, you must select a subscription cycle (Monthly, Quarterly, Semi-Annual, or Yearly) and pay the applicable fee. Renewal reminders are sent 7 days before expiry. Late renewal follows a phased restriction: Warning (7 days) > Grace (2 days) > Suspension.</p>
+   566→                          <p className="mb-3"><strong>Article 5 — Fees:</strong> Fees are in ETB. A 10% per-week late penalty may apply. Fee changes require 30 days notice.</p>
+   567→                          <p className="mb-3"><strong>Article 6 — Platform Operator Obligations:</strong> Maintain system availability, security, and technical support. Provide subscription status warnings.</p>
+   568→                          <p className="mb-3"><strong>Article 7 — Provider Obligations:</strong> Use the platform lawfully. Maintain a valid business license. Record all guest data accurately. Default check-in time is 14:00 and check-out time is 12:00.</p>
+   569→                          <p className="mb-3"><strong>Article 8 — Expiration & Suspension:</strong> Unrenewed subscriptions progress through Warning > Grace > full Suspension. Immediate suspension applies for unlawful use, license revocation, or regulatory directive. Data is deleted 90 days after permanent termination.</p>
+   570→                          <p className="mb-3"><strong>Article 9 — Data & Privacy:</strong> Guest data is processed per applicable law. No sharing except to regulatory authorities or by court order. Anonymized analytics may be used for platform improvement and police intelligence.</p>
+   571→                          <p className="mb-3"><strong>Article 10 — Liability:</strong> Downtime exceeding 2 months/month earns proportional credit. Total liability is capped at 12 months of fees. No consequential damages.</p>
+   572→                          <p className="mb-3"><strong>Article 11 — Force Majeure:</strong> Neither party is liable for events beyond reasonable control. 60+ day events allow termination without liability.</p>
+   573→                          <p className="mb-3"><strong>Article 12 — Intellectual Property:</strong> Platform IP belongs to the operator. You retain ownership of your operational data.</p>
+   574→                          <p className="mb-3"><strong>Article 13 — Confidentiality:</strong> Both parties must keep confidential information secret for 3 years after termination.</p>
+   575→                          <p className="mb-3"><strong>Article 14 — Dispute Resolution:</strong> Negotiation > Mediation > Court. Costs are shared equally during mediation.</p>
+   576→                          <p className="mb-3"><strong>Articles 15–16 — Notices & Miscellaneous:</strong> Written notices via email, mail, or platform. This is the entire agreement. Amendments require written consent. Governing law applies per jurisdiction.</p>
+   577→                        </div>
+   578→                      </div>
+   579→                      <div className="border-t border-slate-200 px-6 py-4">
+   580→                        <button
+   581→                          type="button"
+   582→                          onClick={() => {
+   583→                            setRegAgreed(true);
+   584→                            setShowAgreement(false);
+   585→                          }}
+   586→                          className="w-full rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-700 hover:to-teal-700"
+   587→                        >
+   588→                          I Agree & Close
+   589→                        </button>
+   590→                      </div>
+   591→                    </div>
+   592→                  </div>
+   593→                )}
+   594→              </form>
+   595→            </TabsContent>
+   596→          </Tabs>
+   597→        </CardContent>
+   598→      </Card>
+   599→    </div>
+   600→  );
+   601→}
+   602→

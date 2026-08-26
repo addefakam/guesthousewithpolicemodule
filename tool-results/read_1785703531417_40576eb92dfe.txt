@@ -1,0 +1,878 @@
+   180→          : "bg-slate-300") +
+   181→        (disabled ? " opacity-50 cursor-not-allowed" : "")
+   182→      }
+   183→    >
+   184→      <span
+   185→        className={
+   186→          `pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out ` +
+   187→          (checked ? "translate-x-6" : "translate-x-1")
+   188→        }
+   189→      />
+   190→    </button>
+   191→  );
+   192→}
+   193→
+   194→function SettingRow({
+   195→  label,
+   196→  description,
+   197→  children,
+   198→}: {
+   199→  label: string;
+   200→  description?: string;
+   201→  children: React.ReactNode;
+   202→}) {
+   203→  return (
+   204→    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 py-4">
+   205→      <div className="flex-1 min-w-0 sm:pr-4">
+   206→        <p className="text-sm font-medium text-slate-800">{label}</p>
+   207→        {description && (
+   208→          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+   209→            {description}
+   210→          </p>
+   211→        )}
+   212→      </div>
+   213→      <div className="sm:w-64 shrink-0">{children}</div>
+   214→    </div>
+   215→  );
+   216→}
+   217→
+   218→function SectionCard({
+   219→  title,
+   220→  description,
+   221→  icon: Icon,
+   222→  children,
+   223→}: {
+   224→  title: string;
+   225→  description: string;
+   226→  icon: React.ElementType;
+   227→  children: React.ReactNode;
+   228→}) {
+   229→  return (
+   230→    <div className="rounded-xl border border-slate-200 bg-white p-5">
+   231→      <div className="flex items-start gap-3 mb-1">
+   232→        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 shrink-0">
+   233→          <Icon className="w-4.5 h-4.5 text-slate-600" />
+   234→        </div>
+   235→        <div>
+   236→          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+   237→          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+   238→        </div>
+   239→      </div>
+   240→      <div className="mt-4 divide-y divide-slate-100">{children}</div>
+   241→    </div>
+   242→  );
+   243→}
+   244→
+   245→function NumberInput({
+   246→  id,
+   247→  value,
+   248→  onChange,
+   249→  min,
+   250→  max,
+   251→  step = 1,
+   252→  suffix,
+   253→}: {
+   254→  id: string;
+   255→  value: number;
+   256→  onChange: (v: number) => void;
+   257→  min?: number;
+   258→  max?: number;
+   259→  step?: number;
+   260→  suffix?: string;
+   261→}) {
+   262→  return (
+   263→    <div className="relative">
+   264→      <input
+   265→        id={id}
+   266→        type="number"
+   267→        value={value}
+   268→        min={min}
+   269→        max={max}
+   270→        step={step}
+   271→        onChange={(e) => onChange(Number(e.target.value))}
+   272→        className={inputClass + (suffix ? " pr-10" : "")}
+   273→      />
+   274→      {suffix && (
+   275→        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
+   276→          {suffix}
+   277→        </span>
+   278→      )}
+   279→    </div>
+   280→  );
+   281→}
+   282→
+   283→// ── Tab Panels ──
+   284→
+   285→function GeneralTab({
+   286→  settings,
+   287→  onChange,
+   288→}: {
+   289→  settings: GeneralSettings;
+   290→  onChange: (partial: Partial<GeneralSettings>) => void;
+   291→}) {
+   292→  return (
+   293→    <div className="space-y-5">
+   294→      {/* Basic Information */}
+   295→      <SectionCard
+   296→        title="Basic Information"
+   297→        description="Core system identity and branding settings"
+   298→        icon={Info}
+   299→      >
+   300→        <div className="py-4 space-y-4">
+   301→          <div>
+   302→            <FormLabel htmlFor="systemName">System Name</FormLabel>
+   303→            <input
+   304→              id="systemName"
+   305→              type="text"
+   306→              value={settings.systemName}
+   307→              onChange={(e) => onChange({ systemName: e.target.value })}
+   308→              className={inputClass}
+   309→              placeholder="Enter system name"
+   310→            />
+   311→          </div>
+   312→          <div>
+   313→            <FormLabel htmlFor="systemDescription">System Description</FormLabel>
+   314→            <textarea
+   315→              id="systemDescription"
+   316→              value={settings.systemDescription}
+   317→              onChange={(e) =>
+   318→                onChange({ systemDescription: e.target.value })
+   319→              }
+   320→              className={textareaClass}
+   321→              rows={3}
+   322→              placeholder="Describe the system purpose and scope"
+   323→            />
+   324→          </div>
+   325→        </div>
+   326→      </SectionCard>
+   327→
+   328→      {/* Locale & Regional */}
+   329→      <SectionCard
+   330→        title="Locale & Regional"
+   331→        description="Language, currency, and timezone preferences"
+   332→        icon={Globe}
+   333→      >
+   334→        <SettingRow
+   335→          label="Default Language"
+   336→          description="Primary language for the system interface"
+   337→        >
+   338→          <select
+   339→            id="defaultLanguage"
+   340→            value={settings.defaultLanguage}
+   341→            onChange={(e) =>
+   342→              onChange({ defaultLanguage: e.target.value })
+   343→            }
+   344→            className={selectClass}
+   345→          >
+   346→            <option value="en">English</option>
+   347→            <option value="am">Amharic</option>
+   348→          </select>
+   349→        </SettingRow>
+   350→
+   351→        <SettingRow
+   352→          label="Default Currency"
+   353→          description="Default currency for financial transactions"
+   354→        >
+   355→          <select
+   356→            id="defaultCurrency"
+   357→            value={settings.defaultCurrency}
+   358→            onChange={(e) =>
+   359→              onChange({ defaultCurrency: e.target.value })
+   360→            }
+   361→            className={selectClass}
+   362→          >
+   363→            <option value="ETB">ETB — Ethiopian Birr</option>
+   364→            <option value="USD">USD — US Dollar</option>
+   365→            <option value="EUR">EUR — Euro</option>
+   366→          </select>
+   367→        </SettingRow>
+   368→
+   369→        <SettingRow
+   370→          label="Timezone"
+   371→          description="System-wide timezone for scheduling and reports"
+   372→        >
+   373→          <select
+   374→            id="timezone"
+   375→            value={settings.timezone}
+   376→            onChange={(e) => onChange({ timezone: e.target.value })}
+   377→            className={selectClass}
+   378→          >
+   379→            <option value="Africa/Addis_Ababa">Africa/Addis_Ababa (EAT, UTC+3)</option>
+   380→            <option value="Africa/Nairobi">Africa/Nairobi (EAT, UTC+3)</option>
+   381→            <option value="Africa/Cairo">Africa/Cairo (EET, UTC+2)</option>
+   382→            <option value="Africa/Lagos">Africa/Lagos (WAT, UTC+1)</option>
+   383→            <option value="Africa/Johannesburg">
+   384→              Africa/Johannesburg (SAST, UTC+2)
+   385→            </option>
+   386→            <option value="UTC">UTC (Coordinated Universal Time)</option>
+   387→            <option value="Europe/London">Europe/London (GMT/BST)</option>
+   388→            <option value="America/New_York">America/New_York (EST/EDT)</option>
+   389→          </select>
+   390→        </SettingRow>
+   391→      </SectionCard>
+   392→
+   393→      {/* System Operations */}
+   394→      <SectionCard
+   395→        title="System Operations"
+   396→        description="Operational modes and system information"
+   397→        icon={Settings}
+   398→      >
+   399→        <SettingRow
+   400→          label="Maintenance Mode"
+   401→          description="When enabled, the system enters read-only mode for non-admin users"
+   402→        >
+   403→          <div className="flex items-center gap-3">
+   404→            <ToggleSwitch
+   405→              id="maintenanceMode"
+   406→              checked={settings.maintenanceMode}
+   407→              onChange={(v) => onChange({ maintenanceMode: v })}
+   408→            />
+   409→            {settings.maintenanceMode && (
+   410→              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+   411→                <AlertTriangle className="w-3 h-3" />
+   412→                Active
+   413→              </span>
+   414→            )}
+   415→          </div>
+   416→        </SettingRow>
+   417→
+   418→        <SettingRow
+   419→          label="System Version"
+   420→          description="Currently installed version — read-only"
+   421→        >
+   422→          <input
+   423→            type="text"
+   424→            value={SYSTEM_VERSION}
+   425→            readOnly
+   426→            className={inputClass + " bg-slate-50 text-slate-500 cursor-not-allowed"}
+   427→          />
+   428→        </SettingRow>
+   429→      </SectionCard>
+   430→    </div>
+   431→  );
+   432→}
+   433→
+   434→function GuesthouseTab({
+   435→  settings,
+   436→  onChange,
+   437→}: {
+   438→  settings: GuesthouseSettings;
+   439→  onChange: (partial: Partial<GuesthouseSettings>) => void;
+   440→}) {
+   441→  return (
+   442→    <div className="space-y-5">
+   443→      {/* Check-in & Check-out */}
+   444→      <SectionCard
+   445→        title="Check-in & Check-out"
+   446→        description="Default scheduling for guest arrivals and departures"
+   447→        icon={Clock}
+   448→      >
+   449→        <SettingRow
+   450→          label="Default Check-in Time"
+   451→          description="Standard check-in time shown on all guesthouses"
+   452→        >
+   453→          <input
+   454→            id="defaultCheckInTime"
+   455→            type="time"
+   456→            value={settings.defaultCheckInTime}
+   457→            onChange={(e) =>
+   458→              onChange({ defaultCheckInTime: e.target.value })
+   459→            }
+   460→            className={inputClass}
+   461→          />
+   462→        </SettingRow>
+   463→
+   464→        <SettingRow
+   465→          label="Default Check-out Time"
+   466→          description="Standard check-out time shown on all guesthouses"
+   467→        >
+   468→          <input
+   469→            id="defaultCheckOutTime"
+   470→            type="time"
+   471→            value={settings.defaultCheckOutTime}
+   472→            onChange={(e) =>
+   473→              onChange({ defaultCheckOutTime: e.target.value })
+   474→            }
+   475→            className={inputClass}
+   476→          />
+   477→        </SettingRow>
+   478→      </SectionCard>
+   479→
+   480→      {/* Registration & Compliance */}
+   481→      <SectionCard
+   482→        title="Registration & Compliance"
+   483→        description="Policies for new guesthouse onboarding"
+   484→        icon={Building2}
+   485→      >
+   486→        <SettingRow
+   487→          label="Auto-approve Guesthouses"
+   488→          description="Automatically approve newly registered guesthouses without manual review"
+   489→        >
+   490→          <div className="flex items-center gap-3">
+   491→            <ToggleSwitch
+   492→              id="autoApproveGuesthouses"
+   493→              checked={settings.autoApproveGuesthouses}
+   494→              onChange={(v) => onChange({ autoApproveGuesthouses: v })}
+   495→            />
+   496→            {settings.autoApproveGuesthouses && (
+   497→              <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+   498→                <AlertTriangle className="w-3 h-3" />
+   499→                Bypasses review
+   500→              </span>
+   501→            )}
+   502→          </div>
+   503→        </SettingRow>
+   504→
+   505→        <SettingRow
+   506→          label="Require License Upload"
+   507→          description="Require operators to upload a valid business license during registration"
+   508→        >
+   509→          <ToggleSwitch
+   510→            id="requireLicenseUpload"
+   511→            checked={settings.requireLicenseUpload}
+   512→            onChange={(v) => onChange({ requireLicenseUpload: v })}
+   513→          />
+   514→        </SettingRow>
+   515→      </SectionCard>
+   516→
+   517→      {/* Room & Tax Defaults */}
+   518→      <SectionCard
+   519→        title="Room & Tax Defaults"
+   520→        description="Default limits and financial settings for guesthouses"
+   521→        icon={Settings}
+   522→      >
+   523→        <SettingRow
+   524→          label="Max Rooms per Guesthouse"
+   525→          description="Maximum number of rooms allowed per guesthouse registration"
+   526→        >
+   527→          <NumberInput
+   528→            id="maxRoomsPerGuesthouse"
+   529→            value={settings.maxRoomsPerGuesthouse}
+   530→            onChange={(v) => onChange({ maxRoomsPerGuesthouse: v })}
+   531→            min={1}
+   532→            max={500}
+   533→          />
+   534→        </SettingRow>
+   535→
+   536→        <SettingRow
+   537→          label="Default Tax Rate"
+   538→          description="Default VAT/tax percentage applied to room pricing"
+   539→        >
+   540→          <NumberInput
+   541→            id="defaultTaxRate"
+   542→            value={settings.defaultTaxRate}
+   543→            onChange={(v) => onChange({ defaultTaxRate: v })}
+   544→            min={0}
+   545→            max={100}
+   546→            step={0.5}
+   547→            suffix="%"
+   548→          />
+   549→        </SettingRow>
+   550→      </SectionCard>
+   551→    </div>
+   552→  );
+   553→}
+   554→
+   555→function SecurityTab({
+   556→  settings,
+   557→  onChange,
+   558→}: {
+   559→  settings: SecuritySettings;
+   560→  onChange: (partial: Partial<SecuritySettings>) => void;
+   561→}) {
+   562→  return (
+   563→    <div className="space-y-5">
+   564→      {/* Authentication */}
+   565→      <SectionCard
+   566→        title="Authentication"
+   567→        description="Password policies and login session management"
+   568→        icon={Lock}
+   569→      >
+   570→        <SettingRow
+   571→          label="Password Minimum Length"
+   572→          description="Minimum number of characters required for user passwords"
+   573→        >
+   574→          <NumberInput
+   575→            id="passwordMinLength"
+   576→            value={settings.passwordMinLength}
+   577→            onChange={(v) => onChange({ passwordMinLength: v })}
+   578→            min={6}
+   579→            max={128}
+   580→          />
+   581→        </SettingRow>
+   582→
+   583→        <SettingRow
+   584→          label="Max Login Attempts"
+   585→          description="Number of failed attempts before the account is temporarily locked"
+   586→        >
+   587→          <NumberInput
+   588→            id="maxLoginAttempts"
+   589→            value={settings.maxLoginAttempts}
+   590→            onChange={(v) => onChange({ maxLoginAttempts: v })}
+   591→            min={1}
+   592→            max={20}
+   593→          />
+   594→        </SettingRow>
+   595→
+   596→        <SettingRow
+   597→          label="Session Timeout"
+   598→          description="Duration in hours before an inactive session expires"
+   599→        >
+   600→          <NumberInput
+   601→            id="sessionTimeoutHours"
+   602→            value={settings.sessionTimeoutHours}
+   603→            onChange={(v) => onChange({ sessionTimeoutHours: v })}
+   604→            min={1}
+   605→            max={720}
+   606→            suffix="hrs"
+   607→          />
+   608→        </SettingRow>
+   609→      </SectionCard>
+   610→
+   611→      {/* Registration Policies */}
+   612→      <SectionCard
+   613→        title="Registration Policies"
+   614→        description="Controls for user self-registration and verification"
+   615→        icon={Shield}
+   616→      >
+   617→        <SettingRow
+   618→          label="Allow Self-Registration"
+   619→          description="Permit new users to create accounts without an admin invitation"
+   620→        >
+   621→          <ToggleSwitch
+   622→            id="allowSelfRegistration"
+   623→            checked={settings.allowSelfRegistration}
+   624→            onChange={(v) => onChange({ allowSelfRegistration: v })}
+   625→          />
+   626→        </SettingRow>
+   627→
+   628→        <SettingRow
+   629→          label="Require Email Verification"
+   630→          description="Users must verify their email address before accessing the system"
+   631→        >
+   632→          <ToggleSwitch
+   633→            id="requireEmailVerification"
+   634→            checked={settings.requireEmailVerification}
+   635→            onChange={(v) => onChange({ requireEmailVerification: v })}
+   636→          />
+   637→        </SettingRow>
+   638→      </SectionCard>
+   639→
+   640→      {/* Network Access */}
+   641→      <SectionCard
+   642→        title="Network Access"
+   643→        description="IP-based access control for the system"
+   644→        icon={Shield}
+   645→      >
+   646→        <div className="py-4 space-y-4">
+   647→          <div>
+   648→            <FormLabel htmlFor="ipWhitelist">IP Whitelist</FormLabel>
+   649→            <p className="text-xs text-slate-500 mb-2">
+   650→              Comma-separated list of allowed IP addresses or CIDR ranges.
+   651→              Leave empty to allow all IPs.
+   652→            </p>
+   653→            <textarea
+   654→              id="ipWhitelist"
+   655→              value={settings.ipWhitelist}
+   656→              onChange={(e) => onChange({ ipWhitelist: e.target.value })}
+   657→              className={textareaClass}
+   658→              rows={3}
+   659→              placeholder="e.g. 192.168.1.0/24, 10.0.0.1"
+   660→            />
+   661→          </div>
+   662→        </div>
+   663→      </SectionCard>
+   664→    </div>
+   665→  );
+   666→}
+   667→
+   668→function NotificationsTab({
+   669→  settings,
+   670→  onChange,
+   671→}: {
+   672→  settings: NotificationSettings;
+   673→  onChange: (partial: Partial<NotificationSettings>) => void;
+   674→}) {
+   675→  return (
+   676→    <div className="space-y-5">
+   677→      {/* Notification Channels */}
+   678→      <SectionCard
+   679→        title="Notification Channels"
+   680→        description="Enable or disable notification delivery methods"
+   681→        icon={MessageSquare}
+   682→      >
+   683→        <SettingRow
+   684→          label="Email Notifications"
+   685→          description="Send system alerts and updates via email"
+   686→        >
+   687→          <ToggleSwitch
+   688→            id="emailNotifications"
+   689→            checked={settings.emailNotifications}
+   690→            onChange={(v) => onChange({ emailNotifications: v })}
+   691→          />
+   692→        </SettingRow>
+   693→
+   694→        <SettingRow
+   695→          label="SMS Notifications"
+   696→          description="Send urgent alerts and verification codes via SMS"
+   697→        >
+   698→          <ToggleSwitch
+   699→            id="smsNotifications"
+   700→            checked={settings.smsNotifications}
+   701→            onChange={(v) => onChange({ smsNotifications: v })}
+   702→          />
+   703→        </SettingRow>
+   704→      </SectionCard>
+   705→
+   706→      {/* Alert Configuration */}
+   707→      <SectionCard
+   708→        title="Alert Configuration"
+   709→        description="Configure how and when alerts are escalated"
+   710→        icon={AlertTriangle}
+   711→      >
+   712→        <SettingRow
+   713→          label="Alert Escalation Delay"
+   714→          description="Minutes before an unacknowledged alert is escalated to the next level"
+   715→        >
+   716→          <NumberInput
+   717→            id="alertEscalationDelay"
+   718→            value={settings.alertEscalationDelay}
+   719→            onChange={(v) => onChange({ alertEscalationDelay: v })}
+   720→            min={1}
+   721→            max={1440}
+   722→            suffix="min"
+   723→          />
+   724→        </SettingRow>
+   725→
+   726→        <SettingRow
+   727→          label="Critical Alerts Immediate"
+   728→          description="Bypass escalation delay and immediately send critical alerts to all channels"
+   729→        >
+   730→          <ToggleSwitch
+   731→            id="criticalAlertsImmediate"
+   732→            checked={settings.criticalAlertsImmediate}
+   733→            onChange={(v) => onChange({ criticalAlertsImmediate: v })}
+   734→          />
+   735→        </SettingRow>
+   736→
+   737→        <SettingRow
+   738→          label="Anomaly Detection Enabled"
+   739→          description="Automatically detect and alert on suspicious guesthouse activity patterns"
+   740→        >
+   741→          <ToggleSwitch
+   742→            id="anomalyDetectionEnabled"
+   743→            checked={settings.anomalyDetectionEnabled}
+   744→            onChange={(v) => onChange({ anomalyDetectionEnabled: v })}
+   745→          />
+   746→        </SettingRow>
+   747→      </SectionCard>
+   748→
+   749→      {/* Recipients */}
+   750→      <SectionCard
+   751→        title="Notification Recipients"
+   752→        description="Email addresses that receive system-level notifications"
+   753→        icon={Mail}
+   754→      >
+   755→        <div className="py-4 space-y-4">
+   756→          <div>
+   757→            <FormLabel htmlFor="notificationEmailRecipients">
+   758→              Email Recipients
+   759→            </FormLabel>
+   760→            <p className="text-xs text-slate-500 mb-2">
+   761→              Comma-separated list of email addresses that receive system
+   762→              notifications and alerts.
+   763→            </p>
+   764→            <textarea
+   765→              id="notificationEmailRecipients"
+   766→              value={settings.notificationEmailRecipients}
+   767→              onChange={(e) =>
+   768→                onChange({ notificationEmailRecipients: e.target.value })
+   769→              }
+   770→              className={textareaClass}
+   771→              rows={3}
+   772→              placeholder="e.g. admin@ghms.et, ops@ghms.et, security@ghms.et"
+   773→            />
+   774→          </div>
+   775→        </div>
+   776→      </SectionCard>
+   777→    </div>
+   778→  );
+   779→}
+   780→
+   781→// ── Main Page Component ──
+   782→
+   783→export default function SuperSystemConfigPage() {
+   784→  const [activeTab, setActiveTab] = useState<TabKey>("general");
+   785→  const [loading, setLoading] = useState(true);
+   786→  const [saving, setSaving] = useState(false);
+   787→  const [dirty, setDirty] = useState(false);
+   788→
+   789→  const [config, setConfig] = useState<SystemConfig>(FULL_DEFAULTS);
+   790→
+   791→  // ── Fetch settings on mount ──
+   792→
+   793→  const fetchSettings = useCallback(async () => {
+   794→    setLoading(true);
+   795→    try {
+   796→      const token = localStorage.getItem("ghms_token");
+   797→      const headers: HeadersInit = { "Content-Type": "application/json" };
+   798→      if (token) {
+   799→        headers["Authorization"] = `Bearer ${token}`;
+   800→      }
+   801→
+   802→      const res = await fetch("/api/settings", { headers });
+   803→
+   804→      if (!res.ok) {
+   805→        throw new Error(`Failed to fetch settings (${res.status})`);
+   806→      }
+   807→
+   808→      const data = await res.json();
+   809→
+   810→      // Merge fetched data with defaults to ensure all keys exist
+   811→      setConfig({
+   812→        general: { ...DEFAULT_GENERAL, ...data.general },
+   813→        guesthouse: { ...DEFAULT_GUESTHOUSE, ...data.guesthouse },
+   814→        security: { ...DEFAULT_SECURITY, ...data.security },
+   815→        notifications: { ...DEFAULT_NOTIFICATIONS, ...data.notifications },
+   816→      });
+   817→    } catch (err) {
+   818→      // API may not support this shape yet — use defaults
+   819→      console.warn("Could not load system config, using defaults:", err);
+   820→      setConfig(FULL_DEFAULTS);
+   821→    } finally {
+   822→      setLoading(false);
+   823→    }
+   824→  }, []);
+   825→
+   826→  useEffect(() => {
+   827→    fetchSettings();
+   828→  }, [fetchSettings]);
+   829→
+   830→  // ── Save settings ──
+   831→
+   832→  const handleSave = async () => {
+   833→    setSaving(true);
+   834→    try {
+   835→      const token = localStorage.getItem("ghms_token");
+   836→      const headers: HeadersInit = { "Content-Type": "application/json" };
+   837→      if (token) {
+   838→        headers["Authorization"] = `Bearer ${token}`;
+   839→      }
+   840→
+   841→      const res = await fetch("/api/settings", {
+   842→        method: "PUT",
+   843→        headers,
+   844→        body: JSON.stringify(config),
+   845→      });
+   846→
+   847→      if (!res.ok) {
+   848→        // Fallback to POST if PUT not supported
+   849→        const resPost = await fetch("/api/settings", {
+   850→          method: "POST",
+   851→          headers,
+   852→          body: JSON.stringify(config),
+   853→        });
+   854→        if (!resPost.ok) {
+   855→          throw new Error(`Failed to save settings (${resPost.status})`);
+   856→        }
+   857→      }
+   858→
+   859→      setDirty(false);
+   860→      toast.success("System configuration saved successfully");
+   861→    } catch (err) {
+   862→      console.error("Save failed:", err);
+   863→      toast.error("Failed to save configuration. Please try again.");
+   864→    } finally {
+   865→      setSaving(false);
+   866→    }
+   867→  };
+   868→
+   869→  // ── Reset to defaults ──
+   870→
+   871→  const handleReset = () => {
+   872→    setConfig(FULL_DEFAULTS);
+   873→    setDirty(true);
+   874→    toast.info("All settings reset to defaults. Save to apply.");
+   875→  };
+   876→
+   877→  // ── Updaters ──
+   878→
+   879→  const updateGeneral = useCallback(
+   880→    (partial: Partial<GeneralSettings>) => {
+   881→      setConfig((prev) => ({ ...prev, general: { ...prev.general, ...partial } }));
+   882→      setDirty(true);
+   883→    },
+   884→    []
+   885→  );
+   886→
+   887→  const updateGuesthouse = useCallback(
+   888→    (partial: Partial<GuesthouseSettings>) => {
+   889→      setConfig((prev) => ({
+   890→        ...prev,
+   891→        guesthouse: { ...prev.guesthouse, ...partial },
+   892→      }));
+   893→      setDirty(true);
+   894→    },
+   895→    []
+   896→  );
+   897→
+   898→  const updateSecurity = useCallback(
+   899→    (partial: Partial<SecuritySettings>) => {
+   900→      setConfig((prev) => ({
+   901→        ...prev,
+   902→        security: { ...prev.security, ...partial },
+   903→      }));
+   904→      setDirty(true);
+   905→    },
+   906→    []
+   907→  );
+   908→
+   909→  const updateNotifications = useCallback(
+   910→    (partial: Partial<NotificationSettings>) => {
+   911→      setConfig((prev) => ({
+   912→        ...prev,
+   913→        notifications: { ...prev.notifications, ...partial },
+   914→      }));
+   915→      setDirty(true);
+   916→    },
+   917→    []
+   918→  );
+   919→
+   920→  // ── Render ──
+   921→
+   922→  return (
+   923→    <div className="p-6 max-w-5xl mx-auto">
+   924→      {/* ── Header ── */}
+   925→      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+   926→        <div className="flex items-start gap-3">
+   927→          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 shrink-0">
+   928→            <Settings className="w-5 h-5 text-slate-600" />
+   929→          </div>
+   930→          <div>
+   931→            <h1 className="text-xl font-bold text-slate-900">
+   932→              System Configuration
+   933→            </h1>
+   934→            <p className="text-sm text-slate-500 mt-0.5">
+   935→              Configure Guest House Management System settings and preferences
+   936→            </p>
+   937→          </div>
+   938→        </div>
+   939→
+   940→        <div className="flex items-center gap-2 shrink-0">
+   941→          <button
+   942→            type="button"
+   943→            onClick={handleReset}
+   944→            disabled={saving}
+   945→            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+   946→          >
+   947→            <RotateCcw className="w-4 h-4" />
+   948→            Reset Defaults
+   949→          </button>
+   950→          <button
+   951→            type="button"
+   952→            onClick={handleSave}
+   953→            disabled={saving || !dirty}
+   954→            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+   955→          >
+   956→            {saving ? (
+   957→              <Loader2 className="w-4 h-4 animate-spin" />
+   958→            ) : (
+   959→              <Save className="w-4 h-4" />
+   960→            )}
+   961→            Save Changes
+   962→          </button>
+   963→        </div>
+   964→      </div>
+   965→
+   966→      {/* ── Tab Bar ── */}
+   967→      <div className="border-b border-slate-200 mb-6 overflow-x-auto scrollbar-none">
+   968→        <nav className="flex gap-0 min-w-max" role="tablist" aria-label="Configuration sections">
+   969→          {TABS.map((tab) => {
+   970→            const Icon = tab.icon;
+   971→            const isActive = activeTab === tab.key;
+   972→            return (
+   973→              <button
+   974→                key={tab.key}
+   975→                type="button"
+   976→                role="tab"
+   977→                aria-selected={isActive}
+   978→                aria-controls={`panel-${tab.key}`}
+   979→                onClick={() => setActiveTab(tab.key)}
+   980→                className={
+   981→                  `relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors focus:outline-none ` +
+   982→                  (isActive
+   983→                    ? "text-primary border-b-2 border-primary"
+   984→                    : "text-slate-500 hover:text-slate-700 border-b-2 border-transparent")
+   985→                }
+   986→              >
+   987→                <Icon className="w-4 h-4" />
+   988→                {tab.label}
+   989→              </button>
+   990→            );
+   991→          })}
+   992→        </nav>
+   993→      </div>
+   994→
+   995→      {/* ── Tab Content ── */}
+   996→      {loading ? (
+   997→        <div className="space-y-5">
+   998→          {[1, 2, 3].map((i) => (
+   999→            <div
+  1000→              key={i}
+  1001→              className="rounded-xl border border-slate-200 bg-white p-5 animate-pulse"
+  1002→            >
+  1003→              <div className="flex items-start gap-3 mb-6">
+  1004→                <div className="w-9 h-9 rounded-lg bg-slate-100" />
+  1005→                <div className="space-y-2 flex-1">
+  1006→                  <div className="h-4 w-40 rounded bg-slate-100" />
+  1007→                  <div className="h-3 w-56 rounded bg-slate-50" />
+  1008→                </div>
+  1009→              </div>
+  1010→              <div className="space-y-4">
+  1011→                <div className="flex justify-between py-3">
+  1012→                  <div className="space-y-2 flex-1 pr-4">
+  1013→                    <div className="h-4 w-36 rounded bg-slate-100" />
+  1014→                    <div className="h-3 w-48 rounded bg-slate-50" />
+  1015→                  </div>
+  1016→                  <div className="h-9 w-56 rounded-lg bg-slate-100" />
+  1017→                </div>
+  1018→                <div className="flex justify-between py-3">
+  1019→                  <div className="space-y-2 flex-1 pr-4">
+  1020→                    <div className="h-4 w-32 rounded bg-slate-100" />
+  1021→                    <div className="h-3 w-52 rounded bg-slate-50" />
+  1022→                  </div>
+  1023→                  <div className="h-9 w-56 rounded-lg bg-slate-100" />
+  1024→                </div>
+  1025→              </div>
+  1026→            </div>
+  1027→          ))}
+  1028→        </div>
+  1029→      ) : (
+  1030→        <div role="tabpanel" id={`panel-${activeTab}`}>
+  1031→          {activeTab === "general" && (
+  1032→            <GeneralTab settings={config.general} onChange={updateGeneral} />
+  1033→          )}
+  1034→          {activeTab === "guesthouse" && (
+  1035→            <GuesthouseTab
+  1036→              settings={config.guesthouse}
+  1037→              onChange={updateGuesthouse}
+  1038→            />
+  1039→          )}
+  1040→          {activeTab === "security" && (
+  1041→            <SecurityTab
+  1042→              settings={config.security}
+  1043→              onChange={updateSecurity}
+  1044→            />
+  1045→          )}
+  1046→          {activeTab === "notifications" && (
+  1047→            <NotificationsTab
+  1048→              settings={config.notifications}
+  1049→              onChange={updateNotifications}
+  1050→            />
+  1051→          )}
+  1052→        </div>
+  1053→      )}
+  1054→    </div>
+  1055→  );
+  1056→}
+  1057→
