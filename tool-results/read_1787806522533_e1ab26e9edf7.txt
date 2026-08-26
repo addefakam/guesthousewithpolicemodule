@@ -1,0 +1,1744 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+     4→import { useTranslation } from "react-i18next";
+     5→import { useAppStore } from "@/lib/store";
+     6→import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
+     7→import {
+     8→  apiGetRooms,
+     9→  apiCreateRoom,
+    10→  apiUpdateRoom,
+    11→  apiDeleteRoom,
+    12→  apiUpdateRoomStatus,
+    13→  apiImportRooms,
+    14→  apiGetReservations,
+    15→  apiUpdateReservation,
+    16→  apiCheckout,
+    17→} from "@/lib/api";
+    18→import { toast } from "sonner";
+    19→import { Card, CardContent } from "@/components/ui/card";
+    20→import { Button } from "@/components/ui/button";
+    21→import { Badge } from "@/components/ui/badge";
+    22→import { Input } from "@/components/ui/input";
+    23→import { Label } from "@/components/ui/label";
+    24→import { Textarea } from "@/components/ui/textarea";
+    25→import { Skeleton } from "@/components/ui/skeleton";
+    26→import { Separator } from "@/components/ui/separator";
+    27→import {
+    28→  Dialog,
+    29→  DialogContent,
+    30→  DialogHeader,
+    31→  DialogTitle,
+    32→  DialogDescription,
+    33→  DialogFooter,
+    34→} from "@/components/ui/dialog";
+    35→import {
+    36→  AlertDialog,
+    37→  AlertDialogContent,
+    38→  AlertDialogHeader,
+    39→  AlertDialogTitle,
+    40→  AlertDialogDescription,
+    41→  AlertDialogFooter,
+    42→  AlertDialogAction,
+    43→  AlertDialogCancel,
+    44→} from "@/components/ui/alert-dialog";
+    45→import {
+    46→  Select,
+    47→  SelectContent,
+    48→  SelectItem,
+    49→  SelectTrigger,
+    50→  SelectValue,
+    51→} from "@/components/ui/select";
+    52→import {
+    53→  DropdownMenu,
+    54→  DropdownMenuContent,
+    55→  DropdownMenuItem,
+    56→  DropdownMenuSeparator,
+    57→  DropdownMenuTrigger,
+    58→} from "@/components/ui/dropdown-menu";
+    59→import {
+    60→  Search,
+    61→  Plus,
+    62→  MoreVertical,
+    63→  ChevronDown,
+    64→  Pencil,
+    65→  User,
+    66→  CalendarDays,
+    67→  CreditCard,
+    68→  Clock,
+    69→  Trash2,
+    70→  Users,
+    71→  BedSingle,
+    72→  BedDouble,
+    73→  Hotel,
+    74→  Crown,
+    75→  Star,
+    76→  Building2,
+    77→  Layers,
+    78→  Wifi,
+    79→  Info,
+    80→  CalendarPlus,
+    81→  CalendarClock,
+    82→  LogOut,
+    83→  ArrowRightLeft,
+    84→  Tv,
+    85→  Wind,
+    86→  Coffee,
+    87→  ShowerHead,
+    88→  Car,
+    89→  DollarSign,
+    90→  Upload,
+    91→  Download,
+    92→  FileSpreadsheet,
+    93→  CheckCircle2,
+    94→  XCircle,
+    95→  AlertCircle,
+    96→  ClipboardList,
+    97→} from "lucide-react";
+    98→
+    99→interface Room {
+   100→  id: string;
+   101→  number: string;
+   102→  name: string;
+   103→  type: string;
+   104→  pricePerNight: number;
+   105→  floor: number;
+   106→  capacity: number;
+   107→  status: string;
+   108→  amenities: string;
+   109→  description: string;
+   110→  image: string | null;
+   111→}
+   112→
+   113→interface ImportResult {
+   114→  number: string;
+   115→  status: string;
+   116→  error?: string;
+   117→}
+   118→
+   119→interface RoomReservation {
+   120→  id: string;
+   121→  status: string;
+   122→  checkIn: string;
+   123→  checkOut: string;
+   124→  nights: number;
+   125→  roomRate: number;
+   126→  totalCost: number;
+   127→  paidAmount: number;
+   128→  balance: number;
+   129→  paymentStatus: string;
+   130→  guest: { id: string; name: string; phone: string } | null;
+   131→}
+   132→
+   133→const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
+   134→
+   135→const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
+   136→  SINGLE: <BedSingle className="h-4 w-4" />,
+   137→  DOUBLE: <BedDouble className="h-4 w-4" />,
+   138→  TWIN: <Hotel className="h-4 w-4" />,
+   139→  SUITE: <Crown className="h-4 w-4" />,
+   140→  DELUXE: <Star className="h-4 w-4" />,
+   141→};
+   142→
+   143→const ROOM_TYPE_COLORS: Record<string, string> = {
+   144→  SINGLE: "bg-sky-50 text-sky-700 border-sky-200",
+   145→  DOUBLE: "bg-violet-50 text-violet-700 border-violet-200",
+   146→  TWIN: "bg-teal-50 text-teal-700 border-teal-200",
+   147→  SUITE: "bg-amber-50 text-amber-700 border-amber-200",
+   148→  DELUXE: "bg-rose-50 text-rose-700 border-rose-200",
+   149→};
+   150→
+   151→const STATUS_STYLES: Record<string, string> = {
+   152→  AVAILABLE: "bg-emerald-100 text-emerald-800 border-emerald-200",
+   153→  OCCUPIED: "bg-rose-100 text-rose-800 border-rose-200",
+   154→  MAINTENANCE: "bg-amber-100 text-amber-800 border-amber-200",
+   155→  RESERVED: "bg-sky-100 text-sky-800 border-sky-200",
+   156→};
+   157→
+   158→const STATUS_DOT: Record<string, string> = {
+   159→  AVAILABLE: "bg-emerald-500",
+   160→  OCCUPIED: "bg-rose-500",
+   161→  MAINTENANCE: "bg-amber-500",
+   162→  RESERVED: "bg-sky-500",
+   163→};
+   164→
+   165→const AMENITY_ICONS: Record<string, React.ReactNode> = {
+   166→  WiFi: <Wifi className="h-3 w-3" />,
+   167→  TV: <Tv className="h-3 w-3" />,
+   168→  AC: <Wind className="h-3 w-3" />,
+   169→  "Mini Bar": <Coffee className="h-3 w-3" />,
+   170→  "Hot Water": <ShowerHead className="h-3 w-3" />,
+   171→  Parking: <Car className="h-3 w-3" />,
+   172→};
+   173→
+   174→// Derive floor from first digit of room number (e.g. "102" → 1, "201" → 2)
+   175→const getFloorFromNumber = (num: string): number | null => {
+   176→  const match = num.match(/^\d/);
+   177→  return match ? parseInt(match[0], 10) : null;
+   178→};
+   179→
+   180→const emptyForm = {
+   181→  number: "",
+   182→  type: "SINGLE",
+   183→  pricePerNight: "",
+   184→  floor: "",
+   185→  capacity: "",
+   186→  amenities: "[]",
+   187→  description: "",
+   188→};
+   189→
+   190→// ── Excel template columns ───────────────────────────────────────────────────
+   191→const TEMPLATE_COLUMNS = ["number", "type", "pricePerNight", "floor", "capacity", "amenities", "description"];
+   192→const TEMPLATE_EXAMPLE = [
+   193→  { number: "101", type: "SINGLE", pricePerNight: 500, floor: 1, capacity: 1, amenities: "WiFi, TV", description: "Standard single room" },
+   194→  { number: "102", type: "DOUBLE", pricePerNight: 900, floor: 1, capacity: 2, amenities: "WiFi, TV, AC", description: "Comfortable double room" },
+   195→  { number: "201", type: "SUITE",  pricePerNight: 1800, floor: 2, capacity: 3, amenities: "WiFi, TV, AC, Mini Bar", description: "Luxury suite" },
+   196→];
+   197→
+   198→async function downloadTemplate() {
+   199→  const XLSX = await import("xlsx");
+   200→  const ws = XLSX.utils.json_to_sheet(TEMPLATE_EXAMPLE, { header: TEMPLATE_COLUMNS });
+   201→  const wb = XLSX.utils.book_new();
+   202→  XLSX.utils.book_append_sheet(wb, ws, "Rooms");
+   203→  XLSX.writeFile(wb, "rooms_import_template.xlsx");
+   204→}
+   205→
+   206→// ── Subscription Status Badge (for Rooms page header) ──
+   207→function SubscriptionBadge() {
+   208→  const { currentUser, subscription } = useAppStore();
+   209→
+   210→  // Only show for OPERATOR/STAFF
+   211→  if (!currentUser || (currentUser.role !== "OPERATOR" && currentUser.role !== "STAFF")) return null;
+   212→  if (!subscription) return null;
+   213→
+   214→  const isActive = subscription.status === "ACTIVE";
+   215→  const isWarning = subscription.status === "WARNING";
+   216→  const isExpired = subscription.status === "EXPIRED";
+   217→  const isSuspended = subscription.status === "SUSPENDED";
+   218→
+   219→  const badgeClass = isActive
+   220→    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+   221→    : isSuspended || isExpired
+   222→    ? "border-rose-300 bg-rose-50 text-rose-700"
+   223→    : "border-amber-300 bg-amber-50 text-amber-700";
+   224→
+   225→  const dotClass = isActive
+   226→    ? "bg-emerald-500"
+   227→    : isSuspended || isExpired
+   228→    ? "bg-rose-500"
+   229→    : "bg-amber-500";
+   230→
+   231→  const label = isActive
+   232→    ? "Active"
+   233→    : isSuspended
+   234→    ? "Suspended"
+   235→    : isExpired
+   236→    ? "Expired"
+   237→    : "Expiring";
+   238→
+   239→  return (
+   240→    <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClass} animate-subtle-pulse`}>
+   241→      <span className={`relative flex h-2 w-2`}>
+   242→        <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${dotClass}`} />
+   243→        <span className={`relative inline-flex h-2 w-2 rounded-full ${dotClass}`} />
+   244→      </span>
+   245→      <span>{label}</span>
+   246→      <span className="font-mono text-[11px] opacity-70">{Math.abs(subscription.daysRemaining)}d</span>
+   247→    </div>
+   248→  );
+   249→}
+   250→
+   251→export default function RoomsPage() {
+   252→  const { t } = useTranslation("rooms");
+   253→  const { refreshKey, triggerRefresh, setCurrentPage, setPreselectedRoom } = useAppStore();
+   254→  const [rooms, setRooms] = useState<Room[]>([]);
+   255→  const [search, setSearch] = useState("");
+   256→  const [floorFilter, setFloorFilter] = useState<number | null>(null);
+   257→  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+   258→  const [loading, setLoading] = useState(true);
+   259→
+   260→  // single-room dialog
+   261→  const [dialogOpen, setDialogOpen] = useState(false);
+   262→  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+   263→  const [form, setForm] = useState(emptyForm);
+   264→  const [saving, setSaving] = useState(false);
+   265→
+   266→  // delete
+   267→  const [deleteDialog, setDeleteDialog] = useState<Room | null>(null);
+   268→  const [deleting, setDeleting] = useState(false);
+   269→
+   270→  // room info detail
+   271→  const [infoRoom, setInfoRoom] = useState<Room | null>(null);
+   272→  const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
+   273→  const [roomResLoading, setRoomResLoading] = useState(false);
+   274→
+   275→  // extend stay dialog
+   276→  const [extendDialog, setExtendDialog] = useState<RoomReservation | null>(null);
+   277→  const [extendDate, setExtendDate] = useState("");
+   278→  const [extending, setExtending] = useState(false);
+   279→
+   280→  // early checkout dialog
+   281→  const [earlyCheckoutDialog, setEarlyCheckoutDialog] = useState<RoomReservation | null>(null);
+   282→  const [earlyCheckingOut, setEarlyCheckingOut] = useState(false);
+   283→
+   284→  // room shift dialog
+   285→  const [shiftDialog, setShiftDialog] = useState<RoomReservation | null>(null);
+   286→  const [shiftTargetRoomId, setShiftTargetRoomId] = useState("");
+   287→  const [shifting, setShifting] = useState(false);
+   288→
+   289→  // excel import
+   290→  const [importDialogOpen, setImportDialogOpen] = useState(false);
+   291→  const [importFile, setImportFile] = useState<File | null>(null);
+   292→  const [importLoading, setImportLoading] = useState(false);
+   293→  const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+   294→  const importFileRef = useRef<HTMLInputElement>(null);
+   295→
+   296→  const fetchRooms = useCallback(async () => {
+   297→    try {
+   298→      setLoading(true);
+   299→      const raw = await apiGetRooms(search);
+   300→      const list = Array.isArray(raw.rooms) ? raw.rooms : Array.isArray(raw) ? raw : [];
+   301→      // Sort: AVAILABLE first, then RESERVED, then others; within each group by floor
+   302→      const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
+   303→      list.sort((a, b) => {
+   304→        const oa = statusOrder[a.status] ?? 9;
+   305→        const ob = statusOrder[b.status] ?? 9;
+   306→        if (oa !== ob) return oa - ob;
+   307→        const fa = getFloorFromNumber(a.number) ?? a.floor ?? 0;
+   308→        const fb = getFloorFromNumber(b.number) ?? b.floor ?? 0;
+   309→        return fa - fb;
+   310→      });
+   311→      setRooms(list);
+   312→    } catch (err: unknown) {
+   313→      const message = err instanceof Error ? err.message : "Failed to load rooms";
+   314→      toast.error(message);
+   315→    } finally {
+   316→      setLoading(false);
+   317→    }
+   318→  }, [search]);
+   319→
+   320→  useEffect(() => {
+   321→    const timer = setTimeout(() => fetchRooms(), 300);
+   322→    return () => clearTimeout(timer);
+   323→  }, [fetchRooms, refreshKey]);
+   324→
+   325→  // Fetch reservations for the room when info dialog opens
+   326→  useEffect(() => {
+   327→    if (!infoRoom) {
+   328→      setRoomReservations([]);
+   329→      return;
+   330→    }
+   331→    (async () => {
+   332→      try {
+   333→        setRoomResLoading(true);
+   334→        const data = await apiGetReservations(`roomId=${infoRoom.id}`);
+   335→        setRoomReservations(Array.isArray(data) ? data : []);
+   336→      } catch {
+   337→        setRoomReservations([]);
+   338→      } finally {
+   339→        setRoomResLoading(false);
+   340→      }
+   341→    })();
+   342→  }, [infoRoom]);
+   343→
+   344→  const openCreate = () => {
+   345→    setEditingRoom(null);
+   346→    setForm(emptyForm);
+   347→    setDialogOpen(true);
+   348→  };
+   349→
+   350→  const openEdit = (room: Room) => {
+   351→    setEditingRoom(room);
+   352→    setForm({
+   353→      number: room.number,
+   354→      type: room.type,
+   355→      pricePerNight: String(room.pricePerNight),
+   356→      floor: String(room.floor),
+   357→      capacity: String(room.capacity),
+   358→      amenities: room.amenities,
+   359→      description: room.description,
+   360→    });
+   361→    setDialogOpen(true);
+   362→  };
+   363→
+   364→  const handleSave = async () => {
+   365→    if (!form.number || !form.pricePerNight || !form.floor || !form.capacity) {
+   366→      toast.error("Please fill in all required fields");
+   367→      return;
+   368→    }
+   369→
+   370→    try {
+   371→      setSaving(true);
+   372→      const payload = {
+   373→        number: form.number,
+   374→        type: form.type,
+   375→        pricePerNight: Number(form.pricePerNight),
+   376→        floor: Number(form.floor),
+   377→        capacity: Number(form.capacity),
+   378→        amenities: form.amenities || "[]",
+   379→        description: form.description,
+   380→      };
+   381→
+   382→      if (editingRoom) {
+   383→        await apiUpdateRoom(editingRoom.id, payload);
+   384→        toast.success("Room updated successfully");
+   385→      } else {
+   386→        await apiCreateRoom(payload);
+   387→        toast.success("Room created successfully");
+   388→      }
+   389→
+   390→      setDialogOpen(false);
+   391→      triggerRefresh();
+   392→    } catch (err: unknown) {
+   393→      const message = err instanceof Error ? err.message : "Failed to save room";
+   394→      toast.error(message);
+   395→    } finally {
+   396→      setSaving(false);
+   397→    }
+   398→  };
+   399→
+   400→  const handleDelete = async () => {
+   401→    if (!deleteDialog) return;
+   402→    try {
+   403→      setDeleting(true);
+   404→      await apiDeleteRoom(deleteDialog.id);
+   405→      toast.success("Room deleted successfully");
+   406→      setDeleteDialog(null);
+   407→      triggerRefresh();
+   408→    } catch (err: unknown) {
+   409→      const message = err instanceof Error ? err.message : "Failed to delete room";
+   410→      toast.error(message);
+   411→    } finally {
+   412→      setDeleting(false);
+   413→    }
+   414→  };
+   415→
+   416→  const handleStatusChange = async (room: Room, newStatus: string) => {
+   417→    try {
+   418→      await apiUpdateRoomStatus(room.id, newStatus);
+   419→      toast.success(`Room ${room.number} status changed to ${newStatus}`);
+   420→      triggerRefresh();
+   421→    } catch (err: unknown) {
+   422→      const message = err instanceof Error ? err.message : "Failed to update status";
+   423→      toast.error(message);
+   424→    }
+   425→  };
+   426→
+   427→  const handleReserveFromRoom = (room: Room) => {
+   428→    setInfoRoom(null);
+   429→    setPreselectedRoom({
+   430→      id: room.id,
+   431→      number: room.number,
+   432→      name: room.name,
+   433→      type: room.type,
+   434→      pricePerNight: room.pricePerNight,
+   435→    });
+   436→    setCurrentPage("reservations");
+   437→  };
+   438→
+   439→  // ── Extend Stay ──
+   440→  const openExtendDialog = (res: RoomReservation) => {
+   441→    setExtendDialog(res);
+   442→    // Default to 1 day after current check-out
+   443→    const nextDay = new Date(res.checkOut);
+   444→    nextDay.setDate(nextDay.getDate() + 1);
+   445→    setExtendDate(nextDay.toISOString().split("T")[0]);
+   446→  };
+   447→
+   448→  const handleExtendStay = async () => {
+   449→    if (!extendDialog || !extendDate) return;
+   450→    if (extendDate <= extendDialog.checkOut) {
+   451→      toast.error("New check-out must be after the current check-out date");
+   452→      return;
+   453→    }
+   454→    try {
+   455→      setExtending(true);
+   456→      await apiUpdateReservation(extendDialog.id, { checkOut: extendDate });
+   457→      toast.success("Stay extended successfully");
+   458→      setExtendDialog(null);
+   459→      setExtendDate("");
+   460→      triggerRefresh();
+   461→      // Re-fetch room reservations
+   462→      if (infoRoom) {
+   463→        const data = await apiGetReservations(`roomId=${infoRoom.id}`);
+   464→        setRoomReservations(Array.isArray(data) ? data : []);
+   465→      }
+   466→    } catch (err: unknown) {
+   467→      toast.error(err instanceof Error ? err.message : "Failed to extend stay");
+   468→    } finally {
+   469→      setExtending(false);
+   470→    }
+   471→  };
+   472→
+   473→  // ── Early Checkout ──
+   474→  const handleEarlyCheckout = async () => {
+   475→    if (!earlyCheckoutDialog) return;
+   476→    try {
+   477→      setEarlyCheckingOut(true);
+   478→      await apiCheckout(earlyCheckoutDialog.id);
+   479→      toast.success("Guest checked out successfully");
+   480→      setEarlyCheckoutDialog(null);
+   481→      setInfoRoom(null);
+   482→      setRoomReservations([]);
+   483→      triggerRefresh();
+   484→    } catch (err: unknown) {
+   485→      toast.error(err instanceof Error ? err.message : "Failed to check out");
+   486→    } finally {
+   487→      setEarlyCheckingOut(false);
+   488→    }
+   489→  };
+   490→
+   491→  // ── Room Shift ──
+   492→  const openShiftDialog = (res: RoomReservation) => {
+   493→    setShiftDialog(res);
+   494→    setShiftTargetRoomId("");
+   495→  };
+   496→
+   497→  const handleRoomShift = async () => {
+   498→    if (!shiftDialog || !shiftTargetRoomId || !infoRoom) return;
+   499→    if (shiftTargetRoomId === infoRoom.id) {
+   500→      toast.error("Cannot shift to the same room");
+   501→      return;
+   502→    }
+   503→    try {
+   504→      setShifting(true);
+   505→      // Update reservation to the new room
+   506→      await apiUpdateReservation(shiftDialog.id, { roomId: shiftTargetRoomId });
+   507→      // Free the old room
+   508→      await apiUpdateRoomStatus(infoRoom.id, "AVAILABLE");
+   509→      // Occupy the new room
+   510→      await apiUpdateRoomStatus(shiftTargetRoomId, "OCCUPIED");
+   511→      toast.success("Guest shifted to new room successfully");
+   512→      setShiftDialog(null);
+   513→      setShiftTargetRoomId("");
+   514→      setInfoRoom(null);
+   515→      setRoomReservations([]);
+   516→      triggerRefresh();
+   517→    } catch (err: unknown) {
+   518→      toast.error(err instanceof Error ? err.message : "Failed to shift room");
+   519→    } finally {
+   520→      setShifting(false);
+   521→    }
+   522→  };
+   523→
+   524→  // Available rooms for shift (exclude current room)
+   525→  const shiftAvailableRooms = useMemo(() => {
+   526→    if (!shiftDialog || !infoRoom) return [];
+   527→    return rooms.filter((r) => r.status === "AVAILABLE" && r.id !== infoRoom.id);
+   528→  }, [shiftDialog, infoRoom, rooms]);
+   529→
+   530→  // Extend cost calculation
+   531→  const extendNights = useMemo(() => {
+   532→    if (!extendDialog || !extendDate) return 0;
+   533→    const diff = new Date(extendDate).getTime() - new Date(extendDialog.checkOut).getTime();
+   534→    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+   535→  }, [extendDialog, extendDate]);
+   536→
+   537→  const extendExtraCost = extendNights * (extendDialog?.roomRate || 0);
+   538→
+   539→  // ── Excel import ────────────────────────────────────────────────────────────
+   540→  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   541→    setImportFile(e.target.files?.[0] ?? null);
+   542→    setImportResults(null);
+   543→  };
+   544→
+   545→  const handleImport = async () => {
+   546→    if (!importFile) { toast.error("Please select an Excel file first"); return; }
+   547→    setImportLoading(true);
+   548→    try {
+   549→      const buffer = await importFile.arrayBuffer();
+   550→      const XLSX = await import("xlsx");
+   551→      const wb = XLSX.read(buffer, { type: "array" });
+   552→      const ws = wb.Sheets[wb.SheetNames[0]];
+   553→      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+   554→
+   555→      if (rows.length === 0) { toast.error("No data rows found in the file"); return; }
+   556→
+   557→      const result = await apiImportRooms(rows as Record<string, unknown>[]);
+   558→      setImportResults(result.results);
+   559→      toast.success(`Import complete: ${result.imported} created, ${result.skipped} skipped`);
+   560→      triggerRefresh();
+   561→    } catch (err: unknown) {
+   562→      const message = err instanceof Error ? err.message : "Import failed";
+   563→      toast.error(message);
+   564→    } finally {
+   565→      setImportLoading(false);
+   566→    }
+   567→  };
+   568→
+   569→  const closeImportDialog = () => {
+   570→    setImportDialogOpen(false);
+   571→    setImportFile(null);
+   572→    setImportResults(null);
+   573→    if (importFileRef.current) importFileRef.current.value = "";
+   574→  };
+   575→
+   576→  const parseAmenities = (amenitiesStr: string | null | undefined): string[] => {
+   577→    if (!amenitiesStr) return [];
+   578→    try {
+   579→      const parsed = JSON.parse(amenitiesStr);
+   580→      return Array.isArray(parsed) ? parsed : [];
+   581→    } catch {
+   582→      return amenitiesStr.split(",").map((s) => s.trim()).filter(Boolean);
+   583→    }
+   584→  };
+   585→
+   586→  const floors = useMemo(() => {
+   587→    const set = new Set<number>();
+   588→    rooms.forEach((r) => {
+   589→      const f = getFloorFromNumber(r.number);
+   590→      if (f !== null) set.add(f);
+   591→    });
+   592→    return Array.from(set).sort((a, b) => a - b);
+   593→  }, [rooms]);
+   594→
+   595→  const filteredRooms = rooms.filter((room) => {
+   596→    if (statusFilter && room.status !== statusFilter) return false;
+   597→    if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
+   598→    if (!search) return true;
+   599→    const q = search.toLowerCase();
+   600→    return (
+   601→      room.number.toLowerCase().includes(q) ||
+   602→      room.name.toLowerCase().includes(q) ||
+   603→      room.type.toLowerCase().includes(q)
+   604→    );
+   605→  });
+   606→
+   607→  const formatPrice = (price: number) =>
+   608→    new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
+   609→
+   610→  const formatDate = (str: string): string => {
+   611→    try {
+   612→      const date = new Date(str);
+   613→      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+   614→    } catch {
+   615→      return str;
+   616→    }
+   617→  };
+   618→
+   619→  const calculateNightsStayed = (checkIn: string): number => {
+   620→    try {
+   621→      const checkInDate = new Date(checkIn);
+   622→      const today = new Date();
+   623→      today.setHours(0, 0, 0, 0);
+   624→      checkInDate.setHours(0, 0, 0, 0);
+   625→      const diff = today.getTime() - checkInDate.getTime();
+   626→      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+   627→    } catch {
+   628→      return 0;
+   629→    }
+   630→  };
+   631→
+   632→  const calculateNightsRemaining = (checkOut: string): number => {
+   633→    try {
+   634→      const checkOutDate = new Date(checkOut);
+   635→      const today = new Date();
+   636→      today.setHours(0, 0, 0, 0);
+   637→      checkOutDate.setHours(0, 0, 0, 0);
+   638→      const diff = checkOutDate.getTime() - today.getTime();
+   639→      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+   640→    } catch {
+   641→      return 0;
+   642→    }
+   643→  };
+   644→
+   645→  const daysUntil = (date: string): number => {
+   646→    try {
+   647→      const targetDate = new Date(date);
+   648→      const today = new Date();
+   649→      today.setHours(0, 0, 0, 0);
+   650→      targetDate.setHours(0, 0, 0, 0);
+   651→      const diff = targetDate.getTime() - today.getTime();
+   652→      return Math.floor(diff / (1000 * 60 * 60 * 24));
+   653→    } catch {
+   654→      return 0;
+   655→    }
+   656→  };
+   657→
+   658→  if (loading && rooms.length === 0) {
+   659→    return (
+   660→      <div className="space-y-6 p-4 md:p-6">
+   661→        <div className="flex items-center justify-between">
+   662→          <div>
+   663→            <Skeleton className="h-8 w-32" />
+   664→            <Skeleton className="mt-1 h-4 w-48" />
+   665→          </div>
+   666→          <Skeleton className="h-10 w-32" />
+   667→        </div>
+   668→        <Skeleton className="h-10 w-full" />
+   669→        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+   670→          {Array.from({ length: 6 }).map((_, i) => (
+   671→            <Skeleton key={i} className="h-56 rounded-xl" />
+   672→          ))}
+   673→        </div>
+   674→      </div>
+   675→    );
+   676→  }
+   677→
+   678→  return (
+   679→    <div className="space-y-6 p-4 md:p-6">
+   680→      {/* Header */}
+   681→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   682→        <div>
+   683→          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+   684→          <p className="text-sm text-muted-foreground">
+   685→            {t("pageSubtitle")}
+   686→          </p>
+   687→        </div>
+   688→        <div className="flex gap-2 items-center flex-wrap">
+   689→          {/* Subscription status badge */}
+   690→          <SubscriptionBadge />
+   691→
+   692→          <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
+   693→            <FileSpreadsheet className="h-4 w-4" />
+   694→            Import Excel
+   695→          </Button>
+   696→          <Button variant="outline" onClick={() => setCurrentPage("reservations")} className="gap-2">
+   697→            <ClipboardList className="h-4 w-4" />
+   698→            Reservations
+   699→          </Button>
+   700→          <Button onClick={openCreate} className="gap-2">
+   701→            <Plus className="h-4 w-4" />
+   702→            Add Room
+   703→          </Button>
+   704→        </div>
+   705→      </div>
+   706→
+   707→      {/* Search */}
+   708→      <div className="relative">
+   709→        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+   710→        <Input
+   711→          placeholder="Search rooms by number, name, or type..."
+   712→          value={search}
+   713→          onChange={(e) => setSearch(e.target.value)}
+   714→          className="pl-9"
+   715→        />
+   716→      </div>
+   717→
+   718→      {/* Floor & Status Filter Buttons */}
+   719→      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+   720→        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
+   721→        <div className="flex gap-1.5">
+   722→          <Button
+   723→            variant={floorFilter === null && statusFilter === null ? "default" : "outline"}
+   724→            size="sm"
+   725→            className="h-8 text-xs px-3 shrink-0"
+   726→            onClick={() => { setFloorFilter(null); setStatusFilter(null); }}
+   727→          >
+   728→            All
+   729→          </Button>
+   730→          {floors.slice(0, 3).map((f) => (
+   731→            <Button
+   732→              key={f}
+   733→              variant={floorFilter === f ? "default" : "outline"}
+   734→              size="sm"
+   735→              className="h-8 text-xs px-3 shrink-0"
+   736→              onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+   737→            >
+   738→              <Building2 className="h-3.5 w-3.5 mr-1" />
+   739→              {f}
+   740→            </Button>
+   741→          ))}
+   742→          {floors.length > 3 && (
+   743→            <DropdownMenu>
+   744→              <DropdownMenuTrigger asChild>
+   745→                <Button
+   746→                  variant={floorFilter !== null && floors.slice(3).includes(floorFilter) ? "default" : "outline"}
+   747→                  size="sm"
+   748→                  className="h-8 text-xs px-3 shrink-0 gap-1"
+   749→                >
+   750→                  Others
+   751→                  <ChevronDown className="h-3 w-3" />
+   752→                </Button>
+   753→              </DropdownMenuTrigger>
+   754→              <DropdownMenuContent align="start">
+   755→                {floors.slice(3).map((f) => (
+   756→                  <DropdownMenuItem
+   757→                    key={f}
+   758→                    className="text-xs"
+   759→                    onClick={() => setFloorFilter(f)}
+   760→                  >
+   761→                    <Building2 className="h-3.5 w-3.5 mr-2" />
+   762→                    Floor {f}
+   763→                  </DropdownMenuItem>
+   764→                ))}
+   765→              </DropdownMenuContent>
+   766→            </DropdownMenu>
+   767→          )}
+   768→        </div>
+   769→        <Separator orientation="vertical" className="h-6 mx-1" />
+   770→        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Status:</span>
+   771→        <div className="flex gap-1.5">
+   772→          <Button
+   773→            variant={statusFilter === "AVAILABLE" ? "default" : "outline"}
+   774→            size="sm"
+   775→            className="h-8 text-xs px-3 shrink-0"
+   776→            onClick={() => setStatusFilter(statusFilter === "AVAILABLE" ? null : "AVAILABLE")}
+   777→          >
+   778→            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+   779→            Available
+   780→          </Button>
+   781→          <Button
+   782→            variant={statusFilter === "OCCUPIED" ? "default" : "outline"}
+   783→            size="sm"
+   784→            className="h-8 text-xs px-3 shrink-0"
+   785→            onClick={() => setStatusFilter(statusFilter === "OCCUPIED" ? null : "OCCUPIED")}
+   786→          >
+   787→            <AlertCircle className="h-3.5 w-3.5 mr-1" />
+   788→            Occupied
+   789→          </Button>
+   790→        </div>
+   791→      </div>
+   792→      {/* Room Grid */}
+   793→      {filteredRooms.length === 0 ? (
+   794→        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+   795→          <Building2 className="h-12 w-12 text-gray-300 mb-3" />
+   796→          <p className="font-medium text-lg">
+   797→            {search || floorFilter || statusFilter ? t("emptyNoMatch") : t("emptyNoRooms")}
+   798→          </p>
+   799→          <p className="text-sm mt-1 text-gray-400">
+   800→            {search || floorFilter || statusFilter
+   801→              ? t("emptyNoMatchHint")
+   802→              : t("emptyNoRoomsHint")}
+   803→          </p>
+   804→          {!search && (
+   805→            <div className="mt-4 flex gap-2">
+   806→              <Button onClick={openCreate} variant="outline" className="gap-2">
+   807→                <Plus className="h-4 w-4" />
+   808→                Add Room
+   809→              </Button>
+   810→              <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
+   811→                <FileSpreadsheet className="h-4 w-4" />
+   812→                Import Excel
+   813→              </Button>
+   814→            </div>
+   815→          )}
+   816→        </div>
+   817→      ) : (
+   818→        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+   819→          {filteredRooms.map((room) => {
+   820→            const amenities = parseAmenities(room.amenities);
+   821→            return (
+   822→              <Card key={room.id} className="gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md cursor-pointer" onClick={() => setInfoRoom(room)}>
+   823→                {/* Status Bar */}
+   824→                <div className={`h-1.5 w-full ${STATUS_DOT[room.status]}`} />
+   825→
+   826→                <CardContent className="p-4">
+   827→                  {/* Room Header */}
+   828→                  <div className="flex items-start justify-between mb-3">
+   829→                    <div className="flex items-center gap-2.5">
+   830→                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${ROOM_TYPE_COLORS[room.type]}`}>
+   831→                        {ROOM_TYPE_ICONS[room.type]}
+   832→                      </div>
+   833→                      <div>
+   834→                        <h3 className="font-semibold text-gray-900 leading-tight">
+   835→                          Room {room.number}
+   836→                        </h3>
+   837→                        <p className="text-sm text-gray-500">{room.type}</p>
+   838→                      </div>
+   839→                    </div>
+   840→                    <DropdownMenu>
+   841→                      <DropdownMenuTrigger asChild>
+   842→                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+   843→                          <MoreVertical className="h-4 w-4" />
+   844→                          <span className="sr-only">Actions</span>
+   845→                        </Button>
+   846→                      </DropdownMenuTrigger>
+   847→                      <DropdownMenuContent align="end">
+   848→                        {room.status === "OCCUPIED" ? (
+   849→                          <>
+   850→                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
+   851→                              <CalendarClock className="mr-2 h-4 w-4" />
+   852→                              Extend Stay / Early Checkout
+   853→                            </DropdownMenuItem>
+   854→                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
+   855→                              <ArrowRightLeft className="mr-2 h-4 w-4" />
+   856→                              Room Shift
+   857→                            </DropdownMenuItem>
+   858→                          </>
+   859→                        ) : (
+   860→                          <DropdownMenuItem onClick={() => openEdit(room)}>
+   861→                            <Pencil className="mr-2 h-4 w-4" />
+   862→                            Edit
+   863→                          </DropdownMenuItem>
+   864→                        )}
+   865→                        {room.status !== "OCCUPIED" && (
+   866→                          <DropdownMenuItem
+   867→                            onClick={() => {
+   868→                              const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
+   869→                              handleStatusChange(room, nextStatus);
+   870→                            }}
+   871→                          >
+   872→                            <Layers className="mr-2 h-4 w-4" />
+   873→                            Toggle Availability
+   874→                          </DropdownMenuItem>
+   875→                        )}
+   876→                        <DropdownMenuSeparator />
+   877→                        <DropdownMenuItem
+   878→                          className="text-rose-600 focus:text-rose-600"
+   879→                          onClick={() => setDeleteDialog(room)}
+   880→                        >
+   881→                          <Trash2 className="mr-2 h-4 w-4" />
+   882→                          Delete
+   883→                        </DropdownMenuItem>
+   884→                      </DropdownMenuContent>
+   885→                    </DropdownMenu>
+   886→                  </div>
+   887→
+   888→                  {/* Badges Row */}
+   889→                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+   890→                    <Badge variant="outline" className={ROOM_TYPE_COLORS[room.type]}>
+   891→                      {room.type}
+   892→                    </Badge>
+   893→                    <Badge variant="outline" className={STATUS_STYLES[room.status]}>
+   894→                      <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
+   895→                      {room.status}
+   896→                    </Badge>
+   897→                  </div>
+   898→
+   899→                  {/* Details */}
+   900→                  <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+   901→                    <div className="flex items-center gap-1.5 text-gray-600">
+   902→                      <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+   903→                      <span>{formatPrice(room.pricePerNight)}</span>
+   904→                      <span className="text-gray-400">/night</span>
+   905→                    </div>
+   906→                    <div className="flex items-center gap-1.5 text-gray-600">
+   907→                      <Users className="h-3.5 w-3.5 text-gray-400" />
+   908→                      <span>{room.capacity} guest{room.capacity !== 1 ? "s" : ""}</span>
+   909→                    </div>
+   910→                    <div className="flex items-center gap-1.5 text-gray-600">
+   911→                      <Building2 className="h-3.5 w-3.5 text-gray-400" />
+   912→                      <span>Floor {getFloorFromNumber(room.number) ?? room.floor}</span>
+   913→                    </div>
+   914→                  </div>
+   915→
+   916→                  {/* Amenities */}
+   917→                  {amenities.length > 0 && (
+   918→                    <>
+   919→                      <Separator className="my-3" />
+   920→                      <div className="flex flex-wrap gap-2">
+   921→                        {amenities.slice(0, 5).map((amenity) => (
+   922→                          <div
+   923→                            key={amenity}
+   924→                            className="flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-600 border border-gray-100"
+   925→                          >
+   926→                            {AMENITY_ICONS[amenity] || <Layers className="h-3 w-3" />}
+   927→                            {amenity}
+   928→                          </div>
+   929→                        ))}
+   930→                        {amenities.length > 5 && (
+   931→                          <span className="flex items-center px-2 py-1 text-xs text-gray-400">
+   932→                            +{amenities.length - 5} more
+   933→                          </span>
+   934→                        )}
+   935→                      </div>
+   936→                    </>
+   937→                  )}
+   938→
+   939→                  {/* Action Buttons */}
+   940→                  <Separator className="my-3" />
+   941→                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+   942→                    <Button
+   943→                      variant="outline"
+   944→                      size="sm"
+   945→                      className="flex-1 gap-1.5 text-xs"
+   946→                      onClick={() => setInfoRoom(room)}
+   947→                    >
+   948→                      <Info className="h-3.5 w-3.5" />
+   949→                      Info
+   950→                    </Button>
+   951→                    {room.status === "AVAILABLE" ? (
+   952→                      <Button
+   953→                        size="sm"
+   954→                        className="flex-1 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700"
+   955→                        onClick={() => handleReserveFromRoom(room)}
+   956→                      >
+   957→                        <CalendarPlus className="h-3.5 w-3.5" />
+   958→                        Reserve
+   959→                      </Button>
+   960→                    ) : room.status === "RESERVED" ? (
+   961→                      <Button
+   962→                        size="sm"
+   963→                        className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"
+   964→                        onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight }); setCurrentPage("reservations"); }}
+   965→                      >
+   966→                        <ClipboardList className="h-3.5 w-3.5" />
+   967→                        Manage Reservations
+   968→                      </Button>
+   969→                    ) : (
+   970→                      <Button
+   971→                        size="sm"
+   972→                        className="flex-1 gap-1.5 text-xs"
+   973→                        disabled
+   974→                      >
+   975→                        <CalendarPlus className="h-3.5 w-3.5" />
+   976→                        Reserve
+   977→                      </Button>
+   978→                    )}
+   979→                  </div>
+   980→                </CardContent>
+   981→              </Card>
+   982→            );
+   983→          })}
+   984→        </div>
+   985→      )}
+   986→
+   987→      {/* Create/Edit Dialog — no Room Name field */}
+   988→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   989→        <DialogContent className="sm:max-w-lg">
+   990→          <DialogHeader>
+   991→            <DialogTitle>{editingRoom ? t("dialogEditRoomTitle") : t("dialogAddRoomTitle")}</DialogTitle>
+   992→            <DialogDescription>
+   993→              {editingRoom
+   994→                ? t("dialogEditRoomDesc")
+   995→                : t("dialogAddRoomDesc")}
+   996→            </DialogDescription>
+   997→          </DialogHeader>
+   998→
+   999→          <div className="grid gap-4 py-2">
+  1000→            <div className="grid grid-cols-2 gap-4">
+  1001→              <div className="space-y-2">
+  1002→                <Label htmlFor="room-number">
+  1003→                  {t("labelRoomNumber")} <span className="text-rose-500">*</span>
+  1004→                </Label>
+  1005→                <Input
+  1006→                  id="room-number"
+  1007→                  placeholder="e.g. 101"
+  1008→                  value={form.number}
+  1009→                  onChange={(e) => setForm({ ...form, number: e.target.value })}
+  1010→                />
+  1011→              </div>
+  1012→              <div className="space-y-2">
+  1013→                <Label htmlFor="room-type">{t("labelRoomType")}</Label>
+  1014→                <Select
+  1015→                  value={form.type}
+  1016→                  onValueChange={(v) => setForm({ ...form, type: v })}
+  1017→                >
+  1018→                  <SelectTrigger className="w-full">
+  1019→                    <SelectValue />
+  1020→                  </SelectTrigger>
+  1021→                  <SelectContent>
+  1022→                    {ROOM_TYPES.map((type) => (
+  1023→                      <SelectItem key={type} value={type}>
+  1024→                        <span className="flex items-center gap-2">
+  1025→                          {ROOM_TYPE_ICONS[type]}
+  1026→                          {t("roomType" + (type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()))}
+  1027→                        </span>
+  1028→                      </SelectItem>
+  1029→                    ))}
+  1030→                  </SelectContent>
+  1031→                </Select>
+  1032→              </div>
+  1033→            </div>
+  1034→
+  1035→            <div className="grid grid-cols-3 gap-4">
+  1036→              <div className="space-y-2">
+  1037→                <Label htmlFor="room-price">
+  1038→                  {t("labelPriceNight")} <span className="text-rose-500">*</span>
+  1039→                </Label>
+  1040→                <Input
+  1041→                  id="room-price"
+  1042→                  type="number"
+  1043→                  placeholder="0"
+  1044→                  value={form.pricePerNight}
+  1045→                  onChange={(e) => setForm({ ...form, pricePerNight: e.target.value })}
+  1046→                />
+  1047→              </div>
+  1048→              <div className="space-y-2">
+  1049→                <Label htmlFor="room-floor">
+  1050→                  {t("labelFloor")} <span className="text-rose-500">*</span>
+  1051→                </Label>
+  1052→                <Input
+  1053→                  id="room-floor"
+  1054→                  type="number"
+  1055→                  placeholder="1"
+  1056→                  value={form.floor}
+  1057→                  onChange={(e) => setForm({ ...form, floor: e.target.value })}
+  1058→                />
+  1059→              </div>
+  1060→              <div className="space-y-2">
+  1061→                <Label htmlFor="room-capacity">
+  1062→                  {t("labelCapacity")} <span className="text-rose-500">*</span>
+  1063→                </Label>
+  1064→                <Input
+  1065→                  id="room-capacity"
+  1066→                  type="number"
+  1067→                  placeholder="2"
+  1068→                  value={form.capacity}
+  1069→                  onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+  1070→                />
+  1071→              </div>
+  1072→            </div>
+  1073→
+  1074→            <div className="space-y-2">
+  1075→              <Label htmlFor="room-amenities">{t("labelAmenities")}</Label>
+  1076→              <Input
+  1077→                id="room-amenities"
+  1078→                placeholder="WiFi, TV, AC, Mini Bar, Hot Water"
+  1079→                value={
+  1080→                  (() => {
+  1081→                    try {
+  1082→                      const parsed = JSON.parse(form.amenities);
+  1083→                      return Array.isArray(parsed) ? parsed.join(", ") : form.amenities;
+  1084→                    } catch {
+  1085→                      return form.amenities;
+  1086→                    }
+  1087→                  })()
+  1088→                }
+  1089→                onChange={(e) =>
+  1090→                  setForm({
+  1091→                    ...form,
+  1092→                    amenities: JSON.stringify(
+  1093→                      e.target.value
+  1094→                        .split(",")
+  1095→                        .map((s) => s.trim())
+  1096→                        .filter(Boolean)
+  1097→                    ),
+  1098→                  })
+  1099→                }
+  1100→              />
+  1101→            </div>
+  1102→
+  1103→            <div className="space-y-2">
+  1104→              <Label htmlFor="room-description">{t("labelDescription")}</Label>
+  1105→              <Textarea
+  1106→                id="room-description"
+  1107→                placeholder={t("placeholderDescription")}
+  1108→                rows={3}
+  1109→                value={form.description}
+  1110→                onChange={(e) => setForm({ ...form, description: e.target.value })}
+  1111→              />
+  1112→            </div>
+  1113→          </div>
+  1114→
+  1115→          <DialogFooter>
+  1116→            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+  1117→              {t("btnCancel")}
+  1118→            </Button>
+  1119→            <Button onClick={handleSave} disabled={saving}>
+  1120→              {saving ? t("btnSaving") : editingRoom ? t("btnUpdateRoom") : t("btnCreateRoom")}
+  1121→            </Button>
+  1122→          </DialogFooter>
+  1123→        </DialogContent>
+  1124→      </Dialog>
+  1125→
+  1126→      {/* Excel Import Dialog */}
+  1127→      <Dialog open={importDialogOpen} onOpenChange={closeImportDialog}>
+  1128→        <DialogContent className="sm:max-w-lg">
+  1129→          <DialogHeader>
+  1130→            <DialogTitle className="flex items-center gap-2">
+  1131→              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+  1132→              {t("dialogImportTitle")}
+  1133→            </DialogTitle>
+  1134→            <DialogDescription>
+  1135→              {t("dialogImportDesc")}
+  1136→            </DialogDescription>
+  1137→          </DialogHeader>
+  1138→
+  1139→          <div className="space-y-4 py-2">
+  1140→            {/* Template download */}
+  1141→            <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
+  1142→              <p className="text-sm font-medium text-emerald-800 mb-1">{t("importRequiredColumns")}</p>
+  1143→              <p className="text-xs text-emerald-700 mb-3 font-mono">
+  1144→                number · type · pricePerNight · floor · capacity · amenities · description
+  1145→              </p>
+  1146→              <p className="text-xs text-emerald-600 mb-3">
+  1147→                <strong>type</strong> must be one of: SINGLE, DOUBLE, TWIN, SUITE, DELUXE<br />
+  1148→                <strong>amenities</strong> — comma-separated, e.g. <em>WiFi, TV, AC</em>
+  1149→              </p>
+  1150→              <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-100">
+  1151→                <Download className="h-3.5 w-3.5" />
+  1152→                {t("btnDownloadTemplate")}
+  1153→              </Button>
+  1154→            </div>
+  1155→
+  1156→            {/* File picker */}
+  1157→            <div className="space-y-2">
+  1158→              <Label htmlFor="excel-file">{t("labelSelectExcel")}</Label>
+  1159→              <div className="flex gap-2">
+  1160→                <Input
+  1161→                  id="excel-file"
+  1162→                  type="file"
+  1163→                  accept=".xlsx,.xls,.csv"
+  1164→                  ref={importFileRef}
+  1165→                  onChange={handleImportFileChange}
+  1166→                  className="flex-1"
+  1167→                />
+  1168→              </div>
+  1169→              {importFile && (
+  1170→                <p className="text-xs text-gray-500">
+  1171→                  Selected: <strong>{importFile.name}</strong> ({(importFile.size / 1024).toFixed(1)} KB)
+  1172→                </p>
+  1173→              )}
+  1174→            </div>
+  1175→
+  1176→            {/* Import results */}
+  1177→            {importResults && (
+  1178→              <div className="rounded-lg border bg-gray-50 p-3 max-h-48 overflow-y-auto space-y-1">
+  1179→                <p className="text-xs font-semibold text-gray-600 mb-2">{t("importResults")}</p>
+  1180→                {importResults.map((r, i) => (
+  1181→                  <div key={i} className="flex items-center gap-2 text-xs">
+  1182→                    {r.status === "created" ? (
+  1183→                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+  1184→                    ) : r.status === "skipped" ? (
+  1185→                      <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+  1186→                    ) : (
+  1187→                      <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+  1188→                    )}
+  1189→                    <span className="font-medium">Room {r.number}</span>
+  1190→                    <span className={r.status === "created" ? "text-emerald-600" : "text-amber-600"}>
+  1191→                      {r.status === "created" ? "Created" : r.error}
+  1192→                    </span>
+  1193→                  </div>
+  1194→                ))}
+  1195→              </div>
+  1196→            )}
+  1197→          </div>
+  1198→
+  1199→          <DialogFooter>
+  1200→            <Button variant="outline" onClick={closeImportDialog}>
+  1201→              {importResults ? t("btnClose") : t("btnCancel")}
+  1202→            </Button>
+  1203→            {!importResults && (
+  1204→              <Button onClick={handleImport} disabled={importLoading || !importFile} className="gap-2">
+  1205→                <Upload className="h-4 w-4" />
+  1206→                {importLoading ? t("btnImporting") : t("btnImportRooms")}
+  1207→              </Button>
+  1208→            )}
+  1209→          </DialogFooter>
+  1210→        </DialogContent>
+  1211→      </Dialog>
+  1212→
+  1213→      {/* Delete Confirmation */}
+  1214→      <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+  1215→        <AlertDialogContent>
+  1216→          <AlertDialogHeader>
+  1217→            <AlertDialogTitle>{t("dialogDeleteTitle")} {deleteDialog?.number}?</AlertDialogTitle>
+  1218→            <AlertDialogDescription>
+  1219→              {t("dialogDeleteDesc", { name: deleteDialog?.name || deleteDialog?.number })}
+  1220→            </AlertDialogDescription>
+  1221→          </AlertDialogHeader>
+  1222→          <AlertDialogFooter>
+  1223→            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
+  1224→            <AlertDialogAction
+  1225→              className="bg-rose-600 hover:bg-rose-700"
+  1226→              onClick={handleDelete}
+  1227→              disabled={deleting}
+  1228→            >
+  1229→              {deleting ? t("btnDeleting") : t("btnDelete")}
+  1230→            </AlertDialogAction>
+  1231→          </AlertDialogFooter>
+  1232→        </AlertDialogContent>
+  1233→      </AlertDialog>
+  1234→
+  1235→      {/* Room Handover Detail Dialog */}
+  1236→      <Dialog open={!!infoRoom} onOpenChange={(open) => { if (!open) { setInfoRoom(null); setRoomReservations([]); } }}>
+  1237→        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+  1238→          {infoRoom && (() => {
+  1239→            const amenities = parseAmenities(infoRoom.amenities);
+  1240→            const activeRes = roomReservations.find((r) => r.status === "ACTIVE" || r.status === "CHECKED_IN");
+  1241→            const upcomingRes = roomReservations.filter((r) => r.status === "UPCOMING");
+  1242→
+  1243→            return (
+  1244→              <>
+  1245→                {/* Header */}
+  1246→                <DialogHeader>
+  1247→                  <DialogTitle className="flex items-center gap-2 flex-wrap">
+  1248→                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${ROOM_TYPE_COLORS[infoRoom.type]}`}>
+  1249→                      {ROOM_TYPE_ICONS[infoRoom.type]}
+  1250→                    </div>
+  1251→                    <div className="flex items-center gap-2 flex-wrap">
+  1252→                      <span>Room {infoRoom.number}</span>
+  1253→                      {infoRoom.name && <span className="text-gray-400 font-normal">· {infoRoom.name}</span>}
+  1254→                      <Badge variant="outline" className={STATUS_STYLES[infoRoom.status]}>
+  1255→                        <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[infoRoom.status]}`} />
+  1256→                        {infoRoom.status}
+  1257→                      </Badge>
+  1258→                    </div>
+  1259→                  </DialogTitle>
+  1260→                  <DialogDescription>{t("dialogHandoverTitle")}</DialogDescription>
+  1261→                </DialogHeader>
+  1262→
+  1263→                {/* Room Image */}
+  1264→                {infoRoom.image && (
+  1265→                  <div className="rounded-lg overflow-hidden border">
+  1266→                    <img
+  1267→                      src={infoRoom.image}
+  1268→                      alt={`Room ${infoRoom.number}`}
+  1269→                      className="w-full h-48 object-cover"
+  1270→                      loading="lazy"
+  1271→                      decoding="async"
+  1272→                    />
+  1273→                  </div>
+  1274→                )}
+  1275→
+  1276→                {/* Description */}
+  1277→                {infoRoom.description && (
+  1278→                  <p className="text-sm text-gray-600 leading-relaxed">{infoRoom.description}</p>
+  1279→                )}
+  1280→
+  1281→                {/* Room Info Section */}
+  1282→                <div className="grid grid-cols-2 gap-3">
+  1283→                  <div className="rounded-lg border p-3 bg-muted/50">
+  1284→                    <p className="text-xs text-gray-500 mb-1">Room Type</p>
+  1285→                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+  1286→                      {ROOM_TYPE_ICONS[infoRoom.type]} {infoRoom.type}
+  1287→                    </p>
+  1288→                  </div>
+  1289→                  <div className="rounded-lg border p-3 bg-muted/50">
+  1290→                    <p className="text-xs text-gray-500 mb-1">Price per Night</p>
+  1291→                    <p className="text-sm font-semibold text-gray-900">{formatPrice(infoRoom.pricePerNight)}</p>
+  1292→                  </div>
+  1293→                  <div className="rounded-lg border p-3 bg-muted/50">
+  1294→                    <p className="text-xs text-gray-500 mb-1">Capacity</p>
+  1295→                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+  1296→                      <Users className="h-4 w-4 text-gray-400" /> {infoRoom.capacity} guest{infoRoom.capacity !== 1 ? "s" : ""}
+  1297→                    </p>
+  1298→                  </div>
+  1299→                  <div className="rounded-lg border p-3 bg-muted/50">
+  1300→                    <p className="text-xs text-gray-500 mb-1">Floor</p>
+  1301→                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+  1302→                      <Building2 className="h-4 w-4 text-gray-400" /> Floor {infoRoom.floor}
+  1303→                    </p>
+  1304→                  </div>
+  1305→                </div>
+  1306→
+  1307→                {/* Amenities */}
+  1308→                {amenities.length > 0 && (
+  1309→                  <div>
+  1310→                    <p className="text-xs font-medium text-gray-500 mb-2">Amenities</p>
+  1311→                    <div className="flex flex-wrap gap-2">
+  1312→                      {amenities.map((amenity) => (
+  1313→                        <div
+  1314→                          key={amenity}
+  1315→                          className="flex items-center gap-1.5 rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 border border-gray-200"
+  1316→                        >
+  1317→                          {AMENITY_ICONS[amenity] || <Layers className="h-3.5 w-3.5" />}
+  1318→                          {amenity}
+  1319→                        </div>
+  1320→                      ))}
+  1321→                    </div>
+  1322→                  </div>
+  1323→                )}
+  1324→
+  1325→                <Separator />
+  1326→
+  1327→                {/* Current Status Section — Handover Info */}
+  1328→                <div>
+  1329→                  <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+  1330→                    <ClipboardList className="h-3.5 w-3.5" /> {t("currentStatus")}
+  1331→                  </p>
+  1332→
+  1333→                  {roomResLoading ? (
+  1334→                    <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+  1335→                      <Clock className="h-4 w-4 animate-spin" /> {t("loadingReservations")}
+  1336→                    </div>
+  1337→                  ) : infoRoom.status === "OCCUPIED" ? (
+  1338→                    activeRes ? (
+  1339→                      <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+  1340→                        <div className="flex items-center justify-between mb-3">
+  1341→                          <div className="flex items-center gap-2">
+  1342→                            <span className="relative flex h-2.5 w-2.5">
+  1343→                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+  1344→                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+  1345→                            </span>
+  1346→                            <Badge className="bg-emerald-600 text-white text-xs">{t("currentGuest")}</Badge>
+  1347→                          </div>
+  1348→                          <span className="text-xs text-emerald-600 font-medium">{t("occupied")}</span>
+  1349→                        </div>
+  1350→
+  1351→                        {activeRes.guest && (
+  1352→                          <div className="flex items-center gap-3 mb-3">
+  1353→                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+  1354→                              <User className="h-5 w-5 text-emerald-700" />
+  1355→                            </div>
+  1356→                            <div>
+  1357→                              <p className="text-sm font-semibold text-gray-900">{activeRes.guest.name}</p>
+  1358→                              <p className="text-xs text-gray-500 flex items-center gap-1">
+  1359→                                <Clock className="h-3 w-3" /> {activeRes.guest.phone}
+  1360→                              </p>
+  1361→                            </div>
+  1362→                          </div>
+  1363→                        )}
+  1364→
+  1365→                        <div className="space-y-2 text-xs sm:text-sm">
+  1366→                          <div className="flex items-center gap-2 text-gray-600">
+  1367→                            <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+  1368→                            <span>{t("checkIn")} <strong>{formatDate(activeRes.checkIn)}</strong></span>
+  1369→                            <span className="text-gray-300">→</span>
+  1370→                            <span>{t("checkOut")} <strong>{formatDate(activeRes.checkOut)}</strong></span>
+  1371→                          </div>
+  1372→
+  1373→                          {(() => {
+  1374→                            const stayed = calculateNightsStayed(activeRes.checkIn);
+  1375→                            const remaining = calculateNightsRemaining(activeRes.checkOut);
+  1376→                            return (
+  1377→                              <div className="flex items-center gap-1.5 text-gray-600">
+  1378→                                <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+  1379→                                {remaining === 0 ? (
+  1380→                                  <span className="font-medium text-amber-700">
+  1381→                                    Stayed {stayed} night{stayed !== 1 ? "s" : ""} — <span className="text-amber-600">Check-out today</span>
+  1382→                                  </span>
+  1383→                                ) : (
+  1384→                                  <span>
+  1385→                                    Stayed <strong className="text-emerald-700">{stayed}</strong> night{stayed !== 1 ? "s" : ""}, <strong className="text-amber-700">{remaining}</strong> night{remaining !== 1 ? "s" : ""} remaining
+  1386→                                  </span>
+  1387→                                )}
+  1388→                              </div>
+  1389→                            );
+  1390→                          })()}
+  1391→
+  1392→                          <Separator className="my-2" />
+  1393→
+  1394→                          <div className="grid grid-cols-2 gap-2">
+  1395→                            <div className="flex items-center gap-1.5 text-gray-600">
+  1396→                              <CreditCard className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+  1397→                              <span>Total: <strong className="text-gray-900">{formatPrice(activeRes.totalCost)}</strong></span>
+  1398→                            </div>
+  1399→                            <div className="flex items-center gap-1.5">
+  1400→                              {activeRes.paymentStatus === "PAID" ? (
+  1401→                                <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs">
+  1402→                                  <CheckCircle2 className="h-3 w-3 mr-1" /> {activeRes.paymentStatus}
+  1403→                                </Badge>
+  1404→                              ) : (
+  1405→                                <Badge variant="outline" className="border-amber-300 text-amber-700 text-xs">
+  1406→                                  <AlertCircle className="h-3 w-3 mr-1" /> {activeRes.paymentStatus}
+  1407→                                </Badge>
+  1408→                              )}
+  1409→                            </div>
+  1410→                          </div>
+  1411→                        </div>
+  1412→                      </div>
+  1413→                    ) : (
+  1414→                      <div className="rounded-lg border border-dashed border-rose-200 bg-rose-50 p-4 text-center">
+  1415→                        <AlertCircle className="h-8 w-8 text-rose-400 mx-auto mb-2" />
+  1416→                        <p className="text-sm text-rose-700 font-medium">Marked as occupied</p>
+  1417→                        <p className="text-xs text-rose-500 mt-1">No active reservation found for this room</p>
+  1418→                      </div>
+  1419→                    )
+  1420→                  ) : infoRoom.status === "RESERVED" ? (
+  1421→                    upcomingRes.length > 0 ? (
+  1422→                      <div className="rounded-lg border-2 border-sky-200 bg-sky-50 p-3 sm:p-4">
+  1423→                        <div className="flex items-center justify-between mb-3">
+  1424→                          <div className="flex items-center gap-2">
+  1425→                            <CalendarClock className="h-4 w-4 text-sky-600" />
+  1426→                            <Badge className="bg-sky-600 text-white text-xs">Upcoming Guest</Badge>
+  1427→                          </div>
+  1428→                          <span className="text-xs text-sky-600 font-medium">Reserved</span>
+  1429→                        </div>
+  1430→
+  1431→                        {upcomingRes[0].guest && (
+  1432→                          <div className="flex items-center gap-3 mb-3">
+  1433→                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100">
+  1434→                              <User className="h-5 w-5 text-sky-700" />
+  1435→                            </div>
+  1436→                            <div>
+  1437→                              <p className="text-sm font-semibold text-gray-900">{upcomingRes[0].guest.name}</p>
+  1438→                              <p className="text-xs text-gray-500 flex items-center gap-1">
+  1439→                                <Clock className="h-3 w-3" /> {upcomingRes[0].guest.phone}
+  1440→                              </p>
+  1441→                            </div>
+  1442→                          </div>
+  1443→                        )}
+  1444→
+  1445→                        <div className="space-y-2 text-xs sm:text-sm">
+  1446→                          <div className="flex items-center gap-2 text-gray-600">
+  1447→                            <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+  1448→                            <span>Check-in: <strong>{formatDate(upcomingRes[0].checkIn)}</strong></span>
+  1449→                            <span className="text-gray-300">→</span>
+  1450→                            <span>Check-out: <strong>{formatDate(upcomingRes[0].checkOut)}</strong></span>
+  1451→                          </div>
+  1452→
+  1453→                          <div className="flex items-center gap-2 text-gray-600">
+  1454→                            <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+  1455→                            <span>{upcomingRes[0].nights} night{upcomingRes[0].nights !== 1 ? "s" : ""} reserved</span>
+  1456→                          </div>
+  1457→
+  1458→                          {(() => {
+  1459→                            const days = daysUntil(upcomingRes[0].checkIn);
+  1460→                            return (
+  1461→                              <div className="flex items-center gap-1.5">
+  1462→                                <Clock className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+  1463→                                {days <= 0 ? (
+  1464→                                  <span className="font-medium text-sky-700">Check-in today!</span>
+  1465→                                ) : (
+  1466→                                  <span className="font-medium text-sky-700">Check-in in {days} day{days !== 1 ? "s" : ""}</span>
+  1467→                                )}
+  1468→                              </div>
+  1469→                            );
+  1470→                          })()}
+  1471→                        </div>
+  1472→                      </div>
+  1473→                    ) : (
+  1474→                      <div className="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-4 text-center">
+  1475→                        <CalendarClock className="h-8 w-8 text-sky-400 mx-auto mb-2" />
+  1476→                        <p className="text-sm text-sky-700 font-medium">Marked as reserved</p>
+  1477→                        <p className="text-xs text-sky-500 mt-1">No upcoming reservation found for this room</p>
+  1478→                      </div>
+  1479→                    )
+  1480→                  ) : infoRoom.status === "AVAILABLE" ? (
+  1481→                    <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+  1482→                      <div className="flex items-center gap-2 mb-2">
+  1483→                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+  1484→                        <span className="text-sm font-semibold text-emerald-700">Room is available and ready for check-in</span>
+  1485→                      </div>
+  1486→                      {upcomingRes.length > 0 && (
+  1487→                        <div className="mt-2 space-y-1.5">
+  1488→                          <p className="text-xs text-emerald-600 font-medium">Upcoming reservations:</p>
+  1489→                          {upcomingRes.slice(0, 3).map((res) => (
+  1490→                            <div key={res.id} className="flex items-center justify-between rounded-md bg-emerald-100 px-2.5 py-1.5 text-xs">
+  1491→                              <span className="text-gray-700">
+  1492→                                {res.guest?.name || "Guest"} · {formatDate(res.checkIn)} → {formatDate(res.checkOut)}
+  1493→                              </span>
+  1494→                              <span className="text-emerald-600 font-medium">in {Math.max(0, daysUntil(res.checkIn))}d</span>
+  1495→                            </div>
+  1496→                          ))}
+  1497→                        </div>
+  1498→                      )}
+  1499→                    </div>
+  1500→                  ) : infoRoom.status === "MAINTENANCE" ? (
+  1501→                    <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-3 sm:p-4">
+  1502→                      <div className="flex items-center gap-2">
+  1503→                        <AlertCircle className="h-5 w-5 text-amber-600" />
+  1504→                        <span className="text-sm font-semibold text-amber-700">Room is under maintenance</span>
+  1505→                      </div>
+  1506→                      <p className="text-xs text-amber-600 mt-1">This room is not available for booking until maintenance is complete.</p>
+  1507→                    </div>
+  1508→                  ) : null}
+  1509→                </div>
+  1510→
+  1511→                <Separator />
+  1512→
+  1513→                {/* Reservations History Section */}
+  1514→                <div>
+  1515→                  <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
+  1516→                    <ClipboardList className="h-3.5 w-3.5" /> Reservations History
+  1517→                  </p>
+  1518→                  {roomResLoading ? (
+  1519→                    <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+  1520→                      <Clock className="h-4 w-4 animate-spin" /> Loading...
+  1521→                    </div>
+  1522→                  ) : roomReservations.length === 0 ? (
+  1523→                    <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center">
+  1524→                      <p className="text-sm text-gray-400">No reservations found for this room</p>
+  1525→                    </div>
+  1526→                  ) : (
+  1527→                    <div className="space-y-2 max-h-48 overflow-y-auto">
+  1528→                      {roomReservations.map((res) => (
+  1529→                        <div key={res.id} className="flex items-center justify-between rounded-lg border p-2.5 text-xs">
+  1530→                          <div className="flex items-center gap-2 min-w-0">
+  1531→                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 shrink-0">
+  1532→                              <User className="h-3.5 w-3.5 text-gray-500" />
+  1533→                            </div>
+  1534→                            <div className="min-w-0">
+  1535→                              <p className="font-medium text-gray-900 truncate">{res.guest?.name || "—"}</p>
+  1536→                              <p className="text-gray-500">{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</p>
+  1537→                            </div>
+  1538→                          </div>
+  1539→                          <div className="text-right shrink-0 ml-2">
+  1540→                            <Badge variant="outline" className={`text-[10px] ${STATUS_STYLES[res.status] || ""}`}>
+  1541→                              {res.status}
+  1542→                            </Badge>
+  1543→                            <p className="font-medium text-gray-900 mt-0.5">{formatPrice(res.totalCost)}</p>
+  1544→                          </div>
+  1545→                        </div>
+  1546→                      ))}
+  1547→                    </div>
+  1548→                  )}
+  1549→                </div>
+  1550→
+  1551→                <DialogFooter className="gap-2">
+  1552→                  <Button variant="outline" onClick={() => { setInfoRoom(null); setRoomReservations([]); }}>
+  1553→                    Close
+  1554→                  </Button>
+  1555→                  {infoRoom.status === "AVAILABLE" ? (
+  1556→                    <Button
+  1557→                      className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+  1558→                      onClick={() => handleReserveFromRoom(infoRoom)}
+  1559→                    >
+  1560→                      <CalendarPlus className="h-4 w-4" />
+  1561→                      Reserve This Room
+  1562→                    </Button>
+  1563→                  ) : infoRoom.status === "RESERVED" ? (
+  1564→                    <Button
+  1565→                      className="gap-2 bg-sky-600 hover:bg-sky-700"
+  1566→                      onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setRoomReservations([]); setCurrentPage("reservations"); }}
+  1567→                    >
+  1568→                      <ClipboardList className="h-4 w-4" />
+  1569→                      Manage Reservations
+  1570→                    </Button>
+  1571→                  ) : infoRoom.status === "OCCUPIED" ? (
+  1572→                    <div className="flex gap-2">
+  1573→                      <Button
+  1574→                        className="gap-2 bg-amber-600 hover:bg-amber-700"
+  1575→                        onClick={() => {
+  1576→                          const active = roomReservations.find((r) => r.status === "ACTIVE");
+  1577→                          if (active) openExtendDialog(active);
+  1578→                          else toast.error("No active reservation found for this room");
+  1579→                        }}
+  1580→                      >
+  1581→                        <CalendarClock className="h-4 w-4" />
+  1582→                        Extend Stay
+  1583→                      </Button>
+  1584→                      <Button
+  1585→                        variant="outline"
+  1586→                        className="gap-2 border-rose-300 text-rose-700 hover:bg-rose-50"
+  1587→                        onClick={() => {
+  1588→                          const active = roomReservations.find((r) => r.status === "ACTIVE");
+  1589→                          if (active) setEarlyCheckoutDialog(active);
+  1590→                          else toast.error("No active reservation found for this room");
+  1591→                        }}
+  1592→                      >
+  1593→                        <LogOut className="h-4 w-4" />
+  1594→                        Early Out
+  1595→                      </Button>
+  1596→                      <Button
+  1597→                        className="gap-2 bg-violet-600 hover:bg-violet-700"
+  1598→                        onClick={() => {
+  1599→                          const active = roomReservations.find((r) => r.status === "ACTIVE");
+  1600→                          if (active) openShiftDialog(active);
+  1601→                          else toast.error("No active reservation found for this room");
+  1602→                        }}
+  1603→                      >
+  1604→                        <ArrowRightLeft className="h-4 w-4" />
+  1605→                        Shift
+  1606→                      </Button>
+  1607→                    </div>
+  1608→                  ) : null}
+  1609→                </DialogFooter>
+  1610→              </>
+  1611→            );
+  1612→          })()}
+  1613→        </DialogContent>
+  1614→      </Dialog>
+  1615→
+  1616→      {/* ── Extend Stay Dialog ── */}
+  1617→      <Dialog open={!!extendDialog} onOpenChange={(open) => { if (!open) { setExtendDialog(null); setExtendDate(""); } }}>
+  1618→        <DialogContent className="sm:max-w-md">
+  1619→          <DialogHeader>
+  1620→            <DialogTitle className="flex items-center gap-2">
+  1621→              <CalendarClock className="h-5 w-5 text-amber-600" /> Extend Stay
+  1622→            </DialogTitle>
+  1623→            <DialogDescription>Extend the guest's stay in this room</DialogDescription>
+  1624→          </DialogHeader>
+  1625→          {extendDialog && (
+  1626→            <div className="space-y-4">
+  1627→              <div className="rounded-lg bg-muted/50 p-3 space-y-1.5">
+  1628→                <p className="text-sm font-medium">{extendDialog.guest?.name || "Guest"}</p>
+  1629→                <p className="text-xs text-muted-foreground">
+  1630→                  Current check-out: <strong>{formatDate(extendDialog.checkOut)}</strong>
+  1631→                  <span className="mx-1">·</span>
+  1632→                  {extendDialog.roomRate > 0 && <span>{formatPrice(extendDialog.roomRate)}/night</span>}
+  1633→                </p>
+  1634→              </div>
+  1635→              <div>
+  1636→                <Label>{t('lblnewCheckoutDate', 'New Check-out Date')} *</Label>
+  1637→                <Input
+  1638→                  type="date"
+  1639→                  value={extendDate}
+  1640→                  min={extendDialog.checkOut}
+  1641→                  onChange={(e) => setExtendDate(e.target.value)}
+  1642→                  className="mt-1"
+  1643→                />
+  1644→              </div>
+  1645→              {extendNights > 0 && (
+  1646→                <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-3">
+  1647→                  <div className="flex justify-between items-center text-sm">
+  1648→                    <span className="text-amber-700">Extra {extendNights} night{extendNights !== 1 ? "s" : ""}</span>
+  1649→                    <span className="font-bold text-amber-800">+{formatPrice(extendExtraCost)}</span>
+  1650→                  </div>
+  1651→                </div>
+  1652→              )}
+  1653→            </div>
+  1654→          )}
+  1655→          <DialogFooter>
+  1656→            <Button variant="outline" size="sm" onClick={() => { setExtendDialog(null); setExtendDate(""); }}>Cancel</Button>
+  1657→            <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={handleExtendStay} disabled={extending || !extendDate || extendDate <= (extendDialog?.checkOut || "")}>
+  1658→              {extending ? "Extending..." : "Extend Stay"}
+  1659→            </Button>
+  1660→          </DialogFooter>
+  1661→        </DialogContent>
+  1662→      </Dialog>
+  1663→
+  1664→      {/* ── Early Checkout Dialog ── */}
+  1665→      <AlertDialog open={!!earlyCheckoutDialog} onOpenChange={(open) => { if (!open) setEarlyCheckoutDialog(null); }}>
+  1666→        <AlertDialogContent>
+  1667→          <AlertDialogHeader>
+  1668→            <AlertDialogTitle className="flex items-center gap-2">
+  1669→              <LogOut className="h-5 w-5 text-rose-600" /> Early Checkout
+  1670→            </AlertDialogTitle>
+  1671→            <AlertDialogDescription>
+  1672→              {earlyCheckoutDialog && (
+  1673→                <span>
+  1674→                  Check out <strong>{earlyCheckoutDialog.guest?.name || "this guest"}</strong> now?
+  1675→                  {earlyCheckoutDialog.paymentStatus !== "PAID" && (
+  1676→                    <span className="block mt-2 text-amber-600 font-medium">
+  1677→                      Note: This guest has an outstanding balance of {formatPrice(earlyCheckoutDialog.balance)}.
+  1678→                    </span>
+  1679→                  )}
+  1680→                </span>
+  1681→              )}
+  1682→            </AlertDialogDescription>
+  1683→          </AlertDialogHeader>
+  1684→          <AlertDialogFooter>
+  1685→            <AlertDialogCancel disabled={earlyCheckingOut}>Cancel</AlertDialogCancel>
+  1686→            <AlertDialogAction
+  1687→              className="bg-rose-600 hover:bg-rose-700"
+  1688→              onClick={handleEarlyCheckout}
+  1689→              disabled={earlyCheckingOut}
+  1690→            >
+  1691→              {earlyCheckingOut ? "Checking out..." : "Confirm Checkout"}
+  1692→            </AlertDialogAction>
+  1693→          </AlertDialogFooter>
+  1694→        </AlertDialogContent>
+  1695→      </AlertDialog>
+  1696→
+  1697→      {/* ── Room Shift Dialog ── */}
+  1698→      <Dialog open={!!shiftDialog} onOpenChange={(open) => { if (!open) { setShiftDialog(null); setShiftTargetRoomId(""); } }}>
+  1699→        <DialogContent className="sm:max-w-md">
+  1700→          <DialogHeader>
+  1701→            <DialogTitle className="flex items-center gap-2">
+  1702→              <ArrowRightLeft className="h-5 w-5 text-violet-600" /> Room Shift
+  1703→            </DialogTitle>
+  1704→            <DialogDescription>Move the guest to a different available room</DialogDescription>
+  1705→          </DialogHeader>
+  1706→          {shiftDialog && (
+  1707→            <div className="space-y-4">
+  1708→              <div className="rounded-lg bg-muted/50 p-3 space-y-1.5">
+  1709→                <p className="text-sm font-medium">{shiftDialog.guest?.name || "Guest"}</p>
+  1710→                <p className="text-xs text-muted-foreground">
+  1711→                  Current: Room {infoRoom?.number} → Shifting to a new room
+  1712→                </p>
+  1713→              </div>
+  1714→              <div>
+  1715→                <Label>{t('lbltargetRoom', 'Target Room')} *</Label>
+  1716→                {shiftAvailableRooms.length > 0 ? (
+  1717→                  <Select value={shiftTargetRoomId} onValueChange={setShiftTargetRoomId}>
+  1718→                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select available room" /></SelectTrigger>
+  1719→                    <SelectContent>
+  1720→                      {shiftAvailableRooms.map((r) => (
+  1721→                        <SelectItem key={r.id} value={r.id}>
+  1722→                          Room {r.number}{r.name ? ` (${r.name})` : ""} — {r.type} — {formatPrice(r.pricePerNight)}/night
+  1723→                        </SelectItem>
+  1724→                      ))}
+  1725→                    </SelectContent>
+  1726→                  </Select>
+  1727→                ) : (
+  1728→                  <p className="mt-1 text-sm text-amber-600">No available rooms to shift to</p>
+  1729→                )}
+  1730→              </div>
+  1731→            </div>
+  1732→          )}
+  1733→          <DialogFooter>
+  1734→            <Button variant="outline" size="sm" onClick={() => { setShiftDialog(null); setShiftTargetRoomId(""); }}>Cancel</Button>
+  1735→            <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={handleRoomShift} disabled={shifting || !shiftTargetRoomId}>
+  1736→              {shifting ? "Shifting..." : "Confirm Shift"}
+  1737→            </Button>
+  1738→          </DialogFooter>
+  1739→        </DialogContent>
+  1740→      </Dialog>
+  1741→    </div>
+  1742→  );
+  1743→}
+  1744→

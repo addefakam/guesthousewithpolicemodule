@@ -1,0 +1,713 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useMemo } from "react";
+     4→import { useTranslation } from "react-i18next";
+     5→import { useAppStore } from "@/lib/store";
+     6→import {
+     7→  apiGetGuests,
+     8→  apiGetReservations,
+     9→  apiCheckin,
+    10→  apiCheckout,
+    11→  apiGetRooms,
+    12→  apiCreateReservation,
+    13→} from "@/lib/api";
+    14→import { toast } from "sonner";
+    15→import { isValidPhone } from "@/lib/utils";
+    16→import { Button } from "@/components/ui/button";
+    17→import { Badge } from "@/components/ui/badge";
+    18→import { Input } from "@/components/ui/input";
+    19→import { Label } from "@/components/ui/label";
+    20→import { Skeleton } from "@/components/ui/skeleton";
+    21→import { Textarea } from "@/components/ui/textarea";
+    22→import {
+    23→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    24→} from "@/components/ui/table";
+    25→import {
+    26→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    27→} from "@/components/ui/dialog";
+    28→import {
+    29→  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+    30→  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+    31→} from "@/components/ui/alert-dialog";
+    32→import {
+    33→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    34→} from "@/components/ui/select";
+    35→import {
+    36→  Search, LogIn, LogOut, Users, BedDouble, CalendarDays, AlertTriangle, UserPlus,
+    37→} from "lucide-react";
+    38→import { usePagination } from "@/hooks/use-pagination";
+    39→import { PaginationControls } from "@/components/shared/pagination-controls";
+    40→
+    41→// ── Types ──
+    42→interface Guest {
+    43→  id: string; name: string; phone: string; idNumber: string; idType: string;
+    44→  nationality: string; email: string; vip: boolean; totalStays: number; totalSpent: number;
+    45→  createdAt: string;
+    46→}
+    47→
+    48→interface Room { id: string; number: string; name: string; type: string; status: string; pricePerNight: number; }
+    49→
+    50→interface Reservation {
+    51→  id: string; status: string; checkIn: string; checkOut: string; nights: number;
+    52→  totalCost: number; paidAmount: number; balance: number; paymentStatus: string;
+    53→  guest?: { id: string; name: string; phone: string; idNumber: string };
+    54→  room?: { id: string; number: string; name: string; type: string };
+    55→  secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
+    56→  exceptionallyReserved?: boolean; exceptionReason?: string;
+    57→  createdAt: string;
+    58→}
+    59→
+    60→// ── Constants ──
+    61→const STATUS_COLORS: Record<string, string> = {
+    62→  AVAILABLE: "bg-emerald-100 text-emerald-800",
+    63→  OCCUPIED: "bg-blue-100 text-blue-800",
+    64→  MAINTENANCE: "bg-amber-100 text-amber-800",
+    65→  RESERVED: "bg-purple-100 text-purple-800",
+    66→};
+    67→
+    68→const RES_STATUS: Record<string, { color: string; label: string }> = {
+    69→  UPCOMING: { color: "bg-blue-100 text-blue-800", label: "Upcoming" },
+    70→  ACTIVE: { color: "bg-emerald-100 text-emerald-800", label: "Checked In" },
+    71→  COMPLETED: { color: "bg-slate-100 text-slate-700", label: "Completed" },
+    72→  CANCELLED: { color: "bg-red-100 text-red-800", label: "Cancelled" },
+    73→};
+    74→
+    75→const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
+    76→
+    77→const emptyResForm = {
+    78→  guestId: "", roomId: "", checkIn: "", checkOut: "", notes: "",
+    79→  secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "",
+    80→  exceptionallyReserved: false, exceptionReason: "",
+    81→};
+    82→
+    83→// ── Helpers ──
+    84→function formatDate(d: string) {
+    85→  if (!d) return "—";
+    86→  try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return d; }
+    87→}
+    88→
+    89→function formatCurrency(v: number) {
+    90→  return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(v);
+    91→}
+    92→
+    93→function todayStr() { return new Date().toISOString().split("T")[0]; }
+    94→
+    95→function addDays(d: string, n: number) {
+    96→  const dt = new Date(d + "T00:00:00");
+    97→  dt.setDate(dt.getDate() + n);
+    98→  return dt.toISOString().split("T")[0];
+    99→}
+   100→
+   101→// ── Component ──
+   102→export default function AccommodationGuestsPage() {
+   103→  const { t } = useTranslation("accommodation");
+   104→  const { refreshKey, triggerRefresh } = useAppStore();
+   105→
+   106→  // Data
+   107→  const [guests, setGuests] = useState<Guest[]>([]);
+   108→  const [reservations, setReservations] = useState<Reservation[]>([]);
+   109→  const [rooms, setRooms] = useState<Room[]>([]);
+   110→  const [loading, setLoading] = useState(true);
+   111→
+   112→  // Search & filter
+   113→  const [search, setSearch] = useState("");
+   114→  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+   115→
+   116→  // Expanded row
+   117→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   118→
+   119→  // New reservation dialog
+   120→  const [resDialogOpen, setResDialogOpen] = useState(false);
+   121→  const [resForm, setResForm] = useState(emptyResForm);
+   122→  const [resGuestSearch, setResGuestSearch] = useState("");
+   123→  const [creatingRes, setCreatingRes] = useState(false);
+   124→
+   125→  // Check-in / Check-out confirm
+   126→  const [confirmAction, setConfirmAction] = useState<{
+   127→    type: "checkin" | "checkout"; reservation: Reservation;
+   128→  } | null>(null);
+   129→  const [actionLoading, setActionLoading] = useState(false);
+   130→
+   131→  // Pagination
+   132→  const pagination = usePagination({ totalItems: 0, initialPageSize: 10, pageSizeOptions: [10, 20, 50] });
+   133→
+   134→  // ── Fetch data ──
+   135→  const fetchData = useCallback(async () => {
+   136→    try {
+   137→      setLoading(true);
+   138→      const [gData, rData, rmData] = await Promise.all([
+   139→        apiGetGuests(),
+   140→        apiGetReservations(),
+   141→        apiGetRooms(),
+   142→      ]);
+   143→      setGuests(Array.isArray(gData) ? gData : []);
+   144→      const rArr = Array.isArray(rData?.data) ? rData.data : Array.isArray(rData) ? rData : [];
+   145→      setReservations(rArr);
+   146→      const raw = Array.isArray(rmData?.rooms) ? rmData.rooms : [];
+   147→      setRooms(raw);
+   148→    } catch {
+   149→      toast.error("Failed to load guest data");
+   150→    } finally {
+   151→      setLoading(false);
+   152→    }
+   153→  }, []);
+   154→
+   155→  useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
+   156→
+   157→  // ── Computed: active guests (have ACTIVE reservation) ──
+   158→  const activeReservations = useMemo(() =>
+   159→    reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
+   160→    [reservations]
+   161→  );
+   162→
+   163→  const activeGuestIds = useMemo(() =>
+   164→    new Set(activeReservations.map((r) => r.guest?.id).filter(Boolean)),
+   165→    [activeReservations]
+   166→  );
+   167→
+   168→  // Merge guests with their active reservation info
+   169→  const enrichedGuests = useMemo(() => {
+   170→    const activeMap = new Map<string, Reservation>();
+   171→    for (const r of activeReservations) {
+   172→      if (r.guest?.id && !activeMap.has(r.guest.id)) activeMap.set(r.guest.id, r);
+   173→    }
+   174→    return guests.map((g) => ({
+   175→      ...g,
+   176→      activeReservation: activeMap.get(g.id) || null,
+   177→    }));
+   178→  }, [guests, activeReservations]);
+   179→
+   180→  // ── Filtered list ──
+   181→  const filtered = useMemo(() => {
+   182→    let list = enrichedGuests;
+   183→    if (statusFilter === "CHECKED_IN") list = list.filter((g) => g.activeReservation?.status === "ACTIVE");
+   184→    else if (statusFilter === "UPCOMING") list = list.filter((g) => g.activeReservation?.status === "UPCOMING");
+   185→    else if (statusFilter === "NO_RESERVATION") list = list.filter((g) => !g.activeReservation);
+   186→    if (search) {
+   187→      const q = search.toLowerCase();
+   188→      list = list.filter(
+   189→        (g) =>
+   190→          g.name.toLowerCase().includes(q) ||
+   191→          g.phone.toLowerCase().includes(q) ||
+   192→          g.idNumber.toLowerCase().includes(q)
+   193→      );
+   194→    }
+   195→    // Sort: checked-in first, then upcoming, then others. Within each, latest first.
+   196→    return [...list].sort((a, b) => {
+   197→      const aPri = a.activeReservation?.status === "ACTIVE" ? 2 : a.activeReservation?.status === "UPCOMING" ? 1 : 0;
+   198→      const bPri = b.activeReservation?.status === "ACTIVE" ? 2 : b.activeReservation?.status === "UPCOMING" ? 1 : 0;
+   199→      if (bPri !== aPri) return bPri - aPri;
+   200→      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+   201→    });
+   202→  }, [enrichedGuests, statusFilter, search]);
+   203→
+   204→  // Update pagination total
+   205→  useEffect(() => { pagination.setTotalItems(filtered.length); }, [filtered.length, pagination]);
+   206→  const paginated = useMemo(() => pagination.paginate(filtered), [filtered, pagination]);
+   207→
+   208→  // Available rooms for reservation
+   209→  const availableRooms = useMemo(() => rooms.filter((r) => r.status === "AVAILABLE"), [rooms]);
+   210→
+   211→  // Guest search for reservation dialog
+   212→  const resGuestResults = useMemo(() => {
+   213→    if (!resGuestSearch || resGuestSearch.length < 2) return guests.slice(0, 10);
+   214→    const q = resGuestSearch.toLowerCase();
+   215→    return guests
+   216→      .filter((g) => g.name.toLowerCase().includes(q) || g.phone.includes(q) || g.idNumber.toLowerCase().includes(q))
+   217→      .slice(0, 10);
+   218→  }, [resGuestSearch, guests]);
+   219→
+   220→  const resNights = useMemo(() => {
+   221→    if (!resForm.checkIn || !resForm.checkOut) return 0;
+   222→    return Math.max(1, Math.ceil((new Date(resForm.checkOut).getTime() - new Date(resForm.checkIn).getTime()) / 86400000));
+   223→  }, [resForm.checkIn, resForm.checkOut]);
+   224→
+   225→  const resRate = useMemo(() => {
+   226→    const rm = rooms.find((r) => r.id === resForm.roomId);
+   227→    return rm ? rm.pricePerNight : 0;
+   228→  }, [resForm.roomId, rooms]);
+   229→
+   230→  // Is the selected room a DOUBLE or TWIN?
+   231→  const selectedRoomIsDouble = useMemo(() => {
+   232→    const rm = rooms.find((r) => r.id === resForm.roomId);
+   233→    return rm ? DOUBLE_ROOM_TYPES.includes(rm.type) : false;
+   234→  }, [resForm.roomId, rooms]);
+   235→
+   236→  // ── Handlers ──
+   237→  const handleCreateRes = async () => {
+   238→    if (!resForm.guestId || !resForm.roomId || !resForm.checkIn || !resForm.checkOut) {
+   239→      toast.error("Please fill all required fields"); return;
+   240→    }
+   241→    // Client-side validation for double rooms
+   242→    if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
+   243→      if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
+   244→        toast.error("Second guest name and phone are required for double/twin rooms. Use 'Exceptionally Reserved' for single occupancy.");
+   245→        return;
+   246→      }
+   247→      if (!isValidPhone(resForm.secondGuestPhone)) {
+   248→        toast.error("Invalid second guest phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
+   249→        return;
+   250→      }
+   251→    }
+   252→    if (resForm.exceptionallyReserved && !resForm.exceptionReason.trim()) {
+   253→      toast.error("Please provide the exception reason"); return;
+   254→    }
+   255→    try {
+   256→      setCreatingRes(true);
+   257→      await apiCreateReservation({
+   258→        guestId: resForm.guestId, roomId: resForm.roomId,
+   259→        checkIn: resForm.checkIn, checkOut: resForm.checkOut, notes: resForm.notes,
+   260→        secondGuestName: resForm.secondGuestName,
+   261→        secondGuestPhone: resForm.secondGuestPhone,
+   262→        secondGuestIdNumber: resForm.secondGuestIdNumber,
+   263→        exceptionallyReserved: resForm.exceptionallyReserved,
+   264→        exceptionReason: resForm.exceptionReason,
+   265→      });
+   266→      toast.success("Reservation created");
+   267→      setResDialogOpen(false);
+   268→      setResForm(emptyResForm);
+   269→      setResGuestSearch("");
+   270→      triggerRefresh();
+   271→    } catch (err: unknown) {
+   272→      const msg = err instanceof Error ? err.message : "Failed to create reservation";
+   273→      toast.error(msg);
+   274→    } finally { setCreatingRes(false); }
+   275→  };
+   276→
+   277→  const handleAction = async () => {
+   278→    if (!confirmAction) return;
+   279→    const { type, reservation } = confirmAction;
+   280→    try {
+   281→      setActionLoading(true);
+   282→      if (type === "checkin") { await apiCheckin(reservation.id); toast.success("Guest checked in"); }
+   283→      else { await apiCheckout(reservation.id); toast.success("Guest checked out"); }
+   284→      setConfirmAction(null);
+   285→      triggerRefresh();
+   286→    } catch (err: unknown) {
+   287→      toast.error(err instanceof Error ? err.message : `Failed to ${type}`);
+   288→    } finally { setActionLoading(false); }
+   289→  };
+   290→
+   291→  const quickCheckin = (r: Reservation) => setConfirmAction({ type: "checkin", reservation: r });
+   292→  const quickCheckout = (r: Reservation) => setConfirmAction({ type: "checkout", reservation: r });
+   293→
+   294→  // ── Stats ──
+   295→  const stats = useMemo(() => ({
+   296→    total: guests.length,
+   297→    checkedIn: activeReservations.filter((r) => r.status === "ACTIVE").length,
+   298→    upcoming: activeReservations.filter((r) => r.status === "UPCOMING").length,
+   299→    availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
+   300→  }), [guests, activeReservations, rooms]);
+   301→
+   302→  // ── Render ──
+   303→  if (loading) {
+   304→    return (
+   305→      <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   306→        <div className="grid grid-cols-2 gap-3"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+   307→        <Skeleton className="h-10 w-full" />
+   308→        <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+   309→      </div>
+   310→    );
+   311→  }
+   312→
+   313→  const actionInfo = confirmAction
+   314→    ? { label: confirmAction.type === "checkin" ? "Check In" : "Check Out", icon: confirmAction.type === "checkin" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />, cls: confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700", desc: confirmAction.type === "checkin" ? `Check in ${confirmAction.reservation.guest?.name || "guest"} to Room ${confirmAction.reservation.room?.number || ""}?` : `Check out ${confirmAction.reservation.guest?.name || "guest"} from Room ${confirmAction.reservation.room?.number || ""}?` }
+   315→    : null;
+   316→
+   317→  return (
+   318→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   319→      {/* Header */}
+   320→      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+   321→        <div>
+   322→          <h2 className="text-base sm:text-lg font-semibold">{t("manageGuests", "Manage Guests")}</h2>
+   323→          <p className="text-xs sm:text-sm text-muted-foreground">{t("manageGuestsDesc", "Manage guest check-in & check-out and reservations")}</p>
+   324→        </div>
+   325→        <div className="flex items-center gap-2">
+   326→          <Button size="sm" variant="outline" onClick={() => setResDialogOpen(true)} className="h-8 text-xs gap-1.5">
+   327→            <CalendarDays className="h-3.5 w-3.5" /> {t("newReservation", "New Reservation")}
+   328→          </Button>
+   329→        </div>
+   330→      </div>
+   331→
+   332→      {/* Stats */}
+   333→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   334→        {[
+   335→          { label: t("totalGuests", "Total Guests"), value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50" },
+   336→          { label: t("checkedIn", "Checked In"), value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50" },
+   337→          { label: t("upcoming", "Upcoming"), value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50" },
+   338→          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50" },
+   339→        ].map((s) => (
+   340→          <div key={s.label} className="rounded-lg border p-3">
+   341→            <div className="flex items-center gap-2">
+   342→              <div className={`flex h-8 w-8 items-center justify-center rounded-md ${s.color}`}>{s.icon}</div>
+   343→              <div>
+   344→                <p className="text-lg font-bold leading-tight">{s.value}</p>
+   345→                <p className="text-[10px] text-muted-foreground">{s.label}</p>
+   346→              </div>
+   347→            </div>
+   348→          </div>
+   349→        ))}
+   350→      </div>
+   351→
+   352→      {/* Search & Filter */}
+   353→      <div className="flex flex-col sm:flex-row gap-2">
+   354→        <div className="relative flex-1">
+   355→          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+   356→          <Input placeholder={t("searchGuests", "Search by name, phone, or ID...")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-8 text-sm" />
+   357→        </div>
+   358→        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetToFirst(); }}>
+   359→          <SelectTrigger className="h-9 w-full sm:w-44 text-xs"><SelectValue /></SelectTrigger>
+   360→          <SelectContent>
+   361→            <SelectItem value="ALL">{t("allGuests", "All Guests")}</SelectItem>
+   362→            <SelectItem value="CHECKED_IN">{t("checkedIn", "Checked In")}</SelectItem>
+   363→            <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
+   364→            <SelectItem value="NO_RESERVATION">{t("noReservation", "No Reservation")}</SelectItem>
+   365→          </SelectContent>
+   366→        </Select>
+   367→      </div>
+   368→
+   369→      {/* Guest List */}
+   370→      <div className="rounded-xl border bg-card shadow-sm">
+   371→        {filtered.length === 0 ? (
+   372→          <div className="flex flex-col items-center justify-center py-12 text-center">
+   373→            <Users className="mb-3 h-10 w-10 text-muted--foreground/40" />
+   374→            <p className="text-sm text-muted-foreground">No guests found</p>
+   375→          </div>
+   376→        ) : (
+   377→          <>
+   378→            {/* Mobile Cards */}
+   379→            <div className="divide-y md:hidden">
+   380→              {paginated.map((g) => (
+   381→                <div key={g.id} className="p-3 space-y-2">
+   382→                  <div className="flex items-center justify-between">
+   383→                    <div className="flex items-center gap-2 min-w-0">
+   384→                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${g.activeReservation?.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : g.activeReservation?.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+   385→                        {g.name.charAt(0).toUpperCase()}
+   386→                      </div>
+   387→                      <div className="min-w-0">
+   388→                        <div className="flex items-center gap-1.5">
+   389→                          <p className="truncate text-sm font-medium">{g.name}</p>
+   390→                          {g.vip && <span className="text-[9px] text-amber-600 font-semibold">VIP</span>}
+   391→                        </div>
+   392→                        <p className="text-[10px] text-muted-foreground">{g.phone}{g.idNumber ? ` | ${g.idNumber}` : ""}</p>
+   393→                      </div>
+   394→                    </div>
+   395→                    <div className="flex items-center gap-1.5">
+   396→                      {g.activeReservation?.exceptionallyReserved && (
+   397→                        <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300">Exception</Badge>
+   398→                      )}
+   399→                      {g.activeReservation && (
+   400→                        <Badge variant="outline" className={`text-[9px] shrink-0 ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
+   401→                          {RES_STATUS[g.activeReservation.status]?.label || g.activeReservation.status}
+   402→                        </Badge>
+   403→                      )}
+   404→                    </div>
+   405→                  </div>
+   406→                  {g.activeReservation && g.activeReservation.room && (
+   407→                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground pl-10">
+   408→                      <span>Room {g.activeReservation.room.number}{g.activeReservation.room.name ? ` (${g.activeReservation.room.name})` : ""}</span>
+   409→                      <span>{formatDate(g.activeReservation.checkIn)} → {formatDate(g.activeReservation.checkOut)}</span>
+   410→                    </div>
+   411→                  )}
+   412→                  {g.activeReservation?.secondGuestName && (
+   413→                    <div className="text-[10px] text-muted-foreground pl-10 flex items-center gap-1">
+   414→                      <UserPlus className="h-3 w-3" /> 2nd: {g.activeReservation.secondGuestName}{g.activeReservation.secondGuestPhone ? ` (${g.activeReservation.secondGuestPhone})` : ""}
+   415→                    </div>
+   416→                  )}
+   417→                  {g.activeReservation && (
+   418→                    <div className="flex gap-2 pl-10">
+   419→                      {g.activeReservation.status === "UPCOMING" && (
+   420→                        <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(g.activeReservation!)}>
+   421→                          <LogIn className="h-3 w-3" /> Check In
+   422→                        </Button>
+   423→                      )}
+   424→                      {g.activeReservation.status === "ACTIVE" && (
+   425→                        <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
+   426→                          <LogOut className="h-3 w-3" /> Check Out
+   427→                        </Button>
+   428→                      )}
+   429→                    </div>
+   430→                  )}
+   431→                </div>
+   432→              ))}
+   433→            </div>
+   434→
+   435→            {/* Desktop Table */}
+   436→            <div className="hidden md:block overflow-x-auto">
+   437→              <Table>
+   438→                <TableHeader>
+   439→                  <TableRow>
+   440→                    <TableHead>{t("thGuest", "Guest")}</TableHead>
+   441→                    <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
+   442→                    <TableHead>{t("thStatus", "Status")}</TableHead>
+   443→                    <TableHead>{t("thRoom", "Room")}</TableHead>
+   444→                    <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
+   445→                    <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
+   446→                    <TableHead>{t("thAmount", "Amount")}</TableHead>
+   447→                    <TableHead className="text-right">{t("thActions", "Actions")}</TableHead>
+   448→                  </TableRow>
+   449→                </TableHeader>
+   450→                <TableBody>
+   451→                  {paginated.map((g) => (
+   452→                    <TableRow key={g.id} className={g.activeReservation?.status === "ACTIVE" ? "bg-emerald-50/30" : ""}>
+   453→                      <TableCell>
+   454→                        <div className="flex items-center gap-2">
+   455→                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${g.activeReservation?.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : g.activeReservation?.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+   456→                            {g.name.charAt(0).toUpperCase()}
+   457→                          </div>
+   458→                          <div>
+   459→                            <div className="flex items-center gap-1.5">
+   460→                              <p className="text-sm font-medium">{g.name}{g.vip ? " \u2605" : ""}</p>
+   461→                              {g.activeReservation?.exceptionallyReserved && (
+   462→                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-300 px-1 py-0">Exception</Badge>
+   463→                              )}
+   464→                            </div>
+   465→                            <p className="text-[10px] text-muted-foreground">{g.totalStays} stay(s) | {formatCurrency(g.totalSpent)} total</p>
+   466→                          </div>
+   467→                        </div>
+   468→                      </TableCell>
+   469→                      <TableCell>
+   470→                        <p className="text-xs">{g.phone || "—"}</p>
+   471→                        <p className="text-[10px] text-muted-foreground font-mono">{g.idNumber || "—"}</p>
+   472→                      </TableCell>
+   473→                      <TableCell>
+   474→                        {g.activeReservation ? (
+   475→                          <Badge variant="outline" className={`text-[10px] ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
+   476→                            {RES_STATUS[g.activeReservation.status]?.label || g.activeReservation.status}
+   477→                          </Badge>
+   478→                        ) : (
+   479→                          <span className="text-[10px] text-muted-foreground">—</span>
+   480→                        )}
+   481→                      </TableCell>
+   482→                      <TableCell className="text-sm">
+   483→                        {g.activeReservation?.room ? (
+   484→                          <span>Room {g.activeReservation.room.number}{g.activeReservation.room.name ? ` (${g.activeReservation.room.name})` : ""}</span>
+   485→                        ) : "—"}
+   486→                      </TableCell>
+   487→                      <TableCell className="text-xs">
+   488→                        {g.activeReservation?.secondGuestName ? (
+   489→                          <div>
+   490→                            <p className="font-medium">{g.activeReservation.secondGuestName}</p>
+   491→                            <p className="text-[10px] text-muted-foreground">{g.activeReservation.secondGuestPhone || ""}</p>
+   492→                          </div>
+   493→                        ) : g.activeReservation?.exceptionallyReserved ? (
+   494→                          <span className="text-[10px] text-amber-600">N/A — Exception</span>
+   495→                        ) : (
+   496→                          <span className="text-[10px] text-muted-foreground">—</span>
+   497→                        )}
+   498→                      </TableCell>
+   499→                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+   500→                        {g.activeReservation ? `${formatDate(g.activeReservation.checkIn)} → ${formatDate(g.activeReservation.checkOut)}` : "—"}
+   501→                      </TableCell>
+   502→                      <TableCell className="text-xs">
+   503→                        {g.activeReservation ? formatCurrency(g.activeReservation.totalCost) : "—"}
+   504→                      </TableCell>
+   505→                      <TableCell className="text-right">
+   506→                        <div className="flex items-center justify-end gap-1">
+   507→                          {g.activeReservation?.status === "UPCOMING" && (
+   508→                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(g.activeReservation!)}>
+   509→                              <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
+   510→                            </Button>
+   511→                          )}
+   512→                          {g.activeReservation?.status === "ACTIVE" && (
+   513→                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
+   514→                              <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+   515→                            </Button>
+   516→                          )}
+   517→                          {!g.activeReservation && (
+   518→                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }}>
+   519→                              <CalendarDays className="h-3 w-3" /> Reserve
+   520→                            </Button>
+   521→                          )}
+   522→                        </div>
+   523→                      </TableCell>
+   524→                    </TableRow>
+   525→                  ))}
+   526→                </TableBody>
+   527→              </Table>
+   528→            </div>
+   529→          </>
+   530→        )}
+   531→      </div>
+   532→
+   533→      {/* Pagination */}
+   534→      {!loading && filtered.length > 0 && (
+   535→        <PaginationControls
+   536→          currentPage={pagination.currentPage} totalPages={pagination.totalPages}
+   537→          pageSize={pagination.pageSize} pageSizeOptions={pagination.pageSizeOptions}
+   538→          totalItems={pagination.rangeInfo.total} rangeInfo={pagination.rangeInfo}
+   539→          goToPage={pagination.goToPage} setPageSize={pagination.setPageSize}
+   540→        />
+   541→      )}
+   542→
+   543→      {/* ── New Reservation Dialog ── */}
+   544→      <Dialog open={resDialogOpen} onOpenChange={(open) => { if (!open) { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); } }}>
+   545→        <DialogContent className="max-w-lg mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+   546→          <DialogHeader>
+   547→            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" /> New Reservation</DialogTitle>
+   548→            <DialogDescription>Create a room reservation for a guest</DialogDescription>
+   549→          </DialogHeader>
+   550→          <div className="space-y-3">
+   551→            {/* Guest Select */}
+   552→            <div>
+   553→              <Label>{t('lblguest', 'Guest')} *</Label>
+   554→              {resForm.guestId ? (
+   555→                <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/30">
+   556→                  <span className="text-sm font-medium flex-1">{guests.find((g) => g.id === resForm.guestId)?.name || "Selected"}</span>
+   557→                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setResForm({ ...resForm, guestId: "" }); setResGuestSearch(""); }}>Change</Button>
+   558→                </div>
+   559→              ) : (
+   560→                <div className="relative mt-1">
+   561→                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+   562→                  <Input value={resGuestSearch} onChange={(e) => setResGuestSearch(e.target.value)} placeholder="Search guest by name, phone, or ID..." className="h-9 pl-8 text-sm" />
+   563→                </div>
+   564→              )}
+   565→              {!resForm.guestId && resGuestResults.length > 0 && (
+   566→                <div className="mt-1 max-h-32 overflow-y-auto rounded-md border">
+   567→                  {resGuestResults.map((g) => (
+   568→                    <button key={g.id} className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 border-b last:border-b-0 flex justify-between items-center" onClick={() => { setResForm({ ...resForm, guestId: g.id }); setResGuestSearch(g.name); }}>
+   569→                      <span className="font-medium">{g.name}</span>
+   570→                      <span className="text-muted-foreground">{g.phone}{g.idNumber ? ` | ${g.idNumber}` : ""}</span>
+   571→                    </button>
+   572→                  ))}
+   573→                </div>
+   574→              )}
+   575→            </div>
+   576→
+   577→            {/* Room Select */}
+   578→            <div>
+   579→              <Label>{t('lblroom', 'Room')} *</Label>
+   580→              <Select value={resForm.roomId} onValueChange={(v) => setResForm({ ...resForm, roomId: v })}>
+   581→                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select available room" /></SelectTrigger>
+   582→                <SelectContent>
+   583→                  {availableRooms.map((r) => (
+   584→                    <SelectItem key={r.id} value={r.id}>Room {r.number}{r.name ? ` (${r.name})` : ""} — {r.type} — {formatCurrency(r.pricePerNight)}/night</SelectItem>
+   585→                  ))}
+   586→                </SelectContent>
+   587→              </Select>
+   588→            </div>
+   589→
+   590→            {/* ── Double/TWIN Room: Second Guest + Exception ── */}
+   591→            {selectedRoomIsDouble && (
+   592→              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
+   593→                <div className="flex items-center gap-2 text-amber-800">
+   594→                  <BedDouble className="h-4 w-4" />
+   595→                  <span className="text-xs font-semibold">Double Room — Second Guest Required</span>
+   596→                </div>
+   597→
+   598→                {/* Exception toggle */}
+   599→                <div className="flex items-center gap-3">
+   600→                  <label className="flex items-center gap-2 cursor-pointer">
+   601→                    <input
+   602→                      type="radio"
+   603→                      name="exceptionallyReserved"
+   604→                      checked={!resForm.exceptionallyReserved}
+   605→                      onChange={() => setResForm({ ...resForm, exceptionallyReserved: false, exceptionReason: "" })}
+   606→                      className="h-3.5 w-3.5 text-emerald-600 accent-emerald-600"
+   607→                    />
+   608→                    <span className="text-xs font-medium">Two Guests</span>
+   609→                  </label>
+   610→                  <label className="flex items-center gap-2 cursor-pointer">
+   611→                    <input
+   612→                      type="radio"
+   613→                      name="exceptionallyReserved"
+   614→                      checked={resForm.exceptionallyReserved}
+   615→                      onChange={() => setResForm({ ...resForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })}
+   616→                      className="h-3.5 w-3.5 text-amber-600 accent-amber-600"
+   617→                    />
+   618→                    <span className="text-xs font-medium text-amber-700">Exceptionally Reserved</span>
+   619→                  </label>
+   620→                </div>
+   621→
+   622→                {!resForm.exceptionallyReserved ? (
+   623→                  /* Second guest fields */
+   624→                  <div className="space-y-2">
+   625→                    <p className="text-[10px] text-muted-foreground">Enter the second guest details for this double room.</p>
+   626→                    <div>
+   627→                      <Label>{t('lblsecondGuestName', 'Second Guest Name')} *</Label>
+   628→                      <Input
+   629→                        value={resForm.secondGuestName}
+   630→                        onChange={(e) => setResForm({ ...resForm, secondGuestName: e.target.value })}
+   631→                        placeholder="Full name of second guest"
+   632→                        className="h-9 text-sm"
+   633→                      />
+   634→                    </div>
+   635→                    <div>
+   636→                      <Label>{t('lblsecondGuestPhone', 'Second Guest Phone')} *</Label>
+   637→                      <Input
+   638→                        type="tel"
+   639→                        value={resForm.secondGuestPhone}
+   640→                        onChange={(e) => setResForm({ ...resForm, secondGuestPhone: e.target.value })}
+   641→                        placeholder="Phone number"
+   642→                        className="h-9 text-sm"
+   643→                      />
+   644→                    </div>
+   645→                    <div>
+   646→                      <Label>{t('lblsecondGuestIdNumber', 'Second Guest ID Number')}</Label>
+   647→                      <Input
+   648→                        value={resForm.secondGuestIdNumber}
+   649→                        onChange={(e) => setResForm({ ...resForm, secondGuestIdNumber: e.target.value })}
+   650→                        placeholder="ID number (optional)"
+   651→                        className="h-9 text-sm"
+   652→                      />
+   653→                    </div>
+   654→                  </div>
+   655→                ) : (
+   656→                  /* Exception reason field */
+   657→                  <div className="space-y-2">
+   658→                    <div className="flex items-center gap-1.5 text-amber-700">
+   659→                      <AlertTriangle className="h-3.5 w-3.5" />
+   660→                      <p className="text-[10px] font-medium">This room will be reserved for single occupancy with an exception.</p>
+   661→                    </div>
+   662→                    <div>
+   663→                      <Label>{t('lblexceptionReason', 'Exception Reason')} *</Label>
+   664→                      <Textarea
+   665→                        value={resForm.exceptionReason}
+   666→                        onChange={(e) => setResForm({ ...resForm, exceptionReason: e.target.value })}
+   667→                        placeholder="Explain why this double room is reserved for only one guest (e.g., VIP request, special arrangement, complimentary upgrade...)"
+   668→                        className="min-h-[60px] text-sm"
+   669→                      />
+   670→                    </div>
+   671→                  </div>
+   672→                )}
+   673→              </div>
+   674→            )}
+   675→
+   676→            <div className="grid grid-cols-2 gap-3">
+   677→              <div><Label>{t('lblcheckin', 'Check-in')} *</Label><Input type="date" value={resForm.checkIn} min={todayStr()} onChange={(e) => setResForm({ ...resForm, checkIn: e.target.value, checkOut: resForm.checkOut || addDays(e.target.value, 1) })} className="h-9 text-sm" /></div>
+   678→              <div><Label>{t('lblcheckout', 'Check-out')} *</Label><Input type="date" value={resForm.checkOut} min={resForm.checkIn || todayStr()} onChange={(e) => setResForm({ ...resForm, checkOut: e.target.value })} className="h-9 text-sm" /></div>
+   679→            </div>
+   680→            {resNights > 0 && resRate > 0 && (
+   681→              <div className="rounded-md bg-muted/50 p-2 flex justify-between text-xs">
+   682→                <span>{resNights} night(s) × {formatCurrency(resRate)}</span>
+   683→                <span className="font-bold">{formatCurrency(resNights * resRate)}</span>
+   684→              </div>
+   685→            )}
+   686→            <div><Label>{t('lblnotes', 'Notes')}</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder="Optional notes" className="h-9 text-sm" /></div>
+   687→          </div>
+   688→          <DialogFooter>
+   689→            <Button variant="outline" size="sm" onClick={() => { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); }}>Cancel</Button>
+   690→            <Button size="sm" onClick={handleCreateRes} disabled={creatingRes || !resForm.guestId || !resForm.roomId}>{creatingRes ? "Creating..." : "Create Reservation"}</Button>
+   691→          </DialogFooter>
+   692→        </DialogContent>
+   693→      </Dialog>
+   694→
+   695→      {/* ── Check-in / Check-out Confirm ── */}
+   696→      {actionInfo && confirmAction && (
+   697→        <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+   698→          <AlertDialogContent>
+   699→            <AlertDialogHeader>
+   700→              <AlertDialogTitle className="flex items-center gap-2">{actionInfo.icon} {actionInfo.label}</AlertDialogTitle>
+   701→              <AlertDialogDescription>{actionInfo.desc}</AlertDialogDescription>
+   702→            </AlertDialogHeader>
+   703→            <AlertDialogFooter>
+   704→              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+   705→              <AlertDialogAction className={actionInfo.cls} onClick={handleAction} disabled={actionLoading}>{actionLoading ? "Processing..." : actionInfo.label}</AlertDialogAction>
+   706→            </AlertDialogFooter>
+   707→          </AlertDialogContent>
+   708→        </AlertDialog>
+   709→      )}
+   710→    </div>
+   711→  );
+   712→}
+   713→
