@@ -463,3 +463,16 @@ export const apiBulkSendMessages = (data: Record<string, unknown>) =>
   req("/api/messages/bulk-send", { method: "POST", body: JSON.stringify(data) });
 export const apiGetMessageLogs = (params?: string) =>
   req(`/api/messages/logs${params ? `?${params}` : ""}`);
+
+// Operator Features (SUPERUSER manages which pages OPERATOR/STAFF see)
+export const apiGetOperatorFeatures = () => req("/api/operator-features");
+export const apiUpdateOperatorFeatures = (disabledPages: string[]) =>
+  req("/api/operator-features", { method: "PUT", body: JSON.stringify({ disabledPages }) });
+export const apiGetDisabledPages = async (): Promise<string[]> => {
+  try {
+    const res = await req("/api/operator-features");
+    return Array.isArray(res?.disabledPages) ? res.disabledPages : [];
+  } catch {
+    return [];
+  }
+};

@@ -170,6 +170,9 @@ const PoliceReportsPage = lazyPage(
 const MySubscriptionPage = lazyPage(
   () => import("@/components/ghms/pages/my-subscription-page")
 );
+const OperatorFeaturesPage = lazyPage(
+  () => import("@/components/ghms/pages/operator-features-page")
+);
 
 // ── Page registry: maps page key → lazy component ──
 const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
@@ -219,6 +222,7 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
     "notification-dispatch": NotificationDispatchPage,
     "police-reports": PoliceReportsPage,
     "my-subscription": MySubscriptionPage,
+    "operator-features": OperatorFeaturesPage,
   };
 
 // ── Page Renderer ──

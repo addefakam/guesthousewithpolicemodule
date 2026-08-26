@@ -773,5 +773,30 @@
     "messageToProvider": "ለአቅራቢው መልእክት",
     "suspending": "እያቆሙ...",
     "suspendAndNotify": "አቁም እና ማሳወቂያ ላክ"
+  },
+  "operatorFeatures": {
+    "pageTitle": "አተሟኛ ተግባርነቶች",
+    "pageSubtitle": "ኦፕሬተር እና ሰራተኛ የታሰቡ ገጽታዎችን ይቆጣጠሩ",
+    "btnRefresh": "አድስ",
+    "btnSave": "ለውጡን አስቀምጥ",
+    "saved": "ተግባርነቶች በተሳካ ሁኔታ ተቀምጠሩ",
+    "errorLoad": "ተግባርነቶችን ማምጣት አልተቻለም",
+    "errorSave": "ለውጡን ማስቀመጥ አልተቻለም",
+    "unsavedWarning": "ያልተቀመጠ ለውጦች አሎ። ለመተግበር ይጫኑ።",
+    "enabledCount": "{{count}} ንቁ",
+    "disabledCount": "{{count}} የተዘጋቀ",
+    "required": "ያስፈላጊነት",
+    "visible": "የሚታይ",
+    "hidden": "የተደበቀ",
+    "page_dashboard": "ዳሽቦርድ",
+    "page_accommodation": "አቅባብ",
+    "page_operations": "ተግባርነቶች",
+    "page_users": "የመለያ አስተዳደር",
+    "page_reports": "ሪፖርቶች",
+    "page_group-bookings": "የቡድን ቦታ ቦታዎች",
+    "page_guest-communication": "መልእክቶች",
+    "page_staff-logs": "የሰራተኛ እንቅስት",
+    "page_my-subscription": "ምርመራ",
+    "page_settings": "ቅንብሮች"
   }
 }

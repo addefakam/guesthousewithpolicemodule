@@ -775,5 +775,30 @@
     "messageToProvider": "Ergaa Dhiyeessaaf",
     "suspending": "Dhaabiisaa...",
     "suspendAndNotify": "Dhaabi fi Beeksisa Ergi"
+  },
+  "operatorFeatures": {
+    "pageTitle": "Faayilaa Opperayitaraa",
+    "pageSubtitle": "Gosa bifa lafaa waliigalaa tursiisuufi jaallatootaati argachuu danda'u.",
+    "btnRefresh": "Haqa",
+    "btnSave": "Galchi",
+    "saved": "Qindaa'ina faayilaa milkaa'eera.",
+    "errorLoad": "Qindaa'ina faayilaa argachuu dhiheessuu danda'eera.",
+    "errorSave": "Galchi dhiheessuu danda'eera.",
+    "unsavedWarning": "Galmeen hin galmeef jira. Galchi cuunis.",
+    "enabledCount": "{{count}} bal'ina",
+    "disabledCount": "{{count}} cuunfame",
+    "required": "Qeenachuun danda'a",
+    "visible": "Illaan",
+    "hidden": "Cuunfame",
+    "page_dashboard": "Daashboordii",
+    "page_accommodation": "Nyaata Qophiif",
+    "page_operations": "Saffisa",
+    "page_users": "Hirmaata Akkaawuntii",
+    "page_reports": "Rippootoota",
+    "page_group-bookings": "Bokingsii Garee",
+    "page_guest-communication": "Ergaa",
+    "page_staff-logs": "Galma Waliigalaa",
+    "page_my-subscription": "Bajajii",
+    "page_settings": "Qindaa'ina"
   }
 }

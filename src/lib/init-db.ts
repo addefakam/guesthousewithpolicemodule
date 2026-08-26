@@ -374,6 +374,7 @@ CREATE TABLE IF NOT EXISTS "PoliceAlertConfig" (
   "escalationDelayMins" INTEGER NOT NULL DEFAULT 60,
   "criticalImmediate" BOOLEAN NOT NULL DEFAULT true,
   "anomalyDetectionEnabled" BOOLEAN NOT NULL DEFAULT false,
+  "disabledOperatorPages" TEXT NOT NULL DEFAULT '[]',
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -534,6 +535,10 @@ EXCEPTION WHEN duplicate_column THEN null;
 END $$;
 DO $$ BEGIN
   ALTER TABLE "Provider" ADD COLUMN "telegramChatId" TEXT;
+EXCEPTION WHEN duplicate_column THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "PoliceAlertConfig" ADD COLUMN "disabledOperatorPages" TEXT NOT NULL DEFAULT '[]';
 EXCEPTION WHEN duplicate_column THEN null;
 END $$;
 CREATE TABLE IF NOT EXISTS "GroupBooking" (

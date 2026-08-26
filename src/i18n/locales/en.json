@@ -20,6 +20,7 @@
     "Security": "Security",
     "Anomaly Detection": "Anomaly Detection",
     "Manage Officers": "Manage Officers",
+    "Operator Features": "Operator Features",
     "Admin Dashboard": "Admin Dashboard",
     "Guesthouse & User Mgmt": "Guesthouse & User Mgmt",
     "System Configuration": "System Configuration",
@@ -773,5 +774,30 @@
     "messageToProvider": "Message to Provider",
     "suspending": "Suspending...",
     "suspendAndNotify": "Suspend & Send Notification"
+  },
+  "operatorFeatures": {
+    "pageTitle": "Operator Features",
+    "pageSubtitle": "Control which sidebar pages are visible to Operator and Staff users.",
+    "btnRefresh": "Refresh",
+    "btnSave": "Save Changes",
+    "saved": "Feature settings saved successfully.",
+    "errorLoad": "Failed to load feature settings.",
+    "errorSave": "Failed to save feature settings.",
+    "unsavedWarning": "You have unsaved changes. Click Save to apply them.",
+    "enabledCount": "{{count}} enabled",
+    "disabledCount": "{{count}} disabled",
+    "required": "Required",
+    "visible": "Visible",
+    "hidden": "Hidden",
+    "page_dashboard": "Dashboard",
+    "page_accommodation": "Accommodation",
+    "page_operations": "Operations",
+    "page_users": "Account Management",
+    "page_reports": "Reports",
+    "page_group-bookings": "Group Bookings",
+    "page_guest-communication": "Messages",
+    "page_staff-logs": "Staff Activity",
+    "page_my-subscription": "Subscription",
+    "page_settings": "Settings"
   }
 }

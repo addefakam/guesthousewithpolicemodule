@@ -63,6 +63,9 @@ interface AppState {
   // Subscription state
   subscription: SubscriptionInfo | null;
   setSubscription: (info: SubscriptionInfo | null) => void;
+  // Operator features: pages disabled by SUPERUSER (global). null = not yet loaded.
+  disabledPages: string[] | null;
+  setDisabledPages: (pages: string[]) => void;
 }
 
 // ── localStorage helpers (SSR-safe) ──
@@ -159,4 +162,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Subscription
   subscription: null as SubscriptionInfo | null,
   setSubscription: (info) => set({ subscription: info }),
+  // Operator features (null = not yet fetched from server)
+  disabledPages: null,
+  setDisabledPages: (pages) => set({ disabledPages: pages }),
 }));

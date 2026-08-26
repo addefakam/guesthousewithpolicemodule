@@ -48,7 +48,7 @@ import { useAppStore, type CurrentUser } from "@/lib/store";
 import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
-import { apiLogout } from "@/lib/api";
+import { apiLogout, apiGetDisabledPages } from "@/lib/api";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
 
 import { Button } from "@/components/ui/button";
@@ -159,12 +159,13 @@ const JOINT_SESSION_POLICE_ITEMS: NavItem[] = [
   },
 ];
 
-// SUPERUSER (admin): admin dashboard, user management, guesthouses, subscriptions, system config, audit logs, data & reports, notifications
+// SUPERUSER (admin): admin dashboard, user management, guesthouses, subscriptions, system config, operator features, audit logs, data & reports, notifications
 const SUPERUSER_NAV_ITEMS: NavItem[] = [
   { page: "super-admin-dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
   { page: "guesthouse-user-management", label: "Guesthouse & User Mgmt", icon: Hotel },
   { page: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { page: "super-system-config", label: "System Configuration", icon: Settings },
+  { page: "operator-features", label: "Operator Features", icon: ShieldCheck },
   { page: "super-audit-logs", label: "Audit Logs", icon: ClipboardList },
   { page: "super-data-reports", label: "Data & Reports", icon: BarChart3 },
 ];
@@ -214,7 +215,9 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
 };
 
 // ── Helper: get nav items based on role ──
-function getNavItems(user: CurrentUser): NavItem[] {
+function getNavItems(user: CurrentUser, disabledPages: string[] = []): NavItem[] {
+  const disabledSet = new Set(disabledPages);
+
   switch (user.role) {
     case "POLICE": {
       const rank = (user.policeRank || "OFFICER") as PoliceRank;
@@ -226,27 +229,33 @@ function getNavItems(user: CurrentUser): NavItem[] {
       // Guest house owners (SUPERUSER with providerId) see the provider dashboard.
       // System admins (SUPERUSER without providerId) see the admin dashboard.
       if (user.providerId) {
-        return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
+        return ALL_NAV_ITEMS.filter(
+          (item) => !OPERATOR_EXCLUDED.has(item.page) && !disabledSet.has(item.page)
+        );
       }
       return SUPERUSER_NAV_ITEMS;
     }
 
     case "OPERATOR":
-      return ALL_NAV_ITEMS.filter((item) => !OPERATOR_EXCLUDED.has(item.page));
+      return ALL_NAV_ITEMS.filter(
+        (item) => !OPERATOR_EXCLUDED.has(item.page) && !disabledSet.has(item.page)
+      );
 
     case "STAFF": {
       const items: NavItem[] = [];
       // Always give staff access to dashboard
-      items.push({
-        page: "dashboard",
-        label: "Dashboard",
-        icon: LayoutDashboard,
-      });
+      if (!disabledSet.has("dashboard")) {
+        items.push({
+          page: "dashboard",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+        });
+      }
       // Add items based on permissions (deduplicate by page key)
       const seen = new Set<string>();
       for (const perm of user.permissions) {
         const mapped = PERMISSION_PAGE_MAP[perm];
-        if (mapped && !seen.has(mapped.page)) {
+        if (mapped && !seen.has(mapped.page) && !disabledSet.has(mapped.page)) {
           seen.add(mapped.page);
           items.push(mapped);
         }
@@ -466,8 +475,8 @@ function SidebarContent({
   onToggleCollapse: () => void;
 }) {
   const { t } = useTranslation("sidebar");
-  const { jointSession, setJointLoginDialogOpen, subscription } = useAppStore();
-  const navItems = getNavItems(user);
+  const { jointSession, setJointLoginDialogOpen, subscription, disabledPages } = useAppStore();
+  const navItems = getNavItems(user, disabledPages ?? []);
   const roleDisplay = getRoleDisplay(user.role);
 
   // Determine if user can start a joint session (SUPERUSER or POLICE ADMIN)
@@ -679,7 +688,7 @@ function SidebarContent({
 
 // ── Main Sidebar Component ──
 export default function Sidebar() {
-  const { currentUser, currentPage, setCurrentPage, setCurrentUser, sidebarOpen, setSidebarOpen } =
+  const { currentUser, currentPage, setCurrentPage, setCurrentUser, sidebarOpen, setSidebarOpen, setDisabledPages } =
     useAppStore();
   const isMobile = useIsMobile();
   const mounted = useSyncExternalStore(
@@ -687,6 +696,19 @@ export default function Sidebar() {
     () => true,
     () => false,
   );
+
+  // Fetch disabled operator pages for OPERATOR/STAFF/SUPERUSER(with providerId)
+  React.useEffect(() => {
+    if (!mounted || !currentUser) return;
+    const role = currentUser.role;
+    const shouldFetch =
+      role === "OPERATOR" || role === "STAFF" ||
+      (role === "SUPERUSER" && currentUser.providerId);
+    if (!shouldFetch) return;
+    // Skip if already loaded (null = not yet fetched)
+    if (useAppStore.getState().disabledPages !== null) return;
+    apiGetDisabledPages().then((pages) => setDisabledPages(pages)).catch(() => setDisabledPages([]));
+  }, [mounted, currentUser, setDisabledPages]);
 
   if (!mounted || !currentUser) return null;
 
