@@ -133,7 +133,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function DaytimePage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(["daytime", "common"]);
   const { refreshKey, triggerRefresh } = useAppStore();
   const [activeTab, setActiveTab] = useState("services");
 
@@ -162,7 +162,7 @@ export default function DaytimePage() {
   // Payment dialog
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Booking | null>(null);
-  const [payForm, setPayForm] = useState({ amount: "", method: "CASH" });
+  const [payForm, setPayForm] = useState({ amount: "", method: t("payMethodCash") });
   const [paySaving, setPaySaving] = useState(false);
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ export default function DaytimePage() {
       const data = await apiGetDaytimeServices();
       setServices(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load services";
+      const msg = err instanceof Error ? err.message : t("toastFailedLoadServices");
       toast.error(msg);
     } finally {
       setSvcLoading(false);
@@ -186,7 +186,7 @@ export default function DaytimePage() {
       const data = await apiGetDaytimeBookings();
       setBookings(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load bookings";
+      const msg = err instanceof Error ? err.message : t("toastFailedLoadBookings");
       toast.error(msg);
     } finally {
       setBkLoading(false);
@@ -218,7 +218,7 @@ export default function DaytimePage() {
 
   const handleSaveSvc = async () => {
     if (!svcForm.name || !svcForm.price) {
-      toast.error("Name and price are required");
+      toast.error(t("valNamePriceRequired"));
       return;
     }
     try {
@@ -233,15 +233,15 @@ export default function DaytimePage() {
       };
       if (editingSvc) {
         await apiUpdateDaytimeService(editingSvc.id, payload);
-        toast.success("Service updated");
+        toast.success(t("toastServiceUpdated"));
       } else {
         await apiCreateDaytimeService(payload);
-        toast.success("Service created");
+        toast.success(t("toastServiceCreated"));
       }
       setSvcDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save service");
+      toast.error(err instanceof Error ? err.message : t("toastFailedSaveService"));
     } finally {
       setSvcSaving(false);
     }
@@ -252,11 +252,11 @@ export default function DaytimePage() {
     try {
       setSvcDeleting(true);
       await apiDeleteDaytimeService(svcDeleteTarget.id);
-      toast.success("Service deleted");
+      toast.success(t("toastServiceDeleted"));
       setSvcDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete service");
+      toast.error(err instanceof Error ? err.message : t("toastFailedDeleteService"));
     } finally {
       setSvcDeleting(false);
     }
@@ -265,10 +265,10 @@ export default function DaytimePage() {
   const handleToggleActive = async (svc: Service) => {
     try {
       await apiUpdateDaytimeService(svc.id, { active: !svc.active });
-      toast.success(`Service ${svc.active ? "deactivated" : "activated"}`);
+      toast.success(svc.active ? t("toastServiceDeactivated") : t("toastServiceActivated"));
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to toggle service");
+      toast.error(err instanceof Error ? err.message : t("toastFailedToggleService"));
     }
   };
 
@@ -297,13 +297,13 @@ export default function DaytimePage() {
 
   const handleSaveBk = async () => {
     if (!bkForm.serviceId || !bkForm.guestName || !bkForm.date || !bkForm.time) {
-      toast.error("Service, guest name, date, and time are required");
+      toast.error(t("valBookingRequired"));
       return;
     }
     const svc = services.find((s) => s.id === bkForm.serviceId);
-    if (!svc) { toast.error("Selected service not found"); return; }
+    if (!svc) { toast.error(t("valServiceNotFound")); return; }
     if (bkForm.guestPhone.trim() && !isValidPhone(bkForm.guestPhone)) {
-      toast.error("Invalid phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
+      toast.error(t("valInvalidPhone"));
       return;
     }
 
@@ -323,15 +323,15 @@ export default function DaytimePage() {
       };
       if (editingBk) {
         await apiUpdateDaytimeBooking(editingBk.id, payload);
-        toast.success("Booking updated");
+        toast.success(t("toastBookingUpdated"));
       } else {
         await apiCreateDaytimeBooking(payload);
-        toast.success("Booking created");
+        toast.success(t("toastBookingCreated"));
       }
       setBkDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save booking");
+      toast.error(err instanceof Error ? err.message : t("toastFailedSaveBooking"));
     } finally {
       setBkSaving(false);
     }
@@ -342,11 +342,11 @@ export default function DaytimePage() {
     try {
       setBkDeleting(true);
       await apiDeleteDaytimeBooking(bkDeleteTarget.id);
-      toast.success("Booking deleted");
+      toast.success(t("toastBookingDeleted"));
       setBkDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete booking");
+      toast.error(err instanceof Error ? err.message : t("toastFailedDeleteBooking"));
     } finally {
       setBkDeleting(false);
     }
@@ -363,7 +363,7 @@ export default function DaytimePage() {
 
   const handleRecordPayment = async () => {
     if (!payTarget || !payForm.amount || Number(payForm.amount) <= 0) {
-      toast.error("Enter a valid amount");
+      toast.error(t("valValidAmount"));
       return;
     }
     try {
@@ -384,12 +384,12 @@ export default function DaytimePage() {
         paymentMethod: payForm.method,
       });
 
-      toast.success(`Payment of ${formatPrice(amount)} recorded`);
+      toast.success(t("toastPaymentRecorded", { amount: formatPrice(amount) }));
       setPayDialogOpen(false);
       setPayTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to record payment");
+      toast.error(err instanceof Error ? err.message : t("toastFailedRecordPayment"));
     } finally {
       setPaySaving(false);
     }
@@ -402,9 +402,9 @@ export default function DaytimePage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daytime Services</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage services and bookings for day guests
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button
@@ -412,7 +412,7 @@ export default function DaytimePage() {
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
-          {activeTab === "services" ? "Add Service" : "New Booking"}
+          {activeTab === "services" ? t("btnAddService") : t("btnNewBooking")}
         </Button>
       </div>
 
@@ -420,11 +420,11 @@ export default function DaytimePage() {
         <TabsList>
           <TabsTrigger value="services" className="gap-2">
             <Sun className="h-4 w-4" />
-            Services ({services.length})
+            {t("tabServices")} ({services.length})
           </TabsTrigger>
           <TabsTrigger value="bookings" className="gap-2">
             <CalendarDays className="h-4 w-4" />
-            Bookings ({bookings.length})
+            {t("tabBookings")} ({bookings.length})
           </TabsTrigger>
         </TabsList>
 
@@ -439,8 +439,8 @@ export default function DaytimePage() {
           ) : services.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
               <Sun className="h-12 w-12 text-gray-300 mb-3" />
-              <p className="text-lg font-medium text-gray-500">No services yet</p>
-              <p className="mt-1 text-sm text-gray-400">Get started by adding your first daytime service</p>
+              <p className="text-lg font-medium text-gray-500">{t("noServicesYet")}</p>
+              <p className="mt-1 text-sm text-gray-400">{t("noServicesYetDesc")}</p>
               <Button onClick={openCreateSvc} variant="outline" className="mt-4 gap-2">
                 <Plus className="h-4 w-4" /> Add Service
               </Button>
@@ -472,17 +472,17 @@ export default function DaytimePage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditSvc(svc)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit
+                              <Pencil className="mr-2 h-4 w-4" /> {t("menuEdit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleToggleActive(svc)}>
-                              {svc.active ? "Deactivate" : "Activate"}
+                              {svc.active ? t("menuDeactivate") : t("menuActivate")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-rose-600 focus:text-rose-600"
                               onClick={() => setSvcDeleteTarget(svc)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              <Trash2 className="mr-2 h-4 w-4" /> {t("menuDelete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -510,7 +510,7 @@ export default function DaytimePage() {
                           variant="outline"
                           className={svc.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"}
                         >
-                          {svc.active ? "Active" : "Inactive"}
+                          {svc.active ? t("statusActive") : t("statusInactive")}
                         </Badge>
                         <Switch
                           checked={svc.active}
@@ -534,8 +534,8 @@ export default function DaytimePage() {
           ) : bookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
               <CalendarDays className="h-12 w-12 text-gray-300 mb-3" />
-              <p className="text-lg font-medium text-gray-500">No bookings yet</p>
-              <p className="mt-1 text-sm text-gray-400">Create a booking when a day guest uses a service</p>
+              <p className="text-lg font-medium text-gray-500">{t("noBookingsYet")}</p>
+              <p className="mt-1 text-sm text-gray-400">{t("noBookingsYetDesc")}</p>
               <Button onClick={openCreateBk} variant="outline" className="mt-4 gap-2">
                 <Plus className="h-4 w-4" /> New Booking
               </Button>
@@ -622,27 +622,27 @@ export default function DaytimePage() {
       <Dialog open={svcDialogOpen} onOpenChange={setSvcDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingSvc ? "Edit Service" : "Add New Service"}</DialogTitle>
+            <DialogTitle>{editingSvc ? t("dlgEditServiceTitle") : t("dlgAddServiceTitle")}</DialogTitle>
             <DialogDescription>
-              {editingSvc ? "Update service details." : "Fill in details to create a new daytime service."}
+              {editingSvc ? t("dlgEditServiceDesc") : t("dlgAddServiceDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Service Name <span className="text-rose-500">*</span></Label>
-              <Input placeholder="e.g. Spa Treatment" value={svcForm.name} onChange={(e) => setSvcForm({ ...svcForm, name: e.target.value })} />
+              <Label>{t("lblServiceName")} <span className="text-rose-500">*</span></Label>
+              <Input placeholder={t("phServiceName")} value={svcForm.name} onChange={(e) => setSvcForm({ ...svcForm, name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Price <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblPrice")} <span className="text-rose-500">*</span></Label>
                 <Input type="number" placeholder="0" value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>{t('lblcategory', 'Category')}</Label>
                 <Select value={svcForm.category} onValueChange={(v) => setSvcForm({ ...svcForm, category: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("phSelectGeneric")} /></SelectTrigger>
                   <SelectContent>
-                    {["SPA", "FOOD", "LAUNDRY", "TOUR", "TRANSPORT", "GYM", "POOL", "EVENT", "OTHER"].map((c) => (
+                    {[t("catSpa"), t("catFood"), t("catLaundry"), "TOUR", "TRANSPORT", "GYM", "POOL", "EVENT", t("catOther")].map((c) => (
                       <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
@@ -651,17 +651,17 @@ export default function DaytimePage() {
             </div>
             <div className="space-y-2">
               <Label>{t('lblduration', 'Duration')}</Label>
-              <Input placeholder="e.g. 1 hour, 30 mins" value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} />
+              <Input placeholder={t("phDuration")} value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>{t('lbldescription', 'Description')}</Label>
-              <Textarea placeholder="Describe the service..." rows={3} value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
+              <Textarea placeholder={t("phDescription")} rows={3} value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSvcDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveSvc} disabled={svcSaving}>
-              {svcSaving ? "Saving..." : editingSvc ? "Update Service" : "Create Service"}
+              {svcSaving ? t("btnSaving") : editingSvc ? "Update Service" : "Create Service"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -671,24 +671,24 @@ export default function DaytimePage() {
       <Dialog open={bkDialogOpen} onOpenChange={setBkDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingBk ? "Edit Booking" : "New Booking"}</DialogTitle>
+            <DialogTitle>{editingBk ? t("dlgEditBookingTitle") : t("dlgNewBookingTitle")}</DialogTitle>
             <DialogDescription>
-              {editingBk ? "Update booking details." : "Create a new daytime service booking."}
+              {editingBk ? t("dlgEditBookingDesc") : t("dlgNewBookingDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Service <span className="text-rose-500">*</span></Label>
+              <Label>{t("lblService")} <span className="text-rose-500">*</span></Label>
               <Select value={bkForm.serviceId} onValueChange={(v) => setBkForm({ ...bkForm, serviceId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select service..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("phSelectService")} /></SelectTrigger>
                 <SelectContent>
                   {services.length === 0 && (
-                    <div className="px-2 py-1.5 text-xs text-gray-400">No services created yet</div>
+                    <div className="px-2 py-1.5 text-xs text-gray-400">{t("noServicesInSelect")}</div>
                   )}
                   {services.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} — {formatPrice(s.price)}
-                      {s.active === false && <span className="ml-1 text-amber-500 text-xs">(inactive)</span>}
+                      {s.active === false && <span className="ml-1 text-amber-500 text-xs">t("statusInactiveHint")</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -696,21 +696,21 @@ export default function DaytimePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Guest Name <span className="text-rose-500">*</span></Label>
-                <Input placeholder="Guest name" value={bkForm.guestName} onChange={(e) => setBkForm({ ...bkForm, guestName: e.target.value })} />
+                <Label>{t("lblGuestName")} <span className="text-rose-500">*</span></Label>
+                <Input placeholder={t("phGuestName")} value={bkForm.guestName} onChange={(e) => setBkForm({ ...bkForm, guestName: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>{t('lblphone', 'Phone')}</Label>
-                <Input type="tel" placeholder="Phone number" value={bkForm.guestPhone} onChange={(e) => setBkForm({ ...bkForm, guestPhone: e.target.value })} />
+                <Input type="tel" placeholder={t("phPhoneNumber")} value={bkForm.guestPhone} onChange={(e) => setBkForm({ ...bkForm, guestPhone: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Date <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblDate")} <span className="text-rose-500">*</span></Label>
                 <Input type="date" value={bkForm.date} onChange={(e) => setBkForm({ ...bkForm, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Time <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblTime")} <span className="text-rose-500">*</span></Label>
                 <Input type="time" value={bkForm.time} onChange={(e) => setBkForm({ ...bkForm, time: e.target.value })} />
               </div>
               <div className="space-y-2">
@@ -720,7 +720,7 @@ export default function DaytimePage() {
             </div>
             {selectedService && !editingBk && (
               <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-                <span className="font-medium text-gray-900">Estimated Total: </span>
+                <span className="font-medium text-gray-900">{t("estimatedTotal")}</span>
                 {formatPrice(selectedService.price * (Number(bkForm.quantity) || 1))}
                 <span className="text-gray-400 ml-1">({formatPrice(selectedService.price)} × {bkForm.quantity || 1})</span>
               </div>
@@ -748,10 +748,10 @@ export default function DaytimePage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Amount <span className="text-rose-500">*</span></Label>
+              <Label>{t("lblAmount")} <span className="text-rose-500">*</span></Label>
               <Input
                 type="number"
-                placeholder="Amount to pay"
+                placeholder={t("phAmountToPay")}
                 value={payForm.amount}
                 onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })}
               />
@@ -761,10 +761,10 @@ export default function DaytimePage() {
               <Select value={payForm.method} onValueChange={(v) => setPayForm({ ...payForm, method: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="TRANSFER">Transfer</SelectItem>
-                  <SelectItem value="CARD">Card</SelectItem>
-                  <SelectItem value="MOBILE">Mobile</SelectItem>
+                  <SelectItem value="CASH">{t("payMethodCash")}</SelectItem>
+                  <SelectItem value="TRANSFER">{t("payMethodTransfer")}</SelectItem>
+                  <SelectItem value="CARD">{t("payMethodCard")}</SelectItem>
+                  <SelectItem value="MOBILE">{t("payMethodMobile")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -772,7 +772,7 @@ export default function DaytimePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleRecordPayment} disabled={paySaving}>
-              {paySaving ? "Recording..." : "Record Payment"}
+              {paySaving ? t("btnRecording") : "Record Payment"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -784,13 +784,13 @@ export default function DaytimePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete &quot;{svcDeleteTarget?.name}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this service. Services with existing bookings cannot be deleted.
+              {t("alertDeleteServiceDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteSvc} disabled={svcDeleting}>
-              {svcDeleting ? "Deleting..." : "Delete"}
+              {svcDeleting ? t("btnDeleting") : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -802,7 +802,7 @@ export default function DaytimePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete booking for &quot;{bkDeleteTarget?.guestName}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this booking and cannot be undone.
+              {t("alertDeleteBookingDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -205,6 +205,7 @@ async function downloadTemplate() {
 
 // ── Subscription Status Badge (for Rooms page header) ──
 function SubscriptionBadge() {
+  const { t } = useTranslation("rooms");
   const { currentUser, subscription } = useAppStore();
 
   // Only show for OPERATOR/STAFF
@@ -229,12 +230,12 @@ function SubscriptionBadge() {
     : "bg-amber-500";
 
   const label = isActive
-    ? "Active"
+    ? t("subActive")
     : isSuspended
-    ? "Suspended"
+    ? t("subSuspended")
     : isExpired
-    ? "Expired"
-    : "Expiring";
+    ? t("subExpired")
+    : t("subExpiring");
 
   return (
     <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClass} animate-subtle-pulse`}>
@@ -310,7 +311,7 @@ export default function RoomsPage() {
       });
       setRooms(list);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load rooms";
+      const message = err instanceof Error ? err.message : t("toastFailedLoadRooms");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -363,7 +364,7 @@ export default function RoomsPage() {
 
   const handleSave = async () => {
     if (!form.number || !form.pricePerNight || !form.floor || !form.capacity) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("toastFillRequired"));
       return;
     }
 
@@ -381,16 +382,16 @@ export default function RoomsPage() {
 
       if (editingRoom) {
         await apiUpdateRoom(editingRoom.id, payload);
-        toast.success("Room updated successfully");
+        toast.success(t("toastRoomUpdated"));
       } else {
         await apiCreateRoom(payload);
-        toast.success("Room created successfully");
+        toast.success(t("toastRoomCreated"));
       }
 
       setDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to save room";
+      const message = err instanceof Error ? err.message : t("toastFailedSaveRoom");
       toast.error(message);
     } finally {
       setSaving(false);
@@ -402,11 +403,11 @@ export default function RoomsPage() {
     try {
       setDeleting(true);
       await apiDeleteRoom(deleteDialog.id);
-      toast.success("Room deleted successfully");
+      toast.success(t("toastRoomDeleted"));
       setDeleteDialog(null);
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete room";
+      const message = err instanceof Error ? err.message : t("toastFailedDeleteRoom");
       toast.error(message);
     } finally {
       setDeleting(false);
@@ -419,7 +420,7 @@ export default function RoomsPage() {
       toast.success(`Room ${room.number} status changed to ${newStatus}`);
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update status";
+      const message = err instanceof Error ? err.message : t("toastFailedUpdateStatus");
       toast.error(message);
     }
   };
@@ -448,13 +449,13 @@ export default function RoomsPage() {
   const handleExtendStay = async () => {
     if (!extendDialog || !extendDate) return;
     if (extendDate <= extendDialog.checkOut) {
-      toast.error("New check-out must be after the current check-out date");
+      toast.error(t("toastInvalidCheckoutDate"));
       return;
     }
     try {
       setExtending(true);
       await apiUpdateReservation(extendDialog.id, { checkOut: extendDate });
-      toast.success("Stay extended successfully");
+      toast.success(t("toastStayExtended"));
       setExtendDialog(null);
       setExtendDate("");
       triggerRefresh();
@@ -464,7 +465,7 @@ export default function RoomsPage() {
         setRoomReservations(Array.isArray(data) ? data : []);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to extend stay");
+      toast.error(err instanceof Error ? err.message : t("toastFailedExtendStay"));
     } finally {
       setExtending(false);
     }
@@ -476,13 +477,13 @@ export default function RoomsPage() {
     try {
       setEarlyCheckingOut(true);
       await apiCheckout(earlyCheckoutDialog.id);
-      toast.success("Guest checked out successfully");
+      toast.success(t("toastGuestCheckedOut"));
       setEarlyCheckoutDialog(null);
       setInfoRoom(null);
       setRoomReservations([]);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to check out");
+      toast.error(err instanceof Error ? err.message : t("toastFailedCheckOut"));
     } finally {
       setEarlyCheckingOut(false);
     }
@@ -497,7 +498,7 @@ export default function RoomsPage() {
   const handleRoomShift = async () => {
     if (!shiftDialog || !shiftTargetRoomId || !infoRoom) return;
     if (shiftTargetRoomId === infoRoom.id) {
-      toast.error("Cannot shift to the same room");
+      toast.error(t("toastCannotShiftSameRoom"));
       return;
     }
     try {
@@ -508,14 +509,14 @@ export default function RoomsPage() {
       await apiUpdateRoomStatus(infoRoom.id, "AVAILABLE");
       // Occupy the new room
       await apiUpdateRoomStatus(shiftTargetRoomId, "OCCUPIED");
-      toast.success("Guest shifted to new room successfully");
+      toast.success(t("toastGuestShifted"));
       setShiftDialog(null);
       setShiftTargetRoomId("");
       setInfoRoom(null);
       setRoomReservations([]);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to shift room");
+      toast.error(err instanceof Error ? err.message : t("toastFailedShiftRoom"));
     } finally {
       setShifting(false);
     }
@@ -543,7 +544,7 @@ export default function RoomsPage() {
   };
 
   const handleImport = async () => {
-    if (!importFile) { toast.error("Please select an Excel file first"); return; }
+    if (!importFile) { toast.error(t("toastSelectExcelFile")); return; }
     setImportLoading(true);
     try {
       const buffer = await importFile.arrayBuffer();
@@ -552,14 +553,14 @@ export default function RoomsPage() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
 
-      if (rows.length === 0) { toast.error("No data rows found in the file"); return; }
+      if (rows.length === 0) { toast.error(t("toastNoDataRows")); return; }
 
       const result = await apiImportRooms(rows as Record<string, unknown>[]);
       setImportResults(result.results);
       toast.success(`Import complete: ${result.imported} created, ${result.skipped} skipped`);
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Import failed";
+      const message = err instanceof Error ? err.message : t("toastImportFailed");
       toast.error(message);
     } finally {
       setImportLoading(false);
@@ -691,15 +692,15 @@ export default function RoomsPage() {
 
           <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
             <FileSpreadsheet className="h-4 w-4" />
-            Import Excel
+            {t("btnImportExcel")}
           </Button>
           <Button variant="outline" onClick={() => setCurrentPage("reservations")} className="gap-2">
             <ClipboardList className="h-4 w-4" />
-            Reservations
+            {t("btnReservations")}
           </Button>
           <Button onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Room
+            {t("btnAddRoom")}
           </Button>
         </div>
       </div>
@@ -708,7 +709,7 @@ export default function RoomsPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="Search rooms by number, name, or type..."
+          placeholder={t("searchPlaceholderFull")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -717,7 +718,7 @@ export default function RoomsPage() {
 
       {/* Floor & Status Filter Buttons */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Floor:</span>
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{t("filterFloor")}</span>
         <div className="flex gap-1.5">
           <Button
             variant={floorFilter === null && statusFilter === null ? "default" : "outline"}
@@ -725,7 +726,7 @@ export default function RoomsPage() {
             className="h-8 text-xs px-3 shrink-0"
             onClick={() => { setFloorFilter(null); setStatusFilter(null); }}
           >
-            All
+            {t("filterAll")}
           </Button>
           {floors.slice(0, 3).map((f) => (
             <Button
@@ -747,7 +748,7 @@ export default function RoomsPage() {
                   size="sm"
                   className="h-8 text-xs px-3 shrink-0 gap-1"
                 >
-                  Others
+                  {t("filterOthers")}
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -759,7 +760,7 @@ export default function RoomsPage() {
                     onClick={() => setFloorFilter(f)}
                   >
                     <Building2 className="h-3.5 w-3.5 mr-2" />
-                    Floor {f}
+                    {t("filterFloorLabel", { floor: f })}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -767,7 +768,7 @@ export default function RoomsPage() {
           )}
         </div>
         <Separator orientation="vertical" className="h-6 mx-1" />
-        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Status:</span>
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{t("filterStatus")}</span>
         <div className="flex gap-1.5">
           <Button
             variant={statusFilter === "AVAILABLE" ? "default" : "outline"}
@@ -776,7 +777,7 @@ export default function RoomsPage() {
             onClick={() => setStatusFilter(statusFilter === "AVAILABLE" ? null : "AVAILABLE")}
           >
             <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-            Available
+            {t("statusAvailable")}
           </Button>
           <Button
             variant={statusFilter === "OCCUPIED" ? "default" : "outline"}
@@ -785,7 +786,7 @@ export default function RoomsPage() {
             onClick={() => setStatusFilter(statusFilter === "OCCUPIED" ? null : "OCCUPIED")}
           >
             <AlertCircle className="h-3.5 w-3.5 mr-1" />
-            Occupied
+            {t("statusOccupied")}
           </Button>
         </div>
       </div>
@@ -805,11 +806,11 @@ export default function RoomsPage() {
             <div className="mt-4 flex gap-2">
               <Button onClick={openCreate} variant="outline" className="gap-2">
                 <Plus className="h-4 w-4" />
-                Add Room
+                {t("btnAddRoom")}
               </Button>
               <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
                 <FileSpreadsheet className="h-4 w-4" />
-                Import Excel
+                {t("btnImportExcel")}
               </Button>
             </div>
           )}
@@ -849,17 +850,17 @@ export default function RoomsPage() {
                           <>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
                               <CalendarClock className="mr-2 h-4 w-4" />
-                              Extend Stay / Early Checkout
+                              {t("menuExtendEarlyCheckout")}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
                               <ArrowRightLeft className="mr-2 h-4 w-4" />
-                              Room Shift
+                              {t("menuRoomShift")}
                             </DropdownMenuItem>
                           </>
                         ) : (
                           <DropdownMenuItem onClick={() => openEdit(room)}>
                             <Pencil className="mr-2 h-4 w-4" />
-                            Edit
+                            {t("btnEdit")}
                           </DropdownMenuItem>
                         )}
                         {room.status !== "OCCUPIED" && (
@@ -870,7 +871,7 @@ export default function RoomsPage() {
                             }}
                           >
                             <Layers className="mr-2 h-4 w-4" />
-                            Toggle Availability
+                            {t("menuToggleAvailability")}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -879,7 +880,7 @@ export default function RoomsPage() {
                           onClick={() => setDeleteDialog(room)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {t("btnDelete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -946,7 +947,7 @@ export default function RoomsPage() {
                       onClick={() => setInfoRoom(room)}
                     >
                       <Info className="h-3.5 w-3.5" />
-                      Info
+                      {t("btnInfo")}
                     </Button>
                     {room.status === "AVAILABLE" ? (
                       <Button
@@ -955,7 +956,7 @@ export default function RoomsPage() {
                         onClick={() => handleReserveFromRoom(room)}
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
-                        Reserve
+                        {t("btnReserve")}
                       </Button>
                     ) : room.status === "RESERVED" ? (
                       <Button
@@ -964,7 +965,7 @@ export default function RoomsPage() {
                         onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight }); setCurrentPage("reservations"); }}
                       >
                         <ClipboardList className="h-3.5 w-3.5" />
-                        Manage Reservations
+                        {t("btnManageReservations")}
                       </Button>
                     ) : (
                       <Button
@@ -973,7 +974,7 @@ export default function RoomsPage() {
                         disabled
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
-                        Reserve
+                        {t("btnReserve")}
                       </Button>
                     )}
                   </div>
@@ -1281,23 +1282,23 @@ export default function RoomsPage() {
                 {/* Room Info Section */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border p-3 bg-muted/50">
-                    <p className="text-xs text-gray-500 mb-1">Room Type</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("infoRoomType")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                       {ROOM_TYPE_ICONS[infoRoom.type]} {infoRoom.type}
                     </p>
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
-                    <p className="text-xs text-gray-500 mb-1">Price per Night</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("infoPricePerNight")}</p>
                     <p className="text-sm font-semibold text-gray-900">{formatPrice(infoRoom.pricePerNight)}</p>
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
-                    <p className="text-xs text-gray-500 mb-1">Capacity</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("infoCapacity")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                       <Users className="h-4 w-4 text-gray-400" /> {infoRoom.capacity} guest{infoRoom.capacity !== 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
-                    <p className="text-xs text-gray-500 mb-1">Floor</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("infoFloor")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
                       <Building2 className="h-4 w-4 text-gray-400" /> Floor {infoRoom.floor}
                     </p>
@@ -1307,7 +1308,7 @@ export default function RoomsPage() {
                 {/* Amenities */}
                 {amenities.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-2">Amenities</p>
+                    <p className="text-xs font-medium text-gray-500 mb-2">{t("infoAmenities")}</p>
                     <div className="flex flex-wrap gap-2">
                       {amenities.map((amenity) => (
                         <div
@@ -1378,11 +1379,11 @@ export default function RoomsPage() {
                                 <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                                 {remaining === 0 ? (
                                   <span className="font-medium text-amber-700">
-                                    Stayed {stayed} night{stayed !== 1 ? "s" : ""} — <span className="text-amber-600">Check-out today</span>
+                                    {t("infoStayedNights", { stayed })} — <span className="text-amber-600">{t("infoCheckoutToday")}</span>
                                   </span>
                                 ) : (
                                   <span>
-                                    Stayed <strong className="text-emerald-700">{stayed}</strong> night{stayed !== 1 ? "s" : ""}, <strong className="text-amber-700">{remaining}</strong> night{remaining !== 1 ? "s" : ""} remaining
+                                    {t("infoStayedNights", { stayed })}, <strong className="text-amber-700">{remaining}</strong> {t("infoNightsRemaining", { remaining })}
                                   </span>
                                 )}
                               </div>
@@ -1394,16 +1395,24 @@ export default function RoomsPage() {
                           <div className="grid grid-cols-2 gap-2">
                             <div className="flex items-center gap-1.5 text-gray-600">
                               <CreditCard className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                              <span>Total: <strong className="text-gray-900">{formatPrice(activeRes.totalCost)}</strong></span>
+                              <span>{t("infoTotal")} <strong className="text-gray-900">{formatPrice(activeRes.totalCost)}</strong></span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {activeRes.paymentStatus === "PAID" ? (
                                 <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" /> {activeRes.paymentStatus}
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> {t("paymentPaid")}
+                                </Badge>
+                              ) : activeRes.paymentStatus === "PARTIAL" ? (
+                                <Badge variant="outline" className="border-amber-300 text-amber-700 text-xs">
+                                  <AlertCircle className="h-3 w-3 mr-1" /> {t("paymentPartial")}
+                                </Badge>
+                              ) : activeRes.paymentStatus === "OVERDUE" ? (
+                                <Badge variant="outline" className="border-rose-300 text-rose-700 text-xs">
+                                  <AlertCircle className="h-3 w-3 mr-1" /> {t("paymentOverdue")}
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="border-amber-300 text-amber-700 text-xs">
-                                  <AlertCircle className="h-3 w-3 mr-1" /> {activeRes.paymentStatus}
+                                  <AlertCircle className="h-3 w-3 mr-1" /> {t("paymentUnpaid")}
                                 </Badge>
                               )}
                             </div>
@@ -1413,8 +1422,8 @@ export default function RoomsPage() {
                     ) : (
                       <div className="rounded-lg border border-dashed border-rose-200 bg-rose-50 p-4 text-center">
                         <AlertCircle className="h-8 w-8 text-rose-400 mx-auto mb-2" />
-                        <p className="text-sm text-rose-700 font-medium">Marked as occupied</p>
-                        <p className="text-xs text-rose-500 mt-1">No active reservation found for this room</p>
+                        <p className="text-sm text-rose-700 font-medium">{t("infoMarkedOccupied")}</p>
+                        <p className="text-xs text-rose-500 mt-1">{t("infoNoActiveRes")}</p>
                       </div>
                     )
                   ) : infoRoom.status === "RESERVED" ? (
@@ -1423,9 +1432,9 @@ export default function RoomsPage() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <CalendarClock className="h-4 w-4 text-sky-600" />
-                            <Badge className="bg-sky-600 text-white text-xs">Upcoming Guest</Badge>
+                            <Badge className="bg-sky-600 text-white text-xs">{t("infoUpcomingGuest")}</Badge>
                           </div>
-                          <span className="text-xs text-sky-600 font-medium">Reserved</span>
+                          <span className="text-xs text-sky-600 font-medium">{t("infoReserved")}</span>
                         </div>
 
                         {upcomingRes[0].guest && (
@@ -1445,14 +1454,14 @@ export default function RoomsPage() {
                         <div className="space-y-2 text-xs sm:text-sm">
                           <div className="flex items-center gap-2 text-gray-600">
                             <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span>Check-in: <strong>{formatDate(upcomingRes[0].checkIn)}</strong></span>
+                            <span>{t("checkIn")}: <strong>{formatDate(upcomingRes[0].checkIn)}</strong></span>
                             <span className="text-gray-300">→</span>
-                            <span>Check-out: <strong>{formatDate(upcomingRes[0].checkOut)}</strong></span>
+                            <span>{t("checkOut")}: <strong>{formatDate(upcomingRes[0].checkOut)}</strong></span>
                           </div>
 
                           <div className="flex items-center gap-2 text-gray-600">
                             <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span>{upcomingRes[0].nights} night{upcomingRes[0].nights !== 1 ? "s" : ""} reserved</span>
+                            <span>{t("infoNightsReserved", { nights: upcomingRes[0].nights })}</span>
                           </div>
 
                           {(() => {
@@ -1461,9 +1470,9 @@ export default function RoomsPage() {
                               <div className="flex items-center gap-1.5">
                                 <Clock className="h-3.5 w-3.5 text-sky-500 shrink-0" />
                                 {days <= 0 ? (
-                                  <span className="font-medium text-sky-700">Check-in today!</span>
+                                  <span className="font-medium text-sky-700">{t("infoCheckinToday")}</span>
                                 ) : (
-                                  <span className="font-medium text-sky-700">Check-in in {days} day{days !== 1 ? "s" : ""}</span>
+                                  <span className="font-medium text-sky-700">{t("infoCheckinInDays", { days })}</span>
                                 )}
                               </div>
                             );
@@ -1473,23 +1482,23 @@ export default function RoomsPage() {
                     ) : (
                       <div className="rounded-lg border border-dashed border-sky-200 bg-sky-50 p-4 text-center">
                         <CalendarClock className="h-8 w-8 text-sky-400 mx-auto mb-2" />
-                        <p className="text-sm text-sky-700 font-medium">Marked as reserved</p>
-                        <p className="text-xs text-sky-500 mt-1">No upcoming reservation found for this room</p>
+                        <p className="text-sm text-sky-700 font-medium">{t("infoMarkedReserved")}</p>
+                        <p className="text-xs text-sky-500 mt-1">{t("infoNoUpcomingRes")}</p>
                       </div>
                     )
                   ) : infoRoom.status === "AVAILABLE" ? (
                     <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3 sm:p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                        <span className="text-sm font-semibold text-emerald-700">Room is available and ready for check-in</span>
+                        <span className="text-sm font-semibold text-emerald-700">{t("infoRoomAvailable")}</span>
                       </div>
                       {upcomingRes.length > 0 && (
                         <div className="mt-2 space-y-1.5">
-                          <p className="text-xs text-emerald-600 font-medium">Upcoming reservations:</p>
+                          <p className="text-xs text-emerald-600 font-medium">{t("infoUpcomingReservations")}</p>
                           {upcomingRes.slice(0, 3).map((res) => (
                             <div key={res.id} className="flex items-center justify-between rounded-md bg-emerald-100 px-2.5 py-1.5 text-xs">
                               <span className="text-gray-700">
-                                {res.guest?.name || "Guest"} · {formatDate(res.checkIn)} → {formatDate(res.checkOut)}
+                                {res.guest?.name || t("guestFallback")} · {formatDate(res.checkIn)} → {formatDate(res.checkOut)}
                               </span>
                               <span className="text-emerald-600 font-medium">in {Math.max(0, daysUntil(res.checkIn))}d</span>
                             </div>
@@ -1501,9 +1510,9 @@ export default function RoomsPage() {
                     <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-3 sm:p-4">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-amber-600" />
-                        <span className="text-sm font-semibold text-amber-700">Room is under maintenance</span>
+                        <span className="text-sm font-semibold text-amber-700">{t("infoUnderMaintenance")}</span>
                       </div>
-                      <p className="text-xs text-amber-600 mt-1">This room is not available for booking until maintenance is complete.</p>
+                      <p className="text-xs text-amber-600 mt-1">{t("infoMaintenanceNote")}</p>
                     </div>
                   ) : null}
                 </div>
@@ -1513,15 +1522,15 @@ export default function RoomsPage() {
                 {/* Reservations History Section */}
                 <div>
                   <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1.5">
-                    <ClipboardList className="h-3.5 w-3.5" /> Reservations History
+                    <ClipboardList className="h-3.5 w-3.5" /> {t("reservationsHistory")}
                   </p>
                   {roomResLoading ? (
                     <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-                      <Clock className="h-4 w-4 animate-spin" /> Loading...
+                      <Clock className="h-4 w-4 animate-spin" /> {t("loading")}
                     </div>
                   ) : roomReservations.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center">
-                      <p className="text-sm text-gray-400">No reservations found for this room</p>
+                      <p className="text-sm text-gray-400">{t("noReservationsForRoom")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -1550,7 +1559,7 @@ export default function RoomsPage() {
 
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => { setInfoRoom(null); setRoomReservations([]); }}>
-                    Close
+                    {t("btnClose")}
                   </Button>
                   {infoRoom.status === "AVAILABLE" ? (
                     <Button
@@ -1558,7 +1567,7 @@ export default function RoomsPage() {
                       onClick={() => handleReserveFromRoom(infoRoom)}
                     >
                       <CalendarPlus className="h-4 w-4" />
-                      Reserve This Room
+                      {t("btnReserveThisRoom")}
                     </Button>
                   ) : infoRoom.status === "RESERVED" ? (
                     <Button
@@ -1566,7 +1575,7 @@ export default function RoomsPage() {
                       onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setRoomReservations([]); setCurrentPage("reservations"); }}
                     >
                       <ClipboardList className="h-4 w-4" />
-                      Manage Reservations
+                      {t("btnManageReservations")}
                     </Button>
                   ) : infoRoom.status === "OCCUPIED" ? (
                     <div className="flex gap-2">
@@ -1575,11 +1584,11 @@ export default function RoomsPage() {
                         onClick={() => {
                           const active = roomReservations.find((r) => r.status === "ACTIVE");
                           if (active) openExtendDialog(active);
-                          else toast.error("No active reservation found for this room");
+                          else toast.error(t("toastNoActiveReservation"));
                         }}
                       >
                         <CalendarClock className="h-4 w-4" />
-                        Extend Stay
+                        {t("btnExtendStay")}
                       </Button>
                       <Button
                         variant="outline"
@@ -1587,22 +1596,22 @@ export default function RoomsPage() {
                         onClick={() => {
                           const active = roomReservations.find((r) => r.status === "ACTIVE");
                           if (active) setEarlyCheckoutDialog(active);
-                          else toast.error("No active reservation found for this room");
+                          else toast.error(t("toastNoActiveReservation"));
                         }}
                       >
                         <LogOut className="h-4 w-4" />
-                        Early Out
+                        {t("btnEarlyOut")}
                       </Button>
                       <Button
                         className="gap-2 bg-violet-600 hover:bg-violet-700"
                         onClick={() => {
                           const active = roomReservations.find((r) => r.status === "ACTIVE");
                           if (active) openShiftDialog(active);
-                          else toast.error("No active reservation found for this room");
+                          else toast.error(t("toastNoActiveReservation"));
                         }}
                       >
                         <ArrowRightLeft className="h-4 w-4" />
-                        Shift
+                        {t("btnShift")}
                       </Button>
                     </div>
                   ) : null}
@@ -1618,22 +1627,22 @@ export default function RoomsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 text-amber-600" /> Extend Stay
+              <CalendarClock className="h-5 w-5 text-amber-600" /> {t("dialogExtendTitle")}
             </DialogTitle>
-            <DialogDescription>Extend the guest's stay in this room</DialogDescription>
+            <DialogDescription>{t("dialogExtendDesc")}</DialogDescription>
           </DialogHeader>
           {extendDialog && (
             <div className="space-y-4">
               <div className="rounded-lg bg-muted/50 p-3 space-y-1.5">
-                <p className="text-sm font-medium">{extendDialog.guest?.name || "Guest"}</p>
+                <p className="text-sm font-medium">{extendDialog.guest?.name || t("guestFallback")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Current check-out: <strong>{formatDate(extendDialog.checkOut)}</strong>
+                  {t("extendCurrentCheckout")} <strong>{formatDate(extendDialog.checkOut)}</strong>
                   <span className="mx-1">·</span>
                   {extendDialog.roomRate > 0 && <span>{formatPrice(extendDialog.roomRate)}/night</span>}
                 </p>
               </div>
               <div>
-                <Label>{t('lblnewCheckoutDate', 'New Check-out Date')} *</Label>
+                <Label>{t("lblnewCheckoutDate")} *</Label>
                 <Input
                   type="date"
                   value={extendDate}
@@ -1645,7 +1654,7 @@ export default function RoomsPage() {
               {extendNights > 0 && (
                 <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-3">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-amber-700">Extra {extendNights} night{extendNights !== 1 ? "s" : ""}</span>
+                    <span className="text-amber-700">{t("extendExtraNights", { nights: extendNights })}</span>
                     <span className="font-bold text-amber-800">+{formatPrice(extendExtraCost)}</span>
                   </div>
                 </div>
@@ -1653,9 +1662,9 @@ export default function RoomsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setExtendDialog(null); setExtendDate(""); }}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => { setExtendDialog(null); setExtendDate(""); }}>{t("cancel")}</Button>
             <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={handleExtendStay} disabled={extending || !extendDate || extendDate <= (extendDialog?.checkOut || "")}>
-              {extending ? "Extending..." : "Extend Stay"}
+              {extending ? t("btnExtending") : t("btnExtendStay")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1666,15 +1675,15 @@ export default function RoomsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-rose-600" /> Early Checkout
+              <LogOut className="h-5 w-5 text-rose-600" /> {t("dialogEarlyCheckoutTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {earlyCheckoutDialog && (
                 <span>
-                  Check out <strong>{earlyCheckoutDialog.guest?.name || "this guest"}</strong> now?
+                  {t("dialogEarlyCheckoutDesc", { name: earlyCheckoutDialog.guest?.name || t("earlyCheckoutGuestFallback") })}
                   {earlyCheckoutDialog.paymentStatus !== "PAID" && (
                     <span className="block mt-2 text-amber-600 font-medium">
-                      Note: This guest has an outstanding balance of {formatPrice(earlyCheckoutDialog.balance)}.
+                      {t("earlyCheckoutBalanceNote", { balance: formatPrice(earlyCheckoutDialog.balance) })}
                     </span>
                   )}
                 </span>
@@ -1682,13 +1691,13 @@ export default function RoomsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={earlyCheckingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={earlyCheckingOut}>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={handleEarlyCheckout}
               disabled={earlyCheckingOut}
             >
-              {earlyCheckingOut ? "Checking out..." : "Confirm Checkout"}
+              {earlyCheckingOut ? t("btnCheckingOut") : t("btnConfirmCheckout")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1699,23 +1708,23 @@ export default function RoomsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ArrowRightLeft className="h-5 w-5 text-violet-600" /> Room Shift
+              <ArrowRightLeft className="h-5 w-5 text-violet-600" /> {t("dialogShiftTitle")}
             </DialogTitle>
-            <DialogDescription>Move the guest to a different available room</DialogDescription>
+            <DialogDescription>{t("dialogShiftDesc")}</DialogDescription>
           </DialogHeader>
           {shiftDialog && (
             <div className="space-y-4">
               <div className="rounded-lg bg-muted/50 p-3 space-y-1.5">
-                <p className="text-sm font-medium">{shiftDialog.guest?.name || "Guest"}</p>
+                <p className="text-sm font-medium">{shiftDialog.guest?.name || t("guestFallback")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Current: Room {infoRoom?.number} → Shifting to a new room
+                  {t("shiftCurrentRoom", { number: infoRoom?.number || "" })}
                 </p>
               </div>
               <div>
-                <Label>{t('lbltargetRoom', 'Target Room')} *</Label>
+                <Label>{t("lbltargetRoom")} *</Label>
                 {shiftAvailableRooms.length > 0 ? (
                   <Select value={shiftTargetRoomId} onValueChange={setShiftTargetRoomId}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select available room" /></SelectTrigger>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder={t("shiftSelectPlaceholder")} /></SelectTrigger>
                     <SelectContent>
                       {shiftAvailableRooms.map((r) => (
                         <SelectItem key={r.id} value={r.id}>
@@ -1725,15 +1734,15 @@ export default function RoomsPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="mt-1 text-sm text-amber-600">No available rooms to shift to</p>
+                  <p className="mt-1 text-sm text-amber-600">{t("shiftNoAvailableRooms")}</p>
                 )}
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setShiftDialog(null); setShiftTargetRoomId(""); }}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => { setShiftDialog(null); setShiftTargetRoomId(""); }}>{t("cancel")}</Button>
             <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={handleRoomShift} disabled={shifting || !shiftTargetRoomId}>
-              {shifting ? "Shifting..." : "Confirm Shift"}
+              {shifting ? t("btnShifting") : t("btnConfirmShift")}
             </Button>
           </DialogFooter>
         </DialogContent>
