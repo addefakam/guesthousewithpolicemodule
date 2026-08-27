@@ -103,6 +103,12 @@ export default function AccommodationGuestsPage() {
   const { t } = useTranslation("accommodation");
   const { refreshKey, triggerRefresh } = useAppStore();
 
+  function resStatusLabel(status: string) {
+    const key = `resStatus${status.charAt(0)}${status.slice(1).toLowerCase()}`;
+    const translated = t(key);
+    return translated !== key ? translated : status;
+  }
+
   // Data
   const [guests, setGuests] = useState<Guest[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -146,7 +152,7 @@ export default function AccommodationGuestsPage() {
       const raw = Array.isArray(rmData?.rooms) ? rmData.rooms : [];
       setRooms(raw);
     } catch {
-      toast.error("Failed to load guest data");
+      toast.error(t("toastFailedLoadGuests"));
     } finally {
       setLoading(false);
     }
@@ -236,21 +242,21 @@ export default function AccommodationGuestsPage() {
   // ── Handlers ──
   const handleCreateRes = async () => {
     if (!resForm.guestId || !resForm.roomId || !resForm.checkIn || !resForm.checkOut) {
-      toast.error("Please fill all required fields"); return;
+      toast.error(t("toastFillRequired")); return;
     }
     // Client-side validation for double rooms
     if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
       if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
-        toast.error("Second guest name and phone are required for double/twin rooms. Use 'Exceptionally Reserved' for single occupancy.");
+        toast.error(t("toastSecondGuestRequired"));
         return;
       }
       if (!isValidPhone(resForm.secondGuestPhone)) {
-        toast.error("Invalid second guest phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
+        toast.error(t("toastInvalidSecondGuestPhone"));
         return;
       }
     }
     if (resForm.exceptionallyReserved && !resForm.exceptionReason.trim()) {
-      toast.error("Please provide the exception reason"); return;
+      toast.error(t("toastProvideExceptionReason")); return;
     }
     try {
       setCreatingRes(true);
@@ -263,13 +269,13 @@ export default function AccommodationGuestsPage() {
         exceptionallyReserved: resForm.exceptionallyReserved,
         exceptionReason: resForm.exceptionReason,
       });
-      toast.success("Reservation created");
+      toast.success(t("toastReservationCreated"));
       setResDialogOpen(false);
       setResForm(emptyResForm);
       setResGuestSearch("");
       triggerRefresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create reservation";
+      const msg = err instanceof Error ? err.message : t("toastFailedCreateReservation");
       toast.error(msg);
     } finally { setCreatingRes(false); }
   };
@@ -279,12 +285,12 @@ export default function AccommodationGuestsPage() {
     const { type, reservation } = confirmAction;
     try {
       setActionLoading(true);
-      if (type === "checkin") { await apiCheckin(reservation.id); toast.success("Guest checked in"); }
-      else { await apiCheckout(reservation.id); toast.success("Guest checked out"); }
+      if (type === "checkin") { await apiCheckin(reservation.id); toast.success(t("toastGuestCheckedIn")); }
+      else { await apiCheckout(reservation.id); toast.success(t("toastGuestCheckedOut")); }
       setConfirmAction(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : `Failed to ${type}`);
+      toast.error(err instanceof Error ? err.message : (type === "checkin" ? t("toastFailedCheckIn") : t("toastFailedCheckOut")));
     } finally { setActionLoading(false); }
   };
 
@@ -311,7 +317,7 @@ export default function AccommodationGuestsPage() {
   }
 
   const actionInfo = confirmAction
-    ? { label: confirmAction.type === "checkin" ? "Check In" : "Check Out", icon: confirmAction.type === "checkin" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />, cls: confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700", desc: confirmAction.type === "checkin" ? `Check in ${confirmAction.reservation.guest?.name || "guest"} to Room ${confirmAction.reservation.room?.number || ""}?` : `Check out ${confirmAction.reservation.guest?.name || "guest"} from Room ${confirmAction.reservation.room?.number || ""}?` }
+    ? { label: confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut"), icon: confirmAction.type === "checkin" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />, cls: confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700", desc: confirmAction.type === "checkin" ? t("confirmCheckInDesc", { guest: confirmAction.reservation.guest?.name || "", room: confirmAction.reservation.room?.number || "" }) : t("confirmCheckOutDesc", { guest: confirmAction.reservation.guest?.name || "", room: confirmAction.reservation.room?.number || "" }) }
     : null;
 
   return (
@@ -371,7 +377,7 @@ export default function AccommodationGuestsPage() {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Users className="mb-3 h-10 w-10 text-muted--foreground/40" />
-            <p className="text-sm text-muted-foreground">No guests found</p>
+            <p className="text-sm text-muted-foreground">{t("noGuestsFound")}</p>
           </div>
         ) : (
           <>
@@ -394,36 +400,36 @@ export default function AccommodationGuestsPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       {g.activeReservation?.exceptionallyReserved && (
-                        <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300">Exception</Badge>
+                        <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300">{t("exceptionBadge")}</Badge>
                       )}
                       {g.activeReservation && (
                         <Badge variant="outline" className={`text-[9px] shrink-0 ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
-                          {RES_STATUS[g.activeReservation.status]?.label || g.activeReservation.status}
+                          {resStatusLabel(g.activeReservation.status)}
                         </Badge>
                       )}
                     </div>
                   </div>
                   {g.activeReservation && g.activeReservation.room && (
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground pl-10">
-                      <span>Room {g.activeReservation.room.number}{g.activeReservation.room.name ? ` (${g.activeReservation.room.name})` : ""}</span>
+                      <span>{g.activeReservation.room.name ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
                       <span>{formatDate(g.activeReservation.checkIn)} → {formatDate(g.activeReservation.checkOut)}</span>
                     </div>
                   )}
                   {g.activeReservation?.secondGuestName && (
                     <div className="text-[10px] text-muted-foreground pl-10 flex items-center gap-1">
-                      <UserPlus className="h-3 w-3" /> 2nd: {g.activeReservation.secondGuestName}{g.activeReservation.secondGuestPhone ? ` (${g.activeReservation.secondGuestPhone})` : ""}
+                      <UserPlus className="h-3 w-3" /> {t("secondGuestPrefix")} {g.activeReservation.secondGuestName}{g.activeReservation.secondGuestPhone ? ` (${g.activeReservation.secondGuestPhone})` : ""}
                     </div>
                   )}
                   {g.activeReservation && (
                     <div className="flex gap-2 pl-10">
                       {g.activeReservation.status === "UPCOMING" && (
                         <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(g.activeReservation!)}>
-                          <LogIn className="h-3 w-3" /> Check In
+                          <LogIn className="h-3 w-3" /> {t("btnCheckIn")}
                         </Button>
                       )}
                       {g.activeReservation.status === "ACTIVE" && (
                         <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
-                          <LogOut className="h-3 w-3" /> Check Out
+                          <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
                         </Button>
                       )}
                     </div>
@@ -459,10 +465,10 @@ export default function AccommodationGuestsPage() {
                             <div className="flex items-center gap-1.5">
                               <p className="text-sm font-medium">{g.name}{g.vip ? " \u2605" : ""}</p>
                               {g.activeReservation?.exceptionallyReserved && (
-                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-300 px-1 py-0">Exception</Badge>
+                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-300 px-1 py-0">{t("exceptionBadge")}</Badge>
                               )}
                             </div>
-                            <p className="text-[10px] text-muted-foreground">{g.totalStays} stay(s) | {formatCurrency(g.totalSpent)} total</p>
+                            <p className="text-[10px] text-muted-foreground">{t("staysAndTotal", { stays: g.totalStays, total: formatCurrency(g.totalSpent) })}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -473,7 +479,7 @@ export default function AccommodationGuestsPage() {
                       <TableCell>
                         {g.activeReservation ? (
                           <Badge variant="outline" className={`text-[10px] ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
-                            {RES_STATUS[g.activeReservation.status]?.label || g.activeReservation.status}
+                            {resStatusLabel(g.activeReservation.status)}
                           </Badge>
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
@@ -481,7 +487,7 @@ export default function AccommodationGuestsPage() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {g.activeReservation?.room ? (
-                          <span>Room {g.activeReservation.room.number}{g.activeReservation.room.name ? ` (${g.activeReservation.room.name})` : ""}</span>
+                          <span>{g.activeReservation.room.name ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-xs">
@@ -491,7 +497,7 @@ export default function AccommodationGuestsPage() {
                             <p className="text-[10px] text-muted-foreground">{g.activeReservation.secondGuestPhone || ""}</p>
                           </div>
                         ) : g.activeReservation?.exceptionallyReserved ? (
-                          <span className="text-[10px] text-amber-600">N/A — Exception</span>
+                          <span className="text-[10px] text-amber-600">{t("naException")}</span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
@@ -516,7 +522,7 @@ export default function AccommodationGuestsPage() {
                           )}
                           {!g.activeReservation && (
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }}>
-                              <CalendarDays className="h-3 w-3" /> Reserve
+                              <CalendarDays className="h-3 w-3" /> {t("btnReserve")}
                             </Button>
                           )}
                         </div>
@@ -544,8 +550,8 @@ export default function AccommodationGuestsPage() {
       <Dialog open={resDialogOpen} onOpenChange={(open) => { if (!open) { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); } }}>
         <DialogContent className="max-w-lg mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" /> New Reservation</DialogTitle>
-            <DialogDescription>Create a room reservation for a guest</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" /> {t("dlgNewReservationTitle")}</DialogTitle>
+            <DialogDescription>{t("dlgNewReservationDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {/* Guest Select */}
@@ -553,13 +559,13 @@ export default function AccommodationGuestsPage() {
               <Label>{t('lblguest', 'Guest')} *</Label>
               {resForm.guestId ? (
                 <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/30">
-                  <span className="text-sm font-medium flex-1">{guests.find((g) => g.id === resForm.guestId)?.name || "Selected"}</span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setResForm({ ...resForm, guestId: "" }); setResGuestSearch(""); }}>Change</Button>
+                  <span className="text-sm font-medium flex-1">{guests.find((g) => g.id === resForm.guestId)?.name || t("selected")}</span>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setResForm({ ...resForm, guestId: "" }); setResGuestSearch(""); }}>{t("change")}</Button>
                 </div>
               ) : (
                 <div className="relative mt-1">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={resGuestSearch} onChange={(e) => setResGuestSearch(e.target.value)} placeholder="Search guest by name, phone, or ID..." className="h-9 pl-8 text-sm" />
+                  <Input value={resGuestSearch} onChange={(e) => setResGuestSearch(e.target.value)} placeholder={t("phSearchGuest")} className="h-9 pl-8 text-sm" />
                 </div>
               )}
               {!resForm.guestId && resGuestResults.length > 0 && (
@@ -578,10 +584,10 @@ export default function AccommodationGuestsPage() {
             <div>
               <Label>{t('lblroom', 'Room')} *</Label>
               <Select value={resForm.roomId} onValueChange={(v) => setResForm({ ...resForm, roomId: v })}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select available room" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("phSelectRoom")} /></SelectTrigger>
                 <SelectContent>
                   {availableRooms.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>Room {r.number}{r.name ? ` (${r.name})` : ""} — {r.type} — {formatCurrency(r.pricePerNight)}/night</SelectItem>
+                    <SelectItem key={r.id} value={r.id}>{r.name ? t("roomWithName", { number: r.number, name: r.name }) : t("roomPrefix", { number: r.number })} — {r.type} — {formatCurrency(r.pricePerNight)}/night</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -592,7 +598,7 @@ export default function AccommodationGuestsPage() {
               <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                 <div className="flex items-center gap-2 text-amber-800">
                   <BedDouble className="h-4 w-4" />
-                  <span className="text-xs font-semibold">Double Room — Second Guest Required</span>
+                  <span className="text-xs font-semibold">{t("doubleRoomSecondGuestRequired")}</span>
                 </div>
 
                 {/* Exception toggle */}
@@ -605,7 +611,7 @@ export default function AccommodationGuestsPage() {
                       onChange={() => setResForm({ ...resForm, exceptionallyReserved: false, exceptionReason: "" })}
                       className="h-3.5 w-3.5 text-emerald-600 accent-emerald-600"
                     />
-                    <span className="text-xs font-medium">Two Guests</span>
+                    <span className="text-xs font-medium">{t("twoGuests")}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -615,20 +621,20 @@ export default function AccommodationGuestsPage() {
                       onChange={() => setResForm({ ...resForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })}
                       className="h-3.5 w-3.5 text-amber-600 accent-amber-600"
                     />
-                    <span className="text-xs font-medium text-amber-700">Exceptionally Reserved</span>
+                    <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
                   </label>
                 </div>
 
                 {!resForm.exceptionallyReserved ? (
                   /* Second guest fields */
                   <div className="space-y-2">
-                    <p className="text-[10px] text-muted-foreground">Enter the second guest details for this double room.</p>
+                    <p className="text-[10px] text-muted-foreground">{t("secondGuestDetailsHint")}</p>
                     <div>
                       <Label>{t('lblsecondGuestName', 'Second Guest Name')} *</Label>
                       <Input
                         value={resForm.secondGuestName}
                         onChange={(e) => setResForm({ ...resForm, secondGuestName: e.target.value })}
-                        placeholder="Full name of second guest"
+                        placeholder={t("phSecondGuestName")}
                         className="h-9 text-sm"
                       />
                     </div>
@@ -638,7 +644,7 @@ export default function AccommodationGuestsPage() {
                         type="tel"
                         value={resForm.secondGuestPhone}
                         onChange={(e) => setResForm({ ...resForm, secondGuestPhone: e.target.value })}
-                        placeholder="Phone number"
+                        placeholder={t("phSecondGuestPhone")}
                         className="h-9 text-sm"
                       />
                     </div>
@@ -647,7 +653,7 @@ export default function AccommodationGuestsPage() {
                       <Input
                         value={resForm.secondGuestIdNumber}
                         onChange={(e) => setResForm({ ...resForm, secondGuestIdNumber: e.target.value })}
-                        placeholder="ID number (optional)"
+                        placeholder={t("phSecondGuestId")}
                         className="h-9 text-sm"
                       />
                     </div>
@@ -657,14 +663,14 @@ export default function AccommodationGuestsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-amber-700">
                       <AlertTriangle className="h-3.5 w-3.5" />
-                      <p className="text-[10px] font-medium">This room will be reserved for single occupancy with an exception.</p>
+                      <p className="text-[10px] font-medium">{t("singleOccupancyException")}</p>
                     </div>
                     <div>
                       <Label>{t('lblexceptionReason', 'Exception Reason')} *</Label>
                       <Textarea
                         value={resForm.exceptionReason}
                         onChange={(e) => setResForm({ ...resForm, exceptionReason: e.target.value })}
-                        placeholder="Explain why this double room is reserved for only one guest (e.g., VIP request, special arrangement, complimentary upgrade...)"
+                        placeholder={t("phExceptionReason")}
                         className="min-h-[60px] text-sm"
                       />
                     </div>
@@ -679,15 +685,15 @@ export default function AccommodationGuestsPage() {
             </div>
             {resNights > 0 && resRate > 0 && (
               <div className="rounded-md bg-muted/50 p-2 flex justify-between text-xs">
-                <span>{resNights} night(s) × {formatCurrency(resRate)}</span>
+                <span>{t("nightsTimes", { nights: resNights, rate: formatCurrency(resRate) })}</span>
                 <span className="font-bold">{formatCurrency(resNights * resRate)}</span>
               </div>
             )}
-            <div><Label>{t('lblnotes', 'Notes')}</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder="Optional notes" className="h-9 text-sm" /></div>
+            <div><Label>{t('lblnotes', 'Notes')}</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder={t("phNotes")} className="h-9 text-sm" /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); }}>Cancel</Button>
-            <Button size="sm" onClick={handleCreateRes} disabled={creatingRes || !resForm.guestId || !resForm.roomId}>{creatingRes ? "Creating..." : "Create Reservation"}</Button>
+            <Button variant="outline" size="sm" onClick={() => { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); }}>{t("cancel")}</Button>
+            <Button size="sm" onClick={handleCreateRes} disabled={creatingRes || !resForm.guestId || !resForm.roomId}>{creatingRes ? t("btnCreating") : t("btnCreateReservation")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -701,8 +707,8 @@ export default function AccommodationGuestsPage() {
               <AlertDialogDescription>{actionInfo.desc}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-              <AlertDialogAction className={actionInfo.cls} onClick={handleAction} disabled={actionLoading}>{actionLoading ? "Processing..." : actionInfo.label}</AlertDialogAction>
+              <AlertDialogCancel disabled={actionLoading}>{t("cancel")}</AlertDialogCancel>
+              <AlertDialogAction className={actionInfo.cls} onClick={handleAction} disabled={actionLoading}>{actionLoading ? t("btnProcessing") : actionInfo.label}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
