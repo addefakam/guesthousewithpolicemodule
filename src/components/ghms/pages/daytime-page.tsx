@@ -442,7 +442,7 @@ export default function DaytimePage() {
               <p className="text-lg font-medium text-gray-500">{t("noServicesYet")}</p>
               <p className="mt-1 text-sm text-gray-400">{t("noServicesYetDesc")}</p>
               <Button onClick={openCreateSvc} variant="outline" className="mt-4 gap-2">
-                <Plus className="h-4 w-4" /> Add Service
+                <Plus className="h-4 w-4" /> {t("btnAddService")}
               </Button>
             </div>
           ) : (
@@ -537,7 +537,7 @@ export default function DaytimePage() {
               <p className="text-lg font-medium text-gray-500">{t("noBookingsYet")}</p>
               <p className="mt-1 text-sm text-gray-400">{t("noBookingsYetDesc")}</p>
               <Button onClick={openCreateBk} variant="outline" className="mt-4 gap-2">
-                <Plus className="h-4 w-4" /> New Booking
+                <Plus className="h-4 w-4" /> {t("btnNewBooking")}
               </Button>
             </div>
           ) : (
@@ -546,14 +546,14 @@ export default function DaytimePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t('thguest', 'Guest')}</TableHead>
-                      <TableHead>{t('thservice', 'Service')}</TableHead>
-                      <TableHead>{t('thdate', 'Date')}</TableHead>
-                      <TableHead>{t('thtime', 'Time')}</TableHead>
-                      <TableHead>{t('thqty', 'Qty')}</TableHead>
-                      <TableHead>{t('thtotal', 'Total')}</TableHead>
-                      <TableHead>{t('thpayment', 'Payment')}</TableHead>
-                      <TableHead>{t('thactions', 'Actions')}</TableHead>
+                      <TableHead>{t("thguest")}</TableHead>
+                      <TableHead>{t("thservice")}</TableHead>
+                      <TableHead>{t("thdate")}</TableHead>
+                      <TableHead>{t("thtime")}</TableHead>
+                      <TableHead>{t("thqty")}</TableHead>
+                      <TableHead>{t("thtotal")}</TableHead>
+                      <TableHead>{t("thpayment")}</TableHead>
+                      <TableHead>{t("thactions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -568,7 +568,7 @@ export default function DaytimePage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm text-gray-700">{bk.service?.name || "—"}</span>
+                          <span className="text-sm text-gray-700">{bk.service?.name || t("dashFallback")}</span>
                         </TableCell>
                         <TableCell className="text-sm">{bk.date}</TableCell>
                         <TableCell className="text-sm">{bk.time}</TableCell>
@@ -576,7 +576,7 @@ export default function DaytimePage() {
                         <TableCell className="text-right font-medium text-sm">{formatPrice(bk.totalCost)}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={PAYMENT_STYLES[bk.paymentStatus] || PAYMENT_STYLES.PENDING}>
-                            {bk.paymentStatus}
+                            {t("paymentStatus" + bk.paymentStatus.charAt(0) + bk.paymentStatus.slice(1).toLowerCase())}
                             {bk.paymentStatus === "PARTIAL" && (
                               <span className="ml-1 text-xs">({formatPrice(bk.paidAmount)})</span>
                             )}
@@ -591,11 +591,11 @@ export default function DaytimePage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditBk(bk)}>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                                <Pencil className="mr-2 h-4 w-4" /> {t("menuEdit")}
                               </DropdownMenuItem>
                               {bk.paymentStatus !== "PAID" && (
                                 <DropdownMenuItem onClick={() => openPayDialog(bk)}>
-                                  <CreditCard className="mr-2 h-4 w-4" /> Record Payment
+                                  <CreditCard className="mr-2 h-4 w-4" /> {t("menuRecordPayment")}
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
@@ -603,7 +603,7 @@ export default function DaytimePage() {
                                 className="text-rose-600 focus:text-rose-600"
                                 onClick={() => setBkDeleteTarget(bk)}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                <Trash2 className="mr-2 h-4 w-4" /> {t("menuDelete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -638,30 +638,40 @@ export default function DaytimePage() {
                 <Input type="number" placeholder="0" value={svcForm.price} onChange={(e) => setSvcForm({ ...svcForm, price: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lblcategory', 'Category')}</Label>
+                <Label>{t("lblcategory")}</Label>
                 <Select value={svcForm.category} onValueChange={(v) => setSvcForm({ ...svcForm, category: v })}>
                   <SelectTrigger><SelectValue placeholder={t("phSelectGeneric")} /></SelectTrigger>
                   <SelectContent>
-                    {[t("catSpa"), t("catFood"), t("catLaundry"), "TOUR", "TRANSPORT", "GYM", "POOL", "EVENT", t("catOther")].map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    {[
+                      { value: "SPA", label: t("catSpa") },
+                      { value: "FOOD", label: t("catFood") },
+                      { value: "LAUNDRY", label: t("catLaundry") },
+                      { value: "TOUR", label: t("catTour") },
+                      { value: "TRANSPORT", label: t("catTransport") },
+                      { value: "GYM", label: t("catGym") },
+                      { value: "POOL", label: t("catPool") },
+                      { value: "EVENT", label: t("catEvent") },
+                      { value: "OTHER", label: t("catOther") },
+                    ].map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t('lblduration', 'Duration')}</Label>
+              <Label>{t("lblduration")}</Label>
               <Input placeholder={t("phDuration")} value={svcForm.duration} onChange={(e) => setSvcForm({ ...svcForm, duration: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>{t('lbldescription', 'Description')}</Label>
+              <Label>{t("lbldescription")}</Label>
               <Textarea placeholder={t("phDescription")} rows={3} value={svcForm.description} onChange={(e) => setSvcForm({ ...svcForm, description: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSvcDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setSvcDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleSaveSvc} disabled={svcSaving}>
-              {svcSaving ? t("btnSaving") : editingSvc ? "Update Service" : "Create Service"}
+              {svcSaving ? t("btnSaving") : editingSvc ? t("btnUpdateService") : t("btnCreateService")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -688,7 +698,7 @@ export default function DaytimePage() {
                   {services.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} — {formatPrice(s.price)}
-                      {s.active === false && <span className="ml-1 text-amber-500 text-xs">t("statusInactiveHint")</span>}
+                      {s.active === false && <span className="ml-1 text-amber-500 text-xs">{t("statusInactiveHint")}</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -700,7 +710,7 @@ export default function DaytimePage() {
                 <Input placeholder={t("phGuestName")} value={bkForm.guestName} onChange={(e) => setBkForm({ ...bkForm, guestName: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lblphone', 'Phone')}</Label>
+                <Label>{t("lblphone")}</Label>
                 <Input type="tel" placeholder={t("phPhoneNumber")} value={bkForm.guestPhone} onChange={(e) => setBkForm({ ...bkForm, guestPhone: e.target.value })} />
               </div>
             </div>
@@ -714,7 +724,7 @@ export default function DaytimePage() {
                 <Input type="time" value={bkForm.time} onChange={(e) => setBkForm({ ...bkForm, time: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lblquantity', 'Quantity')}</Label>
+                <Label>{t("lblquantity")}</Label>
                 <Input type="number" min="1" value={bkForm.quantity} onChange={(e) => setBkForm({ ...bkForm, quantity: e.target.value })} />
               </div>
             </div>
@@ -722,14 +732,14 @@ export default function DaytimePage() {
               <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
                 <span className="font-medium text-gray-900">{t("estimatedTotal")}</span>
                 {formatPrice(selectedService.price * (Number(bkForm.quantity) || 1))}
-                <span className="text-gray-400 ml-1">({formatPrice(selectedService.price)} × {bkForm.quantity || 1})</span>
+                <span className="text-gray-400 ml-1">{t("priceMultiply", { price: formatPrice(selectedService.price), qty: bkForm.quantity || 1 })}</span>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBkDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setBkDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleSaveBk} disabled={bkSaving}>
-              {bkSaving ? "Saving..." : editingBk ? "Update Booking" : "Create Booking"}
+              {bkSaving ? t("btnSaving") : editingBk ? t("btnUpdateBooking") : t("btnCreateBooking")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -739,10 +749,10 @@ export default function DaytimePage() {
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle>{t("dlgRecordPaymentTitle")}</DialogTitle>
             <DialogDescription>
               {payTarget && (
-                <span>For {payTarget.guestName} — {payTarget.service?.name}. Balance: <strong>{formatPrice(payTarget.totalCost - payTarget.paidAmount)}</strong></span>
+                <span>{t("dlgRecordPaymentDesc", { guestName: payTarget.guestName, serviceName: payTarget.service?.name || "", balance: formatPrice(payTarget.totalCost - payTarget.paidAmount) })}</span>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -757,7 +767,7 @@ export default function DaytimePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>{t('lblpaymentMethod', 'Payment Method')}</Label>
+              <Label>{t("lblpaymentMethod")}</Label>
               <Select value={payForm.method} onValueChange={(v) => setPayForm({ ...payForm, method: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -770,9 +780,9 @@ export default function DaytimePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPayDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPayDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleRecordPayment} disabled={paySaving}>
-              {paySaving ? t("btnRecording") : "Record Payment"}
+              {paySaving ? t("btnRecording") : t("btnRecordPayment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -782,7 +792,7 @@ export default function DaytimePage() {
       <AlertDialog open={!!svcDeleteTarget} onOpenChange={() => setSvcDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &quot;{svcDeleteTarget?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>{t("alertDeleteServiceTitle", { name: svcDeleteTarget?.name })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("alertDeleteServiceDesc")}
             </AlertDialogDescription>
@@ -790,7 +800,7 @@ export default function DaytimePage() {
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteSvc} disabled={svcDeleting}>
-              {svcDeleting ? t("btnDeleting") : "Delete"}
+              {svcDeleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -800,15 +810,15 @@ export default function DaytimePage() {
       <AlertDialog open={!!bkDeleteTarget} onOpenChange={() => setBkDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete booking for &quot;{bkDeleteTarget?.guestName}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>{t("alertDeleteBookingTitle", { name: bkDeleteTarget?.guestName })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("alertDeleteBookingDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteBk} disabled={bkDeleting}>
-              {bkDeleting ? "Deleting..." : "Delete"}
+              {bkDeleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

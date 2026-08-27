@@ -642,7 +642,14 @@
     "tabMaintenancePill": "Suphaa",
     "tabReservedPill": "Qabameera",
     "btnAddRoomHeader": "Kutaa Dabali",
-    "toastImportComplete": "Galchi xumurameera: {{imported}} uumameera, {{skipped}} hafe"
+    "toastImportComplete": "Galchi xumurameera: {{imported}} uumameera, {{skipped}} hafe",
+    "filterAll": "Hunda",
+    "srActions": "Gosaalee",
+    "infoFloorLabel": "Dabarfama {{floor}}",
+    "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
+    "resStatusLabel": "{{status}}",
+    "inDaysShort": "guyyaa {{days}} keessatti",
+    "perNightShort": "/halkan"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -1049,6 +1056,30 @@
     "dlgEditBookingTitle": "Qabannaa Gulaali",
     "dlgNewBookingTitle": "Qabannaa Haaraa",
     "dlgEditBookingDesc": "Odeeffannoo qabannoo fooyyessi.",
-    "dlgNewBookingDesc": "Qabannoo tajaajila guyyaa haaraa uumi."
+    "dlgNewBookingDesc": "Qabannoo tajaajila guyyaa haaraa uumi.",
+    "lblcategory": "Gosa",
+    "lblduration": "Yero",
+    "lbldescription": "Ibsa",
+    "lblphone": "Bilbila",
+    "lblquantity": "Lakkoofsa",
+    "lblpaymentMethod": "Tarkaanfii kabajaa",
+    "catTour": "Daawwii",
+    "catTransport": "Biraawsi",
+    "catGym": "Jiim",
+    "catPool": "Piilaa",
+    "catEvent": "Haala",
+    "paymentStatusPaid": "Kabajame",
+    "paymentStatusPartial": "Qeenxee",
+    "paymentStatusPending": "Eegaa jira",
+    "dashFallback": "—",
+    "priceMultiply": "({{price}} × {{qty}})",
+    "thguest": "Ginyaataa",
+    "thservice": "Tajaajila",
+    "thdate": "Guyyaa",
+    "thtime": "Sa'aati",
+    "thqty": "Lak.",
+    "thtotal": "Waliigalaa",
+    "thpayment": "Kabaja",
+    "thactions": "Gosaalee"
   }
 }

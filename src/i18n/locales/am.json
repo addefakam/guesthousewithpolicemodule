@@ -642,7 +642,14 @@
     "tabMaintenancePill": "ጥገና",
     "tabReservedPill": "ቀድሞ የተያዘ",
     "btnAddRoomHeader": "ክፍል ጨምር",
-    "toastImportComplete": "ማስገባት ተጠናቀቀ: {{imported}} የተፈጠሩ፣ {{skipped}} የተዘሉ"
+    "toastImportComplete": "ማስገባት ተጠናቀቀ: {{imported}} የተፈጠሩ፣ {{skipped}} የተዘሉ",
+    "filterAll": "ሁሉም",
+    "srActions": "ተግባራት",
+    "infoFloorLabel": "ፎት {{floor}}",
+    "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
+    "resStatusLabel": "{{status}}",
+    "inDaysShort": "በ{{days}} ቀናት ውስጥ",
+    "perNightShort": "/ሌሊት"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -1048,6 +1055,30 @@
     "dlgEditBookingTitle": "ቦታ አርትዕ",
     "dlgNewBookingTitle": "አዲስ ቦታ",
     "dlgEditBookingDesc": "የቦታ ዝርዝሮችን ያዘምኑ።",
-    "dlgNewBookingDesc": "አዲስ የቀን አገልግሎት ቦታ ፍጠር።"
+    "dlgNewBookingDesc": "አዲስ የቀን አገልግሎት ቦታ ፍጠር።",
+    "lblcategory": "ምድብ",
+    "lblduration": "ርዝመት",
+    "lbldescription": "መግለጫ",
+    "lblphone": "ስልክ",
+    "lblquantity": "ብዛት",
+    "lblpaymentMethod": "የክፍያ ዘዴ",
+    "catTour": "ጉዞ",
+    "catTransport": "ትራንስፖርት",
+    "catGym": "ጂም",
+    "catPool": "ፖል",
+    "catEvent": "ዝግጅት",
+    "paymentStatusPaid": "ተከፍሏል",
+    "paymentStatusPartial": "ከፊል",
+    "paymentStatusPending": "በመጠባበቅ ላይ",
+    "dashFallback": "—",
+    "priceMultiply": "({{price}} × {{qty}})",
+    "thguest": "እንግዳ",
+    "thservice": "አገልግሎት",
+    "thdate": "ቀን",
+    "thtime": "ሰዓት",
+    "thqty": "ብዛት",
+    "thtotal": "ጠቅላላ",
+    "thpayment": "ክፍያ",
+    "thactions": "ተግባራት"
   }
 }

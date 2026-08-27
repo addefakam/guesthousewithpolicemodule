@@ -417,7 +417,7 @@ export default function RoomsPage() {
   const handleStatusChange = async (room: Room, newStatus: string) => {
     try {
       await apiUpdateRoomStatus(room.id, newStatus);
-      toast.success(`Room ${room.number} status changed to ${newStatus}`);
+      toast.success(t("toastStatusChanged", { number: room.number, status: newStatus }));
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("toastFailedUpdateStatus");
@@ -557,7 +557,7 @@ export default function RoomsPage() {
 
       const result = await apiImportRooms(rows as Record<string, unknown>[]);
       setImportResults(result.results);
-      toast.success(`Import complete: ${result.imported} created, ${result.skipped} skipped`);
+      toast.success(t("toastImportComplete", { imported: result.imported, skipped: result.skipped }));
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("toastImportFailed");
@@ -833,16 +833,16 @@ export default function RoomsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 leading-tight">
-                          Room {room.number}
+                          {t("roomLabel", { number: room.number })}
                         </h3>
-                        <p className="text-sm text-gray-500">{room.type}</p>
+                        <p className="text-sm text-gray-500">{t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}</p>
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                           <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
+                          <span className="sr-only">{t("srActions")}</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -889,11 +889,11 @@ export default function RoomsPage() {
                   {/* Badges Row */}
                   <div className="flex flex-wrap items-center gap-1.5 mb-3">
                     <Badge variant="outline" className={ROOM_TYPE_COLORS[room.type]}>
-                      {room.type}
+                      {t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}
                     </Badge>
                     <Badge variant="outline" className={STATUS_STYLES[room.status]}>
                       <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                      {room.status}
+                      {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
                     </Badge>
                   </div>
 
@@ -902,15 +902,15 @@ export default function RoomsPage() {
                     <div className="flex items-center gap-1.5 text-gray-600">
                       <DollarSign className="h-3.5 w-3.5 text-gray-400" />
                       <span>{formatPrice(room.pricePerNight)}</span>
-                      <span className="text-gray-400">/night</span>
+                      <span className="text-gray-400">{t("perNight")}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-600">
                       <Users className="h-3.5 w-3.5 text-gray-400" />
-                      <span>{room.capacity} guest{room.capacity !== 1 ? "s" : ""}</span>
+                      <span>{t("guest", { count: room.capacity })}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-600">
                       <Building2 className="h-3.5 w-3.5 text-gray-400" />
-                      <span>Floor {getFloorFromNumber(room.number) ?? room.floor}</span>
+                      <span>{t("infoFloorLabel", { floor: getFloorFromNumber(room.number) ?? room.floor })}</span>
                     </div>
                   </div>
 
@@ -930,7 +930,7 @@ export default function RoomsPage() {
                         ))}
                         {amenities.length > 5 && (
                           <span className="flex items-center px-2 py-1 text-xs text-gray-400">
-                            +{amenities.length - 5} more
+                            {t("moreAmenities", { count: amenities.length - 5 })}
                           </span>
                         )}
                       </div>
@@ -1076,7 +1076,7 @@ export default function RoomsPage() {
               <Label htmlFor="room-amenities">{t("labelAmenities")}</Label>
               <Input
                 id="room-amenities"
-                placeholder="WiFi, TV, AC, Mini Bar, Hot Water"
+                placeholder={t("placeholderAmenities")}
                 value={
                   (() => {
                     try {
@@ -1142,11 +1142,11 @@ export default function RoomsPage() {
             <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
               <p className="text-sm font-medium text-emerald-800 mb-1">{t("importRequiredColumns")}</p>
               <p className="text-xs text-emerald-700 mb-3 font-mono">
-                number · type · pricePerNight · floor · capacity · amenities · description
+                {t("importColumns")}
               </p>
               <p className="text-xs text-emerald-600 mb-3">
-                <strong>type</strong> must be one of: SINGLE, DOUBLE, TWIN, SUITE, DELUXE<br />
-                <strong>amenities</strong> — comma-separated, e.g. <em>WiFi, TV, AC</em>
+                {t("importTypeHint")}<br />
+                {t("importAmenitiesHint")}
               </p>
               <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2 border-emerald-400 text-emerald-700 hover:bg-emerald-100">
                 <Download className="h-3.5 w-3.5" />
@@ -1169,7 +1169,7 @@ export default function RoomsPage() {
               </div>
               {importFile && (
                 <p className="text-xs text-gray-500">
-                  Selected: <strong>{importFile.name}</strong> ({(importFile.size / 1024).toFixed(1)} KB)
+                  {t("importFileSelected", { name: importFile.name, size: (importFile.size / 1024).toFixed(1) })}
                 </p>
               )}
             </div>
@@ -1187,9 +1187,9 @@ export default function RoomsPage() {
                     ) : (
                       <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                     )}
-                    <span className="font-medium">Room {r.number}</span>
+                    <span className="font-medium">{t("roomLabel", { number: r.number })}</span>
                     <span className={r.status === "created" ? "text-emerald-600" : "text-amber-600"}>
-                      {r.status === "created" ? "Created" : r.error}
+                      {r.status === "created" ? t("importCreated") : r.error}
                     </span>
                   </div>
                 ))}
@@ -1250,11 +1250,11 @@ export default function RoomsPage() {
                       {ROOM_TYPE_ICONS[infoRoom.type]}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span>Room {infoRoom.number}</span>
+                      <span>{t("roomLabel", { number: infoRoom.number })}</span>
                       {infoRoom.name && <span className="text-gray-400 font-normal">· {infoRoom.name}</span>}
                       <Badge variant="outline" className={STATUS_STYLES[infoRoom.status]}>
                         <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[infoRoom.status]}`} />
-                        {infoRoom.status}
+                        {t("status" + infoRoom.status.charAt(0) + infoRoom.status.slice(1).toLowerCase())}
                       </Badge>
                     </div>
                   </DialogTitle>
@@ -1284,7 +1284,7 @@ export default function RoomsPage() {
                   <div className="rounded-lg border p-3 bg-muted/50">
                     <p className="text-xs text-gray-500 mb-1">{t("infoRoomType")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                      {ROOM_TYPE_ICONS[infoRoom.type]} {infoRoom.type}
+                      {ROOM_TYPE_ICONS[infoRoom.type]} {t("roomType" + (infoRoom.type.charAt(0).toUpperCase() + infoRoom.type.slice(1).toLowerCase()))}
                     </p>
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
@@ -1294,13 +1294,13 @@ export default function RoomsPage() {
                   <div className="rounded-lg border p-3 bg-muted/50">
                     <p className="text-xs text-gray-500 mb-1">{t("infoCapacity")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                      <Users className="h-4 w-4 text-gray-400" /> {infoRoom.capacity} guest{infoRoom.capacity !== 1 ? "s" : ""}
+                      <Users className="h-4 w-4 text-gray-400" /> {t("guest", { count: infoRoom.capacity })}
                     </p>
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
                     <p className="text-xs text-gray-500 mb-1">{t("infoFloor")}</p>
                     <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                      <Building2 className="h-4 w-4 text-gray-400" /> Floor {infoRoom.floor}
+                      <Building2 className="h-4 w-4 text-gray-400" /> {t("infoFloorLabel", { floor: infoRoom.floor })}
                     </p>
                   </div>
                 </div>
@@ -1500,7 +1500,7 @@ export default function RoomsPage() {
                               <span className="text-gray-700">
                                 {res.guest?.name || t("guestFallback")} · {formatDate(res.checkIn)} → {formatDate(res.checkOut)}
                               </span>
-                              <span className="text-emerald-600 font-medium">in {Math.max(0, daysUntil(res.checkIn))}d</span>
+                              <span className="text-emerald-600 font-medium">{t("inDaysShort", { days: Math.max(0, daysUntil(res.checkIn)) })}</span>
                             </div>
                           ))}
                         </div>
@@ -1547,7 +1547,7 @@ export default function RoomsPage() {
                           </div>
                           <div className="text-right shrink-0 ml-2">
                             <Badge variant="outline" className={`text-[10px] ${STATUS_STYLES[res.status] || ""}`}>
-                              {res.status}
+                              {t("status" + res.status.charAt(0) + res.status.slice(1).toLowerCase())}
                             </Badge>
                             <p className="font-medium text-gray-900 mt-0.5">{formatPrice(res.totalCost)}</p>
                           </div>
@@ -1638,7 +1638,7 @@ export default function RoomsPage() {
                 <p className="text-xs text-muted-foreground">
                   {t("extendCurrentCheckout")} <strong>{formatDate(extendDialog.checkOut)}</strong>
                   <span className="mx-1">·</span>
-                  {extendDialog.roomRate > 0 && <span>{formatPrice(extendDialog.roomRate)}/night</span>}
+                  {extendDialog.roomRate > 0 && <span>{formatPrice(extendDialog.roomRate)}{t("perNight")}</span>}
                 </p>
               </div>
               <div>
@@ -1728,7 +1728,7 @@ export default function RoomsPage() {
                     <SelectContent>
                       {shiftAvailableRooms.map((r) => (
                         <SelectItem key={r.id} value={r.id}>
-                          Room {r.number}{r.name ? ` (${r.name})` : ""} — {r.type} — {formatPrice(r.pricePerNight)}/night
+                          {t("shiftRoomOption", { number: r.number, name: r.name ? ` (${r.name})` : "", type: r.type, price: formatPrice(r.pricePerNight) })}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -643,7 +643,14 @@
     "tabMaintenancePill": "Maintenance",
     "tabReservedPill": "Reserved",
     "btnAddRoomHeader": "Add Room",
-    "toastImportComplete": "Import complete: {{imported}} created, {{skipped}} skipped"
+    "toastImportComplete": "Import complete: {{imported}} created, {{skipped}} skipped",
+    "filterAll": "All",
+    "srActions": "Actions",
+    "infoFloorLabel": "Floor {{floor}}",
+    "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
+    "resStatusLabel": "{{status}}",
+    "inDaysShort": "in {{days}}d",
+    "perNightShort": "/night"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -1049,6 +1056,30 @@
     "dlgEditBookingTitle": "Edit Booking",
     "dlgNewBookingTitle": "New Booking",
     "dlgEditBookingDesc": "Update booking details.",
-    "dlgNewBookingDesc": "Create a new daytime service booking."
+    "dlgNewBookingDesc": "Create a new daytime service booking.",
+    "lblcategory": "Category",
+    "lblduration": "Duration",
+    "lbldescription": "Description",
+    "lblphone": "Phone",
+    "lblquantity": "Quantity",
+    "lblpaymentMethod": "Payment Method",
+    "catTour": "Tour",
+    "catTransport": "Transport",
+    "catGym": "Gym",
+    "catPool": "Pool",
+    "catEvent": "Event",
+    "paymentStatusPaid": "Paid",
+    "paymentStatusPartial": "Partial",
+    "paymentStatusPending": "Pending",
+    "dashFallback": "—",
+    "priceMultiply": "({{price}} × {{qty}})",
+    "thguest": "Guest",
+    "thservice": "Service",
+    "thdate": "Date",
+    "thtime": "Time",
+    "thqty": "Qty",
+    "thtotal": "Total",
+    "thpayment": "Payment",
+    "thactions": "Actions"
   }
 }

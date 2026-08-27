@@ -60,3 +60,18 @@ Task: All remaining operator sidebar pages i18n
 
 Stage Summary:
 - Next in queue after accommodation section
+
+---
+Task ID: 1
+Agent: main
+Task: Replace all hardcoded strings in rooms-page.tsx with t() calls
+
+Work Log:
+- Read full rooms-page.tsx (1753 lines)
+- Identified 25 remaining hardcoded strings
+- Added missing translation keys (filterAll, srActions, infoFloorLabel, importColumns, inDaysShort, perNightShort) to all 3 locale files
+- Replaced all 25 hardcoded strings with t() calls
+
+Stage Summary:
+- All hardcoded strings in rooms-page.tsx replaced with i18n t() calls
+- 6 new translation keys added to en/am/om locale files
