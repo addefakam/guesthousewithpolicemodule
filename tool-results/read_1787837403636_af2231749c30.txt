@@ -1,0 +1,638 @@
+    68→  Trash2,
+    69→  DollarSign,
+    70→  CalendarDays,
+    71→  Tag,
+    72→  TrendingDown,
+    73→  FolderPlus,
+    74→} from "lucide-react";
+    75→
+    76→// ─── Types ─────────────────────────────────────────────────────────────────
+    77→
+    78→interface Expense {
+    79→  id: string;
+    80→  date: string;
+    81→  category: string;
+    82→  description: string;
+    83→  amount: number;
+    84→  vendor: string;
+    85→  paymentMethod: string;
+    86→  receiptNo: string;
+    87→  taxAmount: number;
+    88→}
+    89→
+    90→interface Category {
+    91→  id: string;
+    92→  name: string;
+    93→  nameAm: string;
+    94→  color: string;
+    95→  icon: string;
+    96→}
+    97→
+    98→// ─── Helpers ───────────────────────────────────────────────────────────────
+    99→
+   100→const formatPrice = (price: number) =>
+   101→  new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
+   102→
+   103→const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
+   104→
+   105→const DEFAULT_COLORS = [
+   106→  "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
+   107→  "#8b5cf6", "#ec4899", "#6366f1", "#14b8a6", "#f43f5e",
+   108→];
+   109→
+   110→const CATEGORY_PRESETS: { name: string; color: string; icon: string }[] = [
+   111→  { name: "Utilities", color: "#3b82f6", icon: "⚡" },
+   112→  { name: "Supplies", color: "#f97316", icon: "📦" },
+   113→  { name: "Maintenance", color: "#ef4444", icon: "🔧" },
+   114→  { name: "Salaries", color: "#22c55e", icon: "💰" },
+   115→  { name: "Food & Beverage", color: "#eab308", icon: "🍽️" },
+   116→  { name: "Laundry", color: "#06b6d4", icon: "🧺" },
+   117→  { name: "Marketing", color: "#8b5cf6", icon: "📢" },
+   118→  { name: "Transport", color: "#ec4899", icon: "🚗" },
+   119→  { name: "Rent", color: "#6366f1", icon: "🏠" },
+   120→  { name: "Insurance", color: "#14b8a6", icon: "🛡️" },
+   121→  { name: "Miscellaneous", color: "#f43f5e", icon: "📋" },
+   122→];
+   123→
+   124→// ─── Component ─────────────────────────────────────────────────────────────
+   125→
+   126→export default function ExpensesPage() {
+   127→  const { t } = useTranslation("operations");
+   128→  const { refreshKey, triggerRefresh } = useAppStore();
+   129→
+   130→  const [expenses, setExpenses] = useState<Expense[]>([]);
+   131→  const [categories, setCategories] = useState<Category[]>([]);
+   132→  const [loading, setLoading] = useState(true);
+   133→  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+   134→  const [showCatMgmt, setShowCatMgmt] = useState(false);
+   135→  const [newCatName, setNewCatName] = useState("");
+   136→  const [newCatSaving, setNewCatSaving] = useState(false);
+   137→
+   138→  // Expense dialog
+   139→  const [dialogOpen, setDialogOpen] = useState(false);
+   140→  const [editing, setEditing] = useState<Expense | null>(null);
+   141→  const [form, setForm] = useState({
+   142→    date: new Date().toISOString().split("T")[0],
+   143→    category: "",
+   144→    description: "",
+   145→    amount: "",
+   146→    vendor: "",
+   147→    paymentMethod: "CASH",
+   148→    receiptNo: "",
+   149→    taxAmount: "0",
+   150→  });
+   151→  const [saving, setSaving] = useState(false);
+   152→  const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
+   153→  const [deleting, setDeleting] = useState(false);
+   154→  const [deleteCatTarget, setDeleteCatTarget] = useState<Category | null>(null);
+   155→
+   156→  // ─── Data Fetching ────────────────────────────────────────────────────────
+   157→
+   158→  const fetchData = useCallback(async () => {
+   159→    try {
+   160→      setLoading(true);
+   161→      const [expData, catData] = await Promise.all([
+   162→        apiGetExpenses(),
+   163→        apiGetExpenseCategories(),
+   164→      ]);
+   165→      setExpenses(Array.isArray(expData.expenses) ? expData.expenses : []);
+   166→      setCategories(catData.categories || []);
+   167→    } catch (err: unknown) {
+   168→      toast.error(err instanceof Error ? err.message : "Failed to load data");
+   169→    } finally {
+   170→      setLoading(false);
+   171→    }
+   172→  }, []);
+   173→
+   174→  useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
+   175→
+   176→  // ─── Computed ─────────────────────────────────────────────────────────────
+   177→
+   178→  const filteredExpenses = useMemo(() => {
+   179→    if (categoryFilter === "all") return expenses;
+   180→    return expenses.filter((e) => e.category === categoryFilter);
+   181→  }, [expenses, categoryFilter]);
+   182→
+   183→  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+   184→
+   185→  const thisMonthTotal = useMemo(() => {
+   186→    const now = new Date();
+   187→    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+   188→    return expenses.filter((e) => e.date.startsWith(ym)).reduce((s, e) => s + e.amount, 0);
+   189→  }, [expenses]);
+   190→
+   191→  const topCategory = useMemo(() => {
+   192→    const map: Record<string, number> = {};
+   193→    expenses.forEach((e) => { map[e.category] = (map[e.category] || 0) + e.amount; });
+   194→    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+   195→    return sorted.length > 0 ? sorted[0] : ["None", 0];
+   196→  }, [expenses]);
+   197→
+   198→  const categoryBreakdown = useMemo(() => {
+   199→    const map: Record<string, number> = {};
+   200→    filteredExpenses.forEach((e) => { map[e.category] = (map[e.category] || 0) + e.amount; });
+   201→    const maxVal = Math.max(...Object.values(map), 1);
+   202→    return Object.entries(map)
+   203→      .sort((a, b) => b[1] - a[1])
+   204→      .map(([cat, val]) => ({
+   205→        category: cat,
+   206→        amount: val,
+   207→        percent: (val / maxVal) * 100,
+   208→        color: categories.find((c) => c.name === cat)?.color || DEFAULT_COLORS[Object.keys(map).indexOf(cat) % DEFAULT_COLORS.length],
+   209→      }));
+   210→  }, [filteredExpenses, categories]);
+   211→
+   212→  // ─── CRUD ─────────────────────────────────────────────────────────────────
+   213→
+   214→  const openCreate = () => {
+   215→    setEditing(null);
+   216→    setForm({
+   217→      date: new Date().toISOString().split("T")[0],
+   218→      category: categories[0]?.name || "",
+   219→      description: "",
+   220→      amount: "",
+   221→      vendor: "",
+   222→      paymentMethod: "CASH",
+   223→      receiptNo: "",
+   224→      taxAmount: "0",
+   225→    });
+   226→    setDialogOpen(true);
+   227→  };
+   228→
+   229→  const openEdit = (exp: Expense) => {
+   230→    setEditing(exp);
+   231→    setForm({
+   232→      date: exp.date,
+   233→      category: exp.category,
+   234→      description: exp.description,
+   235→      amount: String(exp.amount),
+   236→      vendor: exp.vendor,
+   237→      paymentMethod: exp.paymentMethod,
+   238→      receiptNo: exp.receiptNo,
+   239→      taxAmount: String(exp.taxAmount),
+   240→    });
+   241→    setDialogOpen(true);
+   242→  };
+   243→
+   244→  const handleSave = async () => {
+   245→    if (!form.date || !form.category || !form.description || !form.amount || !form.paymentMethod) {
+   246→      toast.error("Please fill in all required fields");
+   247→      return;
+   248→    }
+   249→    try {
+   250→      setSaving(true);
+   251→      const payload = {
+   252→        date: form.date,
+   253→        category: form.category,
+   254→        description: form.description,
+   255→        amount: Number(form.amount),
+   256→        vendor: form.vendor,
+   257→        paymentMethod: form.paymentMethod,
+   258→        receiptNo: form.receiptNo,
+   259→        taxAmount: Number(form.taxAmount) || 0,
+   260→      };
+   261→      if (editing) {
+   262→        await apiUpdateExpense(editing.id, payload);
+   263→        toast.success("Expense updated");
+   264→      } else {
+   265→        await apiCreateExpense(payload);
+   266→        toast.success("Expense created");
+   267→      }
+   268→      setDialogOpen(false);
+   269→      triggerRefresh();
+   270→    } catch (err: unknown) {
+   271→      toast.error(err instanceof Error ? err.message : "Failed to save expense");
+   272→    } finally {
+   273→      setSaving(false);
+   274→    }
+   275→  };
+   276→
+   277→  const handleDelete = async () => {
+   278→    if (!deleteTarget) return;
+   279→    try {
+   280→      setDeleting(true);
+   281→      await apiDeleteExpense(deleteTarget.id);
+   282→      toast.success("Expense deleted");
+   283→      setDeleteTarget(null);
+   284→      triggerRefresh();
+   285→    } catch (err: unknown) {
+   286→      toast.error(err instanceof Error ? err.message : "Failed to delete expense");
+   287→    } finally {
+   288→      setDeleting(false);
+   289→    }
+   290→  };
+   291→
+   292→  const handleAddCategory = async () => {
+   293→    if (!newCatName.trim()) return;
+   294→    const preset = CATEGORY_PRESETS.find((p) => p.name.toLowerCase() === newCatName.trim().toLowerCase());
+   295→    try {
+   296→      setNewCatSaving(true);
+   297→      await apiCreateExpenseCategory({
+   298→        name: newCatName.trim(),
+   299→        nameAm: "",
+   300→        color: preset?.color || DEFAULT_COLORS[categories.length % DEFAULT_COLORS.length],
+   301→        icon: preset?.icon || "📋",
+   302→      });
+   303→      toast.success("Category added");
+   304→      setNewCatName("");
+   305→      triggerRefresh();
+   306→    } catch (err: unknown) {
+   307→      toast.error(err instanceof Error ? err.message : "Failed to add category");
+   308→    } finally {
+   309→      setNewCatSaving(false);
+   310→    }
+   311→  };
+   312→
+   313→  const handleDeleteCategory = async () => {
+   314→    if (!deleteCatTarget) return;
+   315→    try {
+   316→      await apiDeleteExpenseCategory(deleteCatTarget.id);
+   317→      toast.success("Category deleted");
+   318→      setDeleteCatTarget(null);
+   319→      if (categoryFilter === deleteCatTarget.name) setCategoryFilter("all");
+   320→      triggerRefresh();
+   321→    } catch (err: unknown) {
+   322→      toast.error(err instanceof Error ? err.message : "Failed to delete category");
+   323→    }
+   324→  };
+   325→
+   326→  const getCategoryColor = (name: string) =>
+   327→    categories.find((c) => c.name === name)?.color || "#6b7280";
+   328→
+   329→  // ─── Render ───────────────────────────────────────────────────────────────
+   330→
+   331→  if (loading) {
+   332→    return (
+   333→      <div className="space-y-6 p-4 md:p-6">
+   334→        <div className="flex items-center justify-between">
+   335→          <div><Skeleton className="h-8 w-40" /><Skeleton className="mt-1 h-4 w-56" /></div>
+   336→          <Skeleton className="h-10 w-36" />
+   337→        </div>
+   338→        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+   339→          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+   340→        </div>
+   341→        <Skeleton className="h-96 rounded-xl" />
+   342→      </div>
+   343→    );
+   344→  }
+   345→
+   346→  return (
+   347→    <div className="space-y-6 p-4 md:p-6">
+   348→      {/* Header */}
+   349→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   350→        <div>
+   351→          <h1 className="text-2xl font-bold text-gray-900">{t("expensesTitle", "Expenses")}</h1>
+   352→          <p className="mt-1 text-sm text-gray-500">{t("expensesDesc", "Track and manage all business expenses")}</p>
+   353→        </div>
+   354→        <div className="flex gap-2">
+   355→          <Button variant="outline" onClick={() => setShowCatMgmt(!showCatMgmt)} className="gap-2">
+   356→            <FolderPlus className="h-4 w-4" />
+   357→            {showCatMgmt ? t("hideCategories", "Hide Categories") : t("manageCategories", "Manage Categories")}
+   358→          </Button>
+   359→          <Button onClick={openCreate} className="gap-2">
+   360→            <Plus className="h-4 w-4" /> {t("addExpense", "Add Expense")}
+   361→          </Button>
+   362→        </div>
+   363→      </div>
+   364→
+   365→      {/* Summary Cards */}
+   366→      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+   367→        <Card className="gap-0 py-0">
+   368→          <CardContent className="p-4">
+   369→            <div className="flex items-center gap-3">
+   370→              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
+   371→                <DollarSign className="h-5 w-5 text-emerald-600" />
+   372→              </div>
+   373→              <div>
+   374→                <p className="text-sm text-gray-500">Total Expenses</p>
+   375→                <p className="text-xl font-bold text-gray-900">{formatPrice(totalExpenses)}</p>
+   376→              </div>
+   377→            </div>
+   378→          </CardContent>
+   379→        </Card>
+   380→        <Card className="gap-0 py-0">
+   381→          <CardContent className="p-4">
+   382→            <div className="flex items-center gap-3">
+   383→              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-50">
+   384→                <CalendarDays className="h-5 w-5 text-amber-600" />
+   385→              </div>
+   386→              <div>
+   387→                <p className="text-sm text-gray-500">This Month</p>
+   388→                <p className="text-xl font-bold text-gray-900">{formatPrice(thisMonthTotal)}</p>
+   389→              </div>
+   390→            </div>
+   391→          </CardContent>
+   392→        </Card>
+   393→        <Card className="gap-0 py-0">
+   394→          <CardContent className="p-4">
+   395→            <div className="flex items-center gap-3">
+   396→              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-violet-50">
+   397→                <TrendingDown className="h-5 w-5 text-violet-600" />
+   398→              </div>
+   399→              <div>
+   400→                <p className="text-sm text-gray-500">Top Category</p>
+   401→                <p className="text-xl font-bold text-gray-900">{topCategory[0]}</p>
+   402→                <p className="text-xs text-gray-400">{formatPrice(topCategory[1] as number)}</p>
+   403→              </div>
+   404→            </div>
+   405→          </CardContent>
+   406→        </Card>
+   407→      </div>
+   408→
+   409→      {/* Category Management */}
+   410→      {showCatMgmt && (
+   411→        <Card className="gap-0 py-0">
+   412→          <CardContent className="p-4">
+   413→            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+   414→              <Tag className="h-4 w-4" /> Expense Categories
+   415→            </h3>
+   416→            <div className="flex flex-wrap gap-2 mb-4">
+   417→              {categories.map((cat) => (
+   418→                <Badge
+   419→                  key={cat.id}
+   420→                  variant="outline"
+   421→                  className="cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors gap-1"
+   422→                  onClick={() => setDeleteCatTarget(cat)}
+   423→                >
+   424→                  <span>{cat.icon}</span>
+   425→                  {cat.name}
+   426→                  <span className="ml-1 text-gray-400 text-xs hover:text-red-500">×</span>
+   427→                </Badge>
+   428→              ))}
+   429→            </div>
+   430→            <Separator className="mb-3" />
+   431→            <div className="flex gap-2">
+   432→              <Input
+   433→                placeholder="New category name"
+   434→                value={newCatName}
+   435→                onChange={(e) => setNewCatName(e.target.value)}
+   436→                onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+   437→                className="max-w-xs"
+   438→              />
+   439→              <Button onClick={handleAddCategory} disabled={!newCatName.trim() || newCatSaving} size="sm">
+   440→                {newCatSaving ? "Adding..." : "Add"}
+   441→              </Button>
+   442→            </div>
+   443→          </CardContent>
+   444→        </Card>
+   445→      )}
+   446→
+   447→      {/* Category Filter */}
+   448→      <div className="flex items-center gap-2 flex-wrap">
+   449→        <span className="text-sm text-gray-500 font-medium">Filter:</span>
+   450→        <Button
+   451→          variant={categoryFilter === "all" ? "default" : "outline"}
+   452→          size="sm"
+   453→          onClick={() => setCategoryFilter("all")}
+   454→        >
+   455→          All
+   456→        </Button>
+   457→        {categories.map((cat) => (
+   458→          <Button
+   459→            key={cat.id}
+   460→            variant={categoryFilter === cat.name ? "default" : "outline"}
+   461→            size="sm"
+   462→            onClick={() => setCategoryFilter(cat.name)}
+   463→            className="gap-1"
+   464→          >
+   465→            <span>{cat.icon}</span>
+   466→            {cat.name}
+   467→          </Button>
+   468→        ))}
+   469→      </div>
+   470→
+   471→      {/* Breakdown Visualization */}
+   472→      {categoryBreakdown.length > 0 && (
+   473→        <Card className="gap-0 py-0">
+   474→          <CardContent className="p-4">
+   475→            <h3 className="font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
+   476→            <div className="space-y-3">
+   477→              {categoryBreakdown.map((item) => (
+   478→                <div key={item.category} className="flex items-center gap-3">
+   479→                  <div className="w-28 text-sm text-gray-600 truncate shrink-0">{item.category}</div>
+   480→                  <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+   481→                    <div
+   482→                      className="h-full rounded-full transition-all duration-500 flex items-center pl-2"
+   483→                      style={{ width: `${item.percent}%`, backgroundColor: item.color, minWidth: item.percent > 0 ? "2rem" : "0" }}
+   484→                    >
+   485→                      {item.percent > 15 && (
+   486→                        <span className="text-xs font-medium text-white truncate">
+   487→                          {formatPrice(item.amount)}
+   488→                        </span>
+   489→                      )}
+   490→                    </div>
+   491→                  </div>
+   492→                  {item.percent <= 15 && (
+   493→                    <span className="text-xs text-gray-500 w-20 text-right">{formatPrice(item.amount)}</span>
+   494→                  )}
+   495→                </div>
+   496→              ))}
+   497→            </div>
+   498→          </CardContent>
+   499→        </Card>
+   500→      )}
+   501→
+   502→      {/* Expenses Table */}
+   503→      {filteredExpenses.length === 0 ? (
+   504→        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+   505→          <Receipt className="h-12 w-12 text-gray-300 mb-3" />
+   506→          <p className="text-lg font-medium text-gray-500">No expenses found</p>
+   507→          <p className="mt-1 text-sm text-gray-400">
+   508→            {categoryFilter !== "all" ? "Try a different category filter" : "Start by adding your first expense"}
+   509→          </p>
+   510→          <Button onClick={openCreate} variant="outline" className="mt-4 gap-2">
+   511→            <Plus className="h-4 w-4" /> Add Expense
+   512→          </Button>
+   513→        </div>
+   514→      ) : (
+   515→        <div className="rounded-xl border bg-white overflow-hidden">
+   516→          <div className="max-h-[480px] overflow-y-auto">
+   517→            <Table>
+   518→              <TableHeader>
+   519→                <TableRow>
+   520→                  <TableHead>{t('thdate', 'Date')}</TableHead>
+   521→                  <TableHead>{t('thcategory', 'Category')}</TableHead>
+   522→                  <TableHead>{t('thdescription', 'Description')}</TableHead>
+   523→                  <TableHead>{t('thamount', 'Amount')}</TableHead>
+   524→                  <TableHead>{t('thvendor', 'Vendor')}</TableHead>
+   525→                  <TableHead>{t('thmethod', 'Method')}</TableHead>
+   526→                  <TableHead>{t('threceipt', 'Receipt')}</TableHead>
+   527→                  <TableHead>{t('thactions', 'Actions')}</TableHead>
+   528→                </TableRow>
+   529→              </TableHeader>
+   530→              <TableBody>
+   531→                {filteredExpenses.map((exp) => (
+   532→                  <TableRow key={exp.id}>
+   533→                    <TableCell className="text-sm">{exp.date}</TableCell>
+   534→                    <TableCell>
+   535→                      <Badge
+   536→                        variant="outline"
+   537→                        className="gap-1"
+   538→                        style={{
+   539→                          borderColor: getCategoryColor(exp.category),
+   540→                          color: getCategoryColor(exp.category),
+   541→                          backgroundColor: getCategoryColor(exp.category) + "15",
+   542→                        }}
+   543→                      >
+   544→                        {categories.find((c) => c.name === exp.category)?.icon || "📋"}
+   545→                        {exp.category}
+   546→                      </Badge>
+   547→                    </TableCell>
+   548→                    <TableCell className="max-w-[200px]">
+   549→                      <p className="text-sm text-gray-900 truncate">{exp.description}</p>
+   550→                    </TableCell>
+   551→                    <TableCell className="text-right font-medium text-sm">
+   552→                      {formatPrice(exp.amount)}
+   553→                      {exp.taxAmount > 0 && (
+   554→                        <span className="text-xs text-gray-400 block">+{formatPrice(exp.taxAmount)} tax</span>
+   555→                      )}
+   556→                    </TableCell>
+   557→                    <TableCell className="text-sm text-gray-500">{exp.vendor || "—"}</TableCell>
+   558→                    <TableCell>
+   559→                      <Badge variant="secondary" className="text-xs">{exp.paymentMethod}</Badge>
+   560→                    </TableCell>
+   561→                    <TableCell className="text-sm text-gray-500">{exp.receiptNo || "—"}</TableCell>
+   562→                    <TableCell className="text-right">
+   563→                      <DropdownMenu>
+   564→                        <DropdownMenuTrigger asChild>
+   565→                          <Button variant="ghost" size="icon" className="h-8 w-8">
+   566→                            <MoreVertical className="h-4 w-4" />
+   567→                          </Button>
+   568→                        </DropdownMenuTrigger>
+   569→                        <DropdownMenuContent align="end">
+   570→                          <DropdownMenuItem onClick={() => openEdit(exp)}>
+   571→                            <Pencil className="mr-2 h-4 w-4" /> Edit
+   572→                          </DropdownMenuItem>
+   573→                          <DropdownMenuSeparator />
+   574→                          <DropdownMenuItem
+   575→                            className="text-rose-600 focus:text-rose-600"
+   576→                            onClick={() => setDeleteTarget(exp)}
+   577→                          >
+   578→                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+   579→                          </DropdownMenuItem>
+   580→                        </DropdownMenuContent>
+   581→                      </DropdownMenu>
+   582→                    </TableCell>
+   583→                  </TableRow>
+   584→                ))}
+   585→              </TableBody>
+   586→            </Table>
+   587→          </div>
+   588→        </div>
+   589→      )}
+   590→
+   591→      {/* ─── Create/Edit Dialog ────────────────────────────────────────────── */}
+   592→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   593→        <DialogContent className="sm:max-w-lg">
+   594→          <DialogHeader>
+   595→            <DialogTitle>{editing ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+   596→            <DialogDescription>
+   597→              {editing ? "Update expense details." : "Record a new business expense."}
+   598→            </DialogDescription>
+   599→          </DialogHeader>
+   600→          <div className="grid gap-4 py-2">
+   601→            <div className="grid grid-cols-2 gap-4">
+   602→              <div className="space-y-2">
+   603→                <Label>Date <span className="text-rose-500">*</span></Label>
+   604→                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+   605→              </div>
+   606→              <div className="space-y-2">
+   607→                <Label>Category <span className="text-rose-500">*</span></Label>
+   608→                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+   609→                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+   610→                  <SelectContent>
+   611→                    {categories.map((cat) => (
+   612→                      <SelectItem key={cat.id} value={cat.name}>
+   613→                        <span className="flex items-center gap-1.5">
+   614→                          <span>{cat.icon}</span> {cat.name}
+   615→                        </span>
+   616→                      </SelectItem>
+   617→                    ))}
+   618→                  </SelectContent>
+   619→                </Select>
+   620→              </div>
+   621→            </div>
+   622→            <div className="space-y-2">
+   623→              <Label>Description <span className="text-rose-500">*</span></Label>
+   624→              <Input placeholder="What was this expense for?" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+   625→            </div>
+   626→            <div className="grid grid-cols-2 gap-4">
+   627→              <div className="space-y-2">
+   628→                <Label>Amount <span className="text-rose-500">*</span></Label>
+   629→                <Input type="number" placeholder="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+   630→              </div>
+   631→              <div className="space-y-2">
+   632→                <Label>{t('lbltaxAmount', 'Tax Amount')}</Label>
+   633→                <Input type="number" placeholder="0" value={form.taxAmount} onChange={(e) => setForm({ ...form, taxAmount: e.target.value })} />
+   634→              </div>
+   635→            </div>
+   636→            <div className="grid grid-cols-2 gap-4">
+   637→              <div className="space-y-2">
+   638→                <Label>{t('lblvendor', 'Vendor')}</Label>
+   639→                <Input placeholder="Vendor name" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+   640→              </div>
+   641→              <div className="space-y-2">
+   642→                <Label>Payment Method <span className="text-rose-500">*</span></Label>
+   643→                <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
+   644→                  <SelectTrigger><SelectValue /></SelectTrigger>
+   645→                  <SelectContent>
+   646→                    {PAYMENT_METHODS.map((m) => (
+   647→                      <SelectItem key={m} value={m}>{m}</SelectItem>
+   648→                    ))}
+   649→                  </SelectContent>
+   650→                </Select>
+   651→              </div>
+   652→            </div>
+   653→            <div className="space-y-2">
+   654→              <Label>{t('lblreceiptNumber', 'Receipt Number')}</Label>
+   655→              <Input placeholder="Receipt or reference number" value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} />
+   656→            </div>
+   657→          </div>
+   658→          <DialogFooter>
+   659→            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+   660→            <Button onClick={handleSave} disabled={saving}>
+   661→              {saving ? "Saving..." : editing ? "Update Expense" : "Create Expense"}
+   662→            </Button>
+   663→          </DialogFooter>
+   664→        </DialogContent>
+   665→      </Dialog>
+   666→
+   667→      {/* ─── Delete Expense Alert ──────────────────────────────────────────── */}
+   668→      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+   669→        <AlertDialogContent>
+   670→          <AlertDialogHeader>
+   671→            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+   672→            <AlertDialogDescription>
+   673→              This will permanently delete the expense for &quot;{deleteTarget?.description}&quot; ({formatPrice(deleteTarget?.amount || 0)}).
+   674→            </AlertDialogDescription>
+   675→          </AlertDialogHeader>
+   676→          <AlertDialogFooter>
+   677→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   678→            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
+   679→              {deleting ? "Deleting..." : "Delete"}
+   680→            </AlertDialogAction>
+   681→          </AlertDialogFooter>
+   682→        </AlertDialogContent>
+   683→      </AlertDialog>
+   684→
+   685→      {/* ─── Delete Category Alert ─────────────────────────────────────────── */}
+   686→      <AlertDialog open={!!deleteCatTarget} onOpenChange={() => setDeleteCatTarget(null)}>
+   687→        <AlertDialogContent>
+   688→          <AlertDialogHeader>
+   689→            <AlertDialogTitle>Delete category &quot;{deleteCatTarget?.name}&quot;?</AlertDialogTitle>
+   690→            <AlertDialogDescription>
+   691→              This will permanently remove this category. Existing expenses with this category will not be affected.
+   692→            </AlertDialogDescription>
+   693→          </AlertDialogHeader>
+   694→          <AlertDialogFooter>
+   695→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   696→            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteCategory}>
+   697→              Delete
+   698→            </AlertDialogAction>
+   699→          </AlertDialogFooter>
+   700→        </AlertDialogContent>
+   701→      </AlertDialog>
+   702→    </div>
+   703→  );
+   704→}
+   705→
