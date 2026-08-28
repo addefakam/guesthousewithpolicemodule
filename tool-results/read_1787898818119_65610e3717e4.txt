@@ -1,0 +1,1117 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
+     4→import { useTranslation } from "react-i18next";
+     5→import { useAppStore } from "@/lib/store";
+     6→import { apiGetReports } from "@/lib/api";
+     7→import { toast } from "sonner";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { Input } from "@/components/ui/input";
+    11→import { Label } from "@/components/ui/label";
+    12→import { Skeleton } from "@/components/ui/skeleton";
+    13→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from "@/components/ui/table";
+    22→import {
+    23→  Select,
+    24→  SelectContent,
+    25→  SelectItem,
+    26→  SelectTrigger,
+    27→  SelectValue,
+    28→} from "@/components/ui/select";
+    29→import {
+    30→  DollarSign,
+    31→  TrendingDown,
+    32→  TrendingUp,
+    33→  Percent,
+    34→  Download,
+    35→  BarChart3,
+    36→  CalendarDays,
+    37→  Search,
+    38→  Users,
+    39→  ChevronDown,
+    40→  ChevronUp,
+    41→  Mail,
+    42→  CreditCard,
+    43→  Globe,
+    44→  MapPin,
+    45→  FileText,
+    46→  Star,
+    47→  UserCheck,
+    48→} from "lucide-react";
+    49→
+    50→interface Reservation {
+    51→  id: string;
+    52→  status: string;
+    53→  paidAmount: number;
+    54→  checkIn: string;
+    55→  checkOut: string;
+    56→  guest: {
+    57→    id: string;
+    58→    name: string;
+    59→    phone: string;
+    60→    email: string;
+    61→    idNumber: string;
+    62→    idType: string;
+    63→    nationality: string;
+    64→    address: string;
+    65→    notes: string;
+    66→    vip: boolean;
+    67→    createdAt: string;
+    68→  };
+    69→  room: { number: string; name: string; type: string };
+    70→}
+    71→
+    72→interface ExpenseBreakdownItem {
+    73→  category: string;
+    74→  amount: number;
+    75→}
+    76→
+    77→interface DailyRevenueItem {
+    78→  date: string;
+    79→  amount: number;
+    80→}
+    81→
+    82→interface ReportData {
+    83→  revenue: number;
+    84→  expenses: number;
+    85→  profit: number;
+    86→  occupancyRate: number;
+    87→  reservations: Reservation[];
+    88→  activeGuests: Reservation[];
+    89→  expenseBreakdown: ExpenseBreakdownItem[];
+    90→  dailyRevenue: DailyRevenueItem[];
+    91→}
+    92→
+    93→const EXPENSE_COLORS = [
+    94→  "bg-rose-500",
+    95→  "bg-amber-500",
+    96→  "bg-emerald-500",
+    97→  "bg-sky-500",
+    98→  "bg-violet-500",
+    99→  "bg-pink-500",
+   100→  "bg-teal-500",
+   101→  "bg-orange-500",
+   102→];
+   103→
+   104→const STATUS_COLORS: Record<string, string> = {
+   105→  UPCOMING: "bg-blue-100 text-blue-700 border-blue-200",
+   106→  ACTIVE: "bg-emerald-100 text-emerald-700 border-emerald-200",
+   107→  COMPLETED: "bg-gray-100 text-gray-700 border-gray-200",
+   108→  CANCELLED: "bg-red-100 text-red-700 border-red-200",
+   109→};
+   110→
+   111→function formatCurrency(amount: number) {
+   112→  return new Intl.NumberFormat("en-US", {
+   113→    style: "currency",
+   114→    currency: "ETB",
+   115→    minimumFractionDigits: 0,
+   116→    maximumFractionDigits: 0,
+   117→  }).format(amount);
+   118→}
+   119→
+   120→export default function ReportsPage() {
+   121→  const { t } = useTranslation("reports");
+   122→  const { refreshKey } = useAppStore();
+   123→  const today = new Date().toISOString().split("T")[0];
+   124→  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+   125→
+   126→  const [from, setFrom] = useState(monthAgo);
+   127→  const [to, setTo] = useState(today);
+   128→  const [preset, setPreset] = useState<string>("CUSTOM");
+   129→  const [data, setData] = useState<ReportData | null>(null);
+   130→  const [loading, setLoading] = useState(true);
+   131→  const [showGuests, setShowGuests] = useState(false);
+   132→  const [showActiveGuests, setShowActiveGuests] = useState(false);
+   133→  const [activeGuestSearch, setActiveGuestSearch] = useState();
+   134→  const [expandedActiveIdx, setExpandedActiveIdx] = useState<number | null>(null);
+   135→  const [expandedGuestIdx, setExpandedGuestIdx] = useState<number | null>(null);
+   136→  const [guestSearch, setGuestSearch] = useState("");
+   137→
+   138→  // ── Preset date ranges ──
+   139→  const fetchReports = useCallback(async () => {
+   140→    setLoading(true);
+   141→    try {
+   142→      const params = new URLSearchParams();
+   143→      if (from) params.set("from", from);
+   144→      if (to) params.set("to", to);
+   145→      const raw = await apiGetReports(params.toString());
+   146→      const result: ReportData = {
+   147→        revenue: raw.revenue ?? 0,
+   148→        expenses: raw.expenses ?? 0,
+   149→        profit: raw.profit ?? 0,
+   150→        occupancyRate: raw.occupancyRate ?? 0,
+   151→        reservations: Array.isArray(raw.reservations) ? raw.reservations : [],
+   152→        activeGuests: Array.isArray(raw.activeGuests) ? raw.activeGuests : [],
+   153→        expenseBreakdown: Array.isArray(raw.expenseBreakdown) ? raw.expenseBreakdown : [],
+   154→        dailyRevenue: Array.isArray(raw.dailyRevenue) ? raw.dailyRevenue : [],
+   155→      };
+   156→      setData(result);
+   157→    } catch (err: unknown) {
+   158→      toast.error(err instanceof Error ? err.message : "Failed to load reports");
+   159→    } finally {
+   160→      setLoading(false);
+   161→    }
+   162→  }, [from, to]);
+   163→
+   164→  const handlePresetChange = (value: string) => {
+   165→    setPreset(value);
+   166→    const now = new Date();
+   167→    const y = now.getFullYear();
+   168→    const m = now.getMonth();
+   169→    const d = now.getDate();
+   170→    const dayOfWeek = now.getDay();
+   171→
+   172→    let newFrom = from;
+   173→    let newTo = to;
+   174→
+   175→    if (value === "TODAY") {
+   176→      newFrom = today;
+   177→      newTo = today;
+   178→    } else if (value === "THIS_WEEK") {
+   179→      const monday = new Date(y, m, d - ((dayOfWeek + 6) % 7));
+   180→      const sunday = new Date(monday);
+   181→      sunday.setDate(monday.getDate() + 6);
+   182→      newFrom = monday.toISOString().split("T")[0];
+   183→      newTo = sunday.toISOString().split("T")[0];
+   184→    } else if (value === "LAST_WEEK") {
+   185→      const thisMonday = new Date(y, m, d - ((dayOfWeek + 6) % 7));
+   186→      const lastMonday = new Date(thisMonday);
+   187→      lastMonday.setDate(thisMonday.getDate() - 7);
+   188→      const lastSunday = new Date(lastMonday);
+   189→      lastSunday.setDate(lastMonday.getDate() + 6);
+   190→      newFrom = lastMonday.toISOString().split("T")[0];
+   191→      newTo = lastSunday.toISOString().split("T")[0];
+   192→    } else if (value.startsWith("MONTH_")) {
+   193→      const monthStr = value.replace("MONTH_", "");
+   194→      const [my, mm] = monthStr.split("-").map(Number);
+   195→      const first = new Date(my, mm - 1, 1);
+   196→      const last = new Date(my, mm, 0);
+   197→      newFrom = first.toISOString().split("T")[0];
+   198→      newTo = last.toISOString().split("T")[0];
+   199→    }
+   200→    // CUSTOM does nothing — user picks from/to manually
+   201→    if (value !== "CUSTOM") {
+   202→      setFrom(newFrom);
+   203→      setTo(newTo);
+   204→    }
+   205→  };
+   206→
+   207→  // Generate month options for the last 12 months
+   208→  const monthOptions = useMemo(() => {
+   209→    const opts: { value: string; label: string }[] = [];
+   210→    const now = new Date();
+   211→    for (let i = 0; i < 12; i++) {
+   212→      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+   213→      const val = `MONTH_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+   214→      const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+   215→      opts.push({ value: val, label });
+   216→    }
+   217→    return opts;
+   218→  }, []);
+   219→
+   220→  useEffect(() => {
+   221→    fetchReports();
+   222→  }, [fetchReports, refreshKey]);
+   223→
+   224→  const statusBreakdown = useMemo(() => {
+   225→    if (!data?.reservations) return [];
+   226→    const map = new Map<string, { count: number; revenue: number }>();
+   227→    for (const r of data.reservations) {
+   228→      const existing = map.get(r.status) || { count: 0, revenue: 0 };
+   229→      existing.count += 1;
+   230→      existing.revenue += r.paidAmount;
+   231→      map.set(r.status, existing);
+   232→    }
+   233→    return Array.from(map.entries()).map(([status, info]) => ({
+   234→      status,
+   235→      ...info,
+   236→    }));
+   237→  }, [data]);
+   238→
+   239→  const maxDailyRevenue = useMemo(() => {
+   240→    if (!data?.dailyRevenue?.length) return 0;
+   241→    return Math.max(...data.dailyRevenue.map((d) => d.amount), 1);
+   242→  }, [data]);
+   243→
+   244→  const maxExpenseCategory = useMemo(() => {
+   245→    if (!data?.expenseBreakdown?.length) return 0;
+   246→    return Math.max(...data.expenseBreakdown.map((e) => e.amount), 1);
+   247→  }, [data]);
+   248→
+   249→  // Unique guests served in the period
+   250→  const servedGuests = useMemo(() => {
+   251→    if (!data?.reservations?.length) return [];
+   252→    const map = new Map<string, {
+   253→      guestId: string;
+   254→      name: string;
+   255→      phone: string;
+   256→      email: string;
+   257→      idNumber: string;
+   258→      idType: string;
+   259→      nationality: string;
+   260→      address: string;
+   261→      notes: string;
+   262→      vip: boolean;
+   263→      guestSince: string;
+   264→      visits: number;
+   265→      totalSpent: number;
+   266→      lastVisit: string;
+   267→      rooms: { number: string; name: string; type: string; checkIn: string; checkOut: string; status: string }[];
+   268→    }>();
+   269→    for (const r of data.reservations.filter((r: { status: string }) => r.status === "COMPLETED")) {
+   270→      const g = r.guest;
+   271→      const key = g?.id || g?.name || r.guestId || "unknown";
+   272→      const existing = map.get(key) || {
+   273→        guestId: g?.id || "",
+   274→        name: g?.name || "Unknown",
+   275→        phone: g?.phone || "",
+   276→        email: g?.email || "",
+   277→        idNumber: g?.idNumber || "",
+   278→        idType: g?.idType || "",
+   279→        nationality: g?.nationality || "",
+   280→        address: g?.address || "",
+   281→        notes: g?.notes || "",
+   282→        vip: g?.vip || false,
+   283→        guestSince: g?.createdAt || "",
+   284→        visits: 0,
+   285→        totalSpent: 0,
+   286→        lastVisit: "",
+   287→        rooms: [],
+   288→      };
+   289→      existing.visits += 1;
+   290→      existing.totalSpent += r.paidAmount;
+   291→      if (r.checkIn > existing.lastVisit) existing.lastVisit = r.checkIn;
+   292→      existing.rooms.push({
+   293→        number: r.room?.number || "",
+   294→        name: r.room?.name || "",
+   295→        type: r.room?.type || "",
+   296→        checkIn: r.checkIn || "",
+   297→        checkOut: r.checkOut || "",
+   298→        status: r.status || "",
+   299→      });
+   300→      map.set(key, existing);
+   301→    }
+   302→    return Array.from(map.values()).sort((a, b) => b.lastVisit.localeCompare(a.lastVisit));
+   303→  }, [data]);
+   304→  const filteredServedGuests = useMemo(() => {
+   305→    if (!guestSearch) return servedGuests;
+   306→    const q = guestSearch.toLowerCase();
+   307→    return servedGuests.filter((g) =>
+   308→      g.name.toLowerCase().includes(q) ||
+   309→      g.phone.toLowerCase().includes(q) ||
+   310→      g.idNumber.toLowerCase().includes(q) ||
+   311→      g.email.toLowerCase().includes(q) ||
+   312→      g.nationality.toLowerCase().includes(q)
+   313→    );
+   314→  }, [servedGuests, guestSearch]);
+   315→  // Active guests (OCCUPIED + RESERVED) in the period
+   316→  const activeGuests = useMemo(() => {
+   317→    if (!data?.activeGuests?.length) return [];
+   318→    const map = new Map();
+   319→    for (const r of data.activeGuests) {
+   320→      const g = r.guest;
+   321→      map.set(r.id, {
+   322→        reservationId: r.id,
+   323→        guestId: g?.id || "",
+   324→        name: g?.name || "Unknown",
+   325→        phone: g?.phone || "",
+   326→        email: g?.email || "",
+   327→        idNumber: g?.idNumber || "",
+   328→        idType: g?.idType || "",
+   329→        nationality: g?.nationality || "",
+   330→        address: g?.address || "",
+   331→        notes: g?.notes || "",
+   332→        vip: g?.vip || false,
+   333→        roomNumber: r.room?.number || "",
+   334→        roomName: r.room?.name || "",
+   335→        roomType: r.room?.type || "",
+   336→        status: r.status,
+   337→        checkIn: r.checkIn || "",
+   338→        checkOut: r.checkOut || "",
+   339→        paidAmount: r.paidAmount || 0,
+   340→      });
+   341→    }
+   342→    return Array.from(map.values()).sort((a, b) => {
+   343→      if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+   344→      if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+   345→      return a.checkIn.localeCompare(b.checkIn);
+   346→    });
+   347→  }, [data]);
+   348→  const filteredActiveGuests = useMemo(() => {
+   349→    if (!activeGuestSearch) return activeGuests;
+   350→    const q = activeGuestSearch.toLowerCase();
+   351→    return activeGuests.filter((g) =>
+   352→      g.name.toLowerCase().includes(q) ||
+   353→      g.phone.toLowerCase().includes(q) ||
+   354→      g.idNumber.toLowerCase().includes(q) ||
+   355→      g.email.toLowerCase().includes(q) ||
+   356→      g.roomNumber.toLowerCase().includes(q)
+   357→    );
+   358→  }, [activeGuests, activeGuestSearch]);
+   359→  const handleExportPDF = () => {
+   360→    if (!data) return;
+   361→    const providerName = useAppStore.getState().currentUser?.providerName || "Guest House";
+   362→    const win = window.open("", "_blank");
+   363→    if (!win) { toast.error("Please allow popups to export PDF"); return; }
+   364→
+   365→    const statusRows = statusBreakdown.map(s => `<tr><td>${s.status.replace(/_/g, " ")}</td><td style="text-align:right">${s.count}</td><td style="text-align:right">${formatCurrency(s.revenue)}</td></tr>`).join("");
+   366→    const dailyRows = data.dailyRevenue.map(d => `<tr><td>${d.date}</td><td style="text-align:right">${formatCurrency(d.amount)}</td></tr>`).join("");
+   367→    const expenseRows = data.expenseBreakdown.map(e => `<tr><td>${e.category}</td><td style="text-align:right">${formatCurrency(e.amount)}</td></tr>`).join("");
+   368→
+   369→    win.document.write(`<!DOCTYPE html><html><head><title>Report ${from} to ${to}</title>
+   370→      <style>
+   371→        @page { margin: 20mm; size: A4; }
+   372→        body { font-family: Arial, Helvetica, sans-serif; color: #1e293b; font-size: 13px; }
+   373→        h1 { font-size: 22px; margin-bottom: 2px; }
+   374→        .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; }
+   375→        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+   376→        th { background: #f1f5f9; text-align: left; padding: 8px 12px; font-size: 12px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+   377→        td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+   378→        .summary { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+   379→        .summary-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
+   380→        .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+   381→        .summary-value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+   382→        .green { color: #059669; } .red { color: #dc2626; } .blue { color: #2563eb; } .violet { color: #7c3aed; }
+   383→        .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; color: #334155; }
+   384→        .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 11px; }
+   385→        @media print { .no-print { display: none; } }
+   386→      </style></head><body>
+   387→      <h1>Financial Report</h1>
+   388→      <p class="subtitle">${providerName} &middot; ${from} to ${to}</p>
+   389→      <div class="summary">
+   390→        <div class="summary-card"><div class="summary-label">Total Revenue</div><div class="summary-value green">${formatCurrency(data.revenue)}</div></div>
+   391→        <div class="summary-card"><div class="summary-label">Total Expenses</div><div class="summary-value red">${formatCurrency(data.expenses)}</div></div>
+   392→        <div class="summary-card"><div class="summary-label">Net Profit</div><div class="summary-value ${data.profit >= 0 ? "green" : "red"}">${formatCurrency(data.profit)}</div></div>
+   393→        <div class="summary-card"><div class="summary-label">Avg Occupancy</div><div class="summary-value violet">${data.occupancyRate}%</div></div>
+   394→      </div>
+   395→      <p class="section-title">Reservations by Status</p>
+   396→      <table><thead><tr><th>Status</th><th style="text-align:right">Count</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${statusRows}</tbody></table>
+   397→      <p class="section-title">Daily Revenue Trend</p>
+   398→      <table><thead><tr><th>Date</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${dailyRows}</tbody></table>
+   399→      ${data.expenseBreakdown.length > 0 ? `<p class="section-title">Expense Breakdown</p><table><thead><tr><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody>${expenseRows}</tbody></table>` : ""}
+   400→      <div class="footer">Generated on ${new Date().toLocaleString()} &middot; GHMS Report</div>
+   401→      <div class="no-print" style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save as PDF</button></div>
+   402→      </body></html>`);
+   403→    win.document.close();
+   404→    toast.success("Report opened for PDF export");
+   405→  };
+   406→
+   407→  return (
+   408→    <div className="space-y-6 p-4 md:p-6">
+   409→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   410→        <div>
+   411→          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+   412→          <p className="text-sm text-muted-foreground mt-1">
+   413→            {t("pageSubtitle")}
+   414→          </p>
+   415→        </div>
+   416→        <div className="flex gap-2">
+   417→          <Button variant={showActiveGuests ? "default" : "outline"} onClick={() => setShowActiveGuests(!showActiveGuests)} disabled={loading || !data}>
+   418→            <UserCheck className="mr-2 h-4 w-4" />
+   419→            Active Guests ({activeGuests.length})
+   420→          </Button>
+   421→          <Button variant={showGuests ? "default" : "outline"} onClick={() => setShowGuests(!showGuests)} disabled={loading || !data}>
+   422→            <Users className="mr-2 h-4 w-4" />
+   423→            Served Guests ({servedGuests.length})
+   424→          </Button>
+   425→          <Button variant="outline" onClick={handleExportPDF} disabled={loading || !data}>
+   426→            <Download className="mr-2 h-4 w-4" />
+   427→            Export PDF
+   428→          </Button>
+   429→        </div>
+   430→      </div>
+   431→
+   432→      {/* Date Range Picker */}
+   433→      <Card>
+   434→        <CardContent className="flex flex-col sm:flex-row items-end gap-3 pt-6">
+   435→          {/* Preset Dropdown */}
+   436→          <div className="grid gap-2 w-full sm:w-48 shrink-0">
+   437→            <Label>{t('lblperiod', 'Period')}</Label>
+   438→            <Select value={preset} onValueChange={handlePresetChange}>
+   439→              <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
+   440→              <SelectContent>
+   441→                <SelectItem value="TODAY">Today</SelectItem>
+   442→                <SelectItem value="THIS_WEEK">This Week</SelectItem>
+   443→                <SelectItem value="LAST_WEEK">Last Week</SelectItem>
+   444→                {monthOptions.map((mo, i) => (
+   445→                  <SelectItem key={mo.value} value={mo.value}>
+   446→                    {i === 0 ? "── " : ""}{mo.label}{i === 0 ? " ──" : ""}
+   447→                  </SelectItem>
+   448→                ))}
+   449→                <SelectItem value="CUSTOM">Custom Range</SelectItem>
+   450→              </SelectContent>
+   451→            </Select>
+   452→          </div>
+   453→          {/* From / To */}
+   454→          <div className="grid gap-2 flex-1 w-full sm:w-auto">
+   455→            <Label>{t('lblfrom', 'From')}</Label>
+   456→            <Input
+   457→              id="from"
+   458→              type="date"
+   459→              value={from}
+   460→              onChange={(e) => { setFrom(e.target.value); setPreset("CUSTOM"); }}
+   461→            />
+   462→          </div>
+   463→          <div className="grid gap-2 flex-1 w-full sm:w-auto">
+   464→            <Label>{t('lblto', 'To')}</Label>
+   465→            <Input
+   466→              id="to"
+   467→              type="date"
+   468→              value={to}
+   469→              onChange={(e) => { setTo(e.target.value); setPreset("CUSTOM"); }}
+   470→            />
+   471→          </div>
+   472→          <Button onClick={fetchReports} disabled={loading}>
+   473→            <CalendarDays className="mr-2 h-4 w-4" />
+   474→            Apply
+   475→          </Button>
+   476→        </CardContent>
+   477→      </Card>
+   478→
+   479→      {loading ? (
+   480→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   481→          {Array.from({ length: 4 }).map((_, i) => (
+   482→            <Skeleton key={i} className="h-28 rounded-xl" />
+   483→          ))}
+   484→        </div>
+   485→      ) : data ? (
+   486→        <>
+   487→          {/* Active Guests Section */}
+   488→          {showActiveGuests && (
+   489→            <Card>
+   490→              <CardHeader>
+   491→                <CardTitle className="flex items-center gap-2">
+   492→                  <UserCheck className="h-5 w-5" />
+   493→                  Active & Upcoming Guests
+   494→                </CardTitle>
+   495→                <div className="relative mt-2">
+   496→                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+   497→                  <Input
+   498→                    placeholder="Search by name, ID, phone, room..."
+   499→                    value={activeGuestSearch}
+   500→                    onChange={(e) => setActiveGuestSearch(e.target.value)}
+   501→                    className="pl-9"
+   502→                  />
+   503→                </div>
+   504→              </CardHeader>
+   505→              <CardContent>
+   506→                {filteredActiveGuests.length === 0 ? (
+   507→                  <p className="text-sm text-muted-foreground text-center py-8">
+   508→                    No active or upcoming guests in this period.
+   509→                  </p>
+   510→                ) : (
+   511→                  <>
+   512→                    {/* Mobile cards */}
+   513→                    <div className="md:hidden space-y-3">
+   514→                      {filteredActiveGuests.map((g, i) => (
+   515→                        <div key={g.reservationId}>
+   516→                          <div
+   517→                            className="rounded-lg border p-3 space-y-2 cursor-pointer"
+   518→                            onClick={() => setExpandedActiveIdx(expandedActiveIdx === i ? null : i)}
+   519→                          >
+   520→                            <div className="flex items-center justify-between">
+   521→                              <div className="flex items-center gap-2">
+   522→                                <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm shrink-0 " + (g.status === "ACTIVE" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
+   523→                                  {g.name.charAt(0).toUpperCase()}
+   524→                                </div>
+   525→                                <div>
+   526→                                  <div className="flex items-center gap-1.5">
+   527→                                    <p className="font-semibold text-sm">{g.name}</p>
+   528→                                    {g.vip && <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+   529→                                  </div>
+   530→                                  {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
+   531→                                </div>
+   532→                              </div>
+   533→                              <div className="flex items-center gap-2">
+   534→                                <Badge variant="outline" className={STATUS_COLORS[g.status] || ""}>{g.status}</Badge>
+   535→                                {expandedActiveIdx === i ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+   536→                              </div>
+   537→                            </div>
+   538→                            <div className="flex items-center justify-between text-xs">
+   539→                              <span className="text-muted-foreground">Room {g.roomNumber}{g.roomName ? ' ' + g.roomName : ''}</span>
+   540→                              <span className="font-medium">{g.checkIn} → {g.checkOut}</span>
+   541→                            </div>
+   542→                          </div>
+   543→                          {expandedActiveIdx === i && (
+   544→                            <div className="mt-2 ml-4 rounded-lg border border-sky-100 bg-sky-50 p-3 space-y-2">
+   545→                              {g.email && (
+   546→                                <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.email}</span></div>
+   547→                              )}
+   548→                              {(g.idType || g.idNumber) && (
+   549→                                <div className="flex items-center gap-2 text-xs"><CreditCard className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.idType}{g.idNumber ? ' · ' + g.idNumber : ""}</span></div>
+   550→                              )}
+   551→                              {g.nationality && (
+   552→                                <div className="flex items-center gap-2 text-xs"><Globe className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.nationality}</span></div>
+   553→                              )}
+   554→                              {g.address && (
+   555→                                <div className="flex items-center gap-2 text-xs"><MapPin className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.address}</span></div>
+   556→                              )}
+   557→                              {g.notes && (
+   558→                                <div className="flex items-start gap-2 text-xs mt-1"><FileText className="h-3.5 w-3.5 text-sky-500 mt-0.5 shrink-0" /><span className="text-sky-700">{g.notes}</span></div>
+   559→                              )}
+   560→                              {g.paidAmount > 0 && (
+   561→                                <div className="flex items-center gap-2 text-xs mt-1"><DollarSign className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">Paid: {formatCurrency(g.paidAmount)}</span></div>
+   562→                              )}
+   563→                            </div>
+   564→                          )}
+   565→                        </div>
+   566→                      ))}
+   567→                    </div>
+   568→                    {/* Desktop table */}
+   569→                    <div className="hidden md:block rounded-xl border bg-white max-h-[500px] overflow-y-auto">
+   570→                      <Table>
+   571→                        <TableHeader>
+   572→                          <TableRow className="bg-gray-50/80">
+   573→                            <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+   574→                            <TableHead>{t('thphone', 'Phone')}</TableHead>
+   575→                            <TableHead>{t('throom', 'Room')}</TableHead>
+   576→                            <TableHead>{t('thstatus', 'Status')}</TableHead>
+   577→                            <TableHead>{t('thcheckin', 'Check-In')}</TableHead>
+   578→                            <TableHead>{t('thcheckout', 'Check-Out')}</TableHead>
+   579→                            <TableHead>{t('thpaid', 'Paid')}</TableHead>
+   580→                            <TableHead></TableHead>
+   581→                          </TableRow>
+   582→                        </TableHeader>
+   583→                        <TableBody>
+   584→                          {filteredActiveGuests.map((g, i) => (
+   585→                            <Fragment key={g.reservationId}>
+   586→                              <TableRow className="cursor-pointer" onClick={() => setExpandedActiveIdx(expandedActiveIdx === i ? null : i)}>
+   587→                                <TableCell>
+   588→                                  <div className="flex items-center gap-2">
+   589→                                    <div className={"flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm " + (g.status === "ACTIVE" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600")}>
+   590→                                      {g.name.charAt(0).toUpperCase()}
+   591→                                    </div>
+   592→                                    <div>
+   593→                                      <span className="font-medium text-gray-900">{g.name}</span>
+   594→                                      {g.vip && <span className="ml-1.5"><Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" /></span>}
+   595→                                    </div>
+   596→                                  </div>
+   597→                                </TableCell>
+   598→                                <TableCell className="text-gray-600">{g.phone || "—"}</TableCell>
+   599→                                <TableCell className="font-medium">{g.roomNumber}{g.roomName ? ' ' + g.roomName : ""}</TableCell>
+   600→                                <TableCell><Badge variant="outline" className={STATUS_COLORS[g.status] || ""}>{g.status}</Badge></TableCell>
+   601→                                <TableCell>{g.checkIn}</TableCell>
+   602→                                <TableCell>{g.checkOut}</TableCell>
+   603→                                <TableCell className="text-right font-medium">{formatCurrency(g.paidAmount)}</TableCell>
+   604→                                <TableCell>{expandedActiveIdx === i ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}</TableCell>
+   605→                              </TableRow>
+   606→                              {expandedActiveIdx === i && (
+   607→                                <TableRow className="bg-gray-50/50">
+   608→                                  <TableCell colSpan={8}>
+   609→                                    <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+   610→                                      {g.email && (
+   611→                                        <div className="flex items-start gap-2">
+   612→                                          <Mail className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   613→                                          <div><p className="text-xs text-gray-500">Email</p><p className="text-sm text-gray-900">{g.email}</p></div>
+   614→                                        </div>
+   615→                                      )}
+   616→                                      {(g.idType || g.idNumber) && (
+   617→                                        <div className="flex items-start gap-2">
+   618→                                          <CreditCard className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   619→                                          <div><p className="text-xs text-gray-500">ID</p><p className="text-sm text-gray-900">{g.idType}{g.idNumber ? ' · ' + g.idNumber : ""}</p></div>
+   620→                                        </div>
+   621→                                      )}
+   622→                                      {g.nationality && (
+   623→                                        <div className="flex items-start gap-2">
+   624→                                          <Globe className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   625→                                          <div><p className="text-xs text-gray-500">Nationality</p><p className="text-sm text-gray-900">{g.nationality}</p></div>
+   626→                                        </div>
+   627→                                      )}
+   628→                                    </div>
+   629→                                    {g.address && (
+   630→                                      <div className="mt-3 flex items-start gap-2">
+   631→                                        <MapPin className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   632→                                        <div><p className="text-xs text-gray-500">Address</p><p className="text-sm text-gray-900">{g.address}</p></div>
+   633→                                      </div>
+   634→                                    )}
+   635→                                    {g.notes && (
+   636→                                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-sky-50 p-3 border border-sky-100">
+   637→                                        <FileText className="mt-0.5 h-4 w-4 text-sky-500 shrink-0" />
+   638→                                        <div><p className="text-xs font-medium text-sky-800">Notes</p><p className="text-sm text-sky-700">{g.notes}</p></div>
+   639→                                      </div>
+   640→                                    )}
+   641→                                  </TableCell>
+   642→                                </TableRow>
+   643→                              )}
+   644→                            </Fragment>
+   645→                          ))}
+   646→                        </TableBody>
+   647→                      </Table>
+   648→                    </div>
+   649→                    <p className="text-xs text-muted-foreground mt-3 text-center">
+   650→                      {filteredActiveGuests.length} active guest{filteredActiveGuests.length !== 1 ? "s" : ""} · {activeGuests.filter((g) => g.status === "ACTIVE").length} currently staying · {activeGuests.filter((g) => g.status === "UPCOMING").length} upcoming
+   651→                    </p>
+   652→                  </>
+   653→                )}
+   654→              </CardContent>
+   655→            </Card>
+   656→          )}
+   657→
+   658→          {/* Served Guests Section */}
+   659→          {showGuests && (
+   660→            <Card>
+   661→              <CardHeader>
+   662→                <CardTitle className="flex items-center gap-2">
+   663→                  <Users className="h-5 w-5" />
+   664→                  Guests Served ({from} to {to})
+   665→                </CardTitle>
+   666→                <div className="relative mt-2">
+   667→                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+   668→                  <Input
+   669→                    placeholder="Search by name, ID, phone, email..."
+   670→                    value={guestSearch}
+   671→                    onChange={(e) => setGuestSearch(e.target.value)}
+   672→                    className="pl-9"
+   673→                  />
+   674→                </div>
+   675→              </CardHeader>
+   676→              <CardContent>
+   677→                {filteredServedGuests.length === 0 ? (
+   678→                  <p className="text-sm text-muted-foreground text-center py-8">
+   679→                    No guests served in this period.
+   680→                  </p>
+   681→                ) : (
+   682→                  <>
+   683→                    {/* Mobile cards */}
+   684→                    <div className="md:hidden space-y-3">
+   685→                      {filteredServedGuests.map((g, i) => (
+   686→                        <div key={i}>
+   687→                          <div
+   688→                            className="rounded-lg border p-3 space-y-2 cursor-pointer"
+   689→                            onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+   690→                          >
+   691→                            <div className="flex items-center justify-between">
+   692→                              <div className="flex items-center gap-2">
+   693→                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm shrink-0">
+   694→                                  {g.name.charAt(0).toUpperCase()}
+   695→                                </div>
+   696→                                <div>
+   697→                                  <div className="flex items-center gap-1.5">
+   698→                                    <p className="font-semibold text-sm">{g.name}</p>
+   699→                                    {g.vip && <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
+   700→                                  </div>
+   701→                                  {g.phone && <p className="text-xs text-muted-foreground">{g.phone}</p>}
+   702→                                </div>
+   703→                              </div>
+   704→                              <div className="flex items-center gap-2">
+   705→                                <Badge variant="outline" className="text-xs">{g.visits} visit{g.visits !== 1 ? "s" : ""}</Badge>
+   706→                                {expandedGuestIdx === i ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+   707→                              </div>
+   708→                            </div>
+   709→                            <div className="flex items-center justify-between text-xs">
+   710→                              <span className="text-muted-foreground">Last: {g.lastVisit}</span>
+   711→                              <span className="font-medium">{formatCurrency(g.totalSpent)}</span>
+   712→                            </div>
+   713→                          </div>
+   714→                          {expandedGuestIdx === i && (
+   715→                            <div className="mt-2 ml-4 rounded-lg border border-amber-100 bg-amber-50 p-3 space-y-2">
+   716→                              {g.email && (
+   717→                                <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.email}</span></div>
+   718→                              )}
+   719→                              {(g.idType || g.idNumber) && (
+   720→                                <div className="flex items-center gap-2 text-xs"><CreditCard className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}</span></div>
+   721→                              )}
+   722→                              {g.nationality && (
+   723→                                <div className="flex items-center gap-2 text-xs"><Globe className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.nationality}</span></div>
+   724→                              )}
+   725→                              {g.address && (
+   726→                                <div className="flex items-center gap-2 text-xs"><MapPin className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{g.address}</span></div>
+   727→                              )}
+   728→                              {g.notes && (
+   729→                                <div className="flex items-start gap-2 text-xs mt-1"><FileText className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" /><span className="text-amber-700">{g.notes}</span></div>
+   730→                              )}
+   731→                              {g.guestSince && (
+   732→                                <p className="text-[10px] text-gray-400 mt-1">Guest since {new Date(g.guestSince).toLocaleDateString()}</p>
+   733→                              )}
+   734→                              {g.rooms.length > 0 && (
+   735→                                <div className="mt-2 pt-2 border-t border-amber-200">
+   736→                                  <p className="text-[10px] font-medium text-gray-500 mb-1">Room History ({g.rooms.length})</p>
+   737→                                  {g.rooms.map((rm, ri) => (
+   738→                                    <div key={ri} className="flex items-center justify-between text-xs py-0.5">
+   739→                                      <span className="text-gray-600">{rm.number}{rm.name ? ` · ${rm.name}` : ""}</span>
+   740→                                      <span className="text-gray-400">{rm.checkIn} → {rm.checkOut}</span>
+   741→                                    </div>
+   742→                                  ))}
+   743→                                </div>
+   744→                              )}
+   745→                            </div>
+   746→                          )}
+   747→                        </div>
+   748→                      ))}
+   749→                    </div>
+   750→                    {/* Desktop table */}
+   751→                    <div className="hidden md:block rounded-xl border bg-white max-h-[500px] overflow-y-auto">
+   752→                      <Table>
+   753→                        <TableHeader>
+   754→                          <TableRow className="bg-gray-50/80">
+   755→                            <TableHead className="w-12"></TableHead>
+   756→                            <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
+   757→                            <TableHead>{t('thphone', 'Phone')}</TableHead>
+   758→                            <TableHead>{t('thidNumber', 'ID Number')}</TableHead>
+   759→                            <TableHead>{t('thnationality', 'Nationality')}</TableHead>
+   760→                            <TableHead>{t('thvip', 'VIP')}</TableHead>
+   761→                            <TableHead>{t('thvisits', 'Visits')}</TableHead>
+   762→                            <TableHead>{t('thlastVisit', 'Last Visit')}</TableHead>
+   763→                            <TableHead>{t('thtotalSpent', 'Total Spent')}</TableHead>
+   764→                          </TableRow>
+   765→                        </TableHeader>
+   766→                        <TableBody>
+   767→                          {filteredServedGuests.map((g, i) => (
+   768→                            <Fragment key={i}>
+   769→                              <TableRow
+   770→                                className="cursor-pointer"
+   771→                                onClick={() => setExpandedGuestIdx(expandedGuestIdx === i ? null : i)}
+   772→                              >
+   773→                                <TableCell>
+   774→                                  {expandedGuestIdx === i ? (
+   775→                                    <ChevronUp className="h-4 w-4 text-gray-400" />
+   776→                                  ) : (
+   777→                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+   778→                                  )}
+   779→                                </TableCell>
+   780→                                <TableCell>
+   781→                                  <div className="flex items-center gap-2">
+   782→                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-medium text-sm">
+   783→                                      {g.name.charAt(0).toUpperCase()}
+   784→                                    </div>
+   785→                                    <div>
+   786→                                      <span className="font-medium text-gray-900">{g.name}</span>
+   787→                                      {g.vip && (
+   788→                                        <span className="ml-1.5">
+   789→                                          <Star className="inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+   790→                                        </span>
+   791→                                      )}
+   792→                                    </div>
+   793→                                  </div>
+   794→                                </TableCell>
+   795→                                <TableCell className="text-gray-600">{g.phone || "—"}</TableCell>
+   796→                                <TableCell className="text-gray-600 text-xs">{g.idNumber || "—"}</TableCell>
+   797→                                <TableCell className="text-gray-600">{g.nationality || "—"}</TableCell>
+   798→                                <TableCell className="text-center">
+   799→                                  {g.vip ? (
+   800→                                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
+   801→                                      <Star className="mr-1 h-3 w-3 fill-amber-500 text-amber-500" />
+   802→                                      VIP
+   803→                                    </Badge>
+   804→                                  ) : (
+   805→                                    <span className="text-gray-400 text-xs">—</span>
+   806→                                  )}
+   807→                                </TableCell>
+   808→                                <TableCell className="text-center">
+   809→                                  <Badge variant="secondary" className="text-xs">{g.visits}</Badge>
+   810→                                </TableCell>
+   811→                                <TableCell>{g.lastVisit}</TableCell>
+   812→                                <TableCell className="text-right font-medium">{formatCurrency(g.totalSpent)}</TableCell>
+   813→                              </TableRow>
+   814→                              {/* Expanded details row */}
+   815→                              {expandedGuestIdx === i && (
+   816→                                <TableRow className="bg-gray-50/50">
+   817→                                  <TableCell colSpan={9}>
+   818→                                    <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+   819→                                      <div className="flex items-start gap-2">
+   820→                                        <Mail className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   821→                                        <div>
+   822→                                          <p className="text-xs text-gray-500">Email</p>
+   823→                                          <p className="text-sm text-gray-900">{g.email || "—"}</p>
+   824→                                        </div>
+   825→                                      </div>
+   826→                                      <div className="flex items-start gap-2">
+   827→                                        <CreditCard className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   828→                                        <div>
+   829→                                          <p className="text-xs text-gray-500">ID Type / Number</p>
+   830→                                          <p className="text-sm text-gray-900">
+   831→                                            {g.idType}{g.idNumber ? ` · ${g.idNumber}` : ""}
+   832→                                          </p>
+   833→                                        </div>
+   834→                                      </div>
+   835→                                      <div className="flex items-start gap-2">
+   836→                                        <Globe className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   837→                                        <div>
+   838→                                          <p className="text-xs text-gray-500">Nationality</p>
+   839→                                          <p className="text-sm text-gray-900">{g.nationality || "—"}</p>
+   840→                                        </div>
+   841→                                      </div>
+   842→                                      <div className="flex items-start gap-2">
+   843→                                        <MapPin className="mt-0.5 h-4 w-4 text-gray-400 shrink-0" />
+   844→                                        <div>
+   845→                                          <p className="text-xs text-gray-500">Address</p>
+   846→                                          <p className="text-sm text-gray-900">{g.address || "—"}</p>
+   847→                                        </div>
+   848→                                      </div>
+   849→                                    </div>
+   850→                                    {g.notes && (
+   851→                                      <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 border border-amber-100">
+   852→                                        <FileText className="mt-0.5 h-4 w-4 text-amber-500 shrink-0" />
+   853→                                        <div>
+   854→                                          <p className="text-xs font-medium text-amber-800">Notes</p>
+   855→                                          <p className="text-sm text-amber-700">{g.notes}</p>
+   856→                                        </div>
+   857→                                      </div>
+   858→                                    )}
+   859→                                    {g.rooms.length > 0 && (
+   860→                                      <div className="mt-3 rounded-lg border p-3">
+   861→                                        <p className="text-xs font-medium text-gray-500 mb-2">Room History ({g.rooms.length} stay{g.rooms.length !== 1 ? "s" : ""})</p>
+   862→                                        <div className="space-y-1">
+   863→                                          {g.rooms.map((rm, ri) => (
+   864→                                            <div key={ri} className="flex items-center justify-between text-sm py-1 border-b border-gray-100 last:border-0">
+   865→                                              <div className="flex items-center gap-2">
+   866→                                                <span className="font-medium text-gray-900">{rm.number}</span>
+   867→                                                {rm.name && <span className="text-gray-400 text-xs">{rm.name}</span>}
+   868→                                                {rm.type && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{rm.type}</Badge>}
+   869→                                              </div>
+   870→                                              <div className="flex items-center gap-3 text-xs text-gray-500">
+   871→                                                <span>{rm.checkIn} → {rm.checkOut}</span>
+   872→                                                <Badge variant="outline" className={STATUS_COLORS[rm.status] || ""}>{rm.status.replace(/_/g, " ")}</Badge>
+   873→                                              </div>
+   874→                                            </div>
+   875→                                          ))}
+   876→                                        </div>
+   877→                                      </div>
+   878→                                    )}
+   879→                                    {g.guestSince && (
+   880→                                      <p className="mt-3 text-xs text-gray-400">
+   881→                                        Guest since {new Date(g.guestSince).toLocaleDateString()}
+   882→                                      </p>
+   883→                                    )}
+   884→                                  </TableCell>
+   885→                                </TableRow>
+   886→                              )}
+   887→                            </Fragment>
+   888→                          ))}
+   889→                        </TableBody>
+   890→                      </Table>
+   891→                    </div>
+   892→                    <p className="text-xs text-muted-foreground mt-3 text-center">
+   893→                      {filteredServedGuests.length} unique guest{servedGuests.length !== 1 ? "s" : ""} served · Total spent: {formatCurrency(filteredServedGuests.reduce((s, g) => s + g.totalSpent, 0))}
+   894→                    </p>
+   895→                  </>
+   896→                )}
+   897→              </CardContent>
+   898→            </Card>
+   899→          )}
+   900→          {/* Summary Cards */}
+   901→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   902→            <Card>
+   903→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   904→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   905→                  Total Revenue
+   906→                </CardTitle>
+   907→                <DollarSign className="h-4 w-4 text-emerald-500" />
+   908→              </CardHeader>
+   909→              <CardContent>
+   910→                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.revenue)}</p>
+   911→              </CardContent>
+   912→            </Card>
+   913→            <Card>
+   914→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   915→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   916→                  Total Expenses
+   917→                </CardTitle>
+   918→                <TrendingDown className="h-4 w-4 text-rose-500" />
+   919→              </CardHeader>
+   920→              <CardContent>
+   921→                <p className="text-2xl font-bold text-rose-600">{formatCurrency(data.expenses)}</p>
+   922→              </CardContent>
+   923→            </Card>
+   924→            <Card>
+   925→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   926→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   927→                  Net Profit
+   928→                </CardTitle>
+   929→                <TrendingUp className="h-4 w-4 text-blue-500" />
+   930→              </CardHeader>
+   931→              <CardContent>
+   932→                <p
+   933→                  className={`text-2xl font-bold ${data.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+   934→                >
+   935→                  {formatCurrency(data.profit)}
+   936→                </p>
+   937→              </CardContent>
+   938→            </Card>
+   939→            <Card>
+   940→              <CardHeader className="flex flex-row items-center justify-between pb-2">
+   941→                <CardTitle className="text-sm font-medium text-muted-foreground">
+   942→                  Avg Occupancy
+   943→                </CardTitle>
+   944→                <Percent className="h-4 w-4 text-violet-500" />
+   945→              </CardHeader>
+   946→              <CardContent>
+   947→                <p className="text-2xl font-bold">{data.occupancyRate}%</p>
+   948→              </CardContent>
+   949→            </Card>
+   950→          </div>
+   951→
+   952→          {/* Revenue vs Expenses Bar Chart */}
+   953→          <Card>
+   954→            <CardHeader>
+   955→              <CardTitle className="flex items-center gap-2">
+   956→                <BarChart3 className="h-5 w-5" />
+   957→                Revenue vs Expenses (Daily)
+   958→              </CardTitle>
+   959→            </CardHeader>
+   960→            <CardContent>
+   961→              {data.dailyRevenue.length === 0 ? (
+   962→                <p className="text-sm text-muted-foreground text-center py-8">
+   963→                  No daily data available for this range.
+   964→                </p>
+   965→              ) : (
+   966→                <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
+   967→                  {data.dailyRevenue.map((d) => (
+   968→                    <div key={d.date} className="flex items-center gap-3 text-sm">
+   969→                      <span className="w-24 shrink-0 text-muted-foreground truncate">
+   970→                        {d.date}
+   971→                      </span>
+   972→                      <div className="flex-1 flex items-center gap-1">
+   973→                        <div
+   974→                          className="h-5 rounded bg-emerald-500 transition-all"
+   975→                          style={{
+   976→                            width: `${Math.max((d.amount / maxDailyRevenue) * 100, 2)}%`,
+   977→                          }}
+   978→                          title={`Revenue: ${formatCurrency(d.amount)}`}
+   979→                        />
+   980→                      </div>
+   981→                      <span className="w-20 text-right font-medium">
+   982→                        {formatCurrency(d.amount)}
+   983→                      </span>
+   984→                    </div>
+   985→                  ))}
+   986→                </div>
+   987→              )}
+   988→            </CardContent>
+   989→          </Card>
+   990→
+   991→
+   992→          {/* Expense Breakdown + Reservation Summary */}
+   993→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   994→            {/* Expense Breakdown */}
+   995→            <Card>
+   996→              <CardHeader>
+   997→                <CardTitle>Expense Breakdown</CardTitle>
+   998→              </CardHeader>
+   999→              <CardContent>
+  1000→                {data.expenseBreakdown.length === 0 ? (
+  1001→                  <p className="text-sm text-muted-foreground text-center py-8">
+  1002→                    No expenses recorded.
+  1003→                  </p>
+  1004→                ) : (
+  1005→                  <div className="space-y-3">
+  1006→                    {data.expenseBreakdown.map((item, i) => (
+  1007→                      <div key={item.category} className="space-y-1">
+  1008→                        <div className="flex items-center justify-between text-sm">
+  1009→                          <span className="font-medium">{item.category}</span>
+  1010→                          <span>{formatCurrency(item.amount)}</span>
+  1011→                        </div>
+  1012→                        <div className="h-3 w-full rounded-full bg-muted">
+  1013→                          <div
+  1014→                            className={`h-3 rounded-full ${EXPENSE_COLORS[i % EXPENSE_COLORS.length]}`}
+  1015→                            style={{
+  1016→                              width: `${(item.amount / maxExpenseCategory) * 100}%`,
+  1017→                            }}
+  1018→                          />
+  1019→                        </div>
+  1020→                      </div>
+  1021→                    ))}
+  1022→                  </div>
+  1023→                )}
+  1024→              </CardContent>
+  1025→            </Card>
+  1026→
+  1027→            {/* Reservations Summary */}
+  1028→            <Card>
+  1029→              <CardHeader>
+  1030→                <CardTitle>Reservations by Status</CardTitle>
+  1031→              </CardHeader>
+  1032→              <CardContent>
+  1033→                {statusBreakdown.length === 0 ? (
+  1034→                  <p className="text-sm text-muted-foreground text-center py-8">
+  1035→                    No reservations in this period.
+  1036→                  </p>
+  1037→                ) : (
+  1038→                  <div className="rounded-lg border">
+  1039→                    <Table>
+  1040→                      <TableHeader>
+  1041→                        <TableRow>
+  1042→                          <TableHead>{t('thstatus', 'Status')}</TableHead>
+  1043→                          <TableHead>{t('thcount', 'Count')}</TableHead>
+  1044→                          <TableHead>{t('threvenue', 'Revenue')}</TableHead>
+  1045→                        </TableRow>
+  1046→                      </TableHeader>
+  1047→                      <TableBody>
+  1048→                        {statusBreakdown.map((row) => (
+  1049→                          <TableRow key={row.status}>
+  1050→                            <TableCell>
+  1051→                              <Badge
+  1052→                                variant="outline"
+  1053→                                className={STATUS_COLORS[row.status] || ""}
+  1054→                              >
+  1055→                                {row.status.replace(/_/g, " ")}
+  1056→                              </Badge>
+  1057→                            </TableCell>
+  1058→                            <TableCell className="text-right">{row.count}</TableCell>
+  1059→                            <TableCell className="text-right font-medium">
+  1060→                              {formatCurrency(row.revenue)}
+  1061→                            </TableCell>
+  1062→                          </TableRow>
+  1063→                        ))}
+  1064→                      </TableBody>
+  1065→                    </Table>
+  1066→                  </div>
+  1067→                )}
+  1068→              </CardContent>
+  1069→            </Card>
+  1070→          </div>
+  1071→
+  1072→          {/* Daily Revenue Trend Table */}
+  1073→          <Card>
+  1074→            <CardHeader>
+  1075→              <CardTitle>Daily Revenue Trend</CardTitle>
+  1076→            </CardHeader>
+  1077→            <CardContent>
+  1078→              {data.dailyRevenue.length === 0 ? (
+  1079→                <p className="text-sm text-muted-foreground text-center py-8">
+  1080→                  No daily data available.
+  1081→                </p>
+  1082→              ) : (
+  1083→                <div className="rounded-lg border max-h-72 overflow-y-auto">
+  1084→                  <Table>
+  1085→                    <TableHeader>
+  1086→                      <TableRow>
+  1087→                        <TableHead>{t('thdate', 'Date')}</TableHead>
+  1088→                        <TableHead>{t('threvenue', 'Revenue')}</TableHead>
+  1089→                      </TableRow>
+  1090→                    </TableHeader>
+  1091→                    <TableBody>
+  1092→                      {data.dailyRevenue.map((d) => (
+  1093→                        <TableRow key={d.date}>
+  1094→                          <TableCell>{d.date}</TableCell>
+  1095→                          <TableCell className="text-right font-medium">
+  1096→                            {formatCurrency(d.amount)}
+  1097→                          </TableCell>
+  1098→                        </TableRow>
+  1099→                      ))}
+  1100→                    </TableBody>
+  1101→                  </Table>
+  1102→                </div>
+  1103→              )}
+  1104→            </CardContent>
+  1105→          </Card>
+  1106→        </>
+  1107→      ) : (
+  1108→        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+  1109→          <BarChart3 className="mb-3 h-10 w-10 opacity-40" />
+  1110→          <p className="font-medium">No report data</p>
+  1111→          <p className="text-sm">Select a date range and click Apply.</p>
+  1112→        </div>
+  1113→      )}
+  1114→    </div>
+  1115→  );
+  1116→}
+  1117→

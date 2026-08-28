@@ -155,7 +155,7 @@ export default function ReportsPage() {
       };
       setData(result);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load reports");
+      toast.error(err instanceof Error ? err.message : t("failedLoadReports"));
     } finally {
       setLoading(false);
     }
@@ -358,14 +358,15 @@ export default function ReportsPage() {
   }, [activeGuests, activeGuestSearch]);
   const handleExportPDF = () => {
     if (!data) return;
-    const providerName = useAppStore.getState().currentUser?.providerName || "Guest House";
+    const providerName = useAppStore.getState().currentUser?.providerName || t("defaultProviderName");
     const win = window.open("", "_blank");
-    if (!win) { toast.error("Please allow popups to export PDF"); return; }
+    if (!win) { toast.error(t("allowPopups")); return; }
 
     const statusRows = statusBreakdown.map(s => `<tr><td>${s.status.replace(/_/g, " ")}</td><td style="text-align:right">${s.count}</td><td style="text-align:right">${formatCurrency(s.revenue)}</td></tr>`).join("");
     const dailyRows = data.dailyRevenue.map(d => `<tr><td>${d.date}</td><td style="text-align:right">${formatCurrency(d.amount)}</td></tr>`).join("");
     const expenseRows = data.expenseBreakdown.map(e => `<tr><td>${e.category}</td><td style="text-align:right">${formatCurrency(e.amount)}</td></tr>`).join("");
 
+    const tPdf = (key: string) => t(key); // alias for readability in template
     win.document.write(`<!DOCTYPE html><html><head><title>Report ${from} to ${to}</title>
       <style>
         @page { margin: 20mm; size: A4; }
@@ -384,24 +385,24 @@ export default function ReportsPage() {
         .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 11px; }
         @media print { .no-print { display: none; } }
       </style></head><body>
-      <h1>Financial Report</h1>
+      <h1>${tPdf("pdfTitle")}</h1>
       <p class="subtitle">${providerName} &middot; ${from} to ${to}</p>
       <div class="summary">
-        <div class="summary-card"><div class="summary-label">Total Revenue</div><div class="summary-value green">${formatCurrency(data.revenue)}</div></div>
-        <div class="summary-card"><div class="summary-label">Total Expenses</div><div class="summary-value red">${formatCurrency(data.expenses)}</div></div>
-        <div class="summary-card"><div class="summary-label">Net Profit</div><div class="summary-value ${data.profit >= 0 ? "green" : "red"}">${formatCurrency(data.profit)}</div></div>
-        <div class="summary-card"><div class="summary-label">Avg Occupancy</div><div class="summary-value violet">${data.occupancyRate}%</div></div>
+        <div class="summary-card"><div class="summary-label">${tPdf("pdfTotalRevenue")}</div><div class="summary-value green">${formatCurrency(data.revenue)}</div></div>
+        <div class="summary-card"><div class="summary-label">${tPdf("pdfTotalExpenses")}</div><div class="summary-value red">${formatCurrency(data.expenses)}</div></div>
+        <div class="summary-card"><div class="summary-label">${tPdf("pdfNetProfit")}</div><div class="summary-value ${data.profit >= 0 ? "green" : "red"}">${formatCurrency(data.profit)}</div></div>
+        <div class="summary-card"><div class="summary-label">${tPdf("pdfAvgOccupancy")}</div><div class="summary-value violet">${data.occupancyRate}%</div></div>
       </div>
-      <p class="section-title">Reservations by Status</p>
-      <table><thead><tr><th>Status</th><th style="text-align:right">Count</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${statusRows}</tbody></table>
-      <p class="section-title">Daily Revenue Trend</p>
-      <table><thead><tr><th>Date</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${dailyRows}</tbody></table>
-      ${data.expenseBreakdown.length > 0 ? `<p class="section-title">Expense Breakdown</p><table><thead><tr><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody>${expenseRows}</tbody></table>` : ""}
-      <div class="footer">Generated on ${new Date().toLocaleString()} &middot; GHMS Report</div>
-      <div class="no-print" style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Save as PDF</button></div>
+      <p class="section-title">${tPdf("pdfReservationsByStatus")}</p>
+      <table><thead><tr><th>${tPdf("pdfStatus")}</th><th style="text-align:right">${tPdf("pdfCount")}</th><th style="text-align:right">${tPdf("pdfRevenue")}</th></tr></thead><tbody>${statusRows}</tbody></table>
+      <p class="section-title">${tPdf("pdfDailyRevenueTrend")}</p>
+      <table><thead><tr><th>${tPdf("pdfDate")}</th><th style="text-align:right">${tPdf("pdfRevenue")}</th></tr></thead><tbody>${dailyRows}</tbody></table>
+      ${data.expenseBreakdown.length > 0 ? `<p class="section-title">${tPdf("pdfExpenseBreakdown")}</p><table><thead><tr><th>${tPdf("pdfCategory")}</th><th style="text-align:right">${tPdf("pdfAmount")}</th></tr></thead><tbody>${expenseRows}</tbody></table>` : ""}
+      <div class="footer">${tPdf("pdfGeneratedOn", { datetime: new Date().toLocaleString() })}</div>
+      <div class="no-print" style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">${tPdf("pdfSaveAsPdf")}</button></div>
       </body></html>`);
     win.document.close();
-    toast.success("Report opened for PDF export");
+    toast.success(t("reportOpenedPdf"));
   };
 
   return (
@@ -416,15 +417,15 @@ export default function ReportsPage() {
         <div className="flex gap-2">
           <Button variant={showActiveGuests ? "default" : "outline"} onClick={() => setShowActiveGuests(!showActiveGuests)} disabled={loading || !data}>
             <UserCheck className="mr-2 h-4 w-4" />
-            Active Guests ({activeGuests.length})
+            {t("btnActiveGuests")} ({activeGuests.length})
           </Button>
           <Button variant={showGuests ? "default" : "outline"} onClick={() => setShowGuests(!showGuests)} disabled={loading || !data}>
             <Users className="mr-2 h-4 w-4" />
-            Served Guests ({servedGuests.length})
+            {t("btnServedGuests")} ({servedGuests.length})
           </Button>
           <Button variant="outline" onClick={handleExportPDF} disabled={loading || !data}>
             <Download className="mr-2 h-4 w-4" />
-            Export PDF
+            {t("btnExportPdf")}
           </Button>
         </div>
       </div>
@@ -434,25 +435,25 @@ export default function ReportsPage() {
         <CardContent className="flex flex-col sm:flex-row items-end gap-3 pt-6">
           {/* Preset Dropdown */}
           <div className="grid gap-2 w-full sm:w-48 shrink-0">
-            <Label>{t('lblperiod', 'Period')}</Label>
+            <Label>{t("lblperiod")}</Label>
             <Select value={preset} onValueChange={handlePresetChange}>
-              <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("placeholderSelectPeriod")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="TODAY">Today</SelectItem>
-                <SelectItem value="THIS_WEEK">This Week</SelectItem>
-                <SelectItem value="LAST_WEEK">Last Week</SelectItem>
+                <SelectItem value="TODAY">{t("presetToday")}</SelectItem>
+                <SelectItem value="THIS_WEEK">{t("presetThisWeek")}</SelectItem>
+                <SelectItem value="LAST_WEEK">{t("presetLastWeek")}</SelectItem>
                 {monthOptions.map((mo, i) => (
                   <SelectItem key={mo.value} value={mo.value}>
                     {i === 0 ? "── " : ""}{mo.label}{i === 0 ? " ──" : ""}
                   </SelectItem>
                 ))}
-                <SelectItem value="CUSTOM">Custom Range</SelectItem>
+                <SelectItem value="CUSTOM">{t("presetCustomRange")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {/* From / To */}
           <div className="grid gap-2 flex-1 w-full sm:w-auto">
-            <Label>{t('lblfrom', 'From')}</Label>
+            <Label>{t("lblfrom")}</Label>
             <Input
               id="from"
               type="date"
@@ -461,7 +462,7 @@ export default function ReportsPage() {
             />
           </div>
           <div className="grid gap-2 flex-1 w-full sm:w-auto">
-            <Label>{t('lblto', 'To')}</Label>
+            <Label>{t("lblto")}</Label>
             <Input
               id="to"
               type="date"
@@ -471,7 +472,7 @@ export default function ReportsPage() {
           </div>
           <Button onClick={fetchReports} disabled={loading}>
             <CalendarDays className="mr-2 h-4 w-4" />
-            Apply
+            {t("btnApply")}
           </Button>
         </CardContent>
       </Card>
@@ -490,12 +491,12 @@ export default function ReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserCheck className="h-5 w-5" />
-                  Active & Upcoming Guests
+                  {t("titleActiveUpcomingGuests")}
                 </CardTitle>
                 <div className="relative mt-2">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
-                    placeholder="Search by name, ID, phone, room..."
+                    placeholder={t("placeholderSearchActive")}
                     value={activeGuestSearch}
                     onChange={(e) => setActiveGuestSearch(e.target.value)}
                     className="pl-9"
@@ -505,7 +506,7 @@ export default function ReportsPage() {
               <CardContent>
                 {filteredActiveGuests.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    No active or upcoming guests in this period.
+                    {t("noActiveGuests")}
                   </p>
                 ) : (
                   <>
@@ -536,7 +537,7 @@ export default function ReportsPage() {
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Room {g.roomNumber}{g.roomName ? ' ' + g.roomName : ''}</span>
+                              <span className="text-muted-foreground">{t("room")} {g.roomNumber}{g.roomName ? ' ' + g.roomName : ''}</span>
                               <span className="font-medium">{g.checkIn} → {g.checkOut}</span>
                             </div>
                           </div>
@@ -558,7 +559,7 @@ export default function ReportsPage() {
                                 <div className="flex items-start gap-2 text-xs mt-1"><FileText className="h-3.5 w-3.5 text-sky-500 mt-0.5 shrink-0" /><span className="text-sky-700">{g.notes}</span></div>
                               )}
                               {g.paidAmount > 0 && (
-                                <div className="flex items-center gap-2 text-xs mt-1"><DollarSign className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">Paid: {formatCurrency(g.paidAmount)}</span></div>
+                                <div className="flex items-center gap-2 text-xs mt-1"><DollarSign className="h-3.5 w-3.5 text-gray-400" /><span className="text-gray-600">{t("paid")}: {formatCurrency(g.paidAmount)}</span></div>
                               )}
                             </div>
                           )}
