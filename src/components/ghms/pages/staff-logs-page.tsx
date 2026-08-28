@@ -45,34 +45,9 @@ interface StaffLog {
 
 // ── Constants ──
 
-const ACTION_OPTIONS = [
-  { value: "ALL", label: "All" },
-  { value: "CHECKIN", label: "Check In" },
-  { value: "CHECKOUT", label: "Check Out" },
-  { value: "CREATE_RESERVATION", label: "Create Reservation" },
-  { value: "UPDATE_RESERVATION", label: "Update Reservation" },
-  { value: "CANCEL_RESERVATION", label: "Cancel Reservation" },
-  { value: "CREATE_PAYMENT", label: "Create Payment" },
-  { value: "CREATE_GROUP_BOOKING", label: "Create Group Booking" },
-  { value: "UPDATE_GROUP_BOOKING", label: "Update Group Booking" },
-  { value: "DELETE_GROUP_BOOKING", label: "Delete Group Booking" },
-  { value: "CREATE_MESSAGE_TEMPLATE", label: "Create Message Template" },
-  { value: "SEND_MESSAGE", label: "Send Message" },
-  { value: "BULK_SEND_MESSAGES", label: "Bulk Send Messages" },
-  { value: "UPDATE_ROOM", label: "Update Room" },
-];
+const ACTION_VALUES = ["ALL", "CHECKIN", "CHECKOUT", "CREATE_RESERVATION", "UPDATE_RESERVATION", "CANCEL_RESERVATION", "CREATE_PAYMENT", "CREATE_GROUP_BOOKING", "UPDATE_GROUP_BOOKING", "DELETE_GROUP_BOOKING", "CREATE_MESSAGE_TEMPLATE", "SEND_MESSAGE", "BULK_SEND_MESSAGES", "UPDATE_ROOM"] as const;
 
-const TARGET_TYPE_OPTIONS = [
-  { value: "ALL", label: "All" },
-  { value: "RESERVATION", label: "Reservation" },
-  { value: "GUEST", label: "Guest" },
-  { value: "ROOM", label: "Room" },
-  { value: "PAYMENT", label: "Payment" },
-  { value: "EXPENSE", label: "Expense" },
-  { value: "GROUP_BOOKING", label: "Group Booking" },
-  { value: "MESSAGE_TEMPLATE", label: "Message Template" },
-  { value: "MESSAGE_LOG", label: "Message Log" },
-];
+const TARGET_VALUES = ["ALL", "RESERVATION", "GUEST", "ROOM", "PAYMENT", "EXPENSE", "GROUP_BOOKING", "MESSAGE_TEMPLATE", "MESSAGE_LOG"] as const;
 
 const PAGE_LIMIT = 20;
 
@@ -99,10 +74,7 @@ function getActionBadgeClasses(action: string): string {
   return "bg-gray-100 text-gray-700 border-gray-200";
 }
 
-function getActionLabel(action: string): string {
-  const match = ACTION_OPTIONS.find((o) => o.value === action.toUpperCase());
-  return match ? match.label : action;
-}
+// getActionLabel replaced by ACTION_LABELS lookup in component
 
 function formatDetails(details: string): string {
   try {
@@ -183,7 +155,35 @@ function truncate(text: string, maxLen: number): string {
 // ── Component ──
 
 export default function StaffLogsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("staffLogs");
+
+  const ACTION_LABELS: Record<string, string> = {
+    ALL: t("actionALL"),
+    CHECKIN: t("actionCHECKIN"),
+    CHECKOUT: t("actionCHECKOUT"),
+    CREATE_RESERVATION: t("actionCREATE_RESERVATION"),
+    UPDATE_RESERVATION: t("actionUPDATE_RESERVATION"),
+    CANCEL_RESERVATION: t("actionCANCEL_RESERVATION"),
+    CREATE_PAYMENT: t("actionCREATE_PAYMENT"),
+    CREATE_GROUP_BOOKING: t("actionCREATE_GROUP_BOOKING"),
+    UPDATE_GROUP_BOOKING: t("actionUPDATE_GROUP_BOOKING"),
+    DELETE_GROUP_BOOKING: t("actionDELETE_GROUP_BOOKING"),
+    CREATE_MESSAGE_TEMPLATE: t("actionCREATE_MESSAGE_TEMPLATE"),
+    SEND_MESSAGE: t("actionSEND_MESSAGE"),
+    BULK_SEND_MESSAGES: t("actionBULK_SEND_MESSAGES"),
+    UPDATE_ROOM: t("actionUPDATE_ROOM"),
+  };
+  const TARGET_LABELS: Record<string, string> = {
+    ALL: t("targetALL"),
+    RESERVATION: t("targetRESERVATION"),
+    GUEST: t("targetGUEST"),
+    ROOM: t("targetROOM"),
+    PAYMENT: t("targetPAYMENT"),
+    EXPENSE: t("targetEXPENSE"),
+    GROUP_BOOKING: t("targetGROUP_BOOKING"),
+    MESSAGE_TEMPLATE: t("targetMESSAGE_TEMPLATE"),
+    MESSAGE_LOG: t("targetMESSAGE_LOG"),
+  };
   const refreshKey = useAppStore((s) => s.refreshKey);
 
   // Filters
@@ -238,7 +238,7 @@ export default function StaffLogsPage() {
       setTotalPages(body.totalPages ?? 1);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to load staff logs";
+        err instanceof Error ? err.message : t("toastFailedLoad");
       toast.error(message);
       setLogs([]);
       setTotal(0);
@@ -305,10 +305,10 @@ export default function StaffLogsPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Staff Activity Log
+          {t("pageTitle")}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Track all staff actions and changes
+          {t("pageSubtitle")}
         </p>
       </div>
 
@@ -317,20 +317,20 @@ export default function StaffLogsPage() {
         <CardContent className="p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filters</span>
+            <span className="text-sm font-medium text-gray-700">{t("lblFilters")}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Action Filter */}
             <div className="space-y-1.5">
-              <Label>{t('lblaction', 'Action')}</Label>
+              <Label>{t("lblAction")}</Label>
               <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger id="action-filter" className="w-full">
-                  <SelectValue placeholder="All actions" />
+                  <SelectValue placeholder={t("placeholderAllActions")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {ACTION_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {ACTION_VALUES.map((val) => (
+                    <SelectItem key={val} value={val}>
+                      {ACTION_LABELS[val] || val}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -339,15 +339,15 @@ export default function StaffLogsPage() {
 
             {/* Target Type Filter */}
             <div className="space-y-1.5">
-              <Label>{t('lbltargetType', 'Target Type')}</Label>
+              <Label>{t("lblTargetType")}</Label>
               <Select value={targetTypeFilter} onValueChange={setTargetTypeFilter}>
                 <SelectTrigger id="target-filter" className="w-full">
-                  <SelectValue placeholder="All types" />
+                  <SelectValue placeholder={t("placeholderAllTypes")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TARGET_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {TARGET_VALUES.map((val) => (
+                    <SelectItem key={val} value={val}>
+                      {TARGET_LABELS[val] || val}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -356,7 +356,7 @@ export default function StaffLogsPage() {
 
             {/* Date From */}
             <div className="space-y-1.5">
-              <Label>{t('lbldateFrom', 'Date From')}</Label>
+              <Label>{t("lblDateFrom")}</Label>
               <Input
                 id="date-from"
                 type="date"
@@ -368,7 +368,7 @@ export default function StaffLogsPage() {
 
             {/* Date To */}
             <div className="space-y-1.5">
-              <Label>{t('lbldateTo', 'Date To')}</Label>
+              <Label>{t("lblDateTo")}</Label>
               <Input
                 id="date-to"
                 type="date"
@@ -383,14 +383,14 @@ export default function StaffLogsPage() {
           <div className="flex items-center gap-2 mt-4">
             <Button onClick={applyFilters} size="sm">
               <Search className="h-4 w-4 mr-1.5" />
-              Search
+              {t("btnSearch")}
             </Button>
             <Button
               onClick={clearFilters}
               variant="outline"
               size="sm"
             >
-              Clear
+              {t("btnClear")}
             </Button>
           </div>
         </CardContent>
@@ -400,12 +400,12 @@ export default function StaffLogsPage() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
           {loading
-            ? "Loading..."
-            : `${total} log entr${total === 1 ? "y" : "ies"} found`}
+            ? t("loading")
+            : t(total === 1 ? "logEntriesCount_one" : "logEntriesCount_other", { count: total })}
         </p>
         {!loading && logs.length > 0 && (
           <p className="text-xs text-gray-400">
-            Page {page} of {totalPages}
+            {t("pageOf", { page, total: totalPages })}
           </p>
         )}
       </div>
@@ -438,11 +438,10 @@ export default function StaffLogsPage() {
               <ClipboardList className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-base font-semibold text-gray-900 mb-1">
-              No activity logs found
+              {t("emptyTitle")}
             </h3>
             <p className="text-sm text-gray-500 max-w-sm">
-              No staff activity logs match your current filters. Try adjusting
-              your search criteria or date range.
+              {t("emptySubtitle")}
             </p>
           </CardContent>
         </Card>
@@ -477,20 +476,20 @@ export default function StaffLogsPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className={getActionBadgeClasses(log.action)}>
-                      {getActionLabel(log.action)}
+                      {ACTION_LABELS[log.action.toUpperCase()] || log.action}
                     </Badge>
                   </div>
 
                   {/* Info Row */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Target Type</span>
+                      <span className="text-xs text-gray-500">{t("lblTargetTypeMobile")}</span>
                       <span className="text-xs font-medium text-gray-700">
-                        {log.targetType?.replace(/_/g, " ") || "—"}
+                        {TARGET_LABELS[log.targetType] || log.targetType?.replace(/_/g, " ") || "—"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">IP Address</span>
+                      <span className="text-xs text-gray-500">{t("lblIpAddress")}</span>
                       <span className="text-xs font-mono text-gray-700">
                         {log.ipAddress || "—"}
                       </span>
@@ -499,7 +498,7 @@ export default function StaffLogsPage() {
                     {/* Details */}
                     {log.details && (
                       <div className="mt-2">
-                        <span className="text-xs text-gray-500">Details</span>
+                        <span className="text-xs text-gray-500">{t("lblDetails")}</span>
                         <p className="text-xs text-gray-600 mt-0.5 break-all leading-relaxed">
                           {isExpanded || !isTruncatable
                             ? formattedDetails
@@ -514,12 +513,12 @@ export default function StaffLogsPage() {
                             {isExpanded ? (
                               <>
                                 <ChevronUp className="h-3 w-3" />
-                                Show less
+                                {t("btnShowLess")}
                               </>
                             ) : (
                               <>
                                 <ChevronDown className="h-3 w-3" />
-                                Show more
+                                {t("btnShowMore")}
                               </>
                             )}
                           </button>
@@ -542,12 +541,12 @@ export default function StaffLogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/60">
-                    <TableHead>{t('thdateTime', 'Date / Time')}</TableHead>
-                    <TableHead>{t('thstaffName', 'Staff Name')}</TableHead>
-                    <TableHead>{t('thaction', 'Action')}</TableHead>
-                    <TableHead>{t('thtargetType', 'Target Type')}</TableHead>
-                    <TableHead>{t('thdetails', 'Details')}</TableHead>
-                    <TableHead>{t('thipAddress', 'IP Address')}</TableHead>
+                    <TableHead>{t("thDateTime")}</TableHead>
+                    <TableHead>{t("thStaffName")}</TableHead>
+                    <TableHead>{t("thAction")}</TableHead>
+                    <TableHead>{t("thTargetType")}</TableHead>
+                    <TableHead>{t("thDetailsCol")}</TableHead>
+                    <TableHead>{t("thIpAddressCol")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -581,13 +580,13 @@ export default function StaffLogsPage() {
                         {/* Action Badge */}
                         <TableCell>
                           <Badge variant="outline" className={getActionBadgeClasses(log.action)}>
-                            {getActionLabel(log.action)}
+                            {ACTION_LABELS[log.action.toUpperCase()] || log.action}
                           </Badge>
                         </TableCell>
 
                         {/* Target Type */}
                         <TableCell className="text-sm text-gray-600">
-                          {log.targetType?.replace(/_/g, " ") || "—"}
+                          {TARGET_LABELS[log.targetType] || log.targetType?.replace(/_/g, " ") || "—"}
                         </TableCell>
 
                         {/* Details */}
@@ -608,12 +607,12 @@ export default function StaffLogsPage() {
                                   {isExpanded ? (
                                     <>
                                       <ChevronUp className="h-3 w-3" />
-                                      Show less
+                                      {t("btnShowLess")}
                                     </>
                                   ) : (
                                     <>
                                       <ChevronDown className="h-3 w-3" />
-                                      Show more
+                                      {t("btnShowMore")}
                                     </>
                                   )}
                                 </button>
@@ -648,7 +647,7 @@ export default function StaffLogsPage() {
             disabled={page <= 1}
             className="min-w-[80px]"
           >
-            Previous
+            {t("btnPrevious")}
           </Button>
 
           <div className="flex items-center gap-1">
@@ -676,7 +675,7 @@ export default function StaffLogsPage() {
             disabled={page >= totalPages}
             className="min-w-[72px]"
           >
-            Next
+            {t("btnNext")}
           </Button>
         </div>
       )}
