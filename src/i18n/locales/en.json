@@ -396,7 +396,16 @@
     "roleOperator": "Operator",
     "roleStaff": "Staff",
     "roleSuperuser": "Superuser",
-    "roleSystemAdmin": "System Administrator"
+    "roleSystemAdmin": "System Administrator",
+    "fallbackOperator": "Operator",
+    "fallbackSuperadmin": "System Admin",
+    "badgeSuperuser": "Superuser",
+    "badgeSysAdmin": "System Administrator",
+    "currencyETB": "ETB (Birr)",
+    "currencyUSD": "USD (Dollar)",
+    "currencyEUR": "EUR (Euro)",
+    "langEnglish": "English",
+    "langAmharic": "Amharic"
   },
   "users": {
     "pageTitle": "Account Management",

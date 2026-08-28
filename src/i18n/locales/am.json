@@ -395,7 +395,16 @@
     "roleOperator": "ኦፐሬተር",
     "roleStaff": "ሠራተኛ",
     "roleSuperuser": "ሱፐር ተጠቃሚ",
-    "roleSystemAdmin": "የስርዓት አስተዳዳሪ"
+    "roleSystemAdmin": "የስርዓት አስተዳዳሪ",
+    "fallbackOperator": "አተባበሪ",
+    "fallbackSuperadmin": "ስርዓት አስተዳዳሪ",
+    "badgeSuperuser": "ሱፐርዩዘር",
+    "badgeSysAdmin": "ስርዓት አስተዳዳሪ",
+    "currencyETB": "ETB (ብር)",
+    "currencyUSD": "USD (ዶላር)",
+    "currencyEUR": "EUR (ዩሮ)",
+    "langEnglish": "English",
+    "langAmharic": "አማርኛ"
   },
   "users": {
     "pageTitle": "ሂሳብ አስተዳደር",

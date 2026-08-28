@@ -202,7 +202,7 @@ function ProviderSettings() {
               </Avatar>
               <div>
                 <p className="font-semibold text-slate-900">
-                  {name || "Operator"}
+                  {name || t("fallbackOperator")}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
                   <Badge
@@ -534,13 +534,13 @@ function SuperuserSettings() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold text-slate-900">{name || "System Admin"}</p>
+                <p className="font-semibold text-slate-900">{name || t("fallbackSuperadmin")}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 text-xs font-semibold">
-                    <Shield className="mr-1 size-3" />Superuser
+                    <Shield className="mr-1 size-3" />{t("badgeSuperuser")}
                   </Badge>
                   <Badge variant="outline" className="text-xs">
-                    <BadgeCheck className="mr-1 size-3 text-emerald-500" />System Administrator
+                    <BadgeCheck className="mr-1 size-3 text-emerald-500" />{t("badgeSysAdmin")}
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">@{currentUser?.username}</p>
@@ -638,9 +638,9 @@ function SuperuserSettings() {
                 <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ETB">ETB (Birr)</SelectItem>
-                    <SelectItem value="USD">USD (Dollar)</SelectItem>
-                    <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                    <SelectItem value="ETB">{t("currencyETB")}</SelectItem>
+                    <SelectItem value="USD">{t("currencyUSD")}</SelectItem>
+                    <SelectItem value="EUR">{t("currencyEUR")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -649,8 +649,8 @@ function SuperuserSettings() {
                 <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="am">Amharic</SelectItem>
+                    <SelectItem value="en">{t("langEnglish")}</SelectItem>
+                    <SelectItem value="am">{t("langAmharic")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

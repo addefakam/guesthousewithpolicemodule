@@ -395,7 +395,16 @@
     "roleOperator": "Opareetar",
     "roleStaff": "Hojjettaa",
     "roleSuperuser": "Fayyadamaa Ol'aanaa",
-    "roleSystemAdmin": "Bulchaa Sirna"
+    "roleSystemAdmin": "Bulchaa Sirna",
+    "fallbackOperator": "Haqaattoo",
+    "fallbackSuperadmin": "Sistema Torbenchootaa",
+    "badgeSuperuser": "Supayuuzaraa",
+    "badgeSysAdmin": "Sistema Torbanchoo",
+    "currencyETB": "ETB (Birra)",
+    "currencyUSD": "USD (Dolaar)",
+    "currencyEUR": "EUR (Yuuroo)",
+    "langEnglish": "English",
+    "langAmharic": "Afaan Oromoo"
   },
   "users": {
     "pageTitle": "Bulchiinsa Herregaa",
