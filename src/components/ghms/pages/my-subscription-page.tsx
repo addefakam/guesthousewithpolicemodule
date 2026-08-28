@@ -8,11 +8,7 @@ import {
   apiInitiateChapaPayment,
   apiChapaClientVerify,
 } from "@/lib/api";
-import {
-  formatDaysRemaining,
-  formatCycle,
-  getStatusBadgeClasses,
-} from "@/lib/subscription";
+import { getStatusBadgeClasses } from "@/lib/subscription";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -139,7 +135,38 @@ function LoadingSkeleton() {
 }
 
 export default function MySubscriptionPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("subscription");
+  // ── i18n lookup maps ──
+  const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    CHAPA: t("payMethodCHAPA"),
+    CASH: t("payMethodCASH"),
+    BANK_TRANSFER: t("payMethodBANK_TRANSFER"),
+    TELEBIRR: t("payMethodTELEBIRR"),
+    CBE_BIRR: t("payMethodCBE_BIRR"),
+    OTHER: t("payMethodOTHER"),
+  };
+  const CYCLE_LABELS: Record<string, string> = {
+    MONTHLY: t("cycleMONTHLY"),
+    QUARTERLY: t("cycleQUARTERLY"),
+    SEMI_ANNUAL: t("cycleSEMI_ANNUAL"),
+    YEARLY: t("cycleYEARLY"),
+  };
+  const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: t("statusACTIVE"),
+    WARNING: t("statusWARNING"),
+    EXPIRED: t("statusEXPIRED"),
+    SUSPENDED: t("statusSUSPENDED"),
+  };
+  function fmtDaysRemaining(days: number): string {
+    if (days > 0) return t(days === 1 ? "daysRemaining_one" : "daysRemaining_other", { count: days });
+    if (days === 0) return t("expiresToday");
+    const abs = Math.abs(days);
+    return t(abs === 1 ? "expiredAgo_one" : "expiredAgo_other", { count: abs });
+  }
+  function fmtCycle(cycle: string): string {
+    return CYCLE_LABELS[cycle] || cycle;
+  }
+
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPayDialog, setShowPayDialog] = useState(false);
@@ -172,8 +199,8 @@ export default function MySubscriptionPage() {
       const res = await apiMySubscription();
       setData(res as SubData);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      toast.error(`Failed to load subscription info: ${msg}`);
+      const msg = err instanceof Error ? err.message : t("toastFailedLoad");
+      toast.error(`t("toastFailedLoad") ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -186,7 +213,7 @@ export default function MySubscriptionPage() {
   // Handle Chapa payment callback — actively verify with Chapa API
   useEffect(() => {
     if (chapaResult === "success") {
-      toast.success("Chapa payment completed! Verifying your payment...");
+      toast.success(t("toastChapaCompleted"));
       setChapaVerifying(true);
       setChapaVerifyResult(null);
 
@@ -196,16 +223,16 @@ export default function MySubscriptionPage() {
           const res = await apiChapaClientVerify() as any;
           if (res.verified > 0) {
             setChapaVerifyResult("success");
-            toast.success(`Payment verified! ${res.results?.[0] || "Your subscription is now active."}`);
+            toast.success(`${t("toastPaymentVerified")}`);
           } else if (res.alreadyVerified) {
             setChapaVerifyResult("success");
           } else {
             setChapaVerifyResult("pending");
-            toast.info(res.results?.[0] || "Payment not yet confirmed by Chapa. We'll keep checking.");
+            toast.info(res.results?.[0] || t("toastChapaPending"));
           }
         } catch (err) {
           setChapaVerifyResult("error");
-          toast.error(err instanceof Error ? err.message : "Verification failed. The webhook will process it shortly.");
+          toast.error(err instanceof Error ? err.message : t("toastVerifyFailed"));
         } finally {
           setChapaVerifying(false);
           fetchData();
@@ -229,7 +256,7 @@ export default function MySubscriptionPage() {
 
   const handleChapaPayment = async () => {
     if (!selectedPlan || !payAmount || Number(payAmount) <= 0) {
-      toast.error("Invalid payment details");
+      toast.error(t("toastInvalidPayment"));
       return;
     }
     setSubmitting(true);
@@ -243,10 +270,10 @@ export default function MySubscriptionPage() {
         // Redirect to Chapa checkout page
         window.location.href = res.checkoutUrl;
       } else {
-        toast.error("Failed to get Chapa checkout URL");
+        toast.error(t("toastNoChapaUrl"));
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to initiate Chapa payment");
+      toast.error(e instanceof Error ? e.message : t("toastChapaInitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -260,11 +287,11 @@ export default function MySubscriptionPage() {
     }
 
     if (!selectedPlan || !payMethod || !payAmount || Number(payAmount) <= 0) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("toastFillRequired"));
       return;
     }
     if (!isChapaMethod && !payRef.trim()) {
-      toast.error("Transfer reference number is required");
+      toast.error(t("toastRefRequired"));
       return;
     }
     setSubmitting(true);
@@ -277,11 +304,11 @@ export default function MySubscriptionPage() {
         referenceNo: payRef,
         notes: payNotes,
       });
-      toast.success("Payment submitted! Awaiting verification.");
+      toast.success(t("toastPaymentSubmitted"));
       setShowPayDialog(false);
       fetchData();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to submit");
+      toast.error(e instanceof Error ? e.message : t("toastSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -298,8 +325,8 @@ export default function MySubscriptionPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <CreditCard className="w-12 h-12 text-slate-300 mb-3" />
-        <p className="text-sm font-medium text-slate-500">No subscription found</p>
-        <p className="text-xs text-slate-400 mt-1">Contact the administrator</p>
+        <p className="text-sm font-medium text-slate-500">{t("noSubFound")}</p>
+        <p className="text-xs text-slate-400 mt-1">{t("noSubContact")}</p>
       </div>
     );
   }
@@ -318,9 +345,9 @@ export default function MySubscriptionPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Subscription & Payments</h2>
+          <h2 className="text-base sm:text-lg font-semibold">{t("pageTitle")}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Manage your subscription, view plans, and submit payments
+            t("pageSubtitle")
           </p>
         </div>
         <Button
@@ -330,7 +357,7 @@ export default function MySubscriptionPage() {
           className="h-8 text-xs"
         >
           <RefreshCw className="mr-1 h-3 w-3" />
-          Refresh
+          {t("btnRefresh")}
         </Button>
       </div>
 
@@ -341,18 +368,18 @@ export default function MySubscriptionPage() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-slate-700">
-            {cur}{pricePerBed} per bed/day x <span className="font-bold text-slate-900">{totalBeds} bed{totalBeds !== 1 ? "s" : ""}</span> = <span className="font-bold text-primary">{cur}{(pricePerBed * totalBeds).toLocaleString()}/day</span>
+            {t("pricingCalc", { cur, price: pricePerBed, beds: totalBeds, bedLabel: totalBeds === 1 ? t("bed_one") : t("bed_other"), total: (pricePerBed * totalBeds).toLocaleString() })}
           </p>
           <p className="text-[10px] text-muted-foreground">
             {totalBeds === 0
-              ? "No rooms configured yet. Add rooms to see your subscription pricing."
-              : `Your subscription is calculated based on ${totalBeds} total bed${totalBeds !== 1 ? "s" : ""} across all your rooms.`}
+              ? t("noRoomsConfigured")
+              : `${t("bedsCalcDescription", { beds: totalBeds })}`}
           </p>
         </div>
         {pricingLocked && (
           <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500 bg-slate-100 shrink-0">
             <Lock className="w-3 h-3 mr-1" />
-            Rates Locked
+            t("ratesLocked")
           </Badge>
         )}
       </div>
@@ -382,7 +409,7 @@ export default function MySubscriptionPage() {
                 <XCircle className="w-5 h-5 text-slate-400" />
               )}
               <span className={`text-sm font-semibold px-2.5 py-0.5 rounded-full border ${statusColor}`}>
-                {sub.status}
+                {STATUS_LABELS[sub.status] || sub.status}
               </span>
               {isTrial && (
                 <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">
@@ -392,26 +419,26 @@ export default function MySubscriptionPage() {
               )}
             </div>
             <span className="text-xs font-medium text-muted-foreground">
-              {formatDaysRemaining(sub.daysRemaining)}
+              {fmtDaysRemaining(sub.daysRemaining)}
             </span>
           </div>
 
           {/* Details grid */}
           <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Current Plan</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblCurrentPlan")}</p>
               <p className="text-sm font-semibold mt-0.5">
-                {isTrial ? "Free Trial" : formatCycle(sub.cycle)}
+                {isTrial ? t("freeTrial") : fmtCycle(sub.cycle)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Amount</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblAmount")}</p>
               <p className="text-sm font-semibold mt-0.5">
-                {isTrial ? "Free" : `${Number(sub.price).toLocaleString()} ${cur}`}
+                {isTrial ? t("freeTrial") : `${Number(sub.price).toLocaleString()} ${cur}`}
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Expires On</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblExpiresOn")}</p>
               <p className="text-sm font-semibold mt-0.5">
                 {new Date(sub.endDate).toLocaleDateString("en-GB", {
                   day: "numeric",
@@ -421,7 +448,7 @@ export default function MySubscriptionPage() {
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Provider</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblProvider")}</p>
               <p className="text-sm font-semibold mt-0.5 truncate">
                 {data.provider?.name || "—"}
               </p>
@@ -448,18 +475,18 @@ export default function MySubscriptionPage() {
                   <AlertTriangle className="w-5 h-5 text-rose-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-rose-800">PAYMENT OVERDUE</p>
+                  <p className="text-sm font-bold text-rose-800">{t("penaltyTitle")}</p>
                   <p className="text-xs text-rose-700 mt-0.5">
-                    Your subscription expired {Math.abs(sub.daysRemaining)} day{Math.abs(sub.daysRemaining) !== 1 ? "s" : ""} ago.
-                    A <strong>{penaltyPercent}% late payment penalty</strong> has been applied.
+                    {t("penaltyDesc", { days: Math.abs(sub.daysRemaining), percent: penaltyPercent })}
+                    
                   </p>
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-rose-600">Base: <strong>{baseAmount.toLocaleString()} {cur}</strong></span>
+                    <span className="text-xs text-rose-600">{t("penaltyBase")}: <strong>{baseAmount.toLocaleString()} {cur}</strong></span>
                     <span className="text-rose-300">+</span>
-                    <span className="text-xs text-rose-600">Penalty: <strong>{(penaltyAmount - baseAmount).toLocaleString()} {cur}</strong></span>
+                    <span className="text-xs text-rose-600">{t("penaltyLabel")}: <strong>{(penaltyAmount - baseAmount).toLocaleString()} {cur}</strong></span>
                     <span className="text-rose-300">=</span>
                     <span className="text-sm font-bold text-rose-900 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-lg">
-                      TOTAL DUE: {penaltyAmount.toLocaleString()} {cur}
+                      {t("penaltyTotalDue")}: {penaltyAmount.toLocaleString()} {cur}
                     </span>
                   </div>
                 </div>
@@ -473,8 +500,8 @@ export default function MySubscriptionPage() {
               <div className="flex items-start gap-2 p-3 rounded-lg border bg-amber-50 border-amber-200">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                 <div>
-                  <p className="text-xs font-semibold text-amber-800">Subscription expiring soon!</p>
-                  <p className="text-xs mt-1 text-amber-700">Please select a plan below and submit your payment to continue using the service.</p>
+                  <p className="text-xs font-semibold text-amber-800">{t("warningTitle")}</p>
+                  <p className="text-xs mt-1 text-amber-700">{t("warningDesc")}</p>
                 </div>
               </div>
             </div>
@@ -487,10 +514,10 @@ export default function MySubscriptionPage() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <IndianRupee className="w-4 h-4" />
-            Available Plans
+            {t("availablePlans")}
           </h3>
           <span className="text-[10px] text-muted-foreground">
-            {data.plans.length} plan{data.plans.length !== 1 ? "s" : ""} available
+            {t(data.plans.length === 1 ? "plansCount_one" : "plansCount_other", { count: data.plans.length })}
           </span>
         </div>
 
@@ -498,9 +525,9 @@ export default function MySubscriptionPage() {
           <Card>
             <CardContent className="py-8 text-center">
               <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No plans available yet</p>
+              <p className="text-sm text-muted-foreground">{t("noPlansYet")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Contact the administrator for payment instructions
+                {t("noPlansContact")}
               </p>
             </CardContent>
           </Card>
@@ -532,7 +559,7 @@ export default function MySubscriptionPage() {
                           <div>
                             <h4 className="text-sm font-semibold">{plan.name}</h4>
                             <p className="text-[10px] text-muted-foreground">
-                              {formatCycle(plan.cycle)} — {plan.days} days
+                              {fmtCycle(plan.cycle)} — {t("planDays", { days: plan.days })}
                             </p>
                           </div>
                         </div>
@@ -552,7 +579,7 @@ export default function MySubscriptionPage() {
                         </p>
                         {totalBeds > 0 && pricePerBed > 0 && (
                           <p className="text-[10px] text-muted-foreground">
-                            {cur}{pricePerBed} x {totalBeds} beds x {plan.days} days
+                            {t("bedsBreakdown", { cur, price: pricePerBed, beds: totalBeds, days: plan.days })}
                           </p>
                         )}
                         {plan.months > 1 && (
@@ -567,9 +594,9 @@ export default function MySubscriptionPage() {
                         className="h-8 text-xs"
                         disabled={isCurrentPlan}
                       >
-                        {isCurrentPlan ? "Active" : (
+                        {isCurrentPlan ? t("badgeActive") : (
                           <>
-                            Pay Now
+                            {t("btnPayNow")}
                             <ChevronRight className="w-3 h-3 ml-1" />
                           </>
                         )}
@@ -592,7 +619,7 @@ export default function MySubscriptionPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Receipt className="w-4 h-4" />
-              Payment History
+              {t("paymentHistory")}
               {data.payments.length > 0 && (
                 <Badge variant="secondary" className="text-[10px]">
                   {data.payments.length}
@@ -610,7 +637,7 @@ export default function MySubscriptionPage() {
           <CardContent className="pt-0">
             {data.payments.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">
-                No payment records yet
+                t("noPaymentRecords")
               </p>
             ) : (
               <div className="space-y-2">
@@ -651,7 +678,7 @@ export default function MySubscriptionPage() {
                             {Number(payment.amount).toLocaleString()} {cur}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {formatCycle(payment.cycle)} &middot;{" "}
+                            {fmtCycle(payment.cycle)} &middot;{" "}
                             {new Date(payment.periodStart).toLocaleDateString("en-GB", {
                               day: "numeric", month: "short",
                             })}{" "}
@@ -677,7 +704,7 @@ export default function MySubscriptionPage() {
                               : "border-emerald-200 text-emerald-700"
                           }`}
                         >
-                          {isChapaPending ? "Chapa Pending" : isPaymentOverdue && !isOverdueWillApply ? "Payment Overdue" : isOverdueWillApply ? "Overdue (Will apply soon)" : isProviderSubmitted ? "Pending" : "Verified"}
+                          {isChapaPending ? t("payStatusChapaPending") : isPaymentOverdue && !isOverdueWillApply ? t("payStatusOverdue") : isOverdueWillApply ? t("payStatusOverdueSoon") : isProviderSubmitted ? t("payStatusPending") : t("payStatusVerified")}
                         </Badge>
                         <p className="text-[10px] text-muted-foreground mt-1">
                           {new Date(payment.createdAt).toLocaleDateString("en-GB", {
@@ -717,37 +744,37 @@ export default function MySubscriptionPage() {
           <div className="flex-1">
             {chapaVerifying ? (
               <>
-                <p className="text-sm font-bold text-blue-800">Verifying Payment with Chapa...</p>
+                <p className="text-sm font-bold text-blue-800">{t("chapaVerifyingTitle")}</p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  Please wait while we confirm your payment with Chapa. This takes a few seconds.
+                  {t("chapaVerifyingDesc")}
                 </p>
               </>
             ) : chapaVerifyResult === "success" ? (
               <>
                 <p className="text-sm font-bold text-emerald-800">Payment Verified &amp; Active</p>
                 <p className="text-xs text-emerald-700 mt-0.5">
-                  Your Chapa payment has been confirmed. Your subscription is now active!
+                  {t("chapaVerifiedDesc")}
                 </p>
               </>
             ) : chapaVerifyResult === "error" ? (
               <>
-                <p className="text-sm font-bold text-amber-800">Verification Delayed</p>
+                <p className="text-sm font-bold text-amber-800">{t("chapaDelayedTitle")}</p>
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Could not verify immediately. Don't worry — the payment will be confirmed automatically via our backend. No action needed.
+                  {t("chapaDelayedDesc")}
                 </p>
               </>
             ) : chapaVerifyResult === "pending" ? (
               <>
-                <p className="text-sm font-bold text-blue-800">Payment Not Yet Confirmed</p>
+                <p className="text-sm font-bold text-blue-800">{t("chapaPendingTitle")}</p>
                 <p className="text-xs text-blue-700 mt-0.5">
-                  Chapa hasn't confirmed the payment yet. It will be verified automatically once confirmed.
+                  {t("chapaPendingDesc")}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-bold text-emerald-800">Payment Processing</p>
+                <p className="text-sm font-bold text-emerald-800">{t("chapaProcessingTitle")}</p>
                 <p className="text-xs text-emerald-700 mt-0.5">
-                  Your Chapa payment was received. We are verifying it now — your subscription will be activated shortly.
+                  {t("chapaProcessingDesc")}
                 </p>
               </>
             )}
@@ -763,12 +790,12 @@ export default function MySubscriptionPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="w-5 h-5" />
-              Pay for Subscription
+              {t("dlgPayTitle")}
             </DialogTitle>
             <DialogDescription>
               {isChapaMethod
-                ? "You will be redirected to Chapa's secure payment page to complete payment online (Telebirr, CBE Birr, bank cards, etc.)."
-                : "Complete your payment offline, then fill in the details below. Your subscription will be activated after verification."}
+                ? t("dlgPayDescChapa")
+                : t("dlgPayDescOffline")}
             </DialogDescription>
           </DialogHeader>
 
@@ -780,7 +807,7 @@ export default function MySubscriptionPage() {
                   <div>
                     <p className="text-sm font-semibold">{selectedPlan.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCycle(selectedPlan.cycle)} — {selectedPlan.days} days
+                      {fmtCycle(selectedPlan.cycle)} — {t("planDays", { days: selectedPlan.days })}
                     </p>
                   </div>
                   <p className="text-lg font-bold">
@@ -792,7 +819,7 @@ export default function MySubscriptionPage() {
               {/* Amount */}
               <div>
                 <Label className="text-xs font-medium">
-                  Amount ({cur})
+                  {t("lblAmount")} ({cur})
                 </Label>
                 <Input
                   type="number"
@@ -801,14 +828,14 @@ export default function MySubscriptionPage() {
                   className="mt-1 bg-slate-50 text-slate-700 cursor-not-allowed"
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Auto-calculated based on your total beds and selected plan
+                  {t("amountAutoCalc")}
                 </p>
               </div>
 
               {/* Payment method */}
               <div>
                 <Label className="text-xs font-medium">
-                  Payment Method <span className="text-red-500">*</span>
+                  {t("lblPaymentMethod")} <span className="text-red-500">*</span>
                 </Label>
                 <div className="grid grid-cols-2 gap-2 mt-1.5">
                   {PAYMENT_METHODS.map((m) => {
@@ -828,7 +855,7 @@ export default function MySubscriptionPage() {
                         }`}
                       >
                         <Icon className={`w-4 h-4 ${isActive ? m.color : m.value === "CHAPA" ? "text-violet-400" : "text-slate-400"}`} />
-                        {m.label}
+                        {PAYMENT_METHOD_LABELS[m.value] || m.label}
                       </button>
                     );
                   })}
@@ -836,7 +863,7 @@ export default function MySubscriptionPage() {
                 {payMethod === "CHAPA" && (
                   <p className="text-[10px] text-violet-600 mt-1.5 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    Pay securely via Telebirr, CBE Birr, bank cards, and more
+                    {t("chapaMethodInfo")}
                   </p>
                 )}
               </div>
@@ -847,26 +874,26 @@ export default function MySubscriptionPage() {
                   {/* Reference number */}
                   <div>
                     <Label className="text-xs font-medium">
-                      Reference / Transaction Number <span className="text-rose-500">*</span>
+                      {t("lblReferenceNumber")} <span className="text-rose-500">*</span>
                     </Label>
                     <Input
                       value={payRef}
                       onChange={(e) => setPayRef(e.target.value)}
-                      placeholder="e.g., FT25632i5632k"
+                      placeholder={t("referencePlaceholder")}
                       className="mt-1"
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Enter the transaction/reference number from your payment receipt
+                      {t("referenceHint")}
                     </p>
                   </div>
 
                   {/* Notes */}
                   <div>
-                    <Label>{t('lbladditionalNotes', 'Additional Notes')}</Label>
+                    <Label>{t("lblAdditionalNotes")}</Label>
                     <Textarea
                       value={payNotes}
                       onChange={(e) => setPayNotes(e.target.value)}
-                      placeholder="Any additional information (optional)"
+                      placeholder={t("notesPlaceholder")}
                       rows={2}
                       className="mt-1"
                     />
@@ -879,7 +906,7 @@ export default function MySubscriptionPage() {
                 <div className="flex items-start gap-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
                   <ExternalLink className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-violet-800 leading-relaxed">
-                    Click "Pay with Chapa" below. You'll be redirected to Chapa's secure checkout to complete your payment. After paying, you'll return here and your subscription activates automatically.
+                    {t("chapaRedirectInfo")}
                   </p>
                 </div>
               )}
@@ -902,7 +929,7 @@ export default function MySubscriptionPage() {
                   onClick={() => setShowPayDialog(false)}
                   className="flex-1 sm:flex-none"
                 >
-                  Cancel
+                  {t("btnCancel")}
                 </Button>
                 <Button
                   onClick={handleSubmitPayment}
@@ -916,17 +943,17 @@ export default function MySubscriptionPage() {
                   {submitting ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      {isChapaMethod ? "Redirecting..." : "Submitting..."}
+                      {isChapaMethod ? t("btnRedirecting") : t("btnSubmitting")}
                     </>
                   ) : isChapaMethod ? (
                     <>
                       <Zap className="w-4 h-4 mr-2" />
-                      Pay with Chapa
+                      {t("btnPayWithChapa")}
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4 mr-2" />
-                      Submit Payment
+                      {t("btnSubmitPayment")}
                     </>
                   )}
                 </Button>
