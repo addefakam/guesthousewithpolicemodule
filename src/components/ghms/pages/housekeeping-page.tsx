@@ -112,7 +112,7 @@ const STATUS_TABS = ["all", "PENDING", "IN_PROGRESS", "COMPLETED"] as const;
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function HousekeepingPage() {
-  const { t } = useTranslation("operations");
+  const { t } = useTranslation(["operations", "common"]);
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -144,7 +144,7 @@ export default function HousekeepingPage() {
       setTasks(Array.isArray(taskData.tasks) ? taskData.tasks : []);
       setRooms(Array.isArray(roomData) ? roomData : roomData.rooms || []);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      toast.error(err instanceof Error ? err.message : t("toastDataLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -161,8 +161,26 @@ export default function HousekeepingPage() {
 
   const getRoomLabel = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
-    if (room) return `Room ${room.number}${room.name ? ` — ${room.name}` : ""}`;
-    return "Unknown Room";
+    if (room) return room.name ? t("roomLabelWithName", { number: room.number, name: room.name }) : t("roomLabel", { number: room.number });
+    return t("unknownRoom");
+  };
+
+  const taskTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      CLEANING: t("taskTypeCleaning"),
+      MAINTENANCE: t("taskTypeMaintenance"),
+      INSPECTION: t("taskTypeInspection"),
+    };
+    return map[type] || type;
+  };
+
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      PENDING: t("statusPending"),
+      IN_PROGRESS: t("statusInProgress"),
+      COMPLETED: t("statusCompleted"),
+    };
+    return map[s] || s.replace("_", " ");
   };
 
   // ─── CRUD ─────────────────────────────────────────────────────────────────
@@ -193,7 +211,7 @@ export default function HousekeepingPage() {
 
   const handleSave = async () => {
     if (!form.roomId || !form.type || !form.scheduledDate) {
-      toast.error("Room, type, and date are required");
+      toast.error(t("toastHkRequiredFields"));
       return;
     }
     try {
@@ -207,15 +225,15 @@ export default function HousekeepingPage() {
       };
       if (editing) {
         await apiUpdateHousekeeping(editing.id, payload);
-        toast.success("Task updated");
+        toast.success(t("toastTaskUpdated"));
       } else {
         await apiCreateHousekeeping(payload);
-        toast.success("Task created");
+        toast.success(t("toastTaskCreated"));
       }
       setDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save task");
+      toast.error(err instanceof Error ? err.message : t("toastTaskSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -226,11 +244,11 @@ export default function HousekeepingPage() {
     try {
       setDeleting(true);
       await apiDeleteHousekeeping(deleteTarget.id);
-      toast.success("Task deleted");
+      toast.success(t("toastTaskDeleted"));
       setDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete task");
+      toast.error(err instanceof Error ? err.message : t("toastTaskDeleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -239,10 +257,10 @@ export default function HousekeepingPage() {
   const handleStatusChange = async (task: Task, newStatus: string) => {
     try {
       await apiUpdateHousekeeping(task.id, { status: newStatus });
-      toast.success(`Task marked as ${newStatus.replace("_", " ")}`);
+      toast.success(t("toastTaskMarked", { status: newStatus.replace("_", " ") }));
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toast.error(err instanceof Error ? err.message : t("toastStatusUpdateFailed"));
     }
   };
 
@@ -268,13 +286,13 @@ export default function HousekeepingPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t("housekeepingTitle", "Housekeeping")}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("housekeepingTitle")}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {t("housekeepingDesc", "Manage cleaning, maintenance, and inspection tasks")}
+            {t("housekeepingDesc")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> {t("addTask", "Add Task")}
+          <Plus className="h-4 w-4" /> {t("addTask")}
         </Button>
       </div>
 
@@ -290,7 +308,7 @@ export default function HousekeepingPage() {
               onClick={() => setStatusFilter(status)}
               className="gap-1.5"
             >
-              {status === "all" ? "All" : status.replace("_", " ")}
+              {status === "all" ? t("all") : statusLabel(status)}
               <Badge
                 variant={statusFilter === status ? "secondary" : "outline"}
                 className="ml-1 h-5 min-w-[1.5rem] px-1.5 text-xs"
@@ -307,16 +325,16 @@ export default function HousekeepingPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
           <BedDouble className="h-12 w-12 text-gray-300 mb-3" />
           <p className="text-lg font-medium text-gray-500">
-            {statusFilter === "all" ? "No tasks yet" : `No ${statusFilter.replace("_", " ").toLowerCase()} tasks`}
+            {statusFilter === "all" ? t("noTasksYet") : t("noFilteredTasks", { status: statusLabel(statusFilter).toLowerCase() })}
           </p>
           <p className="mt-1 text-sm text-gray-400">
             {statusFilter === "all"
-              ? "Create a housekeeping task to get started"
-              : "Try selecting a different status filter"}
+              ? t("createTaskToStart")
+              : t("tryDifferentStatus")}
           </p>
           {statusFilter === "all" && (
             <Button onClick={openCreate} variant="outline" className="mt-4 gap-2">
-              <Plus className="h-4 w-4" /> Add Task
+              <Plus className="h-4 w-4" /> {t("addTask")}
             </Button>
           )}
         </div>
@@ -326,13 +344,13 @@ export default function HousekeepingPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('throom', 'Room')}</TableHead>
-                  <TableHead>{t('thtype', 'Type')}</TableHead>
-                  <TableHead>{t('thstatus', 'Status')}</TableHead>
-                  <TableHead>{t('thassignedTo', 'Assigned To')}</TableHead>
-                  <TableHead>{t('thscheduledDate', 'Scheduled Date')}</TableHead>
-                  <TableHead>{t('thnotes', 'Notes')}</TableHead>
-                  <TableHead>{t('thactions', 'Actions')}</TableHead>
+                  <TableHead>{t('throom')}</TableHead>
+                  <TableHead>{t('thtype')}</TableHead>
+                  <TableHead>{t('thstatus')}</TableHead>
+                  <TableHead>{t('thassignedTo')}</TableHead>
+                  <TableHead>{t('thscheduledDate')}</TableHead>
+                  <TableHead>{t('thnotes')}</TableHead>
+                  <TableHead>{t('thactions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,7 +364,7 @@ export default function HousekeepingPage() {
                         <BedDouble className="h-4 w-4 text-gray-400 shrink-0" />
                         <div>
                           <p className="font-medium text-gray-900">
-                            {task.room?.number ? `Room ${task.room.number}` : getRoomLabel(task.roomId)}
+                            {task.room?.number ? t("roomLabel", { number: task.room.number }) : getRoomLabel(task.roomId)}
                           </p>
                           {task.room?.name && (
                             <p className="text-xs text-gray-500">{task.room.name}</p>
@@ -360,16 +378,16 @@ export default function HousekeepingPage() {
                         className={`gap-1 ${TASK_TYPE_STYLES[task.type]?.badge || TASK_TYPE_STYLES.CLEANING.badge}`}
                       >
                         {TASK_TYPE_STYLES[task.type]?.icon}
-                        {task.type}
+                        {taskTypeLabel(task.type)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_STYLES[task.status] || STATUS_STYLES.PENDING}>
-                        {task.status.replace("_", " ")}
+                        {statusLabel(task.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
-                      {task.assignedTo || <span className="text-gray-400">Unassigned</span>}
+                      {task.assignedTo || <span className="text-gray-400">{t("unassigned")}</span>}
                     </TableCell>
                     <TableCell className="text-sm">{task.scheduledDate}</TableCell>
                     <TableCell className="max-w-[180px]">
@@ -385,28 +403,28 @@ export default function HousekeepingPage() {
                         <DropdownMenuContent align="end">
                           {task.status !== "COMPLETED" && (
                             <DropdownMenuItem onClick={() => handleStatusChange(task, "COMPLETED")}>
-                              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Complete
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> {t("markComplete")}
                             </DropdownMenuItem>
                           )}
                           {task.status !== "COMPLETED" && (
                             <>
                               <DropdownMenuItem onClick={() => handleStatusChange(task, "PENDING")} disabled={task.status === "PENDING"}>
-                                Set Pending
+                                {t("setPending")}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleStatusChange(task, "IN_PROGRESS")} disabled={task.status === "IN_PROGRESS"}>
-                                Set In Progress
+                                {t("setInProgress")}
                               </DropdownMenuItem>
                             </>
                           )}
                           <DropdownMenuItem onClick={() => openEdit(task)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                            <Pencil className="mr-2 h-4 w-4" /> {t("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-rose-600 focus:text-rose-600"
                             onClick={() => setDeleteTarget(task)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            <Trash2 className="mr-2 h-4 w-4" /> {t("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -423,20 +441,20 @@ export default function HousekeepingPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Task" : "Add New Task"}</DialogTitle>
+            <DialogTitle>{editing ? t("editTask") : t("addNewTask")}</DialogTitle>
             <DialogDescription>
-              {editing ? "Update housekeeping task details." : "Create a new housekeeping task."}
+              {editing ? t("updateTaskDesc") : t("addNewTaskDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Room <span className="text-rose-500">*</span></Label>
+              <Label>{t("throom")} <span className="text-rose-500">*</span></Label>
               <Select value={form.roomId} onValueChange={(v) => setForm({ ...form, roomId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select room..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("selectRoomPlaceholder")} /></SelectTrigger>
                 <SelectContent>
                   {rooms.map((room) => (
                     <SelectItem key={room.id} value={room.id}>
-                      Room {room.number} — {room.name} ({room.type})
+                      {t("roomLabel", { number: room.number })}{room.name ? ` — ${room.name}` : ""} ({room.type})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -444,7 +462,7 @@ export default function HousekeepingPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Type <span className="text-rose-500">*</span></Label>
+                <Label>{t("thtype")} <span className="text-rose-500">*</span></Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -453,14 +471,14 @@ export default function HousekeepingPage() {
                         <span className="mr-1">
                           {TASK_TYPE_STYLES[x]?.icon}
                         </span>
-                        {x}
+                        {taskTypeLabel(x)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Scheduled Date <span className="text-rose-500">*</span></Label>
+                <Label>{t("thscheduledDate")} <span className="text-rose-500">*</span></Label>
                 <Input
                   type="date"
                   value={form.scheduledDate}
@@ -469,17 +487,17 @@ export default function HousekeepingPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t('lblassignedTo', 'Assigned To')}</Label>
+              <Label>{t('lblassignedTo')}</Label>
               <Input
-                placeholder="Staff member name"
+                placeholder={t("staffPlaceholder")}
                 value={form.assignedTo}
                 onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>{t('lblnotes', 'Notes')}</Label>
+              <Label>{t('lblnotes')}</Label>
               <Textarea
-                placeholder="Additional notes about this task..."
+                placeholder={t("notesPlaceholder")}
                 rows={3}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -487,9 +505,9 @@ export default function HousekeepingPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editing ? "Update Task" : "Create Task"}
+              {saving ? t("saving") : editing ? t("updateTask") : t("createTask")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -499,16 +517,15 @@ export default function HousekeepingPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTaskTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the {deleteTarget?.type?.toLowerCase()} task for{" "}
-              {deleteTarget?.room?.number ? `Room ${deleteTarget.room.number}` : "this room"}.
+              {t("deleteTaskDesc", { type: deleteTarget?.type?.toLowerCase(), room: deleteTarget?.room?.number ? t("roomLabel", { number: deleteTarget.room.number }) : "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

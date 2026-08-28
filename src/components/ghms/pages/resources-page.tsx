@@ -105,7 +105,7 @@ const emptyForm = {
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ResourcesPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(["operations", "common"]);
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [resources, setResources] = useState<Resource[]>([]);
@@ -133,7 +133,7 @@ export default function ResourcesPage() {
       const data = await apiGetResources(search);
       setResources(Array.isArray(data.resources) ? data.resources : []);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load resources");
+      toast.error(err instanceof Error ? err.message : t("toastResLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -175,7 +175,7 @@ export default function ResourcesPage() {
 
   const handleSave = async () => {
     if (!form.name || !form.category || !form.quantity || !form.unit) {
-      toast.error("Name, category, quantity, and unit are required");
+      toast.error(t("toastResRequiredFields"));
       return;
     }
     try {
@@ -191,15 +191,15 @@ export default function ResourcesPage() {
       };
       if (editing) {
         await apiUpdateResource(editing.id, payload);
-        toast.success("Resource updated");
+        toast.success(t("toastResourceUpdated"));
       } else {
         await apiCreateResource(payload);
-        toast.success("Resource created");
+        toast.success(t("toastResourceCreated"));
       }
       setDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save resource");
+      toast.error(err instanceof Error ? err.message : t("toastResSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -210,11 +210,11 @@ export default function ResourcesPage() {
     try {
       setDeleting(true);
       await apiDeleteResource(deleteTarget.id);
-      toast.success("Resource deleted");
+      toast.success(t("toastResourceDeleted"));
       setDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete resource");
+      toast.error(err instanceof Error ? err.message : t("toastResDeleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -222,27 +222,27 @@ export default function ResourcesPage() {
 
   const handleRestock = async () => {
     if (!restockTarget || !restockQty || Number(restockQty) <= 0) {
-      toast.error("Enter a valid quantity to restock");
+      toast.error(t("toastRestockValidQty"));
       return;
     }
     try {
       setRestocking(true);
       await apiRestockResource(restockTarget.id, Number(restockQty));
-      toast.success(`Restocked ${restockQty} ${restockTarget.unit}(s) of ${restockTarget.name}`);
+      toast.success(t("toastRestockSuccess", { qty: restockQty, unit: restockTarget.unit, name: restockTarget.name }));
       setRestockTarget(null);
       setRestockQty("");
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to restock");
+      toast.error(err instanceof Error ? err.message : t("toastRestockFailed"));
     } finally {
       setRestocking(false);
     }
   };
 
   const getStockStatus = (res: Resource) => {
-    if (res.quantity <= 0) return { label: "Out of Stock", cls: "bg-red-100 text-red-800 border-red-200", rowCls: "bg-red-50/50" };
-    if (res.quantity <= res.minLevel) return { label: "Low Stock", cls: "bg-amber-100 text-amber-800 border-amber-200", rowCls: "bg-amber-50/50" };
-    return { label: "In Stock", cls: "bg-emerald-100 text-emerald-800 border-emerald-200", rowCls: "" };
+    if (res.quantity <= 0) return { label: t("outOfStock"), cls: "bg-red-100 text-red-800 border-red-200", rowCls: "bg-red-50/50" };
+    if (res.quantity <= res.minLevel) return { label: t("lowStock"), cls: "bg-amber-100 text-amber-800 border-amber-200", rowCls: "bg-amber-50/50" };
+    return { label: t("inStock"), cls: "bg-emerald-100 text-emerald-800 border-emerald-200", rowCls: "" };
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -267,13 +267,13 @@ export default function ResourcesPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Resources</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("resTitle")}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage inventory and supplies
+            {t("resDesc")}
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Resource
+          <Plus className="h-4 w-4" /> {t("addResource")}
         </Button>
       </div>
 
@@ -286,7 +286,7 @@ export default function ResourcesPage() {
                 <Package className="h-5 w-5 text-sky-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Items</p>
+                <p className="text-sm text-gray-500">{t("totalItems")}</p>
                 <p className="text-xl font-bold text-gray-900">{resources.length}</p>
               </div>
             </div>
@@ -299,7 +299,7 @@ export default function ResourcesPage() {
                 <AlertTriangle className={`h-5 w-5 ${lowStockCount > 0 ? "text-red-600" : "text-emerald-600"}`} />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Low Stock Alerts</p>
+                <p className="text-sm text-gray-500">{t("lowStockAlerts")}</p>
                 <p className={`text-xl font-bold ${lowStockCount > 0 ? "text-red-600" : "text-emerald-600"}`}>
                   {lowStockCount}
                 </p>
@@ -313,7 +313,7 @@ export default function ResourcesPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="Search by name, category, or supplier..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -324,13 +324,13 @@ export default function ResourcesPage() {
       {resources.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
           <Package className="h-12 w-12 text-gray-300 mb-3" />
-          <p className="text-lg font-medium text-gray-500">No resources found</p>
+          <p className="text-lg font-medium text-gray-500">{t("noResourcesFound")}</p>
           <p className="mt-1 text-sm text-gray-400">
-            {search ? "Try a different search term" : "Get started by adding your first resource"}
+            {search ? t("tryDifferentSearch") : t("getStartedResource")}
           </p>
           {!search && (
             <Button onClick={openCreate} variant="outline" className="mt-4 gap-2">
-              <Plus className="h-4 w-4" /> Add Resource
+              <Plus className="h-4 w-4" /> {t("addResource")}
             </Button>
           )}
         </div>
@@ -340,15 +340,15 @@ export default function ResourcesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('thname', 'Name')}</TableHead>
-                  <TableHead>{t('thcategory', 'Category')}</TableHead>
-                  <TableHead>{t('thquantity', 'Quantity')}</TableHead>
-                  <TableHead>{t('thunit', 'Unit')}</TableHead>
-                  <TableHead>{t('thminLevel', 'Min Level')}</TableHead>
-                  <TableHead>{t('thcostunit', 'Cost/Unit')}</TableHead>
-                  <TableHead>{t('thsupplier', 'Supplier')}</TableHead>
-                  <TableHead>{t('thlastRestocked', 'Last Restocked')}</TableHead>
-                  <TableHead>{t('thactions', 'Actions')}</TableHead>
+                  <TableHead>{t('thname')}</TableHead>
+                  <TableHead>{t('thcategory')}</TableHead>
+                  <TableHead>{t('thquantity')}</TableHead>
+                  <TableHead>{t('thunit')}</TableHead>
+                  <TableHead>{t('thminLevel')}</TableHead>
+                  <TableHead>{t('thcostunit')}</TableHead>
+                  <TableHead>{t('thsupplier')}</TableHead>
+                  <TableHead>{t('thlastRestocked')}</TableHead>
+                  <TableHead>{t('thactions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -380,17 +380,17 @@ export default function ResourcesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(res)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit
+                              <Pencil className="mr-2 h-4 w-4" /> {t("edit")}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setRestockTarget(res); setRestockQty(""); }}>
-                              <RotateCcw className="mr-2 h-4 w-4" /> Restock
+                              <RotateCcw className="mr-2 h-4 w-4" /> {t("restock")}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-rose-600 focus:text-rose-600"
                               onClick={() => setDeleteTarget(res)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              <Trash2 className="mr-2 h-4 w-4" /> {t("delete")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -408,51 +408,51 @@ export default function ResourcesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Resource" : "Add New Resource"}</DialogTitle>
+            <DialogTitle>{editing ? t("editResource") : t("addNewResource")}</DialogTitle>
             <DialogDescription>
-              {editing ? "Update resource details." : "Add a new item to your inventory."}
+              {editing ? t("updateResourceDesc") : t("addNewResourceDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Name <span className="text-rose-500">*</span></Label>
-                <Input placeholder="e.g. Bed Sheets" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <Label>{t("thname")} <span className="text-rose-500">*</span></Label>
+                <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Category <span className="text-rose-500">*</span></Label>
-                <Input placeholder="e.g. Linen" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                <Label>{t("lblcategory")} <span className="text-rose-500">*</span></Label>
+                <Input placeholder={t("categoryPlaceholder")} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Quantity <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblquantity")} <span className="text-rose-500">*</span></Label>
                 <Input type="number" placeholder="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Unit <span className="text-rose-500">*</span></Label>
-                <Input placeholder="e.g. pcs, kg" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+                <Label>{t("thunit")} <span className="text-rose-500">*</span></Label>
+                <Input placeholder={t("unitPlaceholder")} value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lblminLevel', 'Min Level')}</Label>
+                <Label>{t('lblminLevel')}</Label>
                 <Input type="number" placeholder="0" value={form.minLevel} onChange={(e) => setForm({ ...form, minLevel: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('lblcostPerUnit', 'Cost per Unit')}</Label>
+                <Label>{t('lblcostPerUnit')}</Label>
                 <Input type="number" placeholder="0" value={form.costPerUnit} onChange={(e) => setForm({ ...form, costPerUnit: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lblsupplier', 'Supplier')}</Label>
-                <Input placeholder="Supplier name" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
+                <Label>{t('lblsupplier')}</Label>
+                <Input placeholder={t("supplierPlaceholder")} value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editing ? "Update Resource" : "Create Resource"}
+              {saving ? t("saving") : editing ? t("updateResource") : t("createResource")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -462,35 +462,35 @@ export default function ResourcesPage() {
       <Dialog open={!!restockTarget} onOpenChange={() => setRestockTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Restock &quot;{restockTarget?.name}&quot;</DialogTitle>
+            <DialogTitle>{t("restockTitle", { name: restockTarget?.name })}</DialogTitle>
             <DialogDescription>
-              Current quantity: <strong>{restockTarget?.quantity} {restockTarget?.unit}(s)</strong>.
-              Min level: {restockTarget?.minLevel} {restockTarget?.unit}(s).
+              {t("restockCurrentQty")} <strong>{restockTarget?.quantity} {restockTarget?.unit}(s)</strong>.
+              {t("restockMinLevel")} {restockTarget?.minLevel} {restockTarget?.unit}(s).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Quantity to Add <span className="text-rose-500">*</span></Label>
+              <Label>{t("restockQtyToAdd")} <span className="text-rose-500">*</span></Label>
               <Input
                 type="number"
                 min="1"
-                placeholder="Enter quantity"
+                placeholder={t("restockQtyPlaceholder")}
                 value={restockQty}
                 onChange={(e) => setRestockQty(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleRestock()}
               />
               {restockTarget && restockQty && Number(restockQty) > 0 && (
                 <p className="text-xs text-gray-500">
-                  New quantity will be: <strong>{restockTarget.quantity + Number(restockQty)}</strong> {restockTarget.unit}(s)
+                  {t("restockNewQty")} <strong>{restockTarget.quantity + Number(restockQty)}</strong> {restockTarget.unit}(s)
                 </p>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRestockTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRestockTarget(null)}>{t("cancel")}</Button>
             <Button onClick={handleRestock} disabled={restocking} className="gap-2">
               <RotateCcw className="h-4 w-4" />
-              {restocking ? "Restocking..." : "Restock"}
+              {restocking ? t("restocking") : t("restock")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -500,15 +500,15 @@ export default function ResourcesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &quot;{deleteTarget?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteResourceTitle", { name: deleteTarget?.name })}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this resource from your inventory.
+              {t("deleteResourceDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

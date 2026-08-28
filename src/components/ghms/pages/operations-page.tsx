@@ -15,9 +15,9 @@ export default function OperationsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("expenses");
 
   const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
-    { key: "expenses", label: t("expensesTab", "Expenses"), icon: Receipt },
-    { key: "resources", label: t("resourcesTab", "Resources"), icon: Package },
-    { key: "housekeeping", label: t("housekeepingTab", "Housekeeping"), icon: Sparkles },
+    { key: "expenses", label: t("expensesTab"), icon: Receipt },
+    { key: "resources", label: t("resourcesTab"), icon: Package },
+    { key: "housekeeping", label: t("housekeepingTab"), icon: Sparkles },
   ];
 
   return (
@@ -27,10 +27,10 @@ export default function OperationsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              {t("title", "Operations")}
+              {t("title")}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {t("subtitle", "Manage expenses, resources, and housekeeping tasks.")}
+              {t("subtitle")}
             </p>
           </div>
         </div>

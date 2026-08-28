@@ -75,3 +75,24 @@ Work Log:
 Stage Summary:
 - All hardcoded strings in rooms-page.tsx replaced with i18n t() calls
 - 6 new translation keys added to en/am/om locale files
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: i18n for Operations section (Expenses, Resources, Housekeeping)
+
+Work Log:
+- Identified Operations as next sidebar section after Accommodation
+- Operations section has 3 sub-pages: expenses, resources, housekeeping (tab-based container)
+- Added 140 keys to operations namespace (en/am/om)
+- Updated expenses-page.tsx: changed to ["operations", "common"] namespace, replaced ~40 hardcoded strings (toast messages, card labels, filter, breakdown, table, dialogs, delete alerts, payment method labels)
+- Updated resources-page.tsx: changed to ["operations", "common"] namespace, replaced ~45 hardcoded strings (toast messages, stock status labels, header, cards, search, table, dropdowns, create/edit/restock/delete dialogs)
+- Updated housekeeping-page.tsx: changed to ["operations", "common"] namespace, replaced ~40 hardcoded strings (toast messages, room/type/status label helpers, status filter tabs, empty states, table badges, dropdowns, dialog, delete alert)
+- Cleaned up fallback patterns in operations-page.tsx container
+- All files pass `next build` with zero errors
+
+Stage Summary:
+- 140 translation keys added across en/am/om in operations namespace
+- All 4 operations files fully i18n'd (1 container + 3 sub-pages)
+- Payment methods (CASH/TRANSFER/CARD/MOBILE) translated via dynamic key pattern
+- Task types (CLEANING/MAINTENANCE/INSPECTION) and statuses (PENDING/IN_PROGRESS/COMPLETED) translated via label helper functions

@@ -124,7 +124,7 @@ const CATEGORY_PRESETS: { name: string; color: string; icon: string }[] = [
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
-  const { t } = useTranslation("operations");
+  const { t } = useTranslation(["operations", "common"]);
   const { refreshKey, triggerRefresh } = useAppStore();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -165,7 +165,7 @@ export default function ExpensesPage() {
       setExpenses(Array.isArray(expData.expenses) ? expData.expenses : []);
       setCategories(catData.categories || []);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      toast.error(err instanceof Error ? err.message : t("toastDataLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -243,7 +243,7 @@ export default function ExpensesPage() {
 
   const handleSave = async () => {
     if (!form.date || !form.category || !form.description || !form.amount || !form.paymentMethod) {
-      toast.error("Please fill in all required fields");
+      toast.error(t("toastRequiredFields"));
       return;
     }
     try {
@@ -260,15 +260,15 @@ export default function ExpensesPage() {
       };
       if (editing) {
         await apiUpdateExpense(editing.id, payload);
-        toast.success("Expense updated");
+        toast.success(t("toastExpenseUpdated"));
       } else {
         await apiCreateExpense(payload);
-        toast.success("Expense created");
+        toast.success(t("toastExpenseCreated"));
       }
       setDialogOpen(false);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save expense");
+      toast.error(err instanceof Error ? err.message : t("toastExpenseSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -279,11 +279,11 @@ export default function ExpensesPage() {
     try {
       setDeleting(true);
       await apiDeleteExpense(deleteTarget.id);
-      toast.success("Expense deleted");
+      toast.success(t("toastExpenseDeleted"));
       setDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete expense");
+      toast.error(err instanceof Error ? err.message : t("toastExpenseDeleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -300,11 +300,11 @@ export default function ExpensesPage() {
         color: preset?.color || DEFAULT_COLORS[categories.length % DEFAULT_COLORS.length],
         icon: preset?.icon || "📋",
       });
-      toast.success("Category added");
+      toast.success(t("toastCategoryAdded"));
       setNewCatName("");
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to add category");
+      toast.error(err instanceof Error ? err.message : t("toastCategoryAddFailed"));
     } finally {
       setNewCatSaving(false);
     }
@@ -314,12 +314,12 @@ export default function ExpensesPage() {
     if (!deleteCatTarget) return;
     try {
       await apiDeleteExpenseCategory(deleteCatTarget.id);
-      toast.success("Category deleted");
+      toast.success(t("toastCategoryDeleted"));
       setDeleteCatTarget(null);
       if (categoryFilter === deleteCatTarget.name) setCategoryFilter("all");
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete category");
+      toast.error(err instanceof Error ? err.message : t("toastCategoryDeleteFailed"));
     }
   };
 
@@ -348,16 +348,16 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t("expensesTitle", "Expenses")}</h1>
-          <p className="mt-1 text-sm text-gray-500">{t("expensesDesc", "Track and manage all business expenses")}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t("expensesTitle")}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t("expensesDesc")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowCatMgmt(!showCatMgmt)} className="gap-2">
             <FolderPlus className="h-4 w-4" />
-            {showCatMgmt ? t("hideCategories", "Hide Categories") : t("manageCategories", "Manage Categories")}
+            {showCatMgmt ? t("hideCategories") : t("manageCategories")}
           </Button>
           <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" /> {t("addExpense", "Add Expense")}
+            <Plus className="h-4 w-4" /> {t("addExpense")}
           </Button>
         </div>
       </div>
@@ -371,7 +371,7 @@ export default function ExpensesPage() {
                 <DollarSign className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Expenses</p>
+                <p className="text-sm text-gray-500">{t("totalExpenses")}</p>
                 <p className="text-xl font-bold text-gray-900">{formatPrice(totalExpenses)}</p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export default function ExpensesPage() {
                 <CalendarDays className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">This Month</p>
+                <p className="text-sm text-gray-500">{t("thisMonth")}</p>
                 <p className="text-xl font-bold text-gray-900">{formatPrice(thisMonthTotal)}</p>
               </div>
             </div>
@@ -397,8 +397,8 @@ export default function ExpensesPage() {
                 <TrendingDown className="h-5 w-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Top Category</p>
-                <p className="text-xl font-bold text-gray-900">{topCategory[0]}</p>
+                <p className="text-sm text-gray-500">{t("topCategory")}</p>
+                <p className="text-xl font-bold text-gray-900">{topCategory[0] === "None" ? t("none") : topCategory[0]}</p>
                 <p className="text-xs text-gray-400">{formatPrice(topCategory[1] as number)}</p>
               </div>
             </div>
@@ -411,7 +411,7 @@ export default function ExpensesPage() {
         <Card className="gap-0 py-0">
           <CardContent className="p-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Tag className="h-4 w-4" /> Expense Categories
+              <Tag className="h-4 w-4" /> {t("expenseCategories")}
             </h3>
             <div className="flex flex-wrap gap-2 mb-4">
               {categories.map((cat) => (
@@ -430,14 +430,14 @@ export default function ExpensesPage() {
             <Separator className="mb-3" />
             <div className="flex gap-2">
               <Input
-                placeholder="New category name"
+                placeholder={t("newCatPlaceholder")}
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
                 className="max-w-xs"
               />
               <Button onClick={handleAddCategory} disabled={!newCatName.trim() || newCatSaving} size="sm">
-                {newCatSaving ? "Adding..." : "Add"}
+                {newCatSaving ? t("adding") : t("add")}
               </Button>
             </div>
           </CardContent>
@@ -446,13 +446,13 @@ export default function ExpensesPage() {
 
       {/* Category Filter */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-gray-500 font-medium">Filter:</span>
+        <span className="text-sm text-gray-500 font-medium">{t("filter")}</span>
         <Button
           variant={categoryFilter === "all" ? "default" : "outline"}
           size="sm"
           onClick={() => setCategoryFilter("all")}
         >
-          All
+          {t("all")}
         </Button>
         {categories.map((cat) => (
           <Button
@@ -472,7 +472,7 @@ export default function ExpensesPage() {
       {categoryBreakdown.length > 0 && (
         <Card className="gap-0 py-0">
           <CardContent className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t("expenseBreakdown")}</h3>
             <div className="space-y-3">
               {categoryBreakdown.map((item) => (
                 <div key={item.category} className="flex items-center gap-3">
@@ -503,12 +503,12 @@ export default function ExpensesPage() {
       {filteredExpenses.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
           <Receipt className="h-12 w-12 text-gray-300 mb-3" />
-          <p className="text-lg font-medium text-gray-500">No expenses found</p>
+          <p className="text-lg font-medium text-gray-500">{t("noExpensesFound")}</p>
           <p className="mt-1 text-sm text-gray-400">
-            {categoryFilter !== "all" ? "Try a different category filter" : "Start by adding your first expense"}
+            {categoryFilter !== "all" ? t("tryDifferentFilter") : t("startByAdding")}
           </p>
           <Button onClick={openCreate} variant="outline" className="mt-4 gap-2">
-            <Plus className="h-4 w-4" /> Add Expense
+            <Plus className="h-4 w-4" /> {t("addExpense")}
           </Button>
         </div>
       ) : (
@@ -517,14 +517,14 @@ export default function ExpensesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('thdate', 'Date')}</TableHead>
-                  <TableHead>{t('thcategory', 'Category')}</TableHead>
-                  <TableHead>{t('thdescription', 'Description')}</TableHead>
-                  <TableHead>{t('thamount', 'Amount')}</TableHead>
-                  <TableHead>{t('thvendor', 'Vendor')}</TableHead>
-                  <TableHead>{t('thmethod', 'Method')}</TableHead>
-                  <TableHead>{t('threceipt', 'Receipt')}</TableHead>
-                  <TableHead>{t('thactions', 'Actions')}</TableHead>
+                  <TableHead>{t('thdate')}</TableHead>
+                  <TableHead>{t('thcategory')}</TableHead>
+                  <TableHead>{t('thdescription')}</TableHead>
+                  <TableHead>{t('thamount')}</TableHead>
+                  <TableHead>{t('thvendor')}</TableHead>
+                  <TableHead>{t('thmethod')}</TableHead>
+                  <TableHead>{t('threceipt')}</TableHead>
+                  <TableHead>{t('thactions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -551,12 +551,12 @@ export default function ExpensesPage() {
                     <TableCell className="text-right font-medium text-sm">
                       {formatPrice(exp.amount)}
                       {exp.taxAmount > 0 && (
-                        <span className="text-xs text-gray-400 block">+{formatPrice(exp.taxAmount)} tax</span>
+                        <span className="text-xs text-gray-400 block">{t("taxLabel", { amount: formatPrice(exp.taxAmount) })}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{exp.vendor || "—"}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="text-xs">{exp.paymentMethod}</Badge>
+                      <Badge variant="secondary" className="text-xs">{t("pay" + exp.paymentMethod.charAt(0) + exp.paymentMethod.slice(1).toLowerCase())}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{exp.receiptNo || "—"}</TableCell>
                     <TableCell className="text-right">
@@ -568,14 +568,14 @@ export default function ExpensesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(exp)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                            <Pencil className="mr-2 h-4 w-4" /> {t("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-rose-600 focus:text-rose-600"
                             onClick={() => setDeleteTarget(exp)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            <Trash2 className="mr-2 h-4 w-4" /> {t("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -592,21 +592,21 @@ export default function ExpensesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+            <DialogTitle>{editing ? t("editExpense") : t("addNewExpense")}</DialogTitle>
             <DialogDescription>
-              {editing ? "Update expense details." : "Record a new business expense."}
+              {editing ? t("updateExpenseDesc") : t("addNewExpenseDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Date <span className="text-rose-500">*</span></Label>
+                <Label>{t("thdate")} <span className="text-rose-500">*</span></Label>
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Category <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblcategory")} <span className="text-rose-500">*</span></Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("selectPlaceholder")} /></SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.name}>
@@ -620,45 +620,45 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Description <span className="text-rose-500">*</span></Label>
-              <Input placeholder="What was this expense for?" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Label>{t("lbldescription")} <span className="text-rose-500">*</span></Label>
+              <Input placeholder={t("descPlaceholder")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Amount <span className="text-rose-500">*</span></Label>
+                <Label>{t("thamount")} <span className="text-rose-500">*</span></Label>
                 <Input type="number" placeholder="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t('lbltaxAmount', 'Tax Amount')}</Label>
+                <Label>{t('lbltaxAmount')}</Label>
                 <Input type="number" placeholder="0" value={form.taxAmount} onChange={(e) => setForm({ ...form, taxAmount: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('lblvendor', 'Vendor')}</Label>
-                <Input placeholder="Vendor name" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+                <Label>{t('lblvendor')}</Label>
+                <Input placeholder={t("vendorPlaceholder")} value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Payment Method <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblpaymentMethod")} <span className="text-rose-500">*</span></Label>
                 <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_METHODS.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                      <SelectItem key={m} value={m}>{t("pay" + m.charAt(0) + m.slice(1).toLowerCase())}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t('lblreceiptNumber', 'Receipt Number')}</Label>
-              <Input placeholder="Receipt or reference number" value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} />
+              <Label>{t('lblreceiptNumber')}</Label>
+              <Input placeholder={t("receiptPlaceholder")} value={form.receiptNo} onChange={(e) => setForm({ ...form, receiptNo: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("cancel")}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editing ? "Update Expense" : "Create Expense"}
+              {saving ? t("saving") : editing ? t("updateExpense") : t("createExpense")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -668,15 +668,15 @@ export default function ExpensesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteExpenseTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the expense for &quot;{deleteTarget?.description}&quot; ({formatPrice(deleteTarget?.amount || 0)}).
+              {t("deleteExpenseDesc", { description: deleteTarget?.description, amount: formatPrice(deleteTarget?.amount || 0) })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -686,15 +686,15 @@ export default function ExpensesPage() {
       <AlertDialog open={!!deleteCatTarget} onOpenChange={() => setDeleteCatTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete category &quot;{deleteCatTarget?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteCatTitle", { name: deleteCatTarget?.name })}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this category. Existing expenses with this category will not be affected.
+              {t("deleteCatDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteCategory}>
-              Delete
+              {t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
