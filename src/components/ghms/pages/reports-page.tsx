@@ -955,7 +955,7 @@ export default function ReportsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Revenue vs Expenses (Daily)
+                {t("titleRevenueVsExpenses")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -995,7 +995,7 @@ export default function ReportsPage() {
             {/* Expense Breakdown */}
             <Card>
               <CardHeader>
-                <CardTitle>Expense Breakdown</CardTitle>
+                <CardTitle>{t("titleExpenseBreakdown")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.expenseBreakdown.length === 0 ? (
@@ -1028,7 +1028,7 @@ export default function ReportsPage() {
             {/* Reservations Summary */}
             <Card>
               <CardHeader>
-                <CardTitle>Reservations by Status</CardTitle>
+                <CardTitle>{t("titleReservationsByStatus")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {statusBreakdown.length === 0 ? (
@@ -1073,7 +1073,7 @@ export default function ReportsPage() {
           {/* Daily Revenue Trend Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Daily Revenue Trend</CardTitle>
+              <CardTitle>{t("titleDailyRevenueTrend")}</CardTitle>
             </CardHeader>
             <CardContent>
               {data.dailyRevenue.length === 0 ? (
