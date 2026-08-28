@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n/config";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetExpenses,
@@ -106,6 +107,21 @@ const DEFAULT_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4",
   "#8b5cf6", "#ec4899", "#6366f1", "#14b8a6", "#f43f5e",
 ];
+
+// Map preset English names → i18n key
+const PRESET_CAT_KEY_MAP: Record<string, string> = {
+  "Utilities": "catUtilities",
+  "Supplies": "catSupplies",
+  "Maintenance": "catMaintenance",
+  "Salaries": "catSalaries",
+  "Food & Beverage": "catFoodAndBeverage",
+  "Laundry": "catLaundry",
+  "Marketing": "catMarketing",
+  "Transport": "catTransport",
+  "Rent": "catRent",
+  "Insurance": "catInsurance",
+  "Miscellaneous": "catMiscellaneous",
+};
 
 const CATEGORY_PRESETS: { name: string; color: string; icon: string }[] = [
   { name: "Utilities", color: "#3b82f6", icon: "⚡" },
@@ -323,6 +339,21 @@ export default function ExpensesPage() {
     }
   };
 
+  // ── Localized category name helper ──
+  const getCatDisplayName = (catName: string): string => {
+    const lng = i18n.language;
+    if (lng === "am") {
+      const cat = categories.find((c) => c.name === catName);
+      if (cat?.nameAm) return cat.nameAm;
+    }
+    const tKey = PRESET_CAT_KEY_MAP[catName];
+    if (tKey) {
+      const translated = t(tKey);
+      if (translated !== tKey) return translated;
+    }
+    return catName;
+  };
+
   const getCategoryColor = (name: string) =>
     categories.find((c) => c.name === name)?.color || "#6b7280";
 
@@ -422,7 +453,7 @@ export default function ExpensesPage() {
                   onClick={() => setDeleteCatTarget(cat)}
                 >
                   <span>{cat.icon}</span>
-                  {cat.name}
+                  {getCatDisplayName(cat.name)}
                   <span className="ml-1 text-gray-400 text-xs hover:text-red-500">×</span>
                 </Badge>
               ))}
@@ -463,7 +494,7 @@ export default function ExpensesPage() {
             className="gap-1"
           >
             <span>{cat.icon}</span>
-            {cat.name}
+            {getCatDisplayName(cat.name)}
           </Button>
         ))}
       </div>
@@ -476,7 +507,7 @@ export default function ExpensesPage() {
             <div className="space-y-3">
               {categoryBreakdown.map((item) => (
                 <div key={item.category} className="flex items-center gap-3">
-                  <div className="w-28 text-sm text-gray-600 truncate shrink-0">{item.category}</div>
+                  <div className="w-28 text-sm text-gray-600 truncate shrink-0">{getCatDisplayName(item.category)}</div>
                   <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500 flex items-center pl-2"
@@ -542,7 +573,7 @@ export default function ExpensesPage() {
                         }}
                       >
                         {categories.find((c) => c.name === exp.category)?.icon || "📋"}
-                        {exp.category}
+                        {getCatDisplayName(exp.category)}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[200px]">

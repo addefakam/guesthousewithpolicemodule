@@ -1026,7 +1026,19 @@
     "toastTaskDeleted": "ተግባር ተሰርዟል",
     "toastTaskDeleteFailed": "ተግባር ማጥፋት አልተሳካም",
     "toastTaskMarked": "ተግባር እንደ{{status}} ተሰክቷል",
-    "toastStatusUpdateFailed": "ሁኔታ ማዘመን አልተሳካም"
+    "toastStatusUpdateFailed": "ሁኔታ ማዘመን አልተሳካም",
+    "catUtilities": "የኤሌክትሪክ እና ውሃ",
+    "catSupplies": "እቃዎች",
+    "catMaintenance": "ጥገና",
+    "catSalaries": "ደሞዝ",
+    "catFoodAndBeverage": "ምግብ እና መጠጥ",
+    "catLaundry": "መጠባበቂያ",
+    "catMarketing": "ማስታወቂያ",
+    "catTransport": "ትራንስፖርት",
+    "catRent": "ኪራያ",
+    "catInsurance": "ኢንሹራንስ",
+    "catMiscellaneous": "ሌሎች",
+    "unknown": "ያልታወቀ"
   },
   "providers": {
     "statTotal": "ጠቅላላ",

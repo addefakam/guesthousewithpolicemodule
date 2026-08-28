@@ -1027,7 +1027,19 @@
     "toastTaskDeleted": "Task deleted",
     "toastTaskDeleteFailed": "Failed to delete task",
     "toastTaskMarked": "Task marked as {{status}}",
-    "toastStatusUpdateFailed": "Failed to update status"
+    "toastStatusUpdateFailed": "Failed to update status",
+    "catUtilities": "Utilities",
+    "catSupplies": "Supplies",
+    "catMaintenance": "Maintenance",
+    "catSalaries": "Salaries",
+    "catFoodAndBeverage": "Food & Beverage",
+    "catLaundry": "Laundry",
+    "catMarketing": "Marketing",
+    "catTransport": "Transport",
+    "catRent": "Rent",
+    "catInsurance": "Insurance",
+    "catMiscellaneous": "Miscellaneous",
+    "unknown": "Unknown"
   },
   "providers": {
     "statTotal": "Total",

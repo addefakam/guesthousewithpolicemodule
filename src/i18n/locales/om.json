@@ -1026,7 +1026,19 @@
     "toastTaskDeleted": "Hojii balleefameera",
     "toastTaskDeleteFailed": "Hojii balleessuu hafa",
     "toastTaskMarked": "Hojii {{status}} goolte",
-    "toastStatusUpdateFailed": "Haala haalata haaraan gaafachuu hafa"
+    "toastStatusUpdateFailed": "Haala haalata haaraan gaafachuu hafa",
+    "catUtilities": "Laffeenya fi Bishaan",
+    "catSupplies": "Qabeenya",
+    "catMaintenance": "Tajaajila",
+    "catSalaries": "Qorannoo",
+    "catFoodAndBeverage": "Nyaata fi Dhuga",
+    "catLaundry": "Qulqulleessa",
+    "catMarketing": "Beeksisa",
+    "catTransport": "Makaanisa",
+    "catRent": "Kiraa",
+    "catInsurance": "Hoogara",
+    "catMiscellaneous": "Dhugaa Dabalataa",
+    "unknown": "Beekamte"
   },
   "providers": {
     "statTotal": "Waliigala",
