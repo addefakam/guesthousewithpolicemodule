@@ -157,7 +157,7 @@ const RESERVATION_STATUS_BADGE: Record<string, string> = {
 const GROUP_STATUSES = ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
 export default function GroupBookingsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("groupBookings");
   const { refreshKey } = useAppStore();
 
   const [groupBookings, setGroupBookings] = useState<GroupBooking[]>([]);
@@ -231,7 +231,7 @@ export default function GroupBookingsPage() {
       setGroupBookings(res.data ?? []);
       setTotalPages(res.totalPages ?? 1);
     } catch {
-      toast.error("Failed to load group bookings");
+      toast.error(t("toastFailedLoad"));
     } finally {
       setLoading(false);
     }
@@ -295,14 +295,14 @@ export default function GroupBookingsPage() {
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) { toast.error("Group name is required"); return; }
-    if (!startDate || !endDate) { toast.error("Start and end dates are required"); return; }
+    if (!name.trim()) { toast.error(t("toastGroupNameRequired")); return; }
+    if (!startDate || !endDate) { toast.error(t("toastDatesRequired")); return; }
     if (contactPhone.trim() && !isValidPhone(contactPhone)) {
-      toast.error("Invalid contact phone number format (7-15 digits)");
+      toast.error(t("toastInvalidPhone"));
       return;
     }
     if (contactEmail.trim() && !isValidEmail(contactEmail)) {
-      toast.error("Invalid contact email address format");
+      toast.error(t("toastInvalidEmail"));
       return;
     }
     try {
@@ -315,12 +315,12 @@ export default function GroupBookingsPage() {
         startDate, endDate,
         notes: notes.trim(),
       });
-      toast.success("Group booking created successfully");
+      toast.success(t("toastCreated"));
       setCreateOpen(false);
       resetCreateForm();
       fetchGroupBookings();
     } catch {
-      toast.error("Failed to create group booking");
+      toast.error(t("toastFailedCreate"));
     } finally {
       setCreating(false);
     }
@@ -329,10 +329,10 @@ export default function GroupBookingsPage() {
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await apiUpdateGroupBooking(id, { status });
-      toast.success(`Status updated to ${status}`);
+      toast.success(t("toastStatusUpdated", { status }));
       fetchGroupBookings();
     } catch {
-      toast.error("Failed to update status");
+      toast.error(t("toastFailedUpdateStatus"));
     }
   };
 
@@ -341,21 +341,21 @@ export default function GroupBookingsPage() {
     try {
       setDeleting(true);
       await apiDeleteGroupBooking(deleteTarget.id);
-      toast.success("Group booking deleted");
+      toast.success(t("toastDeleted"));
       setDeleteTarget(null);
       if (detailId === deleteTarget.id) setDetailId(null);
       fetchGroupBookings();
     } catch {
-      toast.error("Failed to delete group booking");
+      toast.error(t("toastFailedDelete"));
     } finally {
       setDeleting(false);
     }
   };
 
   const handleRegisterGuest = async () => {
-    if (!newGuestName.trim()) { toast.error("Guest name is required"); return; }
+    if (!newGuestName.trim()) { toast.error(t("toastGuestNameRequired")); return; }
     if (newGuestPhone.trim() && !isValidPhone(newGuestPhone)) {
-      toast.error("Invalid phone number format (7-15 digits)");
+      toast.error(t("toastInvalidGuestPhone"));
       return;
     }
     try {
@@ -374,9 +374,9 @@ export default function GroupBookingsPage() {
       setNewGuestPhone("");
       setNewGuestIdNumber("");
       setNewGuestIdType("");
-      toast.success(`Guest "${guest.name}" registered`);
+      toast.success(t("toastGuestRegistered", { name: guest.name }));
     } catch {
-      toast.error("Failed to register guest");
+      toast.error(t("toastFailedRegister"));
     } finally {
       setRegisteringGuest(false);
     }
@@ -384,11 +384,11 @@ export default function GroupBookingsPage() {
 
   const handleAddReservation = async () => {
     if (!addReservationGroupId || !resGuestId || !resRoomId) {
-      toast.error("Please select a guest and room");
+      toast.error(t("toastSelectGuestRoom"));
       return;
     }
     if (!resCheckIn || !resCheckOut) {
-      toast.error("Check-in and check-out dates are required");
+      toast.error(t("toastCheckinCheckoutRequired"));
       return;
     }
     // Validate DOUBLE/TWIN room requirements
@@ -396,16 +396,16 @@ export default function GroupBookingsPage() {
     const isDoubleRoom = selRoom && (selRoom.type === "DOUBLE" || selRoom.type === "TWIN");
     if (isDoubleRoom && !resExceptionallyReserved) {
       if (!resSecondGuestName.trim() || !resSecondGuestPhone.trim()) {
-        toast.error("Second guest name and phone are required for double/twin rooms");
+        toast.error(t("toastSecondGuestRequired"));
         return;
       }
       if (!isValidPhone(resSecondGuestPhone)) {
-        toast.error("Invalid second guest phone number format (7-15 digits)");
+        toast.error(t("toastInvalidSecondPhone"));
         return;
       }
     }
     if (resExceptionallyReserved && !resExceptionReason.trim()) {
-      toast.error("Please provide the exception reason");
+      toast.error(t("toastExceptionReasonRequired"));
       return;
     }
     try {
@@ -422,13 +422,13 @@ export default function GroupBookingsPage() {
         exceptionallyReserved: resExceptionallyReserved,
         exceptionReason: resExceptionReason,
       });
-      toast.success("Reservation added to group");
+      toast.success(t("toastReservationAdded"));
       setAddReservationOpen(false);
       resetReservationForm();
       setAddReservationGroupId(null);
       fetchGroupBookings();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to add reservation");
+      toast.error(err instanceof Error ? err.message : t("toastFailedAddReservation"));
     } finally {
       setAddingReservation(false);
     }
@@ -438,10 +438,10 @@ export default function GroupBookingsPage() {
     try {
       setUnlinkingId(reservationId);
       await apiUpdateReservation(reservationId, { groupBookingId: null });
-      toast.success("Reservation removed from group");
+      toast.success(t("toastReservationRemoved"));
       fetchGroupBookings();
     } catch {
-      toast.error("Failed to remove reservation");
+      toast.error(t("toastFailedRemoveReservation"));
     } finally {
       setUnlinkingId(null);
     }
@@ -454,20 +454,20 @@ export default function GroupBookingsPage() {
       const { assigned, unassigned } = result as { assigned: Array<{ guestName: string; roomNumber: string; roomName: string; roomType: string; pricePerNight: number; totalCost: number; isNew: boolean }>; unassigned: Array<{ guestName: string; reason: string }> };
       if (assigned.length > 0) {
         const newCount = assigned.filter((a) => a.isNew).length;
-        toast.success(`Auto-assigned ${assigned.length} guest(s) to rooms${newCount > 0 ? ` (${newCount} new reservations created)` : ""}`);
+        toast.success(t("toastAutoAssigned", { count: assigned.length, newCount: newCount > 0 ? t("toastAutoAssignedNew", { count: newCount }) : "" }));
       }
       if (unassigned.length > 0) {
-        toast.warning(`${unassigned.length} guest(s) could not be assigned: ${unassigned.map((u) => u.guestName).join(", ")}`);
+        toast.warning(t("toastAutoUnassigned", { count: unassigned.length, names: unassigned.map((u) => u.guestName).join(", ") }));
       }
       if (assigned.length === 0 && unassigned.length === 0) {
-        toast.info("No unassigned guests found. All guests already have rooms.");
+        toast.info(t("toastNoUnassigned"));
       }
       setDetailId(groupId);
       fetchGroupBookings();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Auto-assign failed";
+      const msg = err instanceof Error ? err.message : t("toastAutoAssignFailed");
       if (msg.includes("NO_ROOMS")) {
-        toast.error("No available rooms for the selected dates");
+        toast.error(t("toastNoAvailableRooms"));
       } else {
         toast.error(msg);
       }
@@ -481,7 +481,7 @@ export default function GroupBookingsPage() {
       (r) => r.status === "UPCOMING"
     ) || [];
     if (upcomingReservations.length === 0) {
-      toast.info("No upcoming reservations to check in");
+      toast.info(t("toastNoUpcomingCheckin"));
       return;
     }
     try {
@@ -494,10 +494,10 @@ export default function GroupBookingsPage() {
           /* skip failed ones */
         }
       }
-      toast.success(`${checked} reservation(s) checked in`);
+      toast.success(t("toastCheckedIn", { count: checked }));
       fetchGroupBookings();
     } catch {
-      toast.error("Bulk check-in failed");
+      toast.error(t("toastBulkCheckinFailed"));
     }
   };
 
@@ -507,11 +507,11 @@ export default function GroupBookingsPage() {
       setCheckingOut(true);
       const result = await apiGroupCheckout(checkoutTarget.id);
       const r = result as { checkedOut: number; total: number; message: string };
-      toast.success(r.message || `${r.checkedOut} reservation(s) checked out`);
+      toast.success(r.message || t("toastCheckedOut", { count: r.checkedOut }));
       setCheckoutTarget(null);
       fetchGroupBookings();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Group checkout failed";
+      const msg = err instanceof Error ? err.message : t("toastCheckoutFailed");
       toast.error(msg);
     } finally {
       setCheckingOut(false);
@@ -528,7 +528,7 @@ export default function GroupBookingsPage() {
 
   const handleGroupPayment = async () => {
     if (!paymentGroupId || !paymentForm.amount || !paymentForm.method) {
-      toast.error("Amount and payment method are required");
+      toast.error(t("toastAmountMethodRequired"));
       return;
     }
     try {
@@ -540,12 +540,12 @@ export default function GroupBookingsPage() {
         notes: paymentForm.notes,
       });
       const r = result as { message: string };
-      toast.success(r.message || "Payment recorded successfully");
+      toast.success(r.message || t("toastPaymentRecorded"));
       setPaymentOpen(false);
       setPaymentGroupId(null);
       fetchGroupBookings();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Payment failed";
+      const msg = err instanceof Error ? err.message : t("toastPaymentFailed");
       toast.error(msg);
     } finally {
       setPaying(false);
@@ -587,15 +587,15 @@ export default function GroupBookingsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Users className="h-6 w-6" />
-            Group Bookings
+            {t("pageTitle")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage teams, events, and bulk reservations
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          New Group Booking
+          {t("btnNewGroupBooking")}
         </Button>
       </div>
 
@@ -624,10 +624,10 @@ export default function GroupBookingsPage() {
           <CardContent className="flex flex-col items-center justify-center text-center">
             <Users className="h-12 w-12 text-muted-foreground/40 mb-4" />
             <h3 className="text-lg font-medium text-muted-foreground">
-              No group bookings yet
+              {t("emptyTitle")}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Create your first group booking to get started.
+              {t("emptySubtitle")}
             </p>
             <Button
               className="mt-4"
@@ -635,7 +635,7 @@ export default function GroupBookingsPage() {
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Group Booking
+              {t("btnCreateGroupBooking")}
             </Button>
           </CardContent>
         </Card>
@@ -685,7 +685,7 @@ export default function GroupBookingsPage() {
                           onClick={() => handleGroupCheckin(group)}
                         >
                           <LogIn className="h-3.5 w-3.5 mr-1" />
-                          Check-in All ({upcomingCount})
+                          {t("btnCheckinAll")} ({upcomingCount})
                         </Button>
                       )}
                       {group.reservations?.some((r) => r.status === "ACTIVE") && (
@@ -696,7 +696,7 @@ export default function GroupBookingsPage() {
                           onClick={() => setCheckoutTarget(group)}
                         >
                           <LogOut className="h-3.5 w-3.5 mr-1" />
-                          <span className="hidden sm:inline">Check-out All</span>
+                          <span className="hidden sm:inline">{t("btnCheckoutAll")}</span>
                         </Button>
                       )}
                       {group.reservations?.some((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED") && (
@@ -707,7 +707,7 @@ export default function GroupBookingsPage() {
                           onClick={() => openPaymentDialog(group)}
                         >
                           <CreditCard className="h-3.5 w-3.5 mr-1" />
-                          <span className="hidden sm:inline">Pay</span>
+                          <span className="hidden sm:inline">{t("btnPay")}</span>
                         </Button>
                       )}
                       <Button
@@ -722,7 +722,7 @@ export default function GroupBookingsPage() {
                         ) : (
                           <Wand2 className="h-3.5 w-3.5 mr-1" />
                         )}
-                        <span className="hidden sm:inline">Auto Assign</span>
+                        <span className="hidden sm:inline">{t("btnAutoAssign")}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -730,7 +730,7 @@ export default function GroupBookingsPage() {
                         onClick={() => openAddReservation(group)}
                       >
                         <UserPlus className="h-3.5 w-3.5 mr-1" />
-                        <span className="hidden sm:inline">Add Guest</span>
+                        <span className="hidden sm:inline">{t("btnAddGuest")}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -788,11 +788,11 @@ export default function GroupBookingsPage() {
                   <div className="flex items-center gap-5 mt-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Building2 className="h-3.5 w-3.5" />
-                      <span>{numRes} reservation{numRes !== 1 ? "s" : ""}</span>
+                      <span>{t(numRes === 1 ? "reservations_one" : "reservations_other", { count: numRes })}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Users className="h-3.5 w-3.5" />
-                      <span>{group.totalGuests || 0} guest{group.totalGuests !== 1 ? "s" : ""}</span>
+                      <span>{t((group.totalGuests || 0) === 1 ? "guests_one" : "guests_other", { count: group.totalGuests || 0 })}</span>
                     </div>
                     {(group.totalCost ?? 0) > 0 && (
                       <span className="font-medium text-foreground">
@@ -814,12 +814,12 @@ export default function GroupBookingsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>{t('thguest', 'Guest')}</TableHead>
-                              <TableHead>{t('thassignedRoom', 'Assigned Room')}</TableHead>
-                              <TableHead>{t('throomType', 'Room Type')}</TableHead>
-                              <TableHead>{t('thcost', 'Cost')}</TableHead>
-                              <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
-                              <TableHead>{t('thstatus', 'Status')}</TableHead>
+                              <TableHead>{t("thguest")}</TableHead>
+                              <TableHead>{t("thassignedRoom")}</TableHead>
+                              <TableHead>{t("throomType")}</TableHead>
+                              <TableHead>{t("thcost")}</TableHead>
+                              <TableHead>{t("thcheckin")}</TableHead>
+                              <TableHead>{t("thstatus")}</TableHead>
                               <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -845,7 +845,7 @@ export default function GroupBookingsPage() {
                                         <div className="font-medium">{res.room.number}{res.room.name ? ` - ${res.room.name}` : ""}</div>
                                       </div>
                                     )
-                                    : <span className="text-muted-foreground">Not assigned</span>}
+                                    : <span className="text-muted-foreground">{t("notAssigned")}</span>}
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
                                   {res.room?.type ? (
@@ -880,7 +880,7 @@ export default function GroupBookingsPage() {
                                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                     disabled={unlinkingId === res.id}
                                     onClick={(e) => { e.stopPropagation(); handleUnlinkReservation(res.id); }}
-                                    title="Remove from group"
+                                    title={t("titleRemoveFromGroup")}
                                   >
                                     {unlinkingId === res.id ? (
                                       <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -896,7 +896,7 @@ export default function GroupBookingsPage() {
                       ) : (
                         <div className="py-6 text-center text-sm text-muted-foreground">
                           <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          No reservations yet. Add guests manually or use "Auto Assign" to assign rooms automatically.
+                          {t("noReservationsYet")}
                         </div>
                       )}
                     </div>
@@ -917,10 +917,10 @@ export default function GroupBookingsPage() {
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Previous
+            {t("btnPrevious")}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            {t("pageOf", { page, total: totalPages })}
           </span>
           <Button
             variant="outline"
@@ -928,7 +928,7 @@ export default function GroupBookingsPage() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {t("btnNext")}
           </Button>
         </div>
       )}
@@ -940,50 +940,50 @@ export default function GroupBookingsPage() {
       }}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Create Group Booking</DialogTitle>
+            <DialogTitle>{t("dlgCreateTitle")}</DialogTitle>
             <DialogDescription>
-              Add a new group booking for a team or event.
+              {t("dlgCreateDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="group-name">
-                Group Name <span className="text-destructive">*</span>
+                {t("lblgroupName")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="group-name"
-                placeholder="e.g. ABC Company Training"
+                placeholder={t("lblgroupNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>{t('lblcontactName', 'Contact Name')}</Label>
+                <Label>{t("lblcontactName")}</Label>
                 <Input
                   id="contact-name"
-                  placeholder="Full name"
+                  placeholder={t("placeholderFullName")}
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>{t('lblcontactPhone', 'Contact Phone')}</Label>
+                <Label>{t("lblcontactPhone")}</Label>
                 <Input
                   id="contact-phone"
                   type="tel"
-                  placeholder="Phone number"
+                  placeholder={t("placeholderPhone")}
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                 />
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblcontactEmail', 'Contact Email')}</Label>
+              <Label>{t("lblcontactEmail")}</Label>
               <Input
                 id="contact-email"
                 type="email"
-                placeholder="email@example.com"
+                placeholder={t("placeholderEmail")}
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
               />
@@ -991,7 +991,7 @@ export default function GroupBookingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="start-date">
-                  Start Date <span className="text-destructive">*</span>
+                  {t("lblstartDate")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="start-date"
@@ -1002,7 +1002,7 @@ export default function GroupBookingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="end-date">
-                  End Date <span className="text-destructive">*</span>
+                  {t("lblendDate")} <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="end-date"
@@ -1013,10 +1013,10 @@ export default function GroupBookingsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblnotes', 'Notes')}</Label>
+              <Label>{t("lblnotes")}</Label>
               <Input
                 id="notes"
-                placeholder="Any additional notes..."
+                placeholder={t("placeholderNotes")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -1028,10 +1028,10 @@ export default function GroupBookingsPage() {
               onClick={() => { setCreateOpen(false); resetCreateForm(); }}
               disabled={creating}
             >
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleCreate} disabled={creating}>
-              {creating ? "Creating..." : "Create Group Booking"}
+              {creating ? t("btnCreating") : t("btnCreateGroup")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1047,16 +1047,16 @@ export default function GroupBookingsPage() {
       >
         <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Guest to Group</DialogTitle>
+            <DialogTitle>{t("dlgAddGuestTitle")}</DialogTitle>
             <DialogDescription>
-              Select an existing guest or register a new one, then assign a room.
+              {t("dlgAddGuestDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             {/* Guest Selection with inline register toggle */}
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>Guest <span className="text-destructive">*</span></Label>
+                <Label>{t("lblGuest")} <span className="text-destructive">*</span></Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -1065,7 +1065,7 @@ export default function GroupBookingsPage() {
                   onClick={() => setShowNewGuest(!showNewGuest)}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  {showNewGuest ? "Select existing" : "Register new guest"}
+                  {showNewGuest ? t("btnSelectExisting") : t("btnRegisterNewGuest")}
                 </Button>
               </div>
 
@@ -1073,7 +1073,7 @@ export default function GroupBookingsPage() {
                 /* Existing guest dropdown */
                 <Select value={resGuestId} onValueChange={setResGuestId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a guest" />
+                    <SelectValue placeholder={t("placeholderSelectGuest")} />
                   </SelectTrigger>
                   <SelectContent>
                     {guests.map((g) => (
@@ -1089,21 +1089,21 @@ export default function GroupBookingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
                       <Label htmlFor="new-guest-name" className="text-xs">
-                        Full Name <span className="text-destructive">*</span>
+                        {t("lblFullName")} <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="new-guest-name"
-                        placeholder="Guest full name"
+                        placeholder={t("placeholderGuestFullName")}
                         value={newGuestName}
                         onChange={(e) => setNewGuestName(e.target.value)}
                       />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label>{t('lblphoneNumber', 'Phone Number')}</Label>
+                      <Label>{t("lblphoneNumber")}</Label>
                       <Input
                         id="new-guest-phone"
                         type="tel"
-                        placeholder="Phone number"
+                        placeholder={t("placeholderPhone")}
                         value={newGuestPhone}
                         onChange={(e) => setNewGuestPhone(e.target.value)}
                       />
@@ -1111,25 +1111,25 @@ export default function GroupBookingsPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
-                      <Label>{t('lblidType', 'ID Type')}</Label>
+                      <Label>{t("lblidType")}</Label>
                       <Select value={newGuestIdType} onValueChange={setNewGuestIdType}>
                         <SelectTrigger id="new-guest-id-type">
-                          <SelectValue placeholder="Select ID type" />
+                          <SelectValue placeholder={t("placeholderSelectIdType")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="National_ID">National ID</SelectItem>
-                          <SelectItem value="Passport">Passport</SelectItem>
-                          <SelectItem value="Driver_License">Driver License</SelectItem>
-                          <SelectItem value="Military_ID">Military ID</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem value="National_ID">{t("idNationalId")}</SelectItem>
+                          <SelectItem value="Passport">{t("idPassport")}</SelectItem>
+                          <SelectItem value="Driver_License">{t("idDriverLicense")}</SelectItem>
+                          <SelectItem value="Military_ID">{t("idMilitaryId")}</SelectItem>
+                          <SelectItem value="Other">{t("idOther")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label>{t('lblidNumber', 'ID Number')}</Label>
+                      <Label>{t("lblidNumber")}</Label>
                       <Input
                         id="new-guest-id-number"
-                        placeholder="ID number"
+                        placeholder={t("placeholderIdNumber")}
                         value={newGuestIdNumber}
                         onChange={(e) => setNewGuestIdNumber(e.target.value)}
                       />
@@ -1145,12 +1145,12 @@ export default function GroupBookingsPage() {
                     {registeringGuest ? (
                       <>
                         <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                        Registering...
+                        {t("btnRegistering")}
                       </>
                     ) : (
                       <>
                         <UserPlus className="h-3.5 w-3.5 mr-1" />
-                        Register & Select Guest
+                        {t("btnRegisterSelect")}
                       </>
                     )}
                   </Button>
@@ -1160,10 +1160,10 @@ export default function GroupBookingsPage() {
 
             {/* Room Selection */}
             <div className="grid gap-2">
-              <Label>Room <span className="text-destructive">*</span></Label>
+              <Label>{t("lblRoom")} <span className="text-destructive">*</span></Label>
               <Select value={resRoomId} onValueChange={(val) => { setResRoomId(val); setResSecondGuestName(""); setResSecondGuestPhone(""); setResSecondGuestIdNumber(""); setResExceptionallyReserved(false); setResExceptionReason(""); }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an available room" />
+                  <SelectValue placeholder={t("placeholderSelectRoom")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRooms.length > 0 ? (
@@ -1176,7 +1176,7 @@ export default function GroupBookingsPage() {
                     ))
                   ) : (
                     <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      No available rooms
+                      {t("noAvailableRooms")}
                     </div>
                   )}
                 </SelectContent>
@@ -1188,45 +1188,45 @@ export default function GroupBookingsPage() {
               <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                 <div className="flex items-center gap-2 text-amber-800">
                   <BedDouble className="h-4 w-4" />
-                  <span className="text-xs font-semibold">Double Room — Second Guest Required</span>
+                  <span className="text-xs font-semibold">{t("doubleRoomSecondGuest")}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="grp-res-exception" checked={!resExceptionallyReserved} onChange={() => { setResExceptionallyReserved(false); setResExceptionReason(""); }} className="h-3.5 w-3.5 accent-emerald-600" />
-                    <span className="text-xs font-medium">Two Guests</span>
+                    <span className="text-xs font-medium">{t("twoGuests")}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="grp-res-exception" checked={resExceptionallyReserved} onChange={() => { setResExceptionallyReserved(true); setResSecondGuestName(""); setResSecondGuestPhone(""); setResSecondGuestIdNumber(""); }} className="h-3.5 w-3.5 accent-amber-600" />
-                    <span className="text-xs font-medium text-amber-700">Exceptionally Reserved</span>
+                    <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
                   </label>
                 </div>
                 {!resExceptionallyReserved ? (
                   <div className="space-y-2">
-                    <p className="text-[10px] text-muted-foreground">Enter the second guest details for this double room.</p>
+                    <p className="text-[10px] text-muted-foreground">{t("secondGuestInfo")}</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label>Second Guest Name <span className="text-rose-500">*</span></Label>
-                        <Input placeholder="Full name" value={resSecondGuestName} onChange={(e) => setResSecondGuestName(e.target.value)} />
+                        <Label>{t("lblSecondGuestName")} <span className="text-rose-500">*</span></Label>
+                        <Input placeholder={t("placeholderFullName")} value={resSecondGuestName} onChange={(e) => setResSecondGuestName(e.target.value)} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Second Guest Phone <span className="text-rose-500">*</span></Label>
-                        <Input type="tel" placeholder="Phone number" value={resSecondGuestPhone} onChange={(e) => setResSecondGuestPhone(e.target.value)} />
+                        <Label>{t("lblSecondGuestPhone")} <span className="text-rose-500">*</span></Label>
+                        <Input type="tel" placeholder={t("placeholderPhone")} value={resSecondGuestPhone} onChange={(e) => setResSecondGuestPhone(e.target.value)} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t('lblsecondGuestIdNumber', 'Second Guest ID Number')}</Label>
-                      <Input placeholder="ID number (optional)" value={resSecondGuestIdNumber} onChange={(e) => setResSecondGuestIdNumber(e.target.value)} />
+                      <Label>{t("lblSecondGuestIdNumber")}</Label>
+                      <Input placeholder={t("placeholderIdNumber")} value={resSecondGuestIdNumber} onChange={(e) => setResSecondGuestIdNumber(e.target.value)} />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-amber-700">
                       <AlertCircle className="h-3.5 w-3.5" />
-                      <p className="text-[10px] font-medium">This room will be reserved for single occupancy with an exception.</p>
+                      <p className="text-[10px] font-medium">{t("exceptionExplanation")}</p>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Exception Reason <span className="text-rose-500">*</span></Label>
-                      <Textarea placeholder="Explain why this double room is reserved for only one guest..." rows={2} value={resExceptionReason} onChange={(e) => setResExceptionReason(e.target.value)} />
+                      <Label>{t("lblExceptionReason")} <span className="text-rose-500">*</span></Label>
+                      <Textarea placeholder={t("placeholderExceptionReason")} rows={2} value={resExceptionReason} onChange={(e) => setResExceptionReason(e.target.value)} />
                     </div>
                   </div>
                 )}
@@ -1236,7 +1236,7 @@ export default function GroupBookingsPage() {
             {/* Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>{t('lblcheckinDate', 'Check-in Date')}</Label>
+                <Label>{t("lblcheckinDate")}</Label>
                 <Input
                   type="date"
                   value={resCheckIn}
@@ -1244,7 +1244,7 @@ export default function GroupBookingsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>{t('lblcheckoutDate', 'Check-out Date')}</Label>
+                <Label>{t("lblcheckoutDate")}</Label>
                 <Input
                   type="date"
                   value={resCheckOut}
@@ -1263,13 +1263,13 @@ export default function GroupBookingsPage() {
               }}
               disabled={addingReservation}
             >
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button
               onClick={handleAddReservation}
               disabled={addingReservation || !resGuestId || !resRoomId}
             >
-              {addingReservation ? "Adding..." : "Add to Group"}
+              {addingReservation ? t("btnAdding") : t("btnAddToGroup")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1282,21 +1282,19 @@ export default function GroupBookingsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Group Booking</AlertDialogTitle>
+            <AlertDialogTitle>{t("dlgDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">{deleteTarget?.name}</span>? All linked
-              reservations will be unlinked (not deleted).
+              {t("dlgDeleteDesc", { name: deleteTarget?.name || "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1311,17 +1309,14 @@ export default function GroupBookingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <LogOut className="h-5 w-5 text-orange-500" />
-              Group Check-out
+              {t("dlgCheckoutTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Check out <span className="font-semibold">all active reservations</span> for{" "}
-              <span className="font-semibold">{checkoutTarget?.name}</span>?{" "}
-              This will complete {checkoutTarget?.reservations?.filter((r) => r.status === "ACTIVE").length || 0} reservation(s)
-              and free up the rooms.
+              {t("dlgCheckoutDesc", { name: checkoutTarget?.name || "", count: checkoutTarget?.reservations?.filter((r: { status: string }) => r.status === "ACTIVE").length || 0 })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={checkingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={checkingOut}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleGroupCheckout}
               disabled={checkingOut}
@@ -1329,10 +1324,10 @@ export default function GroupBookingsPage() {
             >
               {checkingOut ? (
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Checking out...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("btnCheckingOut")}
                 </span>
               ) : (
-                "Check-out All"
+                t("btnCheckoutAll")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1348,15 +1343,15 @@ export default function GroupBookingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-blue-500" />
-              Group Payment
+              {t("dlgPaymentTitle")}
             </DialogTitle>
             <DialogDescription>
-              Record a payment for the entire group. It will be distributed proportionally across reservations.
+              {t("dlgPaymentDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Amount (ETB) <span className="text-destructive">*</span></Label>
+              <Label>{t("lblAmount")} <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1370,33 +1365,33 @@ export default function GroupBookingsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Payment Method <span className="text-destructive">*</span></Label>
+              <Label>{t("lblPaymentMethod")} <span className="text-destructive">*</span></Label>
               <Select value={paymentForm.method} onValueChange={(v) => setPaymentForm({ ...paymentForm, method: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="TRANSFER">Bank Transfer</SelectItem>
-                  <SelectItem value="CARD">Card</SelectItem>
-                  <SelectItem value="MOBILE">Mobile Money</SelectItem>
+                  <SelectItem value="CASH">{t("payCash")}</SelectItem>
+                  <SelectItem value="TRANSFER">{t("payTransfer")}</SelectItem>
+                  <SelectItem value="CARD">{t("payCard")}</SelectItem>
+                  <SelectItem value="MOBILE">{t("payMobile")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblreferenceNo', 'Reference No')}</Label>
+              <Label>{t("lblreferenceNo")}</Label>
               <Input
                 value={paymentForm.referenceNo}
                 onChange={(e) => setPaymentForm({ ...paymentForm, referenceNo: e.target.value })}
-                placeholder="Transaction reference (optional)"
+                placeholder={t("placeholderReference")}
               />
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblnotes', 'Notes')}</Label>
+              <Label>{t("lblnotes")}</Label>
               <Input
                 value={paymentForm.notes}
                 onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                placeholder="Payment notes (optional)"
+                placeholder={t("placeholderPaymentNotes")}
               />
             </div>
           </div>
@@ -1406,7 +1401,7 @@ export default function GroupBookingsPage() {
               onClick={() => { setPaymentOpen(false); setPaymentGroupId(null); }}
               disabled={paying}
             >
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button
               onClick={handleGroupPayment}
@@ -1414,11 +1409,11 @@ export default function GroupBookingsPage() {
             >
               {paying ? (
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Processing...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("btnProcessing")}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
-                  <CreditCard className="h-4 w-4" /> Record Payment
+                  <CreditCard className="h-4 w-4" /> {t("btnRecordPayment")}
                 </span>
               )}
             </Button>
@@ -1432,7 +1427,7 @@ export default function GroupBookingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
-              Reservation Detail
+              {t("dlgResDetailTitle")}
             </DialogTitle>
           </DialogHeader>
           {detailRes && (
@@ -1440,15 +1435,15 @@ export default function GroupBookingsPage() {
               {/* Guest info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Guest</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("lblGuestDetail")}</p>
                   <p className="text-sm font-medium">{detailRes.guest?.name ?? "Unknown"}</p>
                   {detailRes.guest?.phone && <p className="text-xs text-muted-foreground">{detailRes.guest.phone}</p>}
                   {detailRes.guest?.email && <p className="text-xs text-muted-foreground">{detailRes.guest.email}</p>}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Room</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("lblRoomDetail")}</p>
                   <p className="text-sm font-medium">
-                    {detailRes.room ? `${detailRes.room.number}${detailRes.room.name ? ` - ${detailRes.room.name}` : ""}` : "Not assigned"}
+                    {detailRes.room ? `${detailRes.room.number}${detailRes.room.name ? ` - ${detailRes.room.name}` : ""}` : t("notAssigned")}
                   </p>
                   {detailRes.room?.type && (
                     <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-xs">
@@ -1461,11 +1456,11 @@ export default function GroupBookingsPage() {
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Check-in</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("lblCheckinDetail")}</p>
                   <p className="text-sm font-medium">{formatDate(detailRes.checkIn)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Check-out</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("lblCheckoutDetail")}</p>
                   <p className="text-sm font-medium">{formatDate(detailRes.checkOut)}</p>
                 </div>
               </div>
@@ -1473,15 +1468,15 @@ export default function GroupBookingsPage() {
               {/* Cost and payment */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 rounded-lg border p-3 bg-muted/30">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Total Cost</p>
+                  <p className="text-xs text-muted-foreground">{t("lblTotalCost")}</p>
                   <p className="text-sm font-bold">{detailRes.totalCost?.toLocaleString() ?? 0} ETB</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Paid</p>
+                  <p className="text-xs text-muted-foreground">{t("lblPaid")}</p>
                   <p className="text-sm font-medium text-emerald-600">{detailRes.paidAmount?.toLocaleString() ?? 0} ETB</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="text-xs text-muted-foreground">{t("lblBalance")}</p>
                   <p className={`text-sm font-bold ${(detailRes.balance ?? detailRes.totalCost ?? 0) > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                     {Math.max(0, detailRes.balance ?? detailRes.totalCost ?? 0).toLocaleString()} ETB
                   </p>
@@ -1491,7 +1486,7 @@ export default function GroupBookingsPage() {
               {/* Status row */}
               <div className="flex items-center gap-3">
                 <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-xs text-muted-foreground">{t("lblStatus")}</p>
                   <Badge
                     variant="outline"
                     className={RESERVATION_STATUS_BADGE[detailRes.status] ?? "bg-gray-100 text-gray-700 border-gray-200"}
@@ -1501,7 +1496,7 @@ export default function GroupBookingsPage() {
                 </div>
                 {detailRes.paymentStatus && (
                   <div className="space-y-0.5">
-                    <p className="text-xs text-muted-foreground">Payment</p>
+                    <p className="text-xs text-muted-foreground">{t("lblPayment")}</p>
                     <Badge
                       variant="outline"
                       className={
