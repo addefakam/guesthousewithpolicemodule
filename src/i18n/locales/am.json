@@ -1464,6 +1464,26 @@
     "toastCheckoutFailed": "የቡድን መውጣት አልተተሳካም",
     "toastAmountMethodRequired": "መጠን እና የክፍያ ዘዴ ይገደዳሉ",
     "toastPaymentRecorded": "ክፍያ በተሳካ ሁኔታ ተመዝግቧል",
-    "toastPaymentFailed": "ክፍያ አልተሳካም"
+    "toastPaymentFailed": "ክፍያ አልተሳካም",
+    "statusPENDING": "ሾማ መወን ማራ",
+    "statusCONFIRMED": "ቶረዌዋትዋል",
+    "statusIN_PROGRESS": "ማ መ኱ላት ማራ",
+    "statusCOMPLETED": "ቶሪዎያኁያ",
+    "statusCANCELLED": "ቶሰራዌኑያ",
+    "resStatusUPCOMING": "መራቲ",
+    "resStatusACTIVE": "ሕኑ",
+    "resStatusCOMPLETED": "ቶሪዎያኁያ",
+    "resStatusCANCELLED": "ቶሰራዌኑያ",
+    "payStatusPAID": "ቶከቀለያ",
+    "payStatusPARTIAL": "ከኛ ቁወባ",
+    "payStatusUNPAID": "ካቶከቀላ ዋመ",
+    "roomTypeSINGLE": "አውላማ",
+    "roomTypeDOUBLE": "ማንቲ",
+    "roomTypeTWIN": "ቶቀወት",
+    "roomTypeSUITE": "ስዋት",
+    "roomTypeFAMILY": "ራኰትዋ",
+    "roomTypeTRIPLE": "ስላማማሰ",
+    "roomTypeDORMITORY": "ኳኮመሉትዋራር",
+    "unknownGuest": "ያቶቻኘዋ"
   }
 }

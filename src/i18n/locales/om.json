@@ -1465,6 +1465,26 @@
     "toastCheckoutFailed": "Bahiinsa garee goomii",
     "toastAmountMethodRequired": "Lakkoofsa fi akaakuu qabadhii barbaachisaa dha",
     "toastPaymentRecorded": "Qabadhii si'a ta'een galmeessameera",
-    "toastPaymentFailed": "Qabadhii goomii"
+    "toastPaymentFailed": "Qabadhii goomii",
+    "statusPENDING": "Qabanneessa",
+    "statusCONFIRMED": "Mirkanaa'e",
+    "statusIN_PROGRESS": "Taa'uu irra jira",
+    "statusCOMPLETED": "Xumurame",
+    "statusCANCELLED": "Banaaf dhaabame",
+    "resStatusUPCOMING": "Dhufaa jira",
+    "resStatusACTIVE": "Haala hojjetu",
+    "resStatusCOMPLETED": "Xumurame",
+    "resStatusCANCELLED": "Banaaf dhaabame",
+    "payStatusPAID": "Irra kanes",
+    "payStatusPARTIAL": "Qarqara",
+    "payStatusUNPAID": "Kan hin qabne",
+    "roomTypeSINGLE": "Qunnamtii tokko",
+    "roomTypeDOUBLE": "Qunnamtii lama",
+    "roomTypeTWIN": "Lamaa walfakkaatu",
+    "roomTypeSUITE": "Suuti",
+    "roomTypeFAMILY": "Mannaa",
+    "roomTypeTRIPLE": "Qunnamtii sadii",
+    "roomTypeDORMITORY": "Dormitoorii",
+    "unknownGuest": "Beekamtuu"
   }
 }

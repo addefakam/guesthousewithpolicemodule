@@ -160,6 +160,34 @@ export default function GroupBookingsPage() {
   const { t } = useTranslation("groupBookings");
   const { refreshKey } = useAppStore();
 
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING: t("statusPENDING"),
+    CONFIRMED: t("statusCONFIRMED"),
+    IN_PROGRESS: t("statusIN_PROGRESS"),
+    COMPLETED: t("statusCOMPLETED"),
+    CANCELLED: t("statusCANCELLED"),
+  };
+  const RES_STATUS_LABELS: Record<string, string> = {
+    UPCOMING: t("resStatusUPCOMING"),
+    ACTIVE: t("resStatusACTIVE"),
+    COMPLETED: t("resStatusCOMPLETED"),
+    CANCELLED: t("resStatusCANCELLED"),
+  };
+  const PAY_STATUS_LABELS: Record<string, string> = {
+    PAID: t("payStatusPAID"),
+    PARTIAL: t("payStatusPARTIAL"),
+    UNPAID: t("payStatusUNPAID"),
+  };
+  const ROOM_TYPE_LABELS: Record<string, string> = {
+    SINGLE: t("roomTypeSINGLE"),
+    DOUBLE: t("roomTypeDOUBLE"),
+    TWIN: t("roomTypeTWIN"),
+    SUITE: t("roomTypeSUITE"),
+    FAMILY: t("roomTypeFAMILY"),
+    TRIPLE: t("roomTypeTRIPLE"),
+    DORMITORY: t("roomTypeDORMITORY"),
+  };
+
   const [groupBookings, setGroupBookings] = useState<GroupBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -660,7 +688,7 @@ export default function GroupBookingsPage() {
                         {group.name}
                       </CardTitle>
                       <Badge variant="outline" className={badgeClass}>
-                        {group.status}
+                        {STATUS_LABELS[group.status] || group.status}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
@@ -673,7 +701,7 @@ export default function GroupBookingsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {GROUP_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                            <SelectItem key={s} value={s}>{STATUS_LABELS[s] || s}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -832,7 +860,7 @@ export default function GroupBookingsPage() {
                               >
                                 <TableCell className="font-medium">
                                   <div>
-                                    <div>{res.guest?.name ?? "Unknown"}</div>
+                                    <div>{res.guest?.name ?? t("unknownGuest")}</div>
                                     {res.guest?.phone && (
                                       <div className="text-xs text-muted-foreground">{res.guest.phone}</div>
                                     )}
@@ -850,7 +878,7 @@ export default function GroupBookingsPage() {
                                 <TableCell className="hidden md:table-cell">
                                   {res.room?.type ? (
                                     <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-xs">
-                                      {res.room.type}
+                                      {ROOM_TYPE_LABELS[res.room.type] || res.room.type}
                                     </Badge>
                                   ) : "—"}
                                 </TableCell>
@@ -870,7 +898,7 @@ export default function GroupBookingsPage() {
                                       "bg-gray-100 text-gray-700 border-gray-200"
                                     }
                                   >
-                                    {res.status}
+                                    {RES_STATUS_LABELS[res.status] || res.status}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -1170,8 +1198,8 @@ export default function GroupBookingsPage() {
                     availableRooms.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
                         {r.number}{r.name ? ` — ${r.name}` : ""}
-                        {r.type ? ` (${r.type})` : ""}
-                        {r.pricePerNight ? ` — ${r.pricePerNight} ETB/night` : ""}
+                        {r.type ? ` (${ROOM_TYPE_LABELS[r.type] || r.type})` : ""}
+                        {r.pricePerNight ? ` — ${r.pricePerNight} ${t("etbPerNight")}` : ""}
                       </SelectItem>
                     ))
                   ) : (
@@ -1436,7 +1464,7 @@ export default function GroupBookingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("lblGuestDetail")}</p>
-                  <p className="text-sm font-medium">{detailRes.guest?.name ?? "Unknown"}</p>
+                  <p className="text-sm font-medium">{detailRes.guest?.name ?? t("unknownGuest")}</p>
                   {detailRes.guest?.phone && <p className="text-xs text-muted-foreground">{detailRes.guest.phone}</p>}
                   {detailRes.guest?.email && <p className="text-xs text-muted-foreground">{detailRes.guest.email}</p>}
                 </div>
@@ -1447,7 +1475,7 @@ export default function GroupBookingsPage() {
                   </p>
                   {detailRes.room?.type && (
                     <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-xs">
-                      {detailRes.room.type}
+                      {ROOM_TYPE_LABELS[detailRes.room.type] || detailRes.room.type}
                     </Badge>
                   )}
                 </div>
@@ -1491,7 +1519,7 @@ export default function GroupBookingsPage() {
                     variant="outline"
                     className={RESERVATION_STATUS_BADGE[detailRes.status] ?? "bg-gray-100 text-gray-700 border-gray-200"}
                   >
-                    {detailRes.status}
+                    {RES_STATUS_LABELS[detailRes.status] || detailRes.status}
                   </Badge>
                 </div>
                 {detailRes.paymentStatus && (
@@ -1507,7 +1535,7 @@ export default function GroupBookingsPage() {
                           : "bg-gray-100 text-gray-600 border-gray-200"
                       }
                     >
-                      {detailRes.paymentStatus}
+                      {PAY_STATUS_LABELS[detailRes.paymentStatus] || detailRes.paymentStatus}
                     </Badge>
                   </div>
                 )}
@@ -1515,7 +1543,7 @@ export default function GroupBookingsPage() {
 
               {detailRes.room?.pricePerNight && detailRes.nights && (
                 <div className="text-xs text-muted-foreground border-l-2 border-muted pl-3">
-                  {detailRes.nights} night(s) × {detailRes.room.pricePerNight.toLocaleString()} ETB/night = {detailRes.totalCost?.toLocaleString()} ETB
+                  {t("nightsCalc", { nights: detailRes.nights, rate: detailRes.room.pricePerNight.toLocaleString(), total: detailRes.totalCost?.toLocaleString() ?? "0" })}
                 </div>
               )}
             </div>

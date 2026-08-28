@@ -1465,6 +1465,26 @@
     "toastCheckoutFailed": "Group checkout failed",
     "toastAmountMethodRequired": "Amount and payment method are required",
     "toastPaymentRecorded": "Payment recorded successfully",
-    "toastPaymentFailed": "Payment failed"
+    "toastPaymentFailed": "Payment failed",
+    "statusPENDING": "Pending",
+    "statusCONFIRMED": "Confirmed",
+    "statusIN_PROGRESS": "In Progress",
+    "statusCOMPLETED": "Completed",
+    "statusCANCELLED": "Cancelled",
+    "resStatusUPCOMING": "Upcoming",
+    "resStatusACTIVE": "Active",
+    "resStatusCOMPLETED": "Completed",
+    "resStatusCANCELLED": "Cancelled",
+    "payStatusPAID": "Paid",
+    "payStatusPARTIAL": "Partial",
+    "payStatusUNPAID": "Unpaid",
+    "roomTypeSINGLE": "Single",
+    "roomTypeDOUBLE": "Double",
+    "roomTypeTWIN": "Twin",
+    "roomTypeSUITE": "Suite",
+    "roomTypeFAMILY": "Family",
+    "roomTypeTRIPLE": "Triple",
+    "roomTypeDORMITORY": "Dormitory",
+    "unknownGuest": "Unknown"
   }
 }
