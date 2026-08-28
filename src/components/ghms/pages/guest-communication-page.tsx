@@ -120,13 +120,7 @@ const PLACEHOLDERS = [
   "{{checkOutTime}}",
 ];
 
-const TYPE_LABELS: Record<string, string> = {
-  CHECKIN_REMINDER: "Check-in Reminder",
-  WELCOME: "Welcome",
-  CHECKOUT_REMINDER: "Checkout Reminder",
-  CONFIRMATION: "Confirmation",
-  CUSTOM: "Custom",
-};
+// TYPE_LABELS moved inside component for t() access
 
 const CHANNEL_BADGE: Record<string, string> = {
   SMS: "bg-blue-100 text-blue-700 border-blue-200",
@@ -171,8 +165,26 @@ const emptyBulkForm = {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function GuestCommunicationPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("messages");
   const { refreshKey } = useAppStore();
+
+  const TYPE_LABELS: Record<string, string> = {
+    CHECKIN_REMINDER: t("typeCHECKIN_REMINDER"),
+    WELCOME: t("typeWELCOME"),
+    CHECKOUT_REMINDER: t("typeCHECKOUT_REMINDER"),
+    CONFIRMATION: t("typeCONFIRMATION"),
+    CUSTOM: t("typeCUSTOM"),
+  };
+  const CHANNEL_LABELS: Record<string, string> = {
+    SMS: t("channelSMS"),
+    WHATSAPP: t("channelWHATSAPP"),
+  };
+  const STATUS_LABELS: Record<string, string> = {
+    SENT: t("statusSENT"),
+    DELIVERED: t("statusDELIVERED"),
+    PENDING: t("statusPENDING"),
+    FAILED: t("statusFAILED"),
+  };
   const [activeTab, setActiveTab] = useState("templates");
 
   // ── Templates State ──
@@ -212,7 +224,7 @@ export default function GuestCommunicationPage() {
       const data = await apiGetMessageTemplates();
       setTemplates(Array.isArray(data) ? data : []);
     } catch {
-      toast.error("Failed to load message templates");
+      toast.error(t("toastFailedLoadTemplates"));
     } finally {
       setTplLoading(false);
     }
@@ -230,7 +242,7 @@ export default function GuestCommunicationPage() {
       setLogsPage(result.page ?? 1);
       setLogsTotalPages(result.totalPages ?? 1);
     } catch {
-      toast.error("Failed to load message history");
+      toast.error(t("toastFailedLoadHistory"));
     } finally {
       setLogsLoading(false);
     }
@@ -270,22 +282,22 @@ export default function GuestCommunicationPage() {
 
   const handleSaveTpl = async () => {
     if (!tplForm.name.trim() || !tplForm.body.trim()) {
-      toast.error("Template name and body are required");
+      toast.error(t("toastNameBodyRequired"));
       return;
     }
     setTplSaving(true);
     try {
       if (editingTpl) {
         await apiUpdateMessageTemplate(editingTpl.id, tplForm);
-        toast.success("Template updated");
+        toast.success(t("toastTemplateUpdated"));
       } else {
         await apiCreateMessageTemplate(tplForm);
-        toast.success("Template created");
+        toast.success(t("toastTemplateCreated"));
       }
       setTplDialogOpen(false);
       fetchTemplates();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save template");
+      toast.error(err instanceof Error ? err.message : t("toastFailedSaveTemplate"));
     } finally {
       setTplSaving(false);
     }
@@ -296,11 +308,11 @@ export default function GuestCommunicationPage() {
     setTplDeleting(true);
     try {
       await apiDeleteMessageTemplate(tplDeleteTarget.id);
-      toast.success("Template deleted");
+      toast.success(t("toastTemplateDeleted"));
       setTplDeleteTarget(null);
       fetchTemplates();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete template");
+      toast.error(err instanceof Error ? err.message : t("toastFailedDeleteTemplate"));
     } finally {
       setTplDeleting(false);
     }
@@ -314,9 +326,9 @@ export default function GuestCommunicationPage() {
     );
     try {
       await apiUpdateMessageTemplate(tpl.id, { isActive: next });
-      toast.success(next ? "Template activated" : "Template deactivated");
+      toast.success(next ? t("toastTemplateActivated") : t("toastTemplateDeactivated"));
     } catch {
-      toast.error("Failed to toggle template");
+      toast.error(t("toastFailedToggle"));
       setTemplates((prev) =>
         prev.map((x) => (x.id === tpl.id ? { ...x, isActive: !next } : x))
       );
@@ -342,11 +354,11 @@ export default function GuestCommunicationPage() {
 
   const handleSendSingle = async () => {
     if (!singleForm.recipient.trim()) {
-      toast.error("Recipient phone number is required");
+      toast.error(t("toastRecipientRequired"));
       return;
     }
     if (!singleForm.message.trim()) {
-      toast.error("Message body is required");
+      toast.error(t("toastMessageRequired"));
       return;
     }
     setSendingSingle(true);
@@ -358,11 +370,11 @@ export default function GuestCommunicationPage() {
       };
       if (singleForm.templateId) payload.templateId = singleForm.templateId;
       await apiSendMessage(payload);
-      toast.success("Message sent successfully");
+      toast.success(t("toastMessageSent"));
       setSingleForm(emptySingleForm);
       fetchLogs();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to send message");
+      toast.error(err instanceof Error ? err.message : t("toastFailedSend"));
     } finally {
       setSendingSingle(false);
     }
@@ -370,7 +382,7 @@ export default function GuestCommunicationPage() {
 
   const handleBulkSend = async () => {
     if (!bulkForm.templateId) {
-      toast.error("Please select a template");
+      toast.error(t("toastSelectTemplate"));
       return;
     }
     setSendingBulk(true);
@@ -382,12 +394,12 @@ export default function GuestCommunicationPage() {
       });
       const sent = (result as Record<string, number>)?.sent ?? 0;
       const failed = (result as Record<string, number>)?.failed ?? 0;
-      toast.success(`${sent} messages sent, ${failed} failed`);
+      toast.success(t("toastBulkResult", { sent, failed }));
       setBulkConfirmOpen(false);
       setBulkForm(emptyBulkForm);
       fetchLogs();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Bulk send failed");
+      toast.error(err instanceof Error ? err.message : t("toastBulkFailed"));
     } finally {
       setSendingBulk(false);
     }
@@ -401,16 +413,16 @@ export default function GuestCommunicationPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Guest Communication
+                      {t("pageTitle")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Send SMS/WhatsApp messages to guests
+                      {t("pageSubtitle")}
           </p>
         </div>
         {activeTab === "templates" && (
           <Button onClick={openCreateTpl} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" />
-            New Template
+            {t("btnNewTemplate")}
           </Button>
         )}
       </div>
@@ -419,15 +431,15 @@ export default function GuestCommunicationPage() {
         <TabsList>
           <TabsTrigger value="templates" className="gap-2">
             <MessageSquare className="h-4 w-4" />
-            Templates ({templates.length})
+            {t("tabTemplates")} ({templates.length})
           </TabsTrigger>
           <TabsTrigger value="send" className="gap-2">
             <Send className="h-4 w-4" />
-            Send Message
+            {t("tabSendMessage")}
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <History className="h-4 w-4" />
-            Message History
+            {t("tabHistory")}
           </TabsTrigger>
         </TabsList>
 
@@ -443,17 +455,17 @@ export default function GuestCommunicationPage() {
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
               <MessageSquare className="h-12 w-12 text-gray-300 mb-3" />
               <p className="text-lg font-medium text-gray-500">
-                No message templates
+                {t("emptyTitle")}
               </p>
               <p className="mt-1 text-sm text-gray-400">
-                Create your first template to get started
+                {t("emptySubtitle")}
               </p>
               <Button
                 onClick={openCreateTpl}
                 variant="outline"
                 className="mt-4 gap-2"
               >
-                <Plus className="h-4 w-4" /> New Template
+                <Plus className="h-4 w-4" /> {t("btnNewTemplate")}
               </Button>
             </div>
           ) : (
@@ -480,20 +492,20 @@ export default function GuestCommunicationPage() {
                               variant="outline"
                               className={`text-xs ${typeColor}`}
                             >
-                              {TYPE_LABELS[tpl.type] ?? tpl.type}
+                              {TYPE_LABELS[tpl.type] || tpl.type}
                             </Badge>
                             <Badge
                               variant="outline"
                               className={`text-xs ${channelColor}`}
                             >
-                              {tpl.channel}
+                              {CHANNEL_LABELS[tpl.channel] || tpl.channel}
                             </Badge>
                             {tpl.isDefault && (
                               <Badge
                                 variant="outline"
                                 className="text-xs bg-amber-50 text-amber-700 border-amber-200"
                               >
-                                Default
+                                {t("badgeDefault")}
                               </Badge>
                             )}
                           </div>
@@ -512,7 +524,7 @@ export default function GuestCommunicationPage() {
                             onCheckedChange={() => handleToggleActive(tpl)}
                           />
                           <span className="text-xs text-muted-foreground">
-                            {tpl.isActive ? "Active" : "Inactive"}
+                            {tpl.isActive ? t("toggleActive") : t("toggleInactive")}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -551,13 +563,13 @@ export default function GuestCommunicationPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Send className="h-5 w-5 text-primary" />
-                  Single Message
+                  {t("singleTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="single-recipient">
-                    Recipient Phone <span className="text-rose-500">*</span>
+                    {t("lblRecipientPhone")} <span className="text-rose-500">*</span>
                   </Label>
                   <Input
                     id="single-recipient"
@@ -573,7 +585,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('lblchannel', 'Channel')}</Label>
+                  <Label>{t("lblChannel")}</Label>
                   <Select
                     value={singleForm.channel}
                     onValueChange={(v) =>
@@ -584,27 +596,27 @@ export default function GuestCommunicationPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SMS">SMS</SelectItem>
-                      <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                      <SelectItem value="SMS">{t("channelSMS")}</SelectItem>
+                      <SelectItem value="WHATSAPP">{t("channelWHATSAPP")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('lbltemplateOptional', 'Template (Optional)')}</Label>
+                  <Label>{t("lblTemplateOptional")}</Label>
                   <Select
                     value={singleForm.templateId}
                     onValueChange={handleSingleTemplateChange}
                   >
                     <SelectTrigger id="single-template">
-                      <SelectValue placeholder="Select a template..." />
+                      <SelectValue placeholder={t("placeholderSelectTemplate")} />
                     </SelectTrigger>
                     <SelectContent>
                       {templates
                         .filter((x) => x.isActive)
                         .map((x) => (
                           <SelectItem key={x.id} value={x.id}>
-                            {x.name} ({x.channel})
+                            {x.name} ({CHANNEL_LABELS[x.channel] || x.channel})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -613,11 +625,11 @@ export default function GuestCommunicationPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="single-message">
-                    Message <span className="text-rose-500">*</span>
+                    {t("lblMessage")} <span className="text-rose-500">*</span>
                   </Label>
                   <Textarea
                     id="single-message"
-                    placeholder="Type your message here..."
+                    placeholder={t("placeholderMessage")}
                     rows={6}
                     value={singleForm.message}
                     onChange={(e) =>
@@ -630,8 +642,7 @@ export default function GuestCommunicationPage() {
                   {selectedTemplateForSingle && (
                     <p className="text-xs text-muted-foreground flex items-start gap-1.5">
                       <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      Preview from template &ldquo;{selectedTemplateForSingle.name}
-                      &rdquo;. You can edit before sending.
+                      {t("templatePreviewInfo", { name: selectedTemplateForSingle.name })}
                     </p>
                   )}
                 </div>
@@ -642,7 +653,7 @@ export default function GuestCommunicationPage() {
                   className="w-full gap-2"
                 >
                   <Send className="h-4 w-4" />
-                  {sendingSingle ? "Sending..." : "Send Message"}
+                  {sendingSingle ? t("btnSending") : t("btnSendMessage")}
                 </Button>
               </CardContent>
             </Card>
@@ -652,13 +663,13 @@ export default function GuestCommunicationPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Megaphone className="h-5 w-5 text-primary" />
-                  Bulk Send
+                  {t("bulkTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="bulk-template">
-                    Template <span className="text-rose-500">*</span>
+                    {t("lblTemplate")} <span className="text-rose-500">*</span>
                   </Label>
                   <Select
                     value={bulkForm.templateId}
@@ -667,14 +678,14 @@ export default function GuestCommunicationPage() {
                     }
                   >
                     <SelectTrigger id="bulk-template">
-                      <SelectValue placeholder="Select a template..." />
+                      <SelectValue placeholder={t("placeholderSelectTemplate")} />
                     </SelectTrigger>
                     <SelectContent>
                       {templates
                         .filter((x) => x.isActive)
                         .map((x) => (
                           <SelectItem key={x.id} value={x.id}>
-                            {x.name} ({x.channel})
+                            {x.name} ({CHANNEL_LABELS[x.channel] || x.channel})
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -682,7 +693,7 @@ export default function GuestCommunicationPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('lbltargetGuests', 'Target Guests')}</Label>
+                  <Label>{t("lblTargetGuests")}</Label>
                   <Select
                     value={bulkForm.status}
                     onValueChange={(v) =>
@@ -693,15 +704,15 @@ export default function GuestCommunicationPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="UPCOMING">Upcoming</SelectItem>
-                      <SelectItem value="ACTIVE">Active</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                      <SelectItem value="UPCOMING">{t("targetUPCOMING")}</SelectItem>
+                      <SelectItem value="ACTIVE">{t("targetACTIVE")}</SelectItem>
+                      <SelectItem value="COMPLETED">{t("targetCOMPLETED")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('lblchannel', 'Channel')}</Label>
+                  <Label>{t("lblChannel")}</Label>
                   <Select
                     value={bulkForm.channel}
                     onValueChange={(v) =>
@@ -712,8 +723,8 @@ export default function GuestCommunicationPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SMS">SMS</SelectItem>
-                      <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                      <SelectItem value="SMS">{t("channelSMS")}</SelectItem>
+                      <SelectItem value="WHATSAPP">{t("channelWHATSAPP")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -721,7 +732,7 @@ export default function GuestCommunicationPage() {
                 {bulkForm.templateId && (
                   <div className="rounded-lg border bg-muted/40 p-3">
                     <p className="text-xs font-medium text-muted-foreground mb-1">
-                      Template Preview
+                      {t("templatePreview")}
                     </p>
                     <p className="text-sm text-gray-700 line-clamp-3 whitespace-pre-line">
                       {
@@ -740,7 +751,7 @@ export default function GuestCommunicationPage() {
                   className="w-full gap-2"
                 >
                   <Megaphone className="h-4 w-4" />
-                  Send to All {bulkForm.status === "UPCOMING" ? "Upcoming" : bulkForm.status === "ACTIVE" ? "Active" : "Completed"} Guests
+                  {t("btnSendToAll", { status: t("target" + bulkForm.status) })}
                 </Button>
               </CardContent>
             </Card>
@@ -753,7 +764,7 @@ export default function GuestCommunicationPage() {
             {/* Filters */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="flex items-center gap-2 flex-1">
-                <Label>{t('lblstatus', 'Status:')}</Label>
+                <Label>{t("lblStatus")}</Label>
                 <Select
                   value={filterStatus}
                   onValueChange={setFilterStatus}
@@ -762,16 +773,16 @@ export default function GuestCommunicationPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    <SelectItem value="SENT">Sent</SelectItem>
-                    <SelectItem value="DELIVERED">Delivered</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="FAILED">Failed</SelectItem>
+                    <SelectItem value="ALL">{t("statusALL")}</SelectItem>
+                    <SelectItem value="SENT">{t("statusSENT")}</SelectItem>
+                    <SelectItem value="DELIVERED">{t("statusDELIVERED")}</SelectItem>
+                    <SelectItem value="PENDING">{t("statusPENDING")}</SelectItem>
+                    <SelectItem value="FAILED">{t("statusFAILED")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label>{t('lblchannel', 'Channel:')}</Label>
+                <Label>{t("lblChannel")}</Label>
                 <Select
                   value={filterChannel}
                   onValueChange={setFilterChannel}
@@ -780,14 +791,14 @@ export default function GuestCommunicationPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    <SelectItem value="SMS">SMS</SelectItem>
-                    <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                    <SelectItem value="ALL">{t("statusALL")}</SelectItem>
+                    <SelectItem value="SMS">{t("channelSMS")}</SelectItem>
+                    <SelectItem value="WHATSAPP">{t("channelWHATSAPP")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <span className="text-sm text-muted-foreground">
-                {logsTotal} message{logsTotal !== 1 ? "s" : ""}
+                {t(logsTotal === 1 ? "messagesCount_one" : "messagesCount_other", { count: logsTotal })}
               </span>
             </div>
 
@@ -801,10 +812,10 @@ export default function GuestCommunicationPage() {
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
                 <History className="h-12 w-12 text-gray-300 mb-3" />
                 <p className="text-lg font-medium text-gray-500">
-                  No messages found
+                  {t("historyEmptyTitle")}
                 </p>
                 <p className="mt-1 text-sm text-gray-400">
-                  Messages you send will appear here
+                  {t("historyEmptySubtitle")}
                 </p>
               </div>
             ) : (
@@ -814,12 +825,12 @@ export default function GuestCommunicationPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t('thdate', 'Date')}</TableHead>
-                        <TableHead>{t('threcipient', 'Recipient')}</TableHead>
-                        <TableHead>{t('thchannel', 'Channel')}</TableHead>
-                        <TableHead>{t('thtemplate', 'Template')}</TableHead>
-                        <TableHead>{t('thstatus', 'Status')}</TableHead>
-                        <TableHead>{t('thmessage', 'Message')}</TableHead>
+                        <TableHead>{t("thDate")}</TableHead>
+                        <TableHead>{t("thRecipient")}</TableHead>
+                        <TableHead>{t("thChannel")}</TableHead>
+                        <TableHead>{t("thTemplate")}</TableHead>
+                        <TableHead>{t("thStatus")}</TableHead>
+                        <TableHead>{t("thMessage")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -841,7 +852,7 @@ export default function GuestCommunicationPage() {
                                 CHANNEL_BADGE.SMS
                               }`}
                             >
-                              {log.channel}
+                              {CHANNEL_LABELS[log.channel] || log.channel}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
@@ -883,7 +894,7 @@ export default function GuestCommunicationPage() {
                               "bg-gray-100 text-gray-600 border-gray-200"
                             }`}
                           >
-                            {log.status}
+                            {STATUS_LABELS[log.status] || log.status}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
@@ -898,7 +909,7 @@ export default function GuestCommunicationPage() {
                                 CHANNEL_BADGE.SMS
                               }`}
                             >
-                              {log.channel}
+                              {CHANNEL_LABELS[log.channel] || log.channel}
                             </Badge>
                             {log.template?.name && (
                               <span className="text-xs text-muted-foreground">
@@ -926,10 +937,10 @@ export default function GuestCommunicationPage() {
                       disabled={logsPage <= 1}
                       onClick={() => setLogsPage((p) => p - 1)}
                     >
-                      Previous
+                      {t("btnPrevious")}
                     </Button>
                     <span className="text-sm text-muted-foreground">
-                      Page {logsPage} of {logsTotalPages}
+                      {t("pageOf", { page: logsPage, total: logsTotalPages })}
                     </span>
                     <Button
                       variant="outline"
@@ -937,7 +948,7 @@ export default function GuestCommunicationPage() {
                       disabled={logsPage >= logsTotalPages}
                       onClick={() => setLogsPage((p) => p + 1)}
                     >
-                      Next
+                      {t("btnNext")}
                     </Button>
                   </div>
                 )}
@@ -953,23 +964,23 @@ export default function GuestCommunicationPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              {editingTpl ? "Edit Template" : "New Template"}
+              {editingTpl ? t("dlgEditTitle") : t("dlgNewTitle")}
             </DialogTitle>
             <DialogDescription>
               {editingTpl
-                ? "Update the message template details."
-                : "Create a new message template for guest communications."}
+                ? t("dlgEditDesc")
+                : t("dlgNewDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="tpl-name">
-                Name <span className="text-rose-500">*</span>
+                {t("lblName")} <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="tpl-name"
-                placeholder="e.g. Check-in Reminder"
+                placeholder={t("placeholderTemplateName")}
                 value={tplForm.name}
                 onChange={(e) =>
                   setTplForm((p) => ({ ...p, name: e.target.value }))
@@ -980,7 +991,7 @@ export default function GuestCommunicationPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('lbltype', 'Type')}</Label>
+                <Label>{t("lblType")}</Label>
                 <Select
                   value={tplForm.type}
                   onValueChange={(v) =>
@@ -991,23 +1002,17 @@ export default function GuestCommunicationPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CHECKIN_REMINDER">
-                      Check-in Reminder
-                    </SelectItem>
-                    <SelectItem value="WELCOME">Welcome</SelectItem>
-                    <SelectItem value="CHECKOUT_REMINDER">
-                      Checkout Reminder
-                    </SelectItem>
-                    <SelectItem value="CONFIRMATION">
-                      Confirmation
-                    </SelectItem>
-                    <SelectItem value="CUSTOM">Custom</SelectItem>
+                    <SelectItem value="CHECKIN_REMINDER">{t("typeCHECKIN_REMINDER")}</SelectItem>
+                    <SelectItem value="WELCOME">{t("typeWELCOME")}</SelectItem>
+                    <SelectItem value="CHECKOUT_REMINDER">{t("typeCHECKOUT_REMINDER")}</SelectItem>
+                    <SelectItem value="CONFIRMATION">{t("typeCONFIRMATION")}</SelectItem>
+                    <SelectItem value="CUSTOM">{t("typeCUSTOM")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>{t('lblchannel', 'Channel')}</Label>
+                <Label>{t("lblChannel")}</Label>
                 <Select
                   value={tplForm.channel}
                   onValueChange={(v) =>
@@ -1018,8 +1023,8 @@ export default function GuestCommunicationPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SMS">SMS</SelectItem>
-                    <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                    <SelectItem value="SMS">{t("channelSMS")}</SelectItem>
+                    <SelectItem value="WHATSAPP">{t("channelWHATSAPP")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1027,11 +1032,11 @@ export default function GuestCommunicationPage() {
 
             <div className="space-y-2">
               <Label htmlFor="tpl-body">
-                Body <span className="text-rose-500">*</span>
+                {t("lblBody")} <span className="text-rose-500">*</span>
               </Label>
               <Textarea
                 id="tpl-body"
-                placeholder="Write your message template..."
+                placeholder={t("placeholderBody")}
                 rows={6}
                 value={tplForm.body}
                 onChange={(e) =>
@@ -1041,7 +1046,7 @@ export default function GuestCommunicationPage() {
               <div className="rounded-lg border bg-muted/40 p-3">
                 <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                   <Info className="h-3.5 w-3.5" />
-                  Available Placeholders
+                  {t("availablePlaceholders")}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {PLACEHOLDERS.map((p) => (
@@ -1063,14 +1068,10 @@ export default function GuestCommunicationPage() {
               variant="outline"
               onClick={() => setTplDialogOpen(false)}
             >
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleSaveTpl} disabled={tplSaving}>
-              {tplSaving
-                ? "Saving..."
-                : editingTpl
-                  ? "Update Template"
-                  : "Create Template"}
+              {tplSaving ? t("btnSaving") : editingTpl ? t("btnUpdateTemplate") : t("btnCreateTemplate")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1084,21 +1085,20 @@ export default function GuestCommunicationPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete &quot;{tplDeleteTarget?.name}&quot;?
+              {t("dlgDeleteTitle", { name: tplDeleteTarget?.name || "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this template. This action cannot be
-              undone.
+              {t("dlgDeleteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={handleDeleteTpl}
               disabled={tplDeleting}
             >
-              {tplDeleting ? "Deleting..." : "Delete"}
+              {tplDeleting ? t("btnDeleting") : t("btnDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1111,21 +1111,15 @@ export default function GuestCommunicationPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Bulk Send</AlertDialogTitle>
+            <AlertDialogTitle>{t("dlgBulkTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will send the selected template to all{" "}
-              {bulkForm.status === "UPCOMING"
-                ? "upcoming"
-                : bulkForm.status === "ACTIVE"
-                  ? "active"
-                  : "completed"}{" "}
-              guests via {bulkForm.channel}. Are you sure?
+              {t("dlgBulkDesc", { status: t("target" + bulkForm.status), channel: t("channel" + bulkForm.channel) })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleBulkSend} disabled={sendingBulk}>
-              {sendingBulk ? "Sending..." : "Confirm Send"}
+              {sendingBulk ? t("btnSending") : t("btnConfirmSend")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
