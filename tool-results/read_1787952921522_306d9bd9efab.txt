@@ -202,7 +202,7 @@
    202→              </Avatar>
    203→              <div>
    204→                <p className="font-semibold text-slate-900">
-   205→                  {name || "Operator"}
+   205→                  {name || t("fallbackOperator")}
    206→                </p>
    207→                <div className="mt-1 flex items-center gap-2">
    208→                  <Badge
@@ -534,13 +534,13 @@
    534→                </AvatarFallback>
    535→              </Avatar>
    536→              <div>
-   537→                <p className="font-semibold text-slate-900">{name || "System Admin"}</p>
+   537→                <p className="font-semibold text-slate-900">{name || t("fallbackSuperadmin")}</p>
    538→                <div className="mt-1 flex items-center gap-2">
    539→                  <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 text-xs font-semibold">
-   540→                    <Shield className="mr-1 size-3" />Superuser
+   540→                    <Shield className="mr-1 size-3" />{t("badgeSuperuser")}
    541→                  </Badge>
    542→                  <Badge variant="outline" className="text-xs">
-   543→                    <BadgeCheck className="mr-1 size-3 text-emerald-500" />System Administrator
+   543→                    <BadgeCheck className="mr-1 size-3 text-emerald-500" />{t("badgeSysAdmin")}
    544→                  </Badge>
    545→                </div>
    546→                <p className="mt-1 text-xs text-slate-400">@{currentUser?.username}</p>
@@ -638,9 +638,9 @@
    638→                <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
    639→                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
    640→                  <SelectContent>
-   641→                    <SelectItem value="ETB">ETB (Birr)</SelectItem>
-   642→                    <SelectItem value="USD">USD (Dollar)</SelectItem>
-   643→                    <SelectItem value="EUR">EUR (Euro)</SelectItem>
+   641→                    <SelectItem value="ETB">{t("currencyETB")}</SelectItem>
+   642→                    <SelectItem value="USD">{t("currencyUSD")}</SelectItem>
+   643→                    <SelectItem value="EUR">{t("currencyEUR")}</SelectItem>
    644→                  </SelectContent>
    645→                </Select>
    646→              </div>
@@ -649,8 +649,8 @@
    649→                <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
    650→                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
    651→                  <SelectContent>
-   652→                    <SelectItem value="en">English</SelectItem>
-   653→                    <SelectItem value="am">Amharic</SelectItem>
+   652→                    <SelectItem value="en">{t("langEnglish")}</SelectItem>
+   653→                    <SelectItem value="am">{t("langAmharic")}</SelectItem>
    654→                  </SelectContent>
    655→                </Select>
    656→              </div>

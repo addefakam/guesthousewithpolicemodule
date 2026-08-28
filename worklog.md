@@ -96,3 +96,25 @@ Stage Summary:
 - All 4 operations files fully i18n'd (1 container + 3 sub-pages)
 - Payment methods (CASH/TRANSFER/CARD/MOBILE) translated via dynamic key pattern
 - Task types (CLEANING/MAINTENANCE/INSPECTION) and statuses (PENDING/IN_PROGRESS/COMPLETED) translated via label helper functions
+---
+Task ID: sub-i18n
+Agent: Main Agent
+Task: Audit and fix i18n for Subscription & Settings sections
+
+Work Log:
+- Audited my-subscription-page.tsx: found 8 bugs (missing JSX {}, hardcoded text, broken t() in template literal)
+- Fixed all 8 bugs: toast.error template literal, pageSubtitle, ratesLocked, Free Trial, Current badge, /month, noPaymentRecords, Payment Verified & Active
+- Audited subscription-banner.tsx: found 0 i18n (entirely hardcoded English)
+- Rewrote subscription-banner.tsx with useTranslation('subscription'), 6 new keys
+- Audited subscription-lockout-page.tsx: was using useTranslation() (wrong default namespace), 15+ hardcoded strings
+- Rewrote subscription-lockout-page.tsx with useTranslation('subscription'), proper plural keys
+- Audited settings-page.tsx: already fully translated with useTranslation('settings'), 66 keys — no changes needed
+- Added 22 new keys to en/am/om locale files (banner + lockout keys)
+- Verified: zero TypeScript errors in modified files
+
+Stage Summary:
+- my-subscription-page.tsx: 8 bugs fixed (existing 101 keys unchanged)
+- subscription-banner.tsx: fully i18n'd from 0 to 6 keys
+- subscription-lockout-page.tsx: fully i18n'd from 0 to ~16 keys, namespace corrected
+- settings-page.tsx: no changes needed (already complete)
+- Total new keys: 22 added to subscription namespace across en/am/om

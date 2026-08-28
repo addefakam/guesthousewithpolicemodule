@@ -1,0 +1,968 @@
+     1→     1→"use client";
+     2→     2→import { useTranslation } from "react-i18next";
+     3→     3→
+     4→     4→import { useState, useEffect, useCallback } from "react";
+     5→     5→import {
+     6→     6→  apiMySubscription,
+     7→     7→  apiSubmitPayment,
+     8→     8→  apiInitiateChapaPayment,
+     9→     9→  apiChapaClientVerify,
+    10→    10→} from "@/lib/api";
+    11→    11→import { getStatusBadgeClasses } from "@/lib/subscription";
+    12→    12→import { toast } from "sonner";
+    13→    13→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    14→    14→import { Badge } from "@/components/ui/badge";
+    15→    15→import { Button } from "@/components/ui/button";
+    16→    16→import { Input } from "@/components/ui/input";
+    17→    17→import { Label } from "@/components/ui/label";
+    18→    18→import { Textarea } from "@/components/ui/textarea";
+    19→    19→import { Skeleton } from "@/components/ui/skeleton";
+    20→    20→import { Separator } from "@/components/ui/separator";
+    21→    21→import {
+    22→    22→  Dialog,
+    23→    23→  DialogContent,
+    24→    24→  DialogHeader,
+    25→    25→  DialogTitle,
+    26→    26→  DialogDescription,
+    27→    27→  DialogFooter,
+    28→    28→} from "@/components/ui/dialog";
+    29→    29→import {
+    30→    30→  Select,
+    31→    31→  SelectContent,
+    32→    32→  SelectItem,
+    33→    33→  SelectTrigger,
+    34→    34→  SelectValue,
+    35→    35→} from "@/components/ui/select";
+    36→    36→import {
+    37→    37→  CreditCard,
+    38→    38→  CalendarDays,
+    39→    39→  CheckCircle2,
+    40→    40→  Clock,
+    41→    41→  AlertTriangle,
+    42→    42→  ShieldCheck,
+    43→    43→  Building2,
+    44→    44→  ChevronRight,
+    45→    45→  IndianRupee,
+    46→    46→  RefreshCw,
+    47→    47→  Send,
+    48→    48→  Info,
+    49→    49→  XCircle,
+    50→    50→  Banknote,
+    51→    51→  Smartphone,
+    52→    52→  Landmark,
+    53→    53→  Receipt,
+    54→    54→  Sparkles,
+    55→    55→  Lock,
+    56→    56→  Zap,
+    57→    57→  ExternalLink,
+    58→    58→} from "lucide-react";
+    59→    59→
+    60→    60→// ── Types ──
+    61→    61→interface SubData {
+    62→    62→  subscription: {
+    63→    63→    id: string;
+    64→    64→    startDate: string;
+    65→    65→    endDate: string;
+    66→    66→    cycle: string;
+    67→    67→    price: number;
+    68→    68→    planId: string | null;
+    69→    69→    status: string;
+    70→    70→    daysRemaining: number;
+    71→    71→  };
+    72→    72→  provider: { name: string; ownerName: string; phone: string; status: string } | null;
+    73→    73→  plans: {
+    74→    74→    id: string;
+    75→    75→    name: string;
+    76→    76→    cycle: string;
+    77→    77→    price: number;
+    78→    78→    days: number;
+    79→    79→    months: number;
+    80→    80→    perMonth: number;
+    81→    81→    subscribers: number;
+    82→    82→  }[];
+    83→    83→  payments: {
+    84→    84→    id: string;
+    85→    85→    amount: number;
+    86→    86→    cycle: string;
+    87→    87→    periodStart: string;
+    88→    88→    periodEnd: string;
+    89→    89→    notes: string;
+    90→    90→    createdAt: string;
+    91→    91→  }[];
+    92→    92→  config: {
+    93→    93→    currencySymbol: string;
+    94→    94→    paymentMethod: string;
+    95→    95→    paymentInstructions: string;
+    96→    96→    pricePerBedPerDay: number;
+    97→    97→    pricingEnabled: boolean;
+    98→    98→    latePaymentPenalty: number;
+    99→    99→  };
+   100→   100→  totalBeds: number;
+   101→   101→}
+   102→   102→
+   103→   103→const PAYMENT_METHODS = [
+   104→   104→  { value: "CHAPA", label: "Pay Online (Chapa)", icon: Zap, color: "text-violet-600" },
+   105→   105→  { value: "CASH", label: "Cash", icon: Banknote, color: "text-green-600" },
+   106→   106→  { value: "BANK_TRANSFER", label: "Bank Transfer", icon: Landmark, color: "text-blue-600" },
+   107→   107→  { value: "TELEBIRR", label: "Telebirr", icon: Smartphone, color: "text-cyan-600" },
+   108→   108→  { value: "CBE_BIRR", label: "CBE Birr", icon: Smartphone, color: "text-orange-600" },
+   109→   109→  { value: "OTHER", label: "Other", icon: CreditCard, color: "text-slate-600" },
+   110→   110→];
+   111→   111→
+   112→   112→const CYCLE_COLORS: Record<string, string> = {
+   113→   113→  MONTHLY: "border-blue-200 bg-blue-50 hover:bg-blue-100",
+   114→   114→  QUARTERLY: "border-purple-200 bg-purple-50 hover:bg-purple-100",
+   115→   115→  SEMI_ANNUAL: "border-amber-200 bg-amber-50 hover:bg-amber-100",
+   116→   116→  YEARLY: "border-emerald-200 bg-emerald-50 hover:bg-emerald-100",
+   117→   117→};
+   118→   118→
+   119→   119→const CYCLE_ICON_COLORS: Record<string, string> = {
+   120→   120→  MONTHLY: "text-blue-600 bg-blue-100",
+   121→   121→  QUARTERLY: "text-purple-600 bg-purple-100",
+   122→   122→  SEMI_ANNUAL: "text-amber-600 bg-amber-100",
+   123→   123→  YEARLY: "text-emerald-600 bg-emerald-100",
+   124→   124→};
+   125→   125→
+   126→   126→// ── Skeleton ──
+   127→   127→function LoadingSkeleton() {
+   128→   128→  return (
+   129→   129→    <div className="space-y-4">
+   130→   130→      <Skeleton className="h-40 rounded-xl" />
+   131→   131→      <Skeleton className="h-60 rounded-xl" />
+   132→   132→      <Skeleton className="h-48 rounded-xl" />
+   133→   133→    </div>
+   134→   134→  );
+   135→   135→}
+   136→   136→
+   137→   137→export default function MySubscriptionPage() {
+   138→   138→  const { t } = useTranslation("subscription");
+   139→   139→  // ── i18n lookup maps ──
+   140→   140→  const PAYMENT_METHOD_LABELS: Record<string, string> = {
+   141→   141→    CHAPA: t("payMethodCHAPA"),
+   142→   142→    CASH: t("payMethodCASH"),
+   143→   143→    BANK_TRANSFER: t("payMethodBANK_TRANSFER"),
+   144→   144→    TELEBIRR: t("payMethodTELEBIRR"),
+   145→   145→    CBE_BIRR: t("payMethodCBE_BIRR"),
+   146→   146→    OTHER: t("payMethodOTHER"),
+   147→   147→  };
+   148→   148→  const CYCLE_LABELS: Record<string, string> = {
+   149→   149→    MONTHLY: t("cycleMONTHLY"),
+   150→   150→    QUARTERLY: t("cycleQUARTERLY"),
+   151→   151→    SEMI_ANNUAL: t("cycleSEMI_ANNUAL"),
+   152→   152→    YEARLY: t("cycleYEARLY"),
+   153→   153→  };
+   154→   154→  const STATUS_LABELS: Record<string, string> = {
+   155→   155→    ACTIVE: t("statusACTIVE"),
+   156→   156→    WARNING: t("statusWARNING"),
+   157→   157→    EXPIRED: t("statusEXPIRED"),
+   158→   158→    SUSPENDED: t("statusSUSPENDED"),
+   159→   159→  };
+   160→   160→  function fmtDaysRemaining(days: number): string {
+   161→   161→    if (days > 0) return t(days === 1 ? "daysRemaining_one" : "daysRemaining_other", { count: days });
+   162→   162→    if (days === 0) return t("expiresToday");
+   163→   163→    const abs = Math.abs(days);
+   164→   164→    return t(abs === 1 ? "expiredAgo_one" : "expiredAgo_other", { count: abs });
+   165→   165→  }
+   166→   166→  function fmtCycle(cycle: string): string {
+   167→   167→    return CYCLE_LABELS[cycle] || cycle;
+   168→   168→  }
+   169→   169→
+   170→   170→  const [data, setData] = useState<SubData | null>(null);
+   171→   171→  const [loading, setLoading] = useState(true);
+   172→   172→  const [showPayDialog, setShowPayDialog] = useState(false);
+   173→   173→  const [selectedPlan, setSelectedPlan] = useState<SubData["plans"][0] | null>(null);
+   174→   174→  const [submitting, setSubmitting] = useState(false);
+   175→   175→  const [payMethod, setPayMethod] = useState("");
+   176→   176→  const [payRef, setPayRef] = useState("");
+   177→   177→  const [payNotes, setPayNotes] = useState("");
+   178→   178→  const [payAmount, setPayAmount] = useState("");
+   179→   179→  const [showHistory, setShowHistory] = useState(false);
+   180→   180→  const [chapaVerifying, setChapaVerifying] = useState(false);
+   181→   181→  const [chapaVerifyResult, setChapaVerifyResult] = useState<string | null>(null);
+   182→   182→
+   183→   183→  // Chapa result is passed via sessionStorage by the main page.tsx
+   184→   184→  // (which reads URL params from Chapa redirect and stores them here)
+   185→   185→  const [chapaResult, setChapaResult] = useState<string | null>(null);
+   186→   186→  useEffect(() => {
+   187→   187→    const stored = sessionStorage.getItem("chapa_result");
+   188→   188→    if (stored) {
+   189→   189→      setChapaResult(stored);
+   190→   190→      sessionStorage.removeItem("chapa_result");
+   191→   191→      sessionStorage.removeItem("chapa_sub");
+   192→   192→      sessionStorage.removeItem("chapa_timestamp");
+   193→   193→    }
+   194→   194→  }, []);
+   195→   195→
+   196→   196→  const fetchData = useCallback(async () => {
+   197→   197→    try {
+   198→   198→      setLoading(true);
+   199→   199→      const res = await apiMySubscription();
+   200→   200→      setData(res as SubData);
+   201→   201→    } catch (err) {
+   202→   202→      const msg = err instanceof Error ? err.message : t("toastFailedLoad");
+   203→   203→      toast.error(`t("toastFailedLoad") ${msg}`);
+   204→   204→    } finally {
+   205→   205→      setLoading(false);
+   206→   206→    }
+   207→   207→  }, []);
+   208→   208→
+   209→   209→  useEffect(() => {
+   210→   210→    fetchData();
+   211→   211→  }, [fetchData]);
+   212→   212→
+   213→   213→  // Handle Chapa payment callback — actively verify with Chapa API
+   214→   214→  useEffect(() => {
+   215→   215→    if (chapaResult === "success") {
+   216→   216→      toast.success(t("toastChapaCompleted"));
+   217→   217→      setChapaVerifying(true);
+   218→   218→      setChapaVerifyResult(null);
+   219→   219→
+   220→   220→      // Wait a moment for Chapa to process, then actively verify
+   221→   221→      const timer = setTimeout(async () => {
+   222→   222→        try {
+   223→   223→          const res = await apiChapaClientVerify() as any;
+   224→   224→          if (res.verified > 0) {
+   225→   225→            setChapaVerifyResult("success");
+   226→   226→            toast.success(`${t("toastPaymentVerified")}`);
+   227→   227→          } else if (res.alreadyVerified) {
+   228→   228→            setChapaVerifyResult("success");
+   229→   229→          } else {
+   230→   230→            setChapaVerifyResult("pending");
+   231→   231→            toast.info(res.results?.[0] || t("toastChapaPending"));
+   232→   232→          }
+   233→   233→        } catch (err) {
+   234→   234→          setChapaVerifyResult("error");
+   235→   235→          toast.error(err instanceof Error ? err.message : t("toastVerifyFailed"));
+   236→   236→        } finally {
+   237→   237→          setChapaVerifying(false);
+   238→   238→          fetchData();
+   239→   239→        }
+   240→   240→      }, 3000);
+   241→   241→
+   242→   242→      return () => clearTimeout(timer);
+   243→   243→    }
+   244→   244→  }, [chapaResult, fetchData]);
+   245→   245→
+   246→   246→  const handleSelectPlan = (plan: SubData["plans"][0]) => {
+   247→   247→    setSelectedPlan(plan);
+   248→   248→    setPayAmount(String(plan.price));
+   249→   249→    setPayMethod("");
+   250→   250→    setPayRef("");
+   251→   251→    setPayNotes("");
+   252→   252→    setShowPayDialog(true);
+   253→   253→  };
+   254→   254→
+   255→   255→  const isChapaMethod = payMethod === "CHAPA";
+   256→   256→
+   257→   257→  const handleChapaPayment = async () => {
+   258→   258→    if (!selectedPlan || !payAmount || Number(payAmount) <= 0) {
+   259→   259→      toast.error(t("toastInvalidPayment"));
+   260→   260→      return;
+   261→   261→    }
+   262→   262→    setSubmitting(true);
+   263→   263→    try {
+   264→   264→      const res = await apiInitiateChapaPayment({
+   265→   265→        cycle: selectedPlan.cycle,
+   266→   266→        amount: Number(payAmount),
+   267→   267→        planId: selectedPlan.id,
+   268→   268→      });
+   269→   269→      if (res.checkoutUrl) {
+   270→   270→        // Redirect to Chapa checkout page
+   271→   271→        window.location.href = res.checkoutUrl;
+   272→   272→      } else {
+   273→   273→        toast.error(t("toastNoChapaUrl"));
+   274→   274→      }
+   275→   275→    } catch (e: unknown) {
+   276→   276→      toast.error(e instanceof Error ? e.message : t("toastChapaInitFailed"));
+   277→   277→    } finally {
+   278→   278→      setSubmitting(false);
+   279→   279→    }
+   280→   280→  };
+   281→   281→
+   282→   282→  const handleSubmitPayment = async () => {
+   283→   283→    // If Chapa is selected, redirect to Chapa checkout
+   284→   284→    if (isChapaMethod) {
+   285→   285→      await handleChapaPayment();
+   286→   286→      return;
+   287→   287→    }
+   288→   288→
+   289→   289→    if (!selectedPlan || !payMethod || !payAmount || Number(payAmount) <= 0) {
+   290→   290→      toast.error(t("toastFillRequired"));
+   291→   291→      return;
+   292→   292→    }
+   293→   293→    if (!isChapaMethod && !payRef.trim()) {
+   294→   294→      toast.error(t("toastRefRequired"));
+   295→   295→      return;
+   296→   296→    }
+   297→   297→    setSubmitting(true);
+   298→   298→    try {
+   299→   299→      await apiSubmitPayment({
+   300→   300→        planId: selectedPlan.id,
+   301→   301→        cycle: selectedPlan.cycle,
+   302→   302→        amount: Number(payAmount),
+   303→   303→        paymentMethod: payMethod,
+   304→   304→        referenceNo: payRef,
+   305→   305→        notes: payNotes,
+   306→   306→      });
+   307→   307→      toast.success(t("toastPaymentSubmitted"));
+   308→   308→      setShowPayDialog(false);
+   309→   309→      fetchData();
+   310→   310→    } catch (e: unknown) {
+   311→   311→      toast.error(e instanceof Error ? e.message : t("toastSubmitFailed"));
+   312→   312→    } finally {
+   313→   313→      setSubmitting(false);
+   314→   314→    }
+   315→   315→  };
+   316→   316→
+   317→   317→  const sub = data?.subscription;
+   318→   318→  const cur = data?.config.currencySymbol || "Br";
+   319→   319→  const totalBeds = data?.totalBeds || 0;
+   320→   320→  const pricePerBed = data?.config.pricePerBedPerDay || 0;
+   321→   321→  const pricingLocked = data?.config.pricingEnabled === false;
+   322→   322→
+   323→   323→  if (loading) return <LoadingSkeleton />;
+   324→   324→  if (!data || !sub) {
+   325→   325→    return (
+   326→   326→      <div className="flex flex-col items-center justify-center py-20 text-center">
+   327→   327→        <CreditCard className="w-12 h-12 text-slate-300 mb-3" />
+   328→   328→        <p className="text-sm font-medium text-slate-500">{t("noSubFound")}</p>
+   329→   329→        <p className="text-xs text-slate-400 mt-1">{t("noSubContact")}</p>
+   330→   330→      </div>
+   331→   331→    );
+   332→   332→  }
+   333→   333→
+   334→   334→  const isTrial = sub.price === 0 && data.payments.length === 0;
+   335→   335→  const isExpired = sub.status === "EXPIRED";
+   336→   336→  const penaltyPercent = data.config.latePaymentPenalty || 10;
+   337→   337→  const baseAmount = sub.price || 0;
+   338→   338→  const penaltyAmount = isExpired && baseAmount > 0
+   339→   339→    ? Math.round(baseAmount * (1 + penaltyPercent / 100))
+   340→   340→    : 0;
+   341→   341→  const statusColor = getStatusBadgeClasses(sub.status as "ACTIVE" | "WARNING" | "EXPIRED" | "SUSPENDED");
+   342→   342→
+   343→   343→  return (
+   344→   344→    <div className="space-y-4 p-3 sm:p-4 md:p-6 max-w-4xl mx-auto">
+   345→   345→      {/* Header */}
+   346→   346→      <div className="flex items-center justify-between">
+   347→   347→        <div>
+   348→   348→          <h2 className="text-base sm:text-lg font-semibold">{t("pageTitle")}</h2>
+   349→   349→          <p className="text-xs sm:text-sm text-muted-foreground">
+   350→   350→            t("pageSubtitle")
+   351→   351→          </p>
+   352→   352→        </div>
+   353→   353→        <Button
+   354→   354→          variant="outline"
+   355→   355→          size="sm"
+   356→   356→          onClick={fetchData}
+   357→   357→          className="h-8 text-xs"
+   358→   358→        >
+   359→   359→          <RefreshCw className="mr-1 h-3 w-3" />
+   360→   360→          {t("btnRefresh")}
+   361→   361→        </Button>
+   362→   362→      </div>
+   363→   363→
+   364→   364→      {/* Pricing Info Banner */}
+   365→   365→      <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+   366→   366→        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 shrink-0">
+   367→   367→          <Building2 className="w-4 h-4 text-blue-600" />
+   368→   368→        </div>
+   369→   369→        <div className="flex-1 min-w-0">
+   370→   370→          <p className="text-xs font-medium text-slate-700">
+   371→   371→            {t("pricingCalc", { cur, price: pricePerBed, beds: totalBeds, bedLabel: totalBeds === 1 ? t("bed_one") : t("bed_other"), total: (pricePerBed * totalBeds).toLocaleString() })}
+   372→   372→          </p>
+   373→   373→          <p className="text-[10px] text-muted-foreground">
+   374→   374→            {totalBeds === 0
+   375→   375→              ? t("noRoomsConfigured")
+   376→   376→              : `${t("bedsCalcDescription", { beds: totalBeds })}`}
+   377→   377→          </p>
+   378→   378→        </div>
+   379→   379→        {pricingLocked && (
+   380→   380→          <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500 bg-slate-100 shrink-0">
+   381→   381→            <Lock className="w-3 h-3 mr-1" />
+   382→   382→            t("ratesLocked")
+   383→   383→          </Badge>
+   384→   384→        )}
+   385→   385→      </div>
+   386→   386→
+   387→   387→      {/* ═══ Current Status Card ═══ */}
+   388→   388→      <Card className={`overflow-hidden ${
+   389→   389→        sub.status === "WARNING" ? "border-amber-300 bg-amber-50/30" :
+   390→   390→        sub.status === "EXPIRED" ? "border-2 border-rose-400 bg-rose-50/30" :
+   391→   391→        sub.status === "SUSPENDED" ? "border-slate-300" : ""
+   392→   392→      }`}>
+   393→   393→        <CardContent className="p-0">
+   394→   394→          {/* Status bar */}
+   395→   395→          <div className={`px-4 py-3 flex items-center justify-between ${
+   396→   396→            sub.status === "ACTIVE" ? "bg-emerald-50" :
+   397→   397→            sub.status === "WARNING" ? "bg-amber-50" :
+   398→   398→            sub.status === "EXPIRED" ? "bg-rose-100" :
+   399→   399→            "bg-slate-50"
+   400→   400→          }`}>
+   401→   401→            <div className="flex items-center gap-2">
+   402→   402→              {sub.status === "ACTIVE" ? (
+   403→   403→                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+   404→   404→              ) : sub.status === "WARNING" ? (
+   405→   405→                <AlertTriangle className="w-5 h-5 text-amber-600" />
+   406→   406→              ) : sub.status === "EXPIRED" ? (
+   407→   407→                <XCircle className="w-5 h-5 text-rose-600" />
+   408→   408→              ) : (
+   409→   409→                <XCircle className="w-5 h-5 text-slate-400" />
+   410→   410→              )}
+   411→   411→              <span className={`text-sm font-semibold px-2.5 py-0.5 rounded-full border ${statusColor}`}>
+   412→   412→                {STATUS_LABELS[sub.status] || sub.status}
+   413→   413→              </span>
+   414→   414→              {isTrial && (
+   415→   415→                <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">
+   416→   416→                  <Sparkles className="w-3 h-3 mr-1" />
+   417→   417→                  Free Trial
+   418→   418→                </Badge>
+   419→   419→              )}
+   420→   420→            </div>
+   421→   421→            <span className="text-xs font-medium text-muted-foreground">
+   422→   422→              {fmtDaysRemaining(sub.daysRemaining)}
+   423→   423→            </span>
+   424→   424→          </div>
+   425→   425→
+   426→   426→          {/* Details grid */}
+   427→   427→          <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+   428→   428→            <div>
+   429→   429→              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblCurrentPlan")}</p>
+   430→   430→              <p className="text-sm font-semibold mt-0.5">
+   431→   431→                {isTrial ? t("freeTrial") : fmtCycle(sub.cycle)}
+   432→   432→              </p>
+   433→   433→            </div>
+   434→   434→            <div>
+   435→   435→              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblAmount")}</p>
+   436→   436→              <p className="text-sm font-semibold mt-0.5">
+   437→   437→                {isTrial ? t("freeTrial") : `${Number(sub.price).toLocaleString()} ${cur}`}
+   438→   438→              </p>
+   439→   439→            </div>
+   440→   440→            <div>
+   441→   441→              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblExpiresOn")}</p>
+   442→   442→              <p className="text-sm font-semibold mt-0.5">
+   443→   443→                {new Date(sub.endDate).toLocaleDateString("en-GB", {
+   444→   444→                  day: "numeric",
+   445→   445→                  month: "short",
+   446→   446→                  year: "numeric",
+   447→   447→                })}
+   448→   448→              </p>
+   449→   449→            </div>
+   450→   450→            <div>
+   451→   451→              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("lblProvider")}</p>
+   452→   452→              <p className="text-sm font-semibold mt-0.5 truncate">
+   453→   453→                {data.provider?.name || "—"}
+   454→   454→              </p>
+   455→   455→            </div>
+   456→   456→          </div>
+   457→   457→
+   458→   458→          {/* Payment instructions */}
+   459→   459→          {data.config.paymentInstructions && (
+   460→   460→            <div className="px-4 pb-4">
+   461→   461→              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+   462→   462→                <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+   463→   463→                <p className="text-xs text-blue-800 whitespace-pre-wrap leading-relaxed">
+   464→   464→                  {data.config.paymentInstructions}
+   465→   465→                </p>
+   466→   466→              </div>
+   467→   467→            </div>
+   468→   468→          )}
+   469→   469→
+   470→   470→          {/* Penalty alarm for EXPIRED */}
+   471→   471→          {isExpired && baseAmount > 0 && (
+   472→   472→            <div className="px-4 pb-4">
+   473→   473→              <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-rose-300 bg-rose-50 animate-pulse">
+   474→   474→                <div className="shrink-0 mt-0.5 animate-bounce">
+   475→   475→                  <AlertTriangle className="w-5 h-5 text-rose-600" />
+   476→   476→                </div>
+   477→   477→                <div className="flex-1">
+   478→   478→                  <p className="text-sm font-bold text-rose-800">{t("penaltyTitle")}</p>
+   479→   479→                  <p className="text-xs text-rose-700 mt-0.5">
+   480→   480→                    {t("penaltyDesc", { days: Math.abs(sub.daysRemaining), percent: penaltyPercent })}
+   481→   481→                    
+   482→   482→                  </p>
+   483→   483→                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+   484→   484→                    <span className="text-xs text-rose-600">{t("penaltyBase")}: <strong>{baseAmount.toLocaleString()} {cur}</strong></span>
+   485→   485→                    <span className="text-rose-300">+</span>
+   486→   486→                    <span className="text-xs text-rose-600">{t("penaltyLabel")}: <strong>{(penaltyAmount - baseAmount).toLocaleString()} {cur}</strong></span>
+   487→   487→                    <span className="text-rose-300">=</span>
+   488→   488→                    <span className="text-sm font-bold text-rose-900 bg-rose-100 border border-rose-300 px-2.5 py-1 rounded-lg">
+   489→   489→                      {t("penaltyTotalDue")}: {penaltyAmount.toLocaleString()} {cur}
+   490→   490→                    </span>
+   491→   491→                  </div>
+   492→   492→                </div>
+   493→   493→              </div>
+   494→   494→            </div>
+   495→   495→          )}
+   496→   496→
+   497→   497→          {/* Warning message for WARNING status */}
+   498→   498→          {sub.status === "WARNING" && (
+   499→   499→            <div className="px-4 pb-4">
+   500→   500→              <div className="flex items-start gap-2 p-3 rounded-lg border bg-amber-50 border-amber-200">
+   501→   501→                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+   502→   502→                <div>
+   503→   503→                  <p className="text-xs font-semibold text-amber-800">{t("warningTitle")}</p>
+   504→   504→                  <p className="text-xs mt-1 text-amber-700">{t("warningDesc")}</p>
+   505→   505→                </div>
+   506→   506→              </div>
+   507→   507→            </div>
+   508→   508→          )}
+   509→   509→        </CardContent>
+   510→   510→      </Card>
+   511→   511→
+   512→   512→      {/* ═══ Available Plans ═══ */}
+   513→   513→      <div>
+   514→   514→        <div className="flex items-center justify-between mb-3">
+   515→   515→          <h3 className="text-sm font-semibold flex items-center gap-2">
+   516→   516→            <IndianRupee className="w-4 h-4" />
+   517→   517→            {t("availablePlans")}
+   518→   518→          </h3>
+   519→   519→          <span className="text-[10px] text-muted-foreground">
+   520→   520→            {t(data.plans.length === 1 ? "plansCount_one" : "plansCount_other", { count: data.plans.length })}
+   521→   521→          </span>
+   522→   522→        </div>
+   523→   523→
+   524→   524→        {data.plans.length === 0 ? (
+   525→   525→          <Card>
+   526→   526→            <CardContent className="py-8 text-center">
+   527→   527→              <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+   528→   528→              <p className="text-sm text-muted-foreground">{t("noPlansYet")}</p>
+   529→   529→              <p className="text-xs text-muted-foreground mt-1">
+   530→   530→                {t("noPlansContact")}
+   531→   531→              </p>
+   532→   532→            </CardContent>
+   533→   533→          </Card>
+   534→   534→        ) : (
+   535→   535→          <div className="grid sm:grid-cols-2 gap-3">
+   536→   536→            {data.plans.map((plan) => {
+   537→   537→              const isSelected = selectedPlan?.id === plan.id;
+   538→   538→              const isCurrentPlan = sub.planId === plan.id && !isTrial;
+   539→   539→              const colorClass = CYCLE_COLORS[plan.cycle] || "border-slate-200 bg-white";
+   540→   540→              const iconColor = CYCLE_ICON_COLORS[plan.cycle] || "text-slate-600 bg-slate-100";
+   541→   541→
+   542→   542→              return (
+   543→   543→                <Card
+   544→   544→                  key={plan.id}
+   545→   545→                  className={`cursor-pointer transition-all hover:shadow-md border-2 ${
+   546→   546→                    isCurrentPlan
+   547→   547→                      ? "border-emerald-300 ring-2 ring-emerald-100"
+   548→   548→                      : colorClass
+   549→   549→                  }`}
+   550→   550→                  onClick={() => handleSelectPlan(plan)}
+   551→   551→                >
+   552→   552→                  <CardContent className="p-4">
+   553→   553→                    <div className="flex items-start justify-between">
+   554→   554→                      <div className="flex-1 min-w-0">
+   555→   555→                        <div className="flex items-center gap-2">
+   556→   556→                          <div className={`p-1.5 rounded-lg ${iconColor}`}>
+   557→   557→                            <CalendarDays className="w-4 h-4" />
+   558→   558→                          </div>
+   559→   559→                          <div>
+   560→   560→                            <h4 className="text-sm font-semibold">{plan.name}</h4>
+   561→   561→                            <p className="text-[10px] text-muted-foreground">
+   562→   562→                              {fmtCycle(plan.cycle)} — {t("planDays", { days: plan.days })}
+   563→   563→                            </p>
+   564→   564→                          </div>
+   565→   565→                        </div>
+   566→   566→                      </div>
+   567→   567→                      {isCurrentPlan && (
+   568→   568→                        <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">
+   569→   569→                          Current
+   570→   570→                        </Badge>
+   571→   571→                      )}
+   572→   572→                    </div>
+   573→   573→
+   574→   574→                    <div className="mt-3 flex items-end justify-between">
+   575→   575→                      <div>
+   576→   576→                        <p className="text-xl font-bold">
+   577→   577→                          {Number(plan.price).toLocaleString()}
+   578→   578→                          <span className="text-xs font-normal text-muted-foreground ml-1">{cur}</span>
+   579→   579→                        </p>
+   580→   580→                        {totalBeds > 0 && pricePerBed > 0 && (
+   581→   581→                          <p className="text-[10px] text-muted-foreground">
+   582→   582→                            {t("bedsBreakdown", { cur, price: pricePerBed, beds: totalBeds, days: plan.days })}
+   583→   583→                          </p>
+   584→   584→                        )}
+   585→   585→                        {plan.months > 1 && (
+   586→   586→                          <p className="text-[10px] text-muted-foreground">
+   587→   587→                            ~{plan.perMonth.toLocaleString()} {cur}/month
+   588→   588→                          </p>
+   589→   589→                        )}
+   590→   590→                      </div>
+   591→   591→                      <Button
+   592→   592→                        size="sm"
+   593→   593→                        variant={isCurrentPlan ? "outline" : "default"}
+   594→   594→                        className="h-8 text-xs"
+   595→   595→                        disabled={isCurrentPlan}
+   596→   596→                      >
+   597→   597→                        {isCurrentPlan ? t("badgeActive") : (
+   598→   598→                          <>
+   599→   599→                            {t("btnPayNow")}
+   600→   600→                            <ChevronRight className="w-3 h-3 ml-1" />
+   601→   601→                          </>
+   602→   602→                        )}
+   603→   603→                      </Button>
+   604→   604→                    </div>
+   605→   605→                  </CardContent>
+   606→   606→                </Card>
+   607→   607→              );
+   608→   608→            })}
+   609→   609→          </div>
+   610→   610→        )}
+   611→   611→      </div>
+   612→   612→
+   613→   613→      {/* ═══ Payment History ═══ */}
+   614→   614→      <Card>
+   615→   615→        <CardHeader
+   616→   616→          className="cursor-pointer hover:bg-slate-50/50 transition-colors py-3"
+   617→   617→          onClick={() => setShowHistory(!showHistory)}
+   618→   618→        >
+   619→   619→          <div className="flex items-center justify-between">
+   620→   620→            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+   621→   621→              <Receipt className="w-4 h-4" />
+   622→   622→              {t("paymentHistory")}
+   623→   623→              {data.payments.length > 0 && (
+   624→   624→                <Badge variant="secondary" className="text-[10px]">
+   625→   625→                  {data.payments.length}
+   626→   626→                </Badge>
+   627→   627→              )}
+   628→   628→            </CardTitle>
+   629→   629→            <ChevronRight
+   630→   630→              className={`w-4 h-4 text-muted-foreground transition-transform ${
+   631→   631→                showHistory ? "rotate-90" : ""
+   632→   632→              }`}
+   633→   633→            />
+   634→   634→          </div>
+   635→   635→        </CardHeader>
+   636→   636→        {showHistory && (
+   637→   637→          <CardContent className="pt-0">
+   638→   638→            {data.payments.length === 0 ? (
+   639→   639→              <p className="text-xs text-muted-foreground text-center py-4">
+   640→   640→                t("noPaymentRecords")
+   641→   641→              </p>
+   642→   642→            ) : (
+   643→   643→              <div className="space-y-2">
+   644→   644→                {data.payments.map((payment) => {
+   645→   645→                  const isProviderSubmitted = payment.notes.includes("[PROVIDER SUBMITTED]");
+   646→   646→                  const isChapaPending = payment.notes.includes("[CHAPA PENDING]");
+   647→   647→                  const isChapaVerified = payment.notes.includes("[CHAPA VERIFIED]");
+   648→   648→                  const isPaymentOverdue = payment.notes.includes("[PAYMENT_OVERDUE]");
+   649→   649→                  const isOverdueWillApply = isPaymentOverdue && payment.notes.includes("Will apply soon");
+   650→   650→                  const isVerified = !isProviderSubmitted && !isChapaPending;
+   651→   651→                  return (
+   652→   652→                    <div
+   653→   653→                      key={payment.id}
+   654→   654→                      className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50/50"
+   655→   655→                    >
+   656→   656→                      <div className="flex items-center gap-3">
+   657→   657→                        <div className={`p-1.5 rounded-full ${
+   658→   658→                          isChapaVerified ? "bg-emerald-100" :
+   659→   659→                          isChapaPending ? "bg-violet-100" :
+   660→   660→                          isPaymentOverdue && !isOverdueWillApply ? "bg-rose-100" :
+   661→   661→                          isOverdueWillApply ? "bg-amber-100" :
+   662→   662→                          isProviderSubmitted ? "bg-amber-100" : "bg-emerald-100"
+   663→   663→                        }`}>
+   664→   664→                          {isChapaPending ? (
+   665→   665→                            <Zap className="w-3.5 h-3.5 text-violet-600" />
+   666→   666→                          ) : isPaymentOverdue && !isOverdueWillApply ? (
+   667→   667→                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+   668→   668→                          ) : isOverdueWillApply ? (
+   669→   669→                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+   670→   670→                          ) : isProviderSubmitted ? (
+   671→   671→                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+   672→   672→                          ) : (
+   673→   673→                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+   674→   674→                          )}
+   675→   675→                        </div>
+   676→   676→                        <div>
+   677→   677→                          <p className="text-sm font-semibold">
+   678→   678→                            {Number(payment.amount).toLocaleString()} {cur}
+   679→   679→                          </p>
+   680→   680→                          <p className="text-[10px] text-muted-foreground">
+   681→   681→                            {fmtCycle(payment.cycle)} &middot;{" "}
+   682→   682→                            {new Date(payment.periodStart).toLocaleDateString("en-GB", {
+   683→   683→                              day: "numeric", month: "short",
+   684→   684→                            })}{" "}
+   685→   685→                            —{" "}
+   686→   686→                            {new Date(payment.periodEnd).toLocaleDateString("en-GB", {
+   687→   687→                              day: "numeric", month: "short",
+   688→   688→                            })}
+   689→   689→                          </p>
+   690→   690→                        </div>
+   691→   691→                      </div>
+   692→   692→                      <div className="text-right">
+   693→   693→                        <Badge
+   694→   694→                          variant="outline"
+   695→   695→                          className={`text-[10px] ${
+   696→   696→                            isChapaPending
+   697→   697→                              ? "border-violet-200 text-violet-700"
+   698→   698→                              : isPaymentOverdue && !isOverdueWillApply
+   699→   699→                              ? "border-rose-200 text-rose-700"
+   700→   700→                              : isOverdueWillApply
+   701→   701→                              ? "border-amber-200 text-amber-700"
+   702→   702→                              : isProviderSubmitted
+   703→   703→                              ? "border-amber-200 text-amber-700"
+   704→   704→                              : "border-emerald-200 text-emerald-700"
+   705→   705→                          }`}
+   706→   706→                        >
+   707→   707→                          {isChapaPending ? t("payStatusChapaPending") : isPaymentOverdue && !isOverdueWillApply ? t("payStatusOverdue") : isOverdueWillApply ? t("payStatusOverdueSoon") : isProviderSubmitted ? t("payStatusPending") : t("payStatusVerified")}
+   708→   708→                        </Badge>
+   709→   709→                        <p className="text-[10px] text-muted-foreground mt-1">
+   710→   710→                          {new Date(payment.createdAt).toLocaleDateString("en-GB", {
+   711→   711→                            day: "numeric", month: "short", year: "numeric",
+   712→   712→                          })}
+   713→   713→                        </p>
+   714→   714→                      </div>
+   715→   715→                    </div>
+   716→   716→                  );
+   717→   717→                })}
+   718→   718→              </div>
+   719→   719→            )}
+   720→   720→          </CardContent>
+   721→   721→        )}
+   722→   722→      </Card>
+   723→   723→
+   724→   724→      {/* Chapa success banner (shown after redirect back) */}
+   725→   725→      {(chapaResult === "success" || chapaVerifying || chapaVerifyResult) && (
+   726→   726→        <div className={`flex items-center gap-3 p-4 rounded-xl border-2 ${
+   727→   727→          chapaVerifyResult === "success"
+   728→   728→            ? "border-emerald-400 bg-emerald-50"
+   729→   729→            : chapaVerifyResult === "error"
+   730→   730→            ? "border-amber-400 bg-amber-50"
+   731→   731→            : "border-blue-300 bg-blue-50"
+   732→   732→        }`}>
+   733→   733→          <div className="shrink-0">
+   734→   734→            {chapaVerifying ? (
+   735→   735→              <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+   736→   736→            ) : chapaVerifyResult === "success" ? (
+   737→   737→              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+   738→   738→            ) : chapaVerifyResult === "error" ? (
+   739→   739→              <AlertTriangle className="w-6 h-6 text-amber-600" />
+   740→   740→            ) : (
+   741→   741→              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+   742→   742→            )}
+   743→   743→          </div>
+   744→   744→          <div className="flex-1">
+   745→   745→            {chapaVerifying ? (
+   746→   746→              <>
+   747→   747→                <p className="text-sm font-bold text-blue-800">{t("chapaVerifyingTitle")}</p>
+   748→   748→                <p className="text-xs text-blue-700 mt-0.5">
+   749→   749→                  {t("chapaVerifyingDesc")}
+   750→   750→                </p>
+   751→   751→              </>
+   752→   752→            ) : chapaVerifyResult === "success" ? (
+   753→   753→              <>
+   754→   754→                <p className="text-sm font-bold text-emerald-800">Payment Verified &amp; Active</p>
+   755→   755→                <p className="text-xs text-emerald-700 mt-0.5">
+   756→   756→                  {t("chapaVerifiedDesc")}
+   757→   757→                </p>
+   758→   758→              </>
+   759→   759→            ) : chapaVerifyResult === "error" ? (
+   760→   760→              <>
+   761→   761→                <p className="text-sm font-bold text-amber-800">{t("chapaDelayedTitle")}</p>
+   762→   762→                <p className="text-xs text-amber-700 mt-0.5">
+   763→   763→                  {t("chapaDelayedDesc")}
+   764→   764→                </p>
+   765→   765→              </>
+   766→   766→            ) : chapaVerifyResult === "pending" ? (
+   767→   767→              <>
+   768→   768→                <p className="text-sm font-bold text-blue-800">{t("chapaPendingTitle")}</p>
+   769→   769→                <p className="text-xs text-blue-700 mt-0.5">
+   770→   770→                  {t("chapaPendingDesc")}
+   771→   771→                </p>
+   772→   772→              </>
+   773→   773→            ) : (
+   774→   774→              <>
+   775→   775→                <p className="text-sm font-bold text-emerald-800">{t("chapaProcessingTitle")}</p>
+   776→   776→                <p className="text-xs text-emerald-700 mt-0.5">
+   777→   777→                  {t("chapaProcessingDesc")}
+   778→   778→                </p>
+   779→   779→              </>
+   780→   780→            )}
+   781→   781→          </div>
+   782→   782→          {chapaVerifying && <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />}
+   783→   783→          {!chapaVerifying && chapaVerifyResult === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+   784→   784→        </div>
+   785→   785→      )}
+   786→   786→
+   787→   787→      {/* ═══ Payment Dialog ═══ */}
+   788→   788→      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
+   789→   789→        <DialogContent className="sm:max-w-md">
+   790→   790→          <DialogHeader>
+   791→   791→            <DialogTitle className="flex items-center gap-2">
+   792→   792→              <Send className="w-5 h-5" />
+   793→   793→              {t("dlgPayTitle")}
+   794→   794→            </DialogTitle>
+   795→   795→            <DialogDescription>
+   796→   796→              {isChapaMethod
+   797→   797→                ? t("dlgPayDescChapa")
+   798→   798→                : t("dlgPayDescOffline")}
+   799→   799→            </DialogDescription>
+   800→   800→          </DialogHeader>
+   801→   801→
+   802→   802→          {selectedPlan && data && (
+   803→   803→            <div className="space-y-4">
+   804→   804→              {/* Selected plan summary */}
+   805→   805→              <div className="p-3 bg-slate-50 rounded-xl border">
+   806→   806→                <div className="flex items-center justify-between">
+   807→   807→                  <div>
+   808→   808→                    <p className="text-sm font-semibold">{selectedPlan.name}</p>
+   809→   809→                    <p className="text-xs text-muted-foreground">
+   810→   810→                      {fmtCycle(selectedPlan.cycle)} — {t("planDays", { days: selectedPlan.days })}
+   811→   811→                    </p>
+   812→   812→                  </div>
+   813→   813→                  <p className="text-lg font-bold">
+   814→   814→                    {Number(selectedPlan.price).toLocaleString()} {cur}
+   815→   815→                  </p>
+   816→   816→                </div>
+   817→   817→              </div>
+   818→   818→
+   819→   819→              {/* Amount */}
+   820→   820→              <div>
+   821→   821→                <Label className="text-xs font-medium">
+   822→   822→                  {t("lblAmount")} ({cur})
+   823→   823→                </Label>
+   824→   824→                <Input
+   825→   825→                  type="number"
+   826→   826→                  value={payAmount}
+   827→   827→                  readOnly
+   828→   828→                  className="mt-1 bg-slate-50 text-slate-700 cursor-not-allowed"
+   829→   829→                />
+   830→   830→                <p className="text-[10px] text-muted-foreground mt-1">
+   831→   831→                  {t("amountAutoCalc")}
+   832→   832→                </p>
+   833→   833→              </div>
+   834→   834→
+   835→   835→              {/* Payment method */}
+   836→   836→              <div>
+   837→   837→                <Label className="text-xs font-medium">
+   838→   838→                  {t("lblPaymentMethod")} <span className="text-red-500">*</span>
+   839→   839→                </Label>
+   840→   840→                <div className="grid grid-cols-2 gap-2 mt-1.5">
+   841→   841→                  {PAYMENT_METHODS.map((m) => {
+   842→   842→                    const Icon = m.icon;
+   843→   843→                    const isActive = payMethod === m.value;
+   844→   844→                    return (
+   845→   845→                      <button
+   846→   846→                        key={m.value}
+   847→   847→                        type="button"
+   848→   848→                        onClick={() => setPayMethod(m.value)}
+   849→   849→                        className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium transition-all ${
+   850→   850→                          isActive
+   851→   851→                            ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/20"
+   852→   852→                            : m.value === "CHAPA"
+   853→   853→                            ? "border-violet-200 text-violet-700 hover:bg-violet-50"
+   854→   854→                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+   855→   855→                        }`}
+   856→   856→                      >
+   857→   857→                        <Icon className={`w-4 h-4 ${isActive ? m.color : m.value === "CHAPA" ? "text-violet-400" : "text-slate-400"}`} />
+   858→   858→                        {PAYMENT_METHOD_LABELS[m.value] || m.label}
+   859→   859→                      </button>
+   860→   860→                    );
+   861→   861→                  })}
+   862→   862→                </div>
+   863→   863→                {payMethod === "CHAPA" && (
+   864→   864→                  <p className="text-[10px] text-violet-600 mt-1.5 flex items-center gap-1">
+   865→   865→                    <Zap className="w-3 h-3" />
+   866→   866→                    {t("chapaMethodInfo")}
+   867→   867→                  </p>
+   868→   868→                )}
+   869→   869→              </div>
+   870→   870→
+   871→   871→              {/* Manual payment fields (hidden when Chapa selected) */}
+   872→   872→              {!isChapaMethod && (
+   873→   873→                <>
+   874→   874→                  {/* Reference number */}
+   875→   875→                  <div>
+   876→   876→                    <Label className="text-xs font-medium">
+   877→   877→                      {t("lblReferenceNumber")} <span className="text-rose-500">*</span>
+   878→   878→                    </Label>
+   879→   879→                    <Input
+   880→   880→                      value={payRef}
+   881→   881→                      onChange={(e) => setPayRef(e.target.value)}
+   882→   882→                      placeholder={t("referencePlaceholder")}
+   883→   883→                      className="mt-1"
+   884→   884→                    />
+   885→   885→                    <p className="text-[10px] text-muted-foreground mt-1">
+   886→   886→                      {t("referenceHint")}
+   887→   887→                    </p>
+   888→   888→                  </div>
+   889→   889→
+   890→   890→                  {/* Notes */}
+   891→   891→                  <div>
+   892→   892→                    <Label>{t("lblAdditionalNotes")}</Label>
+   893→   893→                    <Textarea
+   894→   894→                      value={payNotes}
+   895→   895→                      onChange={(e) => setPayNotes(e.target.value)}
+   896→   896→                      placeholder={t("notesPlaceholder")}
+   897→   897→                      rows={2}
+   898→   898→                      className="mt-1"
+   899→   899→                    />
+   900→   900→                  </div>
+   901→   901→                </>
+   902→   902→              )}
+   903→   903→
+   904→   904→              {/* Chapa-specific info */}
+   905→   905→              {isChapaMethod && (
+   906→   906→                <div className="flex items-start gap-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+   907→   907→                  <ExternalLink className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+   908→   908→                  <p className="text-xs text-violet-800 leading-relaxed">
+   909→   909→                    {t("chapaRedirectInfo")}
+   910→   910→                  </p>
+   911→   911→                </div>
+   912→   912→              )}
+   913→   913→
+   914→   914→              {/* Payment instructions reminder */}
+   915→   915→              {data.config.paymentInstructions && (
+   916→   916→                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+   917→   917→                  <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+   918→   918→                  <p className="text-xs text-blue-800 whitespace-pre-wrap leading-relaxed">
+   919→   919→                    {data.config.paymentInstructions}
+   920→   920→                  </p>
+   921→   921→                </div>
+   922→   922→              )}
+   923→   923→
+   924→   924→              <Separator />
+   925→   925→
+   926→   926→              <DialogFooter className="flex-row gap-2 sm:gap-0">
+   927→   927→                <Button
+   928→   928→                  variant="outline"
+   929→   929→                  onClick={() => setShowPayDialog(false)}
+   930→   930→                  className="flex-1 sm:flex-none"
+   931→   931→                >
+   932→   932→                  {t("btnCancel")}
+   933→   933→                </Button>
+   934→   934→                <Button
+   935→   935→                  onClick={handleSubmitPayment}
+   936→   936→                  disabled={
+   937→   937→                    isChapaMethod
+   938→   938→                      ? !payAmount || Number(payAmount) <= 0 || submitting
+   939→   939→                      : !payMethod || !payAmount || Number(payAmount) <= 0 || !payRef.trim() || submitting
+   940→   940→                  }
+   941→   941→                  className={isChapaMethod ? "flex-1 sm:flex-none bg-violet-600 hover:bg-violet-700" : "flex-1 sm:flex-none"}
+   942→   942→                >
+   943→   943→                  {submitting ? (
+   944→   944→                    <>
+   945→   945→                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+   946→   946→                      {isChapaMethod ? t("btnRedirecting") : t("btnSubmitting")}
+   947→   947→                    </>
+   948→   948→                  ) : isChapaMethod ? (
+   949→   949→                    <>
+   950→   950→                      <Zap className="w-4 h-4 mr-2" />
+   951→   951→                      {t("btnPayWithChapa")}
+   952→   952→                    </>
+   953→   953→                  ) : (
+   954→   954→                    <>
+   955→   955→                      <Send className="w-4 h-4 mr-2" />
+   956→   956→                      {t("btnSubmitPayment")}
+   957→   957→                    </>
+   958→   958→                  )}
+   959→   959→                </Button>
+   960→   960→              </DialogFooter>
+   961→   961→            </div>
+   962→   962→          )}
+   963→   963→        </DialogContent>
+   964→   964→      </Dialog>
+   965→   965→    </div>
+   966→   966→  );
+   967→   967→}
+   968→   968→

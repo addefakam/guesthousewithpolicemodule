@@ -200,7 +200,7 @@ export default function MySubscriptionPage() {
       setData(res as SubData);
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("toastFailedLoad");
-      toast.error(`t("toastFailedLoad") ${msg}`);
+      toast.error(`${t("toastFailedLoad")} ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -347,7 +347,7 @@ export default function MySubscriptionPage() {
         <div>
           <h2 className="text-base sm:text-lg font-semibold">{t("pageTitle")}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            t("pageSubtitle")
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button
@@ -379,7 +379,7 @@ export default function MySubscriptionPage() {
         {pricingLocked && (
           <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500 bg-slate-100 shrink-0">
             <Lock className="w-3 h-3 mr-1" />
-            t("ratesLocked")
+            {t("ratesLocked")}
           </Badge>
         )}
       </div>
@@ -414,7 +414,7 @@ export default function MySubscriptionPage() {
               {isTrial && (
                 <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Free Trial
+                  {t("freeTrial")}
                 </Badge>
               )}
             </div>
@@ -566,7 +566,7 @@ export default function MySubscriptionPage() {
                       </div>
                       {isCurrentPlan && (
                         <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">
-                          Current
+                          {t("badgeCurrent")}
                         </Badge>
                       )}
                     </div>
@@ -584,7 +584,7 @@ export default function MySubscriptionPage() {
                         )}
                         {plan.months > 1 && (
                           <p className="text-[10px] text-muted-foreground">
-                            ~{plan.perMonth.toLocaleString()} {cur}/month
+                            ~{plan.perMonth.toLocaleString()} {cur}/{t("lblPerMonth")}
                           </p>
                         )}
                       </div>
@@ -637,7 +637,7 @@ export default function MySubscriptionPage() {
           <CardContent className="pt-0">
             {data.payments.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">
-                t("noPaymentRecords")
+                {t("noPaymentRecords")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -751,7 +751,7 @@ export default function MySubscriptionPage() {
               </>
             ) : chapaVerifyResult === "success" ? (
               <>
-                <p className="text-sm font-bold text-emerald-800">Payment Verified &amp; Active</p>
+                <p className="text-sm font-bold text-emerald-800">{t("chapaVerifiedTitle")}</p>
                 <p className="text-xs text-emerald-700 mt-0.5">
                   {t("chapaVerifiedDesc")}
                 </p>

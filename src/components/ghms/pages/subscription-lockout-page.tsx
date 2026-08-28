@@ -24,7 +24,7 @@ interface LockoutInfo {
  * Full-screen lockout — cannot navigate away.
  */
 export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation("subscription");
   const isSuspended = info.status === "SUSPENDED";
   const suspendedDaysAgo = Math.abs(info.daysRemaining);
 
@@ -36,13 +36,11 @@ export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo })
         </div>
 
         <h1 className="text-2xl font-bold text-slate-900">
-          {isSuspended ? "Service Suspended" : "Subscription Expired"}
+          {isSuspended ? t("lockoutTitleSuspended") : t("lockoutTitleExpired")}
         </h1>
 
         <p className="mt-2 text-sm text-slate-500">
-          Your guesthouse management service has been{" "}
-          {isSuspended ? "suspended due to unpaid subscription." : "expired and is in the grace period."}
-          Please contact the administrator to renew your subscription.
+          {isSuspended ? t("lockoutDescSuspended") : t("lockoutDescExpired")}
         </p>
 
         {/* Downtime Counter */}
@@ -52,11 +50,11 @@ export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo })
               <Clock className={`h-5 w-5 ${isSuspended ? "text-rose-600" : "text-amber-600"}`} />
               {isSuspended ? (
                 <p className="font-semibold text-rose-800">
-                  Suspended for <span className="text-lg">{suspendedDaysAgo}</span> day{suspendedDaysAgo !== 1 ? "s" : ""}
+                  {t("lockoutSuspendedFor", { days: suspendedDaysAgo })}
                 </p>
               ) : (
                 <p className="font-semibold text-amber-800">
-                  Expired: <span className="text-lg">{Math.abs(info.daysRemaining)}</span> day{Math.abs(info.daysRemaining) !== 1 ? "s" : ""} remaining
+                  {t("lockoutExpiredRemaining", { days: Math.abs(info.daysRemaining) })}
                 </p>
               )}
             </div>
@@ -68,25 +66,27 @@ export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo })
           <CardContent className="p-4">
             <div className="grid gap-2 text-left text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Guesthouse:</span>
+                <span className="text-slate-500">{t("lockoutLblGuesthouse")}</span>
                 <span className="font-medium text-slate-900">{info.providerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Owner:</span>
+                <span className="text-slate-500">{t("lockoutLblOwner")}</span>
                 <span className="font-medium text-slate-900">{info.ownerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Cycle:</span>
+                <span className="text-slate-500">{t("lockoutLblCycle")}</span>
                 <span className="font-medium text-slate-900">{info.cycle}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Amount Due:</span>
+                <span className="text-slate-500">{t("lockoutLblAmountDue")}</span>
                 <span className="font-bold text-rose-700">
-                  {info.price > 0 ? `${info.price.toLocaleString()} ${info.currencySymbol || "ETB"}` : "Contact admin"}
+                  {info.price > 0
+                    ? `${info.price.toLocaleString()} ${info.currencySymbol || "ETB"}`
+                    : t("lockoutContactAdmin")}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Expired:</span>
+                <span className="text-slate-500">{t("lockoutLblExpired")}</span>
                 <span className="font-medium text-slate-900">
                   {new Date(info.endDate).toLocaleDateString()}
                 </span>
@@ -113,7 +113,7 @@ export default function SubscriptionLockoutPage({ info }: { info: LockoutInfo })
         <div className="mt-6 flex items-center justify-center gap-2">
           <Phone className="h-4 w-4 text-slate-400" />
           <p className="text-sm text-slate-500">
-            Contact your administrator to renew: <strong>{info.phone || "system admin"}</strong>
+            {t("lockoutContact", { phone: info.phone || t("lockoutDefaultAdmin") })}
           </p>
         </div>
       </div>

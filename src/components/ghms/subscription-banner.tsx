@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Clock, XCircle } from "lucide-react";
 import { type SubscriptionStatus } from "@/lib/subscription";
 
@@ -18,17 +19,19 @@ interface SubscriptionBannerProps {
 export default function SubscriptionBanner({
   status,
   daysRemaining,
-  paymentMethod,
   paymentInstructions,
   penaltyAmount,
   baseAmount,
   penaltyPercent,
   currencySymbol,
 }: SubscriptionBannerProps) {
+  const { t } = useTranslation("subscription");
+
   if (status !== "WARNING" && status !== "EXPIRED") return null;
 
   const isExpired = status === "EXPIRED";
   const cur = currencySymbol || "Br";
+  const absDays = Math.abs(daysRemaining);
 
   return (
     <div
@@ -47,29 +50,27 @@ export default function SubscriptionBanner({
       </div>
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-bold ${isExpired ? "text-rose-800" : "text-amber-800"}`}>
-          {isExpired
-            ? "SUBSCRIPTION EXPIRED — PAYMENT OVERDUE"
-            : "Subscription Expiring Soon"}
+          {isExpired ? t("bannerExpiredTitle") : t("bannerWarningTitle")}
         </p>
         <p className={`text-xs mt-0.5 ${isExpired ? "text-rose-700" : "text-amber-700"}`}>
           {isExpired
-            ? `Your subscription expired ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? "s" : ""} ago. A late payment penalty of ${penaltyPercent ?? 10}% has been applied. Please pay immediately to avoid service suspension.`
-            : `${Math.abs(daysRemaining)} day${daysRemaining !== 1 ? "s" : ""} remaining. Please renew before expiry to avoid penalties.`}
+            ? t("bannerExpiredDesc", { days: absDays, percent: penaltyPercent ?? 10 })
+            : t("bannerWarningDesc", { days: absDays })}
         </p>
 
         {/* Penalty amount breakdown */}
         {isExpired && (baseAmount != null && baseAmount > 0) && (
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             <span className="text-xs text-rose-600">
-              Base: <strong>{baseAmount.toLocaleString()} {cur}</strong>
+              {t("penaltyBase")}: <strong>{baseAmount.toLocaleString()} {cur}</strong>
             </span>
             <span className="text-rose-300">+</span>
             <span className="text-xs text-rose-600">
-              Penalty ({penaltyPercent ?? 10}%): <strong>{(penaltyAmount != null ? penaltyAmount - baseAmount : 0).toLocaleString()} {cur}</strong>
+              {t("penaltyLabel")} ({penaltyPercent ?? 10}%): <strong>{(penaltyAmount != null ? penaltyAmount - baseAmount : 0).toLocaleString()} {cur}</strong>
             </span>
             <span className="text-rose-300">=</span>
             <span className="text-sm font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">
-              Total Due: {(penaltyAmount ?? baseAmount).toLocaleString()} {cur}
+              {t("penaltyTotalDue")}: {(penaltyAmount ?? baseAmount).toLocaleString()} {cur}
             </span>
           </div>
         )}
@@ -87,7 +88,9 @@ export default function SubscriptionBanner({
       }`}>
         <Clock className="h-3.5 w-3.5" />
         <span className="text-xs font-bold">
-          {isExpired ? `${Math.abs(daysRemaining)}d overdue` : `${Math.abs(daysRemaining)}d left`}
+          {isExpired
+            ? t("bannerDaysOverdue", { days: absDays })
+            : t("bannerDaysLeft", { days: absDays })}
         </span>
       </div>
     </div>
