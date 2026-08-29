@@ -97,7 +97,15 @@ interface PlanOption {
 }
 
 export default function SubscriptionsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("superSubscriptions");
+
+  const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: t("statusACTIVE"),
+    WARNING: t("statusWARNING"),
+    EXPIRED: t("statusEXPIRED"),
+    SUSPENDED: t("statusSUSPENDED"),
+  };
+
   const [subscriptions, setSubscriptions] = useState<SubRow[]>([]);
   const [allSubscriptions, setAllSubscriptions] = useState<SubRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +152,7 @@ export default function SubscriptionsPage() {
       const list = Array.isArray(data) ? data : [];
       setAllSubscriptions(list);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load";
+      const msg = err instanceof Error ? err.message : t("toastFailedLoad");
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -191,10 +199,9 @@ export default function SubscriptionsPage() {
     try {
       const data = await apiGetSubscriptionPayments(row.subscriptionId);
       const list = Array.isArray(data) ? data : [];
-      // Only show payments with [PROVIDER SUBMITTED] tag
       setPendingPayments(list.filter((p: any) => p.notes && p.notes.includes("[PROVIDER SUBMITTED]")));
     } catch {
-      toast.error("Failed to load pending payments");
+      toast.error(t("toastFailedLoadPending"));
       setPendingPayments([]);
     } finally {
       setVerifyLoading(false);
@@ -206,24 +213,22 @@ export default function SubscriptionsPage() {
     const currentPayment = pendingPayments[currentPayIndex];
     if (!currentPayment) return;
     setVerifyAction(action);
+    const label = action === "approve" ? t("toastApproved") : t("toastRejected");
     try {
       await apiVerifyPayment(currentPayment.id, { action, reason: verifyReason || undefined });
-      const label = action === "approve" ? "Approved" : "Rejected";
-      // If more payments remain, advance to next
       if (currentPayIndex + 1 < pendingPayments.length) {
-        toast.success(`${label} payment of ${currentPayment.amount.toLocaleString()} ETB — ${pendingPayments.length - currentPayIndex - 1} remaining`);
+        toast.success(t("toastApprovedRemaining", { action: label, amount: currentPayment.amount.toLocaleString(), remaining: pendingPayments.length - currentPayIndex - 1 }));
         setPendingPayments((prev) => prev.filter((_, i) => i !== currentPayIndex));
-        // Don't increment index since we removed the current item
         setCurrentPayIndex(0);
         setVerifyReason("");
         setVerifyDeclineMode(false);
       } else {
-        toast.success(`${label} payment for ${pendingRow?.providerName}`);
+        toast.success(t("toastActionForProvider", { action: label, provider: pendingRow?.providerName }));
         setVerifyOpen(false);
         fetchSubscriptions();
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : `Failed to ${action} payment`);
+      toast.error(err instanceof Error ? err.message : t("toastActionFailed", { action }));
     } finally {
       setVerifyAction(null);
     }
@@ -245,11 +250,11 @@ export default function SubscriptionsPage() {
         price: parseFloat(editPrice),
         cycle: editCycle,
       });
-      toast.success(`Updated subscription for ${editRow.providerName}`);
+      toast.success(t("toastUpdatedFor", { provider: editRow.providerName }));
       setEditOpen(false);
       fetchSubscriptions();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update");
+      toast.error(err instanceof Error ? err.message : t("toastFailedUpdate"));
     } finally {
       setEditSaving(false);
     }
@@ -265,7 +270,6 @@ export default function SubscriptionsPage() {
     setPayOpen(true);
   }
 
-  // When a plan is selected in the payment dialog, auto-fill amount and cycle
   function handlePayPlanChange(planId: string) {
     setPayPlanId(planId);
     if (planId) {
@@ -290,11 +294,11 @@ export default function SubscriptionsPage() {
         payload.planId = payPlanId;
       }
       await apiMarkPayment(payRow.subscriptionId, payload);
-      toast.success(`Payment recorded for ${payRow.providerName}`);
+      toast.success(t("toastPaymentRecorded", { provider: payRow.providerName }));
       setPayOpen(false);
       fetchSubscriptions();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to record payment");
+      toast.error(err instanceof Error ? err.message : t("toastFailedRecord"));
     } finally {
       setPaySaving(false);
     }
@@ -310,7 +314,7 @@ export default function SubscriptionsPage() {
       const data = await apiGetSubscriptionPayments(row.subscriptionId);
       setPayments(data);
     } catch {
-      toast.error("Failed to load payment history");
+      toast.error(t("toastFailedLoadHistory"));
     } finally {
       setHistoryLoading(false);
     }
@@ -331,10 +335,10 @@ export default function SubscriptionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <CreditCard className="h-6 w-6 text-blue-600" />
-            Subscriptions
+            {t("pageTitle")}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage provider subscriptions, payments, and service access.
+            {t("pageSubtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -344,14 +348,14 @@ export default function SubscriptionsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="WARNING">Warning (Expiring)</SelectItem>
-              <SelectItem value="EXPIRED">Expired</SelectItem>
-              <SelectItem value="SUSPENDED">Suspended</SelectItem>
+              <SelectItem value="ALL">{t("filterAll")}</SelectItem>
+              <SelectItem value="ACTIVE">{t("filterActive")}</SelectItem>
+              <SelectItem value="WARNING">{t("filterWarning")}</SelectItem>
+              <SelectItem value="EXPIRED">{t("filterExpired")}</SelectItem>
+              <SelectItem value="SUSPENDED">{t("filterSuspended")}</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={fetchSubscriptions} title="Refresh">
+          <Button variant="outline" size="icon" onClick={fetchSubscriptions} title={t("btnRefresh")}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -361,14 +365,14 @@ export default function SubscriptionsPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card className={`cursor-pointer transition-shadow hover:shadow-md ${statusFilter === 'ALL' ? 'ring-2 ring-primary' : ''}`} onClick={() => setStatusFilter('ALL')}>
           <CardContent className="p-3">
-            <p className="text-xs text-slate-500">Total</p>
+            <p className="text-xs text-slate-500">{t("cardTotal")}</p>
             <p className="text-2xl font-bold text-slate-900">{counts.total}</p>
           </CardContent>
         </Card>
         <Card className={`cursor-pointer transition-shadow hover:shadow-md border-emerald-200 ${statusFilter === 'ACTIVE' ? 'ring-2 ring-emerald-500' : ''}`} onClick={() => setStatusFilter(statusFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE')}>
           <CardContent className="p-3">
             <p className="text-xs text-emerald-600 flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" /> Active
+              <CheckCircle2 className="h-3 w-3" /> {t("cardActive")}
             </p>
             <p className="text-2xl font-bold text-emerald-700">{counts.active}</p>
           </CardContent>
@@ -376,7 +380,7 @@ export default function SubscriptionsPage() {
         <Card className={`cursor-pointer transition-shadow hover:shadow-md border-amber-200 ${statusFilter === 'WARNING' ? 'ring-2 ring-amber-500' : ''}`} onClick={() => setStatusFilter(statusFilter === 'WARNING' ? 'ALL' : 'WARNING')}>
           <CardContent className="p-3">
             <p className="text-xs text-amber-600 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Warning
+              <AlertTriangle className="h-3 w-3" /> {t("cardWarning")}
             </p>
             <p className="text-2xl font-bold text-amber-700">{counts.warning}</p>
           </CardContent>
@@ -384,7 +388,7 @@ export default function SubscriptionsPage() {
         <Card className={`cursor-pointer transition-shadow hover:shadow-md border-rose-200 ${statusFilter === 'EXPIRED' ? 'ring-2 ring-rose-500' : ''}`} onClick={() => setStatusFilter(statusFilter === 'EXPIRED' ? 'ALL' : 'EXPIRED')}>
           <CardContent className="p-3">
             <p className="text-xs text-rose-600 flex items-center gap-1">
-              <RefreshCw className="h-3 w-3" /> Grace
+              <RefreshCw className="h-3 w-3" /> {t("cardGrace")}
             </p>
             <p className="text-2xl font-bold text-rose-700">{counts.expired}</p>
           </CardContent>
@@ -392,7 +396,7 @@ export default function SubscriptionsPage() {
         <Card className={`cursor-pointer transition-shadow hover:shadow-md border-slate-300 ${statusFilter === 'SUSPENDED' ? 'ring-2 ring-slate-500' : ''}`} onClick={() => setStatusFilter(statusFilter === 'SUSPENDED' ? 'ALL' : 'SUSPENDED')}>
           <CardContent className="p-3">
             <p className="text-xs text-slate-500 flex items-center gap-1">
-              <XCircle className="h-3 w-3" /> Suspended
+              <XCircle className="h-3 w-3" /> {t("cardSuspended")}
             </p>
             <p className="text-2xl font-bold text-slate-700">{counts.suspended}</p>
           </CardContent>
@@ -406,16 +410,16 @@ export default function SubscriptionsPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Provider</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Owner</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Phone</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Plan</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Cycle</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Price</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Status</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Ends</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Payments</th>
-                  <th className="px-4 py-2.5 text-right font-medium text-slate-600">Actions</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thProvider")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thOwner")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thPhone")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thPlan")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thCycle")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thPrice")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thStatus")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thEnds")}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t("thPayments")}</th>
+                  <th className="px-4 py-2.5 text-right font-medium text-slate-600">{t("thActions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -423,8 +427,8 @@ export default function SubscriptionsPage() {
                   <tr>
                     <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
                       {allSubscriptions.length === 0
-                        ? "No providers found."
-                        : `No ${statusFilter === "ALL" ? "" : statusFilter + " "}subscriptions found.`}
+                        ? t("noProviders")
+                        : t("noMatchingSubs", { status: statusFilter === "ALL" ? "" : statusFilter + " " })}
                     </td>
                   </tr>
                 ) : (
@@ -449,7 +453,7 @@ export default function SubscriptionsPage() {
                               onClick={(e) => { e.stopPropagation(); openVerifyDialog(row); }}
                             >
                               <Eye className="w-3 h-3" />
-                              Pending Approval — Click to verify
+                              {t("badgePendingApproval")}
                             </Badge>
                           )}
                         </div>
@@ -471,21 +475,21 @@ export default function SubscriptionsPage() {
                             {row.planName}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-slate-400">No plan</span>
+                          <span className="text-xs text-slate-400">{t("noPlan")}</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-slate-600">
                         {formatCycle(row.cycle)}
                       </td>
                       <td className="px-4 py-2.5 font-medium text-slate-900">
-                        {row.price > 0 ? `${row.price.toLocaleString()} ETB` : "Trial"}
+                        {row.price > 0 ? `${row.price.toLocaleString()} ETB` : t("trial")}
                       </td>
                       <td className="px-4 py-2.5">
                         <Badge
                           variant="outline"
                           className={`text-[10px] font-semibold ${getStatusBadgeClasses(row.status)}`}
                         >
-                          {row.status}
+                          {STATUS_LABELS[row.status] || row.status}
                         </Badge>
                         <p className="mt-0.5 text-[11px] text-slate-500">
                           {formatDaysRemaining(row.daysRemaining)}
@@ -504,7 +508,7 @@ export default function SubscriptionsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); openHistory(row); }}
-                            title="Payment history"
+                            title={t("btnHistoryTitle")}
                           >
                             <History className="h-3.5 w-3.5" />
                           </Button>
@@ -512,7 +516,7 @@ export default function SubscriptionsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-                            title="Edit price/cycle"
+                            title={t("btnEditTitle")}
                           >
                             <CreditCard className="h-3.5 w-3.5" />
                           </Button>
@@ -521,7 +525,7 @@ export default function SubscriptionsPage() {
                             size="sm"
                             className="text-emerald-600 hover:text-emerald-700"
                             onClick={(e) => { e.stopPropagation(); openPay(row); }}
-                            title="Mark payment"
+                            title={t("btnMarkPaymentTitle")}
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" />
                           </Button>
@@ -540,45 +544,45 @@ export default function SubscriptionsPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Subscription</DialogTitle>
+            <DialogTitle>{t("dlgEditTitle")}</DialogTitle>
             <DialogDescription>
-              Update price and billing cycle for <strong>{editRow?.providerName}</strong>
+              {t("dlgEditDesc")} <strong>{editRow?.providerName}</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>{t('lblpricePerCycleEtb', 'Price per Cycle (ETB)')}</Label>
+              <Label>{t("lblPricePerCycle")}</Label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={editPrice}
                 onChange={(e) => setEditPrice(e.target.value)}
-                placeholder="Enter price"
+                placeholder={t("placeholderPrice")}
               />
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblbillingCycle', 'Billing Cycle')}</Label>
+              <Label>{t("lblBillingCycle")}</Label>
               <Select value={editCycle} onValueChange={setEditCycle}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MONTHLY">Monthly (30 days)</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly (90 days)</SelectItem>
-                  <SelectItem value="SEMI_ANNUAL">Semi-Annual (180 days)</SelectItem>
-                  <SelectItem value="YEARLY">Yearly (365 days)</SelectItem>
+                  <SelectItem value="MONTHLY">{t("cycleMonthlyDays")}</SelectItem>
+                  <SelectItem value="QUARTERLY">{t("cycleQuarterlyDays")}</SelectItem>
+                  <SelectItem value="SEMI_ANNUAL">{t("cycleSemiAnnualDays")}</SelectItem>
+                  <SelectItem value="YEARLY">{t("cycleYearlyDays")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editSaving}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button onClick={handleEditSave} disabled={editSaving}>
               {editSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save Changes
+              {t("btnSaveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -588,24 +592,24 @@ export default function SubscriptionsPage() {
       <AlertDialog open={payOpen} onOpenChange={setPayOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Record Payment</AlertDialogTitle>
+            <AlertDialogTitle>{t("dlgPayTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirm payment for <strong>{payRow?.providerName}</strong>.
-              This will extend their subscription by one{" "}
-              <strong>{payRow ? formatCycle(payCycle || payRow.cycle) : ""}</strong> cycle.
+              {t("dlgPayDesc")} <strong>{payRow?.providerName}</strong>.
+              {t("dlgPayExtend")}{" "}
+              <strong>{payRow ? formatCycle(payCycle || payRow.cycle) : ""}</strong>{" "}
+              {t("dlgPayCycleSuffix")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid gap-4 py-2">
-            {/* Plan selector */}
             {plans.length > 0 && (
               <div className="grid gap-2">
-                <Label>{t('lblselectPlanOptional', 'Select Plan (optional)')}</Label>
+                <Label>{t("lblSelectPlan")}</Label>
                 <Select value={payPlanId} onValueChange={handlePayPlanChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a plan to auto-fill" />
+                    <SelectValue placeholder={t("placeholderSelectPlan")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">No plan (manual entry)</SelectItem>
+                    <SelectItem value="_none">{t("noPlanManual")}</SelectItem>
                     {plans.map((plan) => (
                       <SelectItem key={plan.id} value={plan.id}>
                         {plan.name} — {plan.price.toLocaleString()} ETB ({formatCycle(plan.cycle)})
@@ -616,41 +620,41 @@ export default function SubscriptionsPage() {
               </div>
             )}
             <div className="grid gap-2">
-              <Label>{t('lblamountEtb', 'Amount (ETB)')}</Label>
+              <Label>{t("lblAmountEtb")}</Label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
-                placeholder="Payment amount"
+                placeholder={t("placeholderAmount")}
               />
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblcycle', 'Cycle')}</Label>
+              <Label>{t("lblCycle")}</Label>
               <Select value={payCycle} onValueChange={setPayCycle}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MONTHLY">Monthly (30 days)</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly (90 days)</SelectItem>
-                  <SelectItem value="SEMI_ANNUAL">Semi-Annual (180 days)</SelectItem>
-                  <SelectItem value="YEARLY">Yearly (365 days)</SelectItem>
+                  <SelectItem value="MONTHLY">{t("cycleMonthlyDays")}</SelectItem>
+                  <SelectItem value="QUARTERLY">{t("cycleQuarterlyDays")}</SelectItem>
+                  <SelectItem value="SEMI_ANNUAL">{t("cycleSemiAnnualDays")}</SelectItem>
+                  <SelectItem value="YEARLY">{t("cycleYearlyDays")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblnotesOptional', 'Notes (optional)')}</Label>
+              <Label>{t("lblNotes")}</Label>
               <Input
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}
-                placeholder="e.g., Cash payment received"
+                placeholder={t("placeholderNotes")}
               />
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={paySaving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={paySaving}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handlePaymentConfirm}
               disabled={paySaving || !payAmount.trim()}
@@ -661,7 +665,7 @@ export default function SubscriptionsPage() {
               ) : (
                 <CheckCircle2 className="mr-2 h-4 w-4" />
               )}
-              Confirm Payment
+              {t("btnConfirmPayment")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -673,14 +677,13 @@ export default function SubscriptionsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-orange-500" />
-              Verify Payment
+              {t("dlgVerifyTitle")}
             </DialogTitle>
             <DialogDescription>
-              Review the submitted payment and approve or decline.
+              {t("dlgVerifyDesc")}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Provider info card */}
           {pendingRow && (
             <div className="flex items-center gap-3 rounded-lg border bg-slate-50 p-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-sm">
@@ -691,7 +694,7 @@ export default function SubscriptionsPage() {
                 <p className="text-xs text-slate-500">{pendingRow.ownerName} &middot; {pendingRow.phone}</p>
               </div>
               <Badge className={pendingRow.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : pendingRow.status === "EXPIRED" ? "bg-rose-100 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-600 border-slate-200"} variant="outline">
-                {pendingRow.status}
+                {STATUS_LABELS[pendingRow.status] || pendingRow.status}
               </Badge>
             </div>
           )}
@@ -701,10 +704,9 @@ export default function SubscriptionsPage() {
               <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
           ) : pendingPayments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">No pending payments found.</p>
+            <p className="py-8 text-center text-sm text-slate-400">{t("noPendingPayments")}</p>
           ) : (
             <div className="space-y-3">
-              {/* Counter: Payment 1 of 3 */}
               {pendingPayments.length > 1 && (
                 <div className="flex items-center justify-center gap-2">
                   {pendingPayments.map((_: any, i: number) => (
@@ -713,15 +715,13 @@ export default function SubscriptionsPage() {
                       className={`h-1.5 rounded-full transition-all ${i === currentPayIndex ? "w-6 bg-orange-500" : i < currentPayIndex ? "w-1.5 bg-emerald-400" : "w-1.5 bg-slate-200"}`}
                     />
                   ))}
-                  <span className="text-[10px] text-slate-400 ml-1">{currentPayIndex + 1} of {pendingPayments.length}</span>
+                  <span className="text-[10px] text-slate-400 ml-1">{t("paymentOf", { current: currentPayIndex + 1, total: pendingPayments.length })}</span>
                 </div>
               )}
 
-              {/* Single payment card */}
               {(() => {
                 const p = pendingPayments[currentPayIndex];
                 if (!p) return null;
-                // Parse payment details from notes
                 const noteParts = (p.notes || "").split(" | ").filter(Boolean);
                 const methodPart = noteParts.find((n: string) => n.startsWith("Method:"));
                 const refPart = noteParts.find((n: string) => n.startsWith("Ref:"));
@@ -732,35 +732,35 @@ export default function SubscriptionsPage() {
                       <p className="text-lg font-bold text-slate-900">
                         {p.amount.toLocaleString()} ETB
                       </p>
-                      <Badge className="bg-orange-500 text-white border-0 text-[10px]">Pending</Badge>
+                      <Badge className="bg-orange-500 text-white border-0 text-[10px]">{t("badgePending")}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <p className="text-xs text-slate-500">Cycle</p>
+                        <p className="text-xs text-slate-500">{t("lblCycle")}</p>
                         <p className="font-medium text-slate-700">{formatCycle(p.cycle)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">Submitted</p>
+                        <p className="text-xs text-slate-500">{t("lblSubmitted")}</p>
                         <p className="font-medium text-slate-700">{new Date(p.createdAt).toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">Period Start</p>
+                        <p className="text-xs text-slate-500">{t("lblPeriodStart")}</p>
                         <p className="font-medium text-slate-700">{new Date(p.periodStart).toLocaleDateString()}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">Period End</p>
+                        <p className="text-xs text-slate-500">{t("lblPeriodEnd")}</p>
                         <p className="font-medium text-slate-700">{new Date(p.periodEnd).toLocaleDateString()}</p>
                       </div>
                     </div>
                     {methodPart && (
                       <div className="text-sm">
-                        <span className="text-slate-500">Payment Method: </span>
+                        <span className="text-slate-500">{t("lblPaymentMethod")}</span>
                         <span className="font-medium text-slate-700">{methodPart.replace("Method: ", "")}</span>
                       </div>
                     )}
                     {refPart && (
                       <div className="text-sm">
-                        <span className="text-slate-500">Reference: </span>
+                        <span className="text-slate-500">{t("lblReference")}</span>
                         <span className="font-mono font-medium text-slate-900">{refPart.replace("Ref: ", "")}</span>
                       </div>
                     )}
@@ -778,34 +778,33 @@ export default function SubscriptionsPage() {
             </div>
           )}
 
-          {/* Decline reason — always shown, required for reject */}
           {!verifyLoading && pendingPayments.length > 0 && (
             <div className="grid gap-2">
               <Label className="text-sm font-medium">
                 {verifyDeclineMode ? (
-                  <span className="text-rose-600">Decline Reason (required)</span>
+                  <span className="text-rose-600">{t("lblDeclineReason")}</span>
                 ) : (
-                  <span>Approval Note (optional)</span>
+                  <span>{t("lblApprovalNote")}</span>
                 )}
               </Label>
               <Textarea
                 placeholder={verifyDeclineMode
-                  ? "e.g., The reference number does not match our records. Please double-check and resubmit."
-                  : "e.g., Verified via bank statement"}
+                  ? t("placeholderDeclineReason")
+                  : t("placeholderApprovalNote")}
                 value={verifyReason}
                 onChange={(e) => setVerifyReason(e.target.value)}
                 className={verifyDeclineMode && !verifyReason.trim() ? "border-rose-300 focus-visible:ring-rose-400" : ""}
                 rows={3}
               />
               {verifyDeclineMode && !verifyReason.trim() && (
-                <p className="text-xs text-rose-500">You must provide a reason when declining a payment. The provider will receive this message.</p>
+                <p className="text-xs text-rose-500">{t("declineReasonRequired")}</p>
               )}
             </div>
           )}
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setVerifyOpen(false); setVerifyDeclineMode(false); setVerifyReason(""); }} disabled={!!verifyAction}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             {!verifyDeclineMode ? (
               <>
@@ -816,7 +815,7 @@ export default function SubscriptionsPage() {
                   className="gap-1"
                 >
                   <Ban className="h-4 w-4" />
-                  Decline
+                  {t("btnDecline")}
                 </Button>
                 <Button
                   onClick={() => handleVerifyAction("approve")}
@@ -824,7 +823,7 @@ export default function SubscriptionsPage() {
                   className="gap-1 bg-emerald-600 hover:bg-emerald-700"
                 >
                   {verifyAction === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                  Approve
+                  {t("btnApprove")}
                 </Button>
               </>
             ) : (
@@ -834,7 +833,7 @@ export default function SubscriptionsPage() {
                   onClick={() => { setVerifyDeclineMode(false); setVerifyReason(""); }}
                   disabled={!!verifyAction}
                 >
-                  Back
+                  {t("btnBack")}
                 </Button>
                 <Button
                   variant="destructive"
@@ -843,7 +842,7 @@ export default function SubscriptionsPage() {
                   className="gap-1"
                 >
                   {verifyAction === "reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                  Confirm Decline
+                  {t("btnConfirmDecline")}
                 </Button>
               </>
             )}
@@ -855,9 +854,9 @@ export default function SubscriptionsPage() {
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Payment History</DialogTitle>
+            <DialogTitle>{t("dlgHistoryTitle")}</DialogTitle>
             <DialogDescription>
-              All payments for <strong>{historyProviderName}</strong>
+              {t("dlgHistoryDesc")} <strong>{historyProviderName}</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto">
@@ -866,47 +865,47 @@ export default function SubscriptionsPage() {
                 <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
               </div>
             ) : payments.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400">No payments recorded.</p>
+              <p className="py-8 text-center text-sm text-slate-400">{t("noPaymentsRecorded")}</p>
             ) : (
               <div className="space-y-2">
                 {payments.map((p: any) => {
                   const isPending = p.notes && p.notes.includes("[PROVIDER SUBMITTED]");
                   const isOverdue = p.notes && p.notes.includes("[PAYMENT_OVERDUE]");
                   return (
-                  <div key={p.id} className={`rounded-lg border p-3 ${isOverdue ? 'border-rose-200 bg-rose-50/50' : isPending ? 'border-amber-200 bg-amber-50/50' : ''}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {p.amount.toLocaleString()} ETB
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {formatCycle(p.cycle)} &middot;{" "}
-                          {new Date(p.periodStart).toLocaleDateString()} →{" "}
-                          {new Date(p.periodEnd).toLocaleDateString()}
-                        </p>
+                    <div key={p.id} className={`rounded-lg border p-3 ${isOverdue ? 'border-rose-200 bg-rose-50/50' : isPending ? 'border-amber-200 bg-amber-50/50' : ''}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {p.amount.toLocaleString()} ETB
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatCycle(p.cycle)} &middot;{" "}
+                            {new Date(p.periodStart).toLocaleDateString()} →{" "}
+                            {new Date(p.periodEnd).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] ${
+                              isOverdue
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : isPending
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            }`}
+                          >
+                            {isOverdue ? t("badgePaymentOverdue") : isPending ? t("badgePendingVerification") : t("badgePaid")}
+                          </Badge>
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            {new Date(p.createdAt).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] ${
-                            isOverdue
-                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                              : isPending
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }`}
-                        >
-                          {isOverdue ? "Payment Overdue" : isPending ? "Pending Verification" : "Paid"}
-                        </Badge>
-                        <p className="mt-1 text-[10px] text-slate-400">
-                          {new Date(p.createdAt).toLocaleString()}
-                        </p>
-                      </div>
+                      {p.notes && (
+                        <p className="mt-1.5 text-xs text-slate-500 italic">{p.notes}</p>
+                      )}
                     </div>
-                    {p.notes && (
-                      <p className="mt-1.5 text-xs text-slate-500 italic">{p.notes}</p>
-                    )}
-                  </div>
                   );
                 })}
               </div>
@@ -914,7 +913,7 @@ export default function SubscriptionsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setHistoryOpen(false)}>
-              Close
+              {t("btnClose")}
             </Button>
           </DialogFooter>
         </DialogContent>

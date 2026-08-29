@@ -76,7 +76,6 @@ interface Plan {
   subscriptionCount: number;
 }
 
-// Cycle color themes for card headers
 const CYCLE_GRADIENT: Record<string, string> = {
   MONTHLY: "from-emerald-500 to-teal-600",
   QUARTERLY: "from-amber-500 to-orange-600",
@@ -99,11 +98,10 @@ const CYCLE_ICON_BG: Record<string, string> = {
 };
 
 export default function SubscriptionPlansPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("superPlans");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create/Edit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [formName, setFormName] = useState("");
@@ -111,7 +109,6 @@ export default function SubscriptionPlansPage() {
   const [formPrice, setFormPrice] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Delete dialog
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePlan, setDeletePlan] = useState<Plan | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -122,7 +119,7 @@ export default function SubscriptionPlansPage() {
       const data = await apiGetPlans();
       setPlans(data);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load plans");
+      toast.error(err instanceof Error ? err.message : t("toastFailedLoad"));
     } finally {
       setLoading(false);
     }
@@ -132,7 +129,6 @@ export default function SubscriptionPlansPage() {
     fetchPlans();
   }, [fetchPlans]);
 
-  // ── Create / Edit ──
   function openCreate() {
     setEditingPlan(null);
     setFormName("");
@@ -151,7 +147,7 @@ export default function SubscriptionPlansPage() {
 
   async function handleSave() {
     if (!formName.trim() || !formCycle || !formPrice.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error(t("toastFillRequired"));
       return;
     }
     setSaving(true);
@@ -162,36 +158,34 @@ export default function SubscriptionPlansPage() {
           cycle: formCycle,
           price: parseFloat(formPrice),
         });
-        toast.success(`Plan "${formName.trim()}" updated`);
+        toast.success(t("toastUpdated"));
       } else {
         await apiCreatePlan({
           name: formName.trim(),
           cycle: formCycle,
           price: parseFloat(formPrice),
         });
-        toast.success(`Plan "${formName.trim()}" created`);
+        toast.success(t("toastCreated"));
       }
       setDialogOpen(false);
       fetchPlans();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save plan");
+      toast.error(err instanceof Error ? err.message : t("toastFailedSave"));
     } finally {
       setSaving(false);
     }
   }
 
-  // ── Toggle active ──
   async function handleToggleActive(plan: Plan) {
     try {
       await apiUpdatePlan(plan.id, { isActive: !plan.isActive });
-      toast.success(plan.isActive ? `Plan "${plan.name}" deactivated` : `Plan "${plan.name}" activated`);
+      toast.success(plan.isActive ? t("toastDeactivated") : t("toastActivated"));
       fetchPlans();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to toggle plan");
+      toast.error(err instanceof Error ? err.message : t("toastFailedToggle"));
     }
   }
 
-  // ── Delete ──
   function openDelete(plan: Plan) {
     setDeletePlan(plan);
     setDeleteOpen(true);
@@ -202,11 +196,11 @@ export default function SubscriptionPlansPage() {
     setDeleting(true);
     try {
       await apiDeletePlan(deletePlan.id);
-      toast.success(`Plan "${deletePlan.name}" deleted`);
+      toast.success(t("toastDeleted"));
       setDeleteOpen(false);
       fetchPlans();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete plan");
+      toast.error(err instanceof Error ? err.message : t("toastFailedDelete"));
     } finally {
       setDeleting(false);
     }
@@ -227,19 +221,19 @@ export default function SubscriptionPlansPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Tag className="h-6 w-6 text-emerald-600" />
-            Pricing Plans
+            {t("pageTitle")}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Define and manage subscription pricing plans for guest house providers.
+            {t("pageSubtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={fetchPlans} title="Refresh">
+          <Button variant="outline" size="icon" onClick={fetchPlans} title={t("btnRefresh")}>
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
             <Plus className="mr-2 h-4 w-4" />
-            Create Plan
+            {t("btnCreatePlan")}
           </Button>
         </div>
       </div>
@@ -251,13 +245,13 @@ export default function SubscriptionPlansPage() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
               <CreditCard className="size-8 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-700">No Plans Yet</h3>
+            <h3 className="text-lg font-semibold text-slate-700">{t("noPlansTitle")}</h3>
             <p className="mt-1 text-sm text-slate-500 max-w-md">
-              Create your first pricing plan to define subscription tiers for guest house providers.
+              {t("noPlansDesc")}
             </p>
             <Button onClick={openCreate} className="mt-4 bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-2 h-4 w-4" />
-              Create First Plan
+              {t("btnCreateFirstPlan")}
             </Button>
           </CardContent>
         </Card>
@@ -270,7 +264,6 @@ export default function SubscriptionPlansPage() {
                 !plan.isActive ? "opacity-60" : ""
               }`}
             >
-              {/* Gradient header accent */}
               <div
                 className={`h-2 bg-gradient-to-r ${
                   CYCLE_GRADIENT[plan.cycle] || "from-slate-400 to-slate-500"
@@ -303,14 +296,14 @@ export default function SubscriptionPlansPage() {
                         className="border-emerald-200 bg-emerald-50 text-[10px] font-semibold text-emerald-700"
                       >
                         <Check className="mr-1 size-3" />
-                        Active
+                        {t("badgeActive")}
                       </Badge>
                     ) : (
                       <Badge
                         variant="outline"
                         className="border-slate-200 bg-slate-50 text-[10px] font-semibold text-slate-500"
                       >
-                        Inactive
+                        {t("badgeInactive")}
                       </Badge>
                     )}
                   </div>
@@ -318,9 +311,8 @@ export default function SubscriptionPlansPage() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Price */}
                 <div className={`rounded-xl bg-gradient-to-br p-4 ${CYCLE_BG[plan.cycle] || "from-slate-50 to-slate-100"}`}>
-                  <p className="text-xs font-medium text-slate-500">Price</p>
+                  <p className="text-xs font-medium text-slate-500">{t("lblPrice")}</p>
                   <div className="mt-1 flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-slate-900">
                       {plan.price.toLocaleString()}
@@ -330,29 +322,27 @@ export default function SubscriptionPlansPage() {
                   {plan.months > 1 && (
                     <p className="mt-1 text-xs text-slate-500">
                       <Sparkles className="mr-1 inline-block size-3 text-amber-500" />
-                      ~{plan.perMonth.toLocaleString()} ETB / month
+                      {t("perMonth", { amount: plan.perMonth.toLocaleString() })}
                     </p>
                   )}
                 </div>
 
-                {/* Stats */}
                 <div className="flex items-center gap-4 text-sm text-slate-600">
                   <div className="flex items-center gap-1.5">
                     <Users className="size-3.5 text-slate-400" />
                     <span className="font-medium">{plan.subscriptionCount}</span>
-                    <span className="text-xs text-slate-400">providers</span>
+                    <span className="text-xs text-slate-400">{t("lblProviders")}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Calendar className="size-3.5 text-slate-400" />
-                    <span className="text-xs text-slate-400">{plan.days}d cycle</span>
+                    <span className="text-xs text-slate-400">{plan.days}d {t("lblCycleSuffix")}</span>
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
                   <div className="flex items-center gap-2 flex-1">
                     <Label htmlFor={`toggle-${plan.id}`} className="text-xs text-slate-500 cursor-pointer">
-                      {plan.isActive ? "Active" : "Inactive"}
+                      {plan.isActive ? t("toggleActive") : t("toggleInactive")}
                     </Label>
                     <Switch
                       id={`toggle-${plan.id}`}
@@ -365,7 +355,7 @@ export default function SubscriptionPlansPage() {
                     size="icon"
                     className="size-8 text-slate-500 hover:text-slate-700"
                     onClick={() => openEdit(plan)}
-                    title="Edit plan"
+                    title={t("btnEditPlanTitle")}
                   >
                     <Pencil className="size-3.5" />
                   </Button>
@@ -374,7 +364,7 @@ export default function SubscriptionPlansPage() {
                     size="icon"
                     className="size-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
                     onClick={() => openDelete(plan)}
-                    title="Delete plan"
+                    title={t("btnDeletePlanTitle")}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -390,68 +380,66 @@ export default function SubscriptionPlansPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingPlan ? "Edit Plan" : "Create New Plan"}
+              {editingPlan ? t("dlgEditTitle") : t("dlgCreateTitle")}
             </DialogTitle>
             <DialogDescription>
               {editingPlan
-                ? `Update the pricing details for "${editingPlan.name}".`
-                : "Define a new subscription pricing plan for providers."}
+                ? t("dlgEditDesc")
+                : t("dlgCreateDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>{t('lblplanName', 'Plan Name')}</Label>
+              <Label>{t("lblPlanName")}</Label>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g., Monthly, Quarterly, Premium Annual"
+                placeholder={t("placeholderPlanName")}
               />
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblbillingCycle', 'Billing Cycle')}</Label>
+              <Label>{t("lblBillingCycle")}</Label>
               <Select value={formCycle} onValueChange={setFormCycle}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select cycle" />
+                  <SelectValue placeholder={t("placeholderSelectCycle")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MONTHLY">Monthly (30 days)</SelectItem>
-                  <SelectItem value="QUARTERLY">Quarterly (90 days)</SelectItem>
-                  <SelectItem value="SEMI_ANNUAL">Semi-Annual (180 days)</SelectItem>
-                  <SelectItem value="YEARLY">Yearly (365 days)</SelectItem>
+                  <SelectItem value="MONTHLY">{t("cycleMonthlyDays")}</SelectItem>
+                  <SelectItem value="QUARTERLY">{t("cycleQuarterlyDays")}</SelectItem>
+                  <SelectItem value="SEMI_ANNUAL">{t("cycleSemiAnnualDays")}</SelectItem>
+                  <SelectItem value="YEARLY">{t("cycleYearlyDays")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>{t('lblpriceEtb', 'Price (ETB)')}</Label>
+              <Label>{t("lblPriceEtb")}</Label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={formPrice}
                 onChange={(e) => setFormPrice(e.target.value)}
-                placeholder="Enter price in ETB"
+                placeholder={t("placeholderPriceEtb")}
               />
               {formCycle && formPrice && Number(formPrice) >= 0 && (
                 <p className="text-xs text-slate-500">
-                  {formatCycle(formCycle)} &middot;{" "}
-                  {CYCLE_DAYS[formCycle] || 30} days &middot;{" "}
-                  ~{(Number(formPrice) / ((CYCLE_DAYS[formCycle] || 30) / 30)).toFixed(2)} ETB/month
+                  {t("priceCalc", { cycle: formatCycle(formCycle), days: CYCLE_DAYS[formCycle] || 30, perMonth: (Number(formPrice) / ((CYCLE_DAYS[formCycle] || 30) / 30)).toFixed(2) })}
                 </p>
               )}
             </div>
             {editingPlan && (
               <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-medium text-slate-600">Plan Info</p>
+                <p className="text-xs font-medium text-slate-600">{t("planInfo")}</p>
                 <p className="mt-1 text-xs text-slate-500">
                   <Users className="mr-1 inline-block size-3" />
-                  {editingPlan.subscriptionCount} provider(s) currently on this plan
+                  {t("providersOnPlan", { count: editingPlan.subscriptionCount })}
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              Cancel
+              {t("btnCancel")}
             </Button>
             <Button
               onClick={handleSave}
@@ -459,7 +447,7 @@ export default function SubscriptionPlansPage() {
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              {editingPlan ? "Save Changes" : "Create Plan"}
+              {editingPlan ? t("btnSaveChanges") : t("btnCreatePlanBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -469,25 +457,17 @@ export default function SubscriptionPlansPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+            <AlertDialogTitle>{t("dlgDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {deletePlan && deletePlan.subscriptionCount > 0 ? (
-                <>
-                  The plan <strong>&quot;{deletePlan.name}&quot;</strong> has{" "}
-                  <strong>{deletePlan.subscriptionCount} provider(s)</strong> subscribed to it.
-                  It will be <strong>deactivated</strong> instead of permanently deleted.
-                </>
+                t("dlgDeleteHasSubs", { count: deletePlan.subscriptionCount })
               ) : (
-                <>
-                  Are you sure you want to delete{" "}
-                  <strong>&quot;{deletePlan?.name}&quot;</strong>? This action cannot be
-                  undone.
-                </>
+                t("dlgDeleteNoSubs")
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
@@ -499,8 +479,8 @@ export default function SubscriptionPlansPage() {
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
               {deletePlan && deletePlan.subscriptionCount > 0
-                ? "Deactivate Plan"
-                : "Delete Permanently"}
+                ? t("btnDeactivate")
+                : t("btnDeletePermanently")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
