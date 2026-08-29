@@ -1,0 +1,788 @@
+     1→"use client";
+     2→import { useTranslation } from "react-i18next";
+     3→
+     4→import { useState, useEffect, useCallback } from "react";
+     5→import { useAppStore } from "@/lib/store";
+     6→import {
+     7→  apiGetBroadcastProviders,
+     8→  apiSendBroadcast,
+     9→  apiGetBroadcastHistory,
+    10→} from "@/lib/api";
+    11→import { toast } from "sonner";
+    12→import { Button } from "@/components/ui/button";
+    13→import { Badge } from "@/components/ui/badge";
+    14→import { Input } from "@/components/ui/input";
+    15→import { Label } from "@/components/ui/label";
+    16→import { Textarea } from "@/components/ui/textarea";
+    17→import { Skeleton } from "@/components/ui/skeleton";
+    18→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+    19→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    20→import {
+    21→  Select,
+    22→  SelectContent,
+    23→  SelectItem,
+    24→  SelectTrigger,
+    25→  SelectValue,
+    26→} from "@/components/ui/select";
+    27→import {
+    28→  Table,
+    29→  TableBody,
+    30→  TableCell,
+    31→  TableHead,
+    32→  TableHeader,
+    33→  TableRow,
+    34→} from "@/components/ui/table";
+    35→import {
+    36→  Megaphone,
+    37→  Send,
+    38→  CheckCircle2,
+    39→  XCircle,
+    40→  Clock,
+    41→  Shield,
+    42→  ShieldCheck,
+    43→  Building2,
+    44→  MessageSquare,
+    45→  Smartphone,
+    46→  Bell,
+    47→  AlertTriangle,
+    48→  Radio,
+    49→  CheckCheck,
+    50→  History,
+    51→} from "lucide-react";
+    52→import { Checkbox } from "@/components/ui/checkbox";
+    53→import { ScrollArea } from "@/components/ui/scroll-area";
+    54→
+    55→// ─── Types ─────────────────────────────────────────────────────────────────
+    56→
+    57→interface BroadcastProvider {
+    58→  id: string;
+    59→  name: string;
+    60→  ownerName: string;
+    61→  phone: string;
+    62→  email: string;
+    63→  address: string;
+    64→  type: string;
+    65→  status: string;
+    66→  telegramChatId: string;
+    67→  hasPhone: boolean;
+    68→  hasTelegram: boolean;
+    69→  roomCount: number;
+    70→  guestCount: number;
+    71→  userCount: number;
+    72→}
+    73→
+    74→interface BroadcastRecord {
+    75→  id: string;
+    76→  title: string;
+    77→  message: string;
+    78→  channel: string;
+    79→  priority: string;
+    80→  targetType: string;
+    81→  targetIds: string;
+    82→  sentBy: string;
+    83→  sentByName: string;
+    84→  totalSent: number;
+    85→  totalFailed: number;
+    86→  status: string;
+    87→  createdAt: string;
+    88→}
+    89→
+    90→// ─── Channel config ─────────────────────────────────────────────────────────
+    91→
+    92→const CHANNELS = [
+    93→  { value: "IN_APP", label: "In-App Notification", icon: Bell, color: "text-blue-500" },
+    94→  { value: "SMS", label: "SMS", icon: Smartphone, color: "text-green-500" },
+    95→  { value: "WHATSAPP", label: "WhatsApp", icon: MessageSquare, color: "text-emerald-500" },
+    96→  { value: "TELEGRAM", label: "Telegram", icon: Send, color: "text-sky-500" },
+    97→];
+    98→
+    99→const PRIORITIES = [
+   100→  { value: "LOW", label: "Low", color: "bg-slate-100 text-slate-600" },
+   101→  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-600" },
+   102→  { value: "HIGH", label: "High", color: "bg-amber-100 text-amber-600" },
+   103→  { value: "URGENT", label: "Urgent", color: "bg-rose-100 text-rose-600" },
+   104→];
+   105→
+   106→function getPriorityBadge(priority: string) {
+   107→  const p = PRIORITIES.find((pr) => pr.value === priority);
+   108→  return p ? p : PRIORITIES[1];
+   109→}
+   110→
+   111→function getChannelIcon(channel: string) {
+   112→  return CHANNELS.find((c) => c.value === channel) || CHANNELS[0];
+   113→}
+   114→
+   115→// ─── Main Component ────────────────────────────────────────────────────────
+   116→
+   117→export default function NotificationDispatchPage() {
+   118→  const { t } = useTranslation();
+   119→  const currentUser = useAppStore((s) => s.currentUser);
+   120→  const isPolice = currentUser?.role === "POLICE";
+   121→  const isAdmin = currentUser?.role === "SUPERUSER";
+   122→  const isViewer = isPolice && currentUser?.policeRank === "VIEWER";
+   123→
+   124→  return (
+   125→    <div className="flex h-full flex-col gap-6 p-4 md:p-6">
+   126→      {/* Page Header */}
+   127→      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+   128→        <div>
+   129→          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+   130→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-amber-500 shadow-sm">
+   131→              <Megaphone className="size-5 text-white" />
+   132→            </div>
+   133→            Notification Dispatch
+   134→          </h1>
+   135→          <p className="text-sm text-slate-500 mt-1">
+   136→            {isPolice
+   137→              ? "Send notifications to all guest house service providers from the police module"
+   138→              : "Send system-wide notifications to all guest house service providers"}
+   139→          </p>
+   140→        </div>
+   141→        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+   142→          {isPolice && (
+   143→            <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-xs font-semibold">
+   144→              <Shield className="mr-1 size-3" />
+   145→              Police {currentUser?.policeRank || ""}
+   146→            </Badge>
+   147→          )}
+   148→          {isAdmin && (
+   149→            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-semibold">
+   150→              <ShieldCheck className="mr-1 size-3" />
+   151→              System Admin
+   152→            </Badge>
+   153→          )}
+   154→        </div>
+   155→      </div>
+   156→
+   157→      <Tabs defaultValue="compose" className="flex-1">
+   158→        <TabsList className="grid w-full max-w-md grid-cols-2">
+   159→          <TabsTrigger value="compose" className="flex items-center gap-2">
+   160→            <Radio className="size-4" />
+   161→            Compose
+   162→          </TabsTrigger>
+   163→          <TabsTrigger value="history" className="flex items-center gap-2">
+   164→            <History className="size-4" />
+   165→            History
+   166→          </TabsTrigger>
+   167→        </TabsList>
+   168→
+   169→        <TabsContent value="compose" className="mt-6">
+   170→          <ComposeTab isViewer={isViewer} isPolice={isPolice} isAdmin={isAdmin} />
+   171→        </TabsContent>
+   172→
+   173→        <TabsContent value="history" className="mt-6">
+   174→          <HistoryTab />
+   175→        </TabsContent>
+   176→      </Tabs>
+   177→    </div>
+   178→  );
+   179→}
+   180→
+   181→// ─── Compose Tab ────────────────────────────────────────────────────────────
+   182→
+   183→function ComposeTab({
+   184→  isViewer,
+   185→  isPolice,
+   186→  isAdmin,
+   187→}: {
+   188→  isViewer: boolean;
+   189→  isPolice: boolean;
+   190→  isAdmin: boolean;
+   191→}) {
+   192→  const [title, setTitle] = useState("");
+   193→  const [message, setMessage] = useState("");
+   194→  const [channel, setChannel] = useState("IN_APP");
+   195→  const [priority, setPriority] = useState("NORMAL");
+   196→  const [targetType, setTargetType] = useState<"ALL_PROVIDERS" | "SELECTED_PROVIDERS">("ALL_PROVIDERS");
+   197→  const [providers, setProviders] = useState<BroadcastProvider[]>([]);
+   198→  const [selectedProviders, setSelectedProviders] = useState<Set<string>>(new Set());
+   199→  const [loading, setLoading] = useState(false);
+   200→  const [sending, setSending] = useState(false);
+   201→  const [search, setSearch] = useState("");
+   202→
+   203→  const fetchProviders = useCallback(async () => {
+   204→    setLoading(true);
+   205→    try {
+   206→      const data = await apiGetBroadcastProviders();
+   207→      const arr = Array.isArray(data) ? data : [];
+   208→      setProviders(arr);
+   209→    } catch (err) {
+   210→      console.error("Failed to load providers:", err);
+   211→      toast.error("Failed to load provider list");
+   212→    } finally {
+   213→      setLoading(false);
+   214→    }
+   215→  }, []);
+   216→
+   217→  useEffect(() => {
+   218→    fetchProviders();
+   219→  }, [fetchProviders]);
+   220→
+   221→  // Filter providers by search
+   222→  const filteredProviders = providers.filter(
+   223→    (p) =>
+   224→      p.name.toLowerCase().includes(search.toLowerCase()) ||
+   225→      p.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+   226→      p.address.toLowerCase().includes(search.toLowerCase())
+   227→  );
+   228→
+   229→  const toggleProvider = (id: string) => {
+   230→    setSelectedProviders((prev) => {
+   231→      const next = new Set(prev);
+   232→      if (next.has(id)) next.delete(id);
+   233→      else next.add(id);
+   234→      return next;
+   235→    });
+   236→  };
+   237→
+   238→  const toggleAll = () => {
+   239→    if (selectedProviders.size === filteredProviders.length) {
+   240→      setSelectedProviders(new Set());
+   241→    } else {
+   242→      setSelectedProviders(new Set(filteredProviders.map((p) => p.id)));
+   243→    }
+   244→  };
+   245→
+   246→  const canSend =
+   247→    !isViewer && title.trim() && message.trim() &&
+   248→    (targetType === "ALL_PROVIDERS" || selectedProviders.size > 0);
+   249→
+   250→  const handleSend = async () => {
+   251→    if (!canSend) return;
+   252→    setSending(true);
+   253→    try {
+   254→      const result = await apiSendBroadcast({
+   255→        title: title.trim(),
+   256→        message: message.trim(),
+   257→        channel,
+   258→        priority,
+   259→        targetType,
+   260→        providerIds: targetType === "SELECTED_PROVIDERS" ? Array.from(selectedProviders) : [],
+   261→      });
+   262→      toast.success(
+   263→        `Notification sent! ${result.sent} delivered, ${result.failed} failed`,
+   264→        { description: `Channel: ${channel} | Priority: ${priority}` }
+   265→      );
+   266→      // Reset form
+   267→      setTitle("");
+   268→      setMessage("");
+   269→      setPriority("NORMAL");
+   270→      setSelectedProviders(new Set());
+   271→      setTargetType("ALL_PROVIDERS");
+   272→    } catch (err) {
+   273→      toast.error(err instanceof Error ? err.message : "Failed to send broadcast");
+   274→    } finally {
+   275→      setSending(false);
+   276→    }
+   277→  };
+   278→
+   279→  // Check if selected channel is available for selected providers
+   280→  const getChannelAvailability = () => {
+   281→    if (targetType === "ALL_PROVIDERS") {
+   282→      const targetList = filteredProviders;
+   283→      if (channel === "SMS" || channel === "WHATSAPP") {
+   284→        const withPhone = targetList.filter((p) => p.hasPhone).length;
+   285→        return { available: withPhone, total: targetList.length, label: "phone number" };
+   286→      }
+   287→      if (channel === "TELEGRAM") {
+   288→        const withTelegram = targetList.filter((p) => p.hasTelegram).length;
+   289→        return { available: withTelegram, total: targetList.length, label: "Telegram chat ID" };
+   290→      }
+   291→      return { available: targetList.length, total: targetList.length, label: "" };
+   292→    }
+   293→    const selected = providers.filter((p) => selectedProviders.has(p.id));
+   294→    if (channel === "SMS" || channel === "WHATSAPP") {
+   295→      const withPhone = selected.filter((p) => p.hasPhone).length;
+   296→      return { available: withPhone, total: selected.length, label: "phone number" };
+   297→    }
+   298→    if (channel === "TELEGRAM") {
+   299→      const withTelegram = selected.filter((p) => p.hasTelegram).length;
+   300→      return { available: withTelegram, total: selected.length, label: "Telegram chat ID" };
+   301→    }
+   302→    return { available: selected.length, total: selected.length, label: "" };
+   303→  };
+   304→
+   305→  const availability = getChannelAvailability();
+   306→
+   307→  return (
+   308→    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   309→      {/* Left column — Compose form */}
+   310→      <div className="lg:col-span-2 space-y-6">
+   311→        <Card>
+   312→          <CardHeader>
+   313→            <CardTitle className="flex items-center gap-2">
+   314→              <Radio className="size-5 text-primary" />
+   315→              Compose Notification
+   316→            </CardTitle>
+   317→            <CardDescription>
+   318→              Create a notification to dispatch to guest house service providers.
+   319→              {isViewer && (
+   320→                <span className="block mt-1 text-amber-600 font-medium">
+   321→                  Your rank (Viewer) is read-only. Contact an Officer or Admin to send notifications.
+   322→                </span>
+   323→              )}
+   324→            </CardDescription>
+   325→          </CardHeader>
+   326→          <CardContent className="space-y-5">
+   327→            {/* Title */}
+   328→            <div className="space-y-2">
+   329→              <Label htmlFor="title" className="text-sm font-medium">
+   330→                Title <span className="text-rose-500">*</span>
+   331→              </Label>
+   332→              <Input
+   333→                id="title"
+   334→                placeholder="e.g., Safety Inspection Notice, New Regulation Alert"
+   335→                value={title}
+   336→                onChange={(e) => setTitle(e.target.value)}
+   337→                disabled={isViewer}
+   338→              />
+   339→            </div>
+   340→
+   341→            {/* Message */}
+   342→            <div className="space-y-2">
+   343→              <Label htmlFor="message" className="text-sm font-medium">
+   344→                Message <span className="text-rose-500">*</span>
+   345→              </Label>
+   346→              <Textarea
+   347→                id="message"
+   348→                placeholder="Write the notification message content here...\n\nThis will be delivered to all selected service providers."
+   349→                value={message}
+   350→                onChange={(e) => setMessage(e.target.value)}
+   351→                rows={6}
+   352→                disabled={isViewer}
+   353→                className="resize-y"
+   354→              />
+   355→              <p className="text-xs text-slate-400">{message.length} characters</p>
+   356→            </div>
+   357→
+   358→            {/* Channel & Priority row */}
+   359→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   360→              <div className="space-y-2">
+   361→                <Label>{t('lbldeliveryChannel', 'Delivery Channel')}</Label>
+   362→                <Select value={channel} onValueChange={setChannel} disabled={isViewer}>
+   363→                  <SelectTrigger>
+   364→                    <SelectValue />
+   365→                  </SelectTrigger>
+   366→                  <SelectContent>
+   367→                    {CHANNELS.map((ch) => {
+   368→                      const Icon = ch.icon;
+   369→                      return (
+   370→                        <SelectItem key={ch.value} value={ch.value}>
+   371→                          <span className="flex items-center gap-2">
+   372→                            <Icon className={`size-4 ${ch.color}`} />
+   373→                            {ch.label}
+   374→                          </span>
+   375→                        </SelectItem>
+   376→                      );
+   377→                    })}
+   378→                  </SelectContent>
+   379→                </Select>
+   380→                {/* Channel availability warning */}
+   381→                {channel !== "IN_APP" && availability.label && (
+   382→                  <div className={`text-xs mt-1.5 flex items-center gap-1.5 ${
+   383→                    availability.available === 0
+   384→                      ? "text-rose-600"
+   385→                      : availability.available < availability.total
+   386→                      ? "text-amber-600"
+   387→                      : "text-emerald-600"
+   388→                  }`}>
+   389→                    {availability.available === 0 ? (
+   390→                      <XCircle className="size-3" />
+   391→                    ) : availability.available < availability.total ? (
+   392→                      <AlertTriangle className="size-3" />
+   393→                    ) : (
+   394→                      <CheckCircle2 className="size-3" />
+   395→                    )}
+   396→                    {availability.available} of {availability.total} providers have a {availability.label} configured
+   397→                  </div>
+   398→                )}
+   399→              </div>
+   400→
+   401→              <div className="space-y-2">
+   402→                <Label>{t('lblpriorityLevel', 'Priority Level')}</Label>
+   403→                <Select value={priority} onValueChange={setPriority} disabled={isViewer}>
+   404→                  <SelectTrigger>
+   405→                    <SelectValue />
+   406→                  </SelectTrigger>
+   407→                  <SelectContent>
+   408→                    {PRIORITIES.map((pr) => (
+   409→                      <SelectItem key={pr.value} value={pr.value}>
+   410→                        <span className="flex items-center gap-2">
+   411→                          <span className={`inline-block h-2 w-2 rounded-full ${
+   412→                            pr.value === "URGENT"
+   413→                              ? "bg-rose-500"
+   414→                              : pr.value === "HIGH"
+   415→                              ? "bg-amber-500"
+   416→                              : pr.value === "NORMAL"
+   417→                              ? "bg-blue-500"
+   418→                              : "bg-slate-400"
+   419→                          }`} />
+   420→                          {pr.label}
+   421→                        </span>
+   422→                      </SelectItem>
+   423→                    ))}
+   424→                  </SelectContent>
+   425→                </Select>
+   426→              </div>
+   427→            </div>
+   428→
+   429→            {/* Target Type */}
+   430→            <div className="space-y-2">
+   431→              <Label>{t('lbltargetAudience', 'Target Audience')}</Label>
+   432→              <div className="flex items-center gap-4">
+   433→                <label className="flex items-center gap-2 cursor-pointer text-sm">
+   434→                  <input
+   435→                    type="radio"
+   436→                    name="targetType"
+   437→                    value="ALL_PROVIDERS"
+   438→                    checked={targetType === "ALL_PROVIDERS"}
+   439→                    onChange={() => setTargetType("ALL_PROVIDERS")}
+   440→                    disabled={isViewer}
+   441→                    className="accent-primary"
+   442→                  />
+   443→                  All Approved Providers
+   444→                </label>
+   445→                <label className="flex items-center gap-2 cursor-pointer text-sm">
+   446→                  <input
+   447→                    type="radio"
+   448→                    name="targetType"
+   449→                    value="SELECTED_PROVIDERS"
+   450→                    checked={targetType === "SELECTED_PROVIDERS"}
+   451→                    onChange={() => setTargetType("SELECTED_PROVIDERS")}
+   452→                    disabled={isViewer}
+   453→                    className="accent-primary"
+   454→                  />
+   455→                  Selected Providers Only
+   456→                </label>
+   457→              </div>
+   458→            </div>
+   459→
+   460→            {/* Send button */}
+   461→            <div className="flex items-center gap-3 pt-2">
+   462→              <Button
+   463→                onClick={handleSend}
+   464→                disabled={!canSend || sending}
+   465→                className="bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white shadow-md"
+   466→              >
+   467→                {sending ? (
+   468→                  <>
+   469→                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+   470→                    Dispatching...
+   471→                  </>
+   472→                ) : (
+   473→                  <>
+   474→                    <Send className="mr-2 size-4" />
+   475→                    Dispatch to {" "}
+   476→                    {targetType === "ALL_PROVIDERS"
+   477→                      ? `All (${providers.length})`
+   478→                      : `${selectedProviders.size} Selected`}{" "}
+   479→                    Providers
+   480→                  </>
+   481→                )}
+   482→              </Button>
+   483→              {priority === "URGENT" && (
+   484→                <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 animate-pulse">
+   485→                  <AlertTriangle className="mr-1 size-3" />
+   486→                  URGENT
+   487→                </Badge>
+   488→              )}
+   489→            </div>
+   490→          </CardContent>
+   491→        </Card>
+   492→      </div>
+   493→
+   494→      {/* Right column — Provider selection */}
+   495→      <div className="space-y-4">
+   496→        <Card>
+   497→          <CardHeader className="pb-3">
+   498→            <CardTitle className="text-base flex items-center justify-between">
+   499→              <span className="flex items-center gap-2">
+   500→                <Building2 className="size-4 text-primary" />
+   501→                Providers
+   502→              </span>
+   503→              <Badge variant="secondary" className="text-xs">
+   504→                {targetType === "ALL_PROVIDERS"
+   505→                  ? providers.length
+   506→                  : selectedProviders.size} / {providers.length}
+   507→              </Badge>
+   508→            </CardTitle>
+   509→            {targetType === "SELECTED_PROVIDERS" && (
+   510→              <>
+   511→                <Input
+   512→                  placeholder="Search providers..."
+   513→                  value={search}
+   514→                  onChange={(e) => setSearch(e.target.value)}
+   515→                  className="mt-2"
+   516→                />
+   517→                <div className="flex items-center justify-between mt-2">
+   518→                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-500">
+   519→                    <Checkbox
+   520→                      checked={
+   521→                        filteredProviders.length > 0 &&
+   522→                        selectedProviders.size === filteredProviders.length
+   523→                      }
+   524→                      onCheckedChange={toggleAll}
+   525→                      disabled={isViewer}
+   526→                    />
+   527→                    Select All
+   528→                  </label>
+   529→                </div>
+   530→              </>
+   531→            )}
+   532→          </CardHeader>
+   533→          <CardContent className="p-0">
+   534→            {loading ? (
+   535→              <div className="space-y-3 p-4">
+   536→                {Array.from({ length: 5 }).map((_, i) => (
+   537→                  <div key={i} className="flex items-center gap-3">
+   538→                    <Skeleton className="h-4 w-4 rounded" />
+   539→                    <div className="flex-1 space-y-1.5">
+   540→                      <Skeleton className="h-3.5 w-3/4" />
+   541→                      <Skeleton className="h-3 w-1/2" />
+   542→                    </div>
+   543→                  </div>
+   544→                ))}
+   545→              </div>
+   546→            ) : providers.length === 0 ? (
+   547→              <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
+   548→                <Building2 className="size-8" />
+   549→                <p className="text-sm">No approved providers found</p>
+   550→              </div>
+   551→            ) : (
+   552→              <ScrollArea className="h-[420px]">
+   553→                <div className="px-4 pb-4 space-y-1">
+   554→                  {(targetType === "ALL_PROVIDERS" ? providers : filteredProviders).map(
+   555→                    (provider) => {
+   556→                      const isSelected =
+   557→                        targetType === "ALL_PROVIDERS" ||
+   558→                        selectedProviders.has(provider.id);
+   559→                      return (
+   560→                        <div
+   561→                          key={provider.id}
+   562→                          className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+   563→                            isSelected
+   564→                              ? "border-primary/30 bg-primary/5"
+   565→                              : "border-transparent hover:bg-slate-50"
+   566→                          }`}
+   567→                        >
+   568→                          {targetType === "SELECTED_PROVIDERS" && (
+   569→                            <Checkbox
+   570→                              checked={isSelected}
+   571→                              onCheckedChange={() => toggleProvider(provider.id)}
+   572→                              disabled={isViewer}
+   573→                              className="mt-0.5"
+   574→                            />
+   575→                          )}
+   576→                          <div className="flex-1 min-w-0">
+   577→                            <p className="text-sm font-medium text-slate-900 truncate">
+   578→                              {provider.name}
+   579→                            </p>
+   580→                            <p className="text-xs text-slate-500 truncate">
+   581→                              {provider.ownerName} · {provider.address}
+   582→                            </p>
+   583→                            <div className="flex items-center gap-2 mt-1.5">
+   584→                              <Badge
+   585→                                variant="outline"
+   586→                                className="text-[10px] px-1.5 py-0"
+   587→                              >
+   588→                                {provider.type}
+   589→                              </Badge>
+   590→                              <span className="text-[10px] text-slate-400">
+   591→                                {provider.roomCount} rooms · {provider.guestCount} guests
+   592→                              </span>
+   593→                            </div>
+   594→                            <div className="flex items-center gap-3 mt-1.5">
+   595→                              {provider.hasPhone && (
+   596→                                <span className="flex items-center gap-1 text-[10px] text-emerald-600">
+   597→                                  <Smartphone className="size-3" />
+   598→                                  SMS/WhatsApp
+   599→                                </span>
+   600→                              )}
+   601→                              {provider.hasTelegram && (
+   602→                                <span className="flex items-center gap-1 text-[10px] text-sky-600">
+   603→                                  <Send className="size-3" />
+   604→                                  Telegram
+   605→                                </span>
+   606→                              )}
+   607→                              <span className="flex items-center gap-1 text-[10px] text-blue-600">
+   608→                                <Bell className="size-3" />
+   609→                                In-App ({provider.userCount} users)
+   610→                              </span>
+   611→                            </div>
+   612→                          </div>
+   613→                        </div>
+   614→                      );
+   615→                    }
+   616→                  )}
+   617→                </div>
+   618→              </ScrollArea>
+   619→            )}
+   620→          </CardContent>
+   621→        </Card>
+   622→      </div>
+   623→    </div>
+   624→  );
+   625→}
+   626→
+   627→// ─── History Tab ────────────────────────────────────────────────────────────
+   628→
+   629→function HistoryTab() {
+   630→  const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>([]);
+   631→  const [loading, setLoading] = useState(true);
+   632→  const [page, setPage] = useState(1);
+   633→  const [totalPages, setTotalPages] = useState(1);
+   634→
+   635→  const fetchHistory = useCallback(async (p: number) => {
+   636→    setLoading(true);
+   637→    try {
+   638→      const res = await apiGetBroadcastHistory(`page=${p}&limit=20`);
+   639→      const data = Array.isArray(res?.data) ? res.data : [];
+   640→      setBroadcasts(data);
+   641→      setTotalPages(res?.totalPages || 1);
+   642→    } catch (err) {
+   643→      console.error("Failed to load broadcast history:", err);
+   644→      toast.error("Failed to load broadcast history");
+   645→    } finally {
+   646→      setLoading(false);
+   647→    }
+   648→  }, []);
+   649→
+   650→  useEffect(() => {
+   651→    fetchHistory(page);
+   652→  }, [page, fetchHistory]);
+   653→
+   654→  return (
+   655→    <Card>
+   656→      <CardHeader>
+   657→        <CardTitle className="flex items-center gap-2">
+   658→          <History className="size-5 text-primary" />
+   659→          Broadcast History
+   660→        </CardTitle>
+   661→        <CardDescription>
+   662→          View all previously dispatched notifications and their delivery status.
+   663→        </CardDescription>
+   664→      </CardHeader>
+   665→      <CardContent>
+   666→        {loading ? (
+   667→          <div className="space-y-4">
+   668→            {Array.from({ length: 5 }).map((_, i) => (
+   669→              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+   670→            ))}
+   671→          </div>
+   672→        ) : broadcasts.length === 0 ? (
+   673→          <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+   674→            <History className="size-12" />
+   675→            <div className="text-center">
+   676→              <p className="text-sm font-medium">No broadcast history yet</p>
+   677→              <p className="text-xs mt-1">Dispatched notifications will appear here</p>
+   678→            </div>
+   679→          </div>
+   680→        ) : (
+   681→          <>
+   682→            <div className="rounded-lg border overflow-hidden">
+   683→              <Table>
+   684→                <TableHeader>
+   685→                  <TableRow>
+   686→                    <TableHead>{t('thdate', 'Date')}</TableHead>
+   687→                    <TableHead>{t('thtitle', 'Title')}</TableHead>
+   688→                    <TableHead>{t('thchannel', 'Channel')}</TableHead>
+   689→                    <TableHead>{t('thpriority', 'Priority')}</TableHead>
+   690→                    <TableHead>{t('thtarget', 'Target')}</TableHead>
+   691→                    <TableHead>{t('thdelivery', 'Delivery')}</TableHead>
+   692→                  </TableRow>
+   693→                </TableHeader>
+   694→                <TableBody>
+   695→                  {broadcasts.map((b) => {
+   696→                    const ch = getChannelIcon(b.channel);
+   697→                    const ChIcon = ch.icon;
+   698→                    const pr = getPriorityBadge(b.priority);
+   699→                    return (
+   700→                      <TableRow key={b.id}>
+   701→                        <TableCell className="text-xs text-slate-500">
+   702→                          <div className="flex items-center gap-1.5">
+   703→                            <Clock className="size-3" />
+   704→                            {new Date(b.createdAt).toLocaleString()}
+   705→                          </div>
+   706→                          <div className="text-[10px] text-slate-400 mt-0.5">
+   707→                            by {b.sentByName || b.sentBy}
+   708→                          </div>
+   709→                        </TableCell>
+   710→                        <TableCell>
+   711→                          <p className="text-sm font-medium text-slate-900 line-clamp-1">
+   712→                            {b.title}
+   713→                          </p>
+   714→                          <p className="text-xs text-slate-400 line-clamp-1 max-w-[250px]">
+   715→                            {b.message}
+   716→                          </p>
+   717→                        </TableCell>
+   718→                        <TableCell>
+   719→                          <span className={`flex items-center gap-1.5 text-xs ${ch.color}`}>
+   720→                            <ChIcon className="size-3.5" />
+   721→                            {b.channel}
+   722→                          </span>
+   723→                        </TableCell>
+   724→                        <TableCell>
+   725→                          <Badge
+   726→                            variant="outline"
+   727→                            className={`text-[10px] px-1.5 py-0 ${pr.color}`}
+   728→                          >
+   729→                            {b.priority}
+   730→                          </Badge>
+   731→                        </TableCell>
+   732→                        <TableCell className="text-xs">
+   733→                          {b.targetType === "ALL_PROVIDERS"
+   734→                            ? "All"
+   735→                            : `${JSON.parse(b.targetIds || "[]").length} selected`}
+   736→                        </TableCell>
+   737→                        <TableCell className="text-right">
+   738→                          <div className="flex items-center justify-end gap-3">
+   739→                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+   740→                              <CheckCheck className="size-3" />
+   741→                              {b.totalSent}
+   742→                            </span>
+   743→                            {b.totalFailed > 0 && (
+   744→                              <span className="flex items-center gap-1 text-xs text-rose-500">
+   745→                                <XCircle className="size-3" />
+   746→                                {b.totalFailed}
+   747→                              </span>
+   748→                            )}
+   749→                          </div>
+   750→                        </TableCell>
+   751→                      </TableRow>
+   752→                    );
+   753→                  })}
+   754→                </TableBody>
+   755→              </Table>
+   756→            </div>
+   757→
+   758→            {/* Pagination */}
+   759→            {totalPages > 1 && (
+   760→              <div className="flex items-center justify-center gap-2 mt-4">
+   761→                <Button
+   762→                  variant="outline"
+   763→                  size="sm"
+   764→                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+   765→                  disabled={page <= 1}
+   766→                >
+   767→                  Previous
+   768→                </Button>
+   769→                <span className="text-sm text-slate-500">
+   770→                  Page {page} of {totalPages}
+   771→                </span>
+   772→                <Button
+   773→                  variant="outline"
+   774→                  size="sm"
+   775→                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   776→                  disabled={page >= totalPages}
+   777→                >
+   778→                  Next
+   779→                </Button>
+   780→              </div>
+   781→            )}
+   782→          </>
+   783→        )}
+   784→      </CardContent>
+   785→    </Card>
+   786→  );
+   787→}
+   788→
