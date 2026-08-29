@@ -1,0 +1,508 @@
+     1→"use client";
+     2→import { useTranslation } from "react-i18next";
+     3→
+     4→import { useState, useEffect, useCallback } from "react";
+     5→import { apiPoliceReports } from "@/lib/api";
+     6→import { toast } from "sonner";
+     7→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     8→import { Badge } from "@/components/ui/badge";
+     9→import { Skeleton } from "@/components/ui/skeleton";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Input } from "@/components/ui/input";
+    12→import {
+    13→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    14→} from "@/components/ui/select";
+    15→import {
+    16→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    17→} from "@/components/ui/table";
+    18→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    19→import {
+    20→  Users, UserCheck, UserMinus, AlertTriangle, Building2, BedDouble,
+    21→  CalendarDays, RefreshCw, Download, Clock,
+    22→  Globe, CreditCard, BarChart3,
+    23→} from "lucide-react";
+    24→import {
+    25→  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    26→  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+    27→} from "recharts";
+    28→
+    29→// ── Types ──
+    30→interface Summary {
+    31→  totalGuests: number; totalReservations: number; totalCheckIns: number;
+    32→  totalCheckOuts: number; activeGuests: number; totalMatches: number;
+    33→  totalProviders: number; totalRooms: number;
+    34→}
+    35→interface NameCount { name: string; count: number; }
+    36→interface ProviderRow { name: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; }
+    37→interface OccupancyRow { name: string; total: number; occupied: number; available: number; reserved: number; maintenance: number; rate: number; }
+    38→interface FreqStay { id: string; guestName: string; guestPhone: string; guestIdNumber: string; providerNames: string; stayCount: number; avgDaysBetween: number; riskLevel: string; isReviewed: boolean; createdAt: string; }
+    39→
+    40→interface ReportData {
+    41→  period: string; date: string; label: string; startDate: string; endDate: string;
+    42→  summary: Summary;
+    43→  checkInTrend: { date: string; count: number }[];
+    44→  checkOutTrend: { date: string; count: number }[];
+    45→  nationalities: NameCount[];
+    46→  idTypes: NameCount[];
+    47→  providerBreakdown: ProviderRow[];
+    48→  suspectSeverities: NameCount[];
+    49→  occupancyByProvider: OccupancyRow[];
+    50→  peakHours: { hour: string; count: number }[];
+    51→  frequentStayAlerts: FreqStay[];
+    52→  reservationStatuses: NameCount[];
+    53→  providers: { id: string; name: string }[];
+    54→}
+    55→
+    56→const COLORS = ["#1e3a5f", "#2563eb", "#7c3aed", "#dc2626", "#ea580c", "#ca8a04", "#16a34a", "#0d9488", "#6366f1", "#ec4899", "#8b5cf6", "#14b8a6", "#f59e0b", "#64748b", "#84cc16"];
+    57→
+    58→const STATUS_COLORS: Record<string, string> = { ACTIVE: "#16a34a", UPCOMING: "#2563eb", COMPLETED: "#64748b", CANCELLED: "#dc2626" };
+    59→
+    60→// ── KPI Card ──
+    61→function KpiCard({ icon: Icon, label, value, sub, color = "text-primary" }: { icon: React.ElementType; label: string; value: number | string; sub?: string; color?: string }) {
+    62→  return (
+    63→    <Card className="relative overflow-hidden">
+    64→      <CardContent className="p-4">
+    65→        <div className="flex items-start justify-between">
+    66→          <div className="space-y-1">
+    67→            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+    68→            <p className={`text-2xl font-bold ${color}`}>{typeof value === "number" ? value.toLocaleString() : value}</p>
+    69→            {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+    70→          </div>
+    71→          <div className="rounded-lg bg-primary/10 p-2.5">
+    72→            <Icon className="size-5 text-primary" />
+    73→          </div>
+    74→        </div>
+    75→      </CardContent>
+    76→    </Card>
+    77→  );
+    78→}
+    79→
+    80→// ── Inline bar ──
+    81→function InlineBar({ value, max, color = "bg-primary" }: { value: number; max: number; color?: string }) {
+    82→  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    83→  return (
+    84→    <div className="flex items-center gap-2">
+    85→      <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+    86→        <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+    87→      </div>
+    88→      <span className="text-xs font-semibold tabular-nums min-w-[28px] text-right">{value}</span>
+    89→    </div>
+    90→  );
+    91→}
+    92→
+    93→// ── Skeleton ──
+    94→function SkeletonGrid() {
+    95→  return (
+    96→    <div className="space-y-4">
+    97→      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    98→        {Array.from({ length: 8 }).map((_, i) => (
+    99→          <Skeleton key={i} className="h-24 rounded-lg" />
+   100→        ))}
+   101→      </div>
+   102→      <Skeleton className="h-64 rounded-lg" />
+   103→      <Skeleton className="h-64 rounded-lg" />
+   104→    </div>
+   105→  );
+   106→}
+   107→
+   108→export default function PoliceReportsPage() {
+   109→  const { t } = useTranslation();
+   110→  const [data, setData] = useState<ReportData | null>(null);
+   111→  const [loading, setLoading] = useState(true);
+   112→  const [period, setPeriod] = useState("monthly");
+   113→  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+   114→  const [providerId, setProviderId] = useState("");
+   115→  const [activeTab, setActiveTab] = useState("overview");
+   116→
+   117→  const fetchReport = useCallback(async () => {
+   118→    setLoading(true);
+   119→    try {
+   120→      const res = await apiPoliceReports({ period, date, providerId });
+   121→      setData(res);
+   122→    } catch (e: unknown) {
+   123→      toast.error(e instanceof Error ? e.message : "Failed to load report");
+   124→    } finally {
+   125→      setLoading(false);
+   126→    }
+   127→  }, [period, date, providerId]);
+   128→
+   129→  useEffect(() => { fetchReport(); }, [fetchReport]);
+   130→
+   131→  const exportCSV = useCallback(() => {
+   132→    if (!data) return;
+   133→    const rows = ["Provider,Registered Guests,Check-Ins,Check-Outs,Suspect Matches,Rooms"];
+   134→    for (const p of data.providerBreakdown) {
+   135→      rows.push(`"${p.name}",${p.guests},${p.checkIns},${p.checkOuts},${p.matches},${p.rooms}`);
+   136→    }
+   137→    rows.push("");
+   138→    rows.push("Nationality,Count");
+   139→    for (const n of data.nationalities) rows.push(`"${n.name}",${n.count}`);
+   140→    rows.push("");
+   141→    rows.push("Severity,Count");
+   142→    for (const s of data.suspectSeverities) rows.push(`${s.name},${s.count}`);
+   143→    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+   144→    const url = URL.createObjectURL(blob);
+   145→    const a = document.createElement("a");
+   146→    a.href = url;
+   147→    a.download = `police-report-${data.period}-${data.date}.csv`;
+   148→    a.click();
+   149→    URL.revokeObjectURL(url);
+   150→    toast.success("CSV exported");
+   151→  }, [data]);
+   152→
+   153→  return (
+   154→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   155→      {/* Header */}
+   156→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   157→        <div>
+   158→          <h2 className="text-base sm:text-lg font-semibold">Police Reports</h2>
+   159→          <p className="text-xs sm:text-sm text-muted-foreground">
+   160→            {data ? data.label : "City-wide guest monitoring and security analytics"}
+   161→          </p>
+   162→        </div>
+   163→        <div className="flex items-center gap-2 flex-wrap">
+   164→          <Select value={period} onValueChange={(v) => setPeriod(v)}>
+   165→            <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+   166→            <SelectContent>
+   167→              <SelectItem value="daily">Daily</SelectItem>
+   168→              <SelectItem value="monthly">Monthly</SelectItem>
+   169→              <SelectItem value="yearly">Yearly</SelectItem>
+   170→            </SelectContent>
+   171→          </Select>
+   172→          <Input
+   173→            type="date"
+   174→            value={date}
+   175→            onChange={(e) => setDate(e.target.value)}
+   176→            className="w-[140px] h-8 text-xs"
+   177→          />
+   178→          {data && data.providers.length > 0 && (
+   179→            <Select value={providerId} onValueChange={(v) => setProviderId(v === "_all" ? "" : v)}>
+   180→              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="All Providers" /></SelectTrigger>
+   181→              <SelectContent>
+   182→                <SelectItem value="_all">All Providers</SelectItem>
+   183→                {data.providers.map((p) => (
+   184→                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+   185→                ))}
+   186→              </SelectContent>
+   187→            </Select>
+   188→          )}
+   189→          <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading} className="h-8 text-xs">
+   190→            <RefreshCw className={`mr-1 h-3 w-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+   191→          </Button>
+   192→          <Button variant="outline" size="sm" onClick={exportCSV} disabled={!data} className="h-8 text-xs">
+   193→            <Download className="mr-1 h-3 w-3" /> CSV
+   194→          </Button>
+   195→        </div>
+   196→      </div>
+   197→
+   198→      {loading ? <SkeletonGrid /> : data ? (
+   199→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   200→          <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
+   201→            <TabsTrigger value="overview" className="text-xs gap-1.5 h-8"><BarChart3 className="size-3.5" /> Overview</TabsTrigger>
+   202→            <TabsTrigger value="occupancy" className="text-xs gap-1.5 h-8"><BedDouble className="size-3.5" /> Occupancy</TabsTrigger>
+   203→            <TabsTrigger value="demographics" className="text-xs gap-1.5 h-8"><Globe className="size-3.5" /> Demographics</TabsTrigger>
+   204→            <TabsTrigger value="providers" className="text-xs gap-1.5 h-8"><Building2 className="size-3.5" /> Providers</TabsTrigger>
+   205→          </TabsList>
+   206→
+   207→          {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
+   208→          <TabsContent value="overview" className="space-y-4 mt-4">
+   209→            {/* KPI row */}
+   210→            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   211→              <KpiCard icon={Users} label="Registered Guests" value={data.summary.totalGuests} sub={providerId ? "In selected provider" : `Across ${data.summary.totalProviders} providers`} />
+   212→              <KpiCard icon={UserCheck} label="Check-Ins" value={data.summary.totalCheckIns} sub={`${data.summary.activeGuests} currently active`} />
+   213→              <KpiCard icon={UserMinus} label="Check-Outs" value={data.summary.totalCheckOuts} sub={`${data.summary.totalReservations} total reservations`} />
+   214→              <KpiCard icon={AlertTriangle} label="Suspect Matches" value={data.summary.totalMatches} color={data.summary.totalMatches > 0 ? "text-red-600" : "text-emerald-600"} sub={data.summary.totalMatches > 0 ? "Requires attention" : "No alerts"} />
+   215→            </div>
+   216→
+   217→            {/* Charts row */}
+   218→            <div className="grid md:grid-cols-2 gap-4">
+   219→              {/* Reservation status pie */}
+   220→              <Card>
+   221→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CalendarDays className="size-4" /> Reservation Status</CardTitle></CardHeader>
+   222→                <CardContent>
+   223→                  {data.reservationStatuses.length > 0 ? (
+   224→                    <ResponsiveContainer width="100%" height={260}>
+   225→                      <PieChart>
+   226→                        <Pie
+   227→                          data={data.reservationStatuses}
+   228→                          dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}
+   229→                        >
+   230→                          {data.reservationStatuses.map((entry, i) => (
+   231→                            <Cell key={i} fill={STATUS_COLORS[entry.name] || COLORS[i % COLORS.length]} />
+   232→                          ))}
+   233→                        </Pie>
+   234→                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }} />
+   235→                        <Legend wrapperStyle={{ fontSize: 11 }} />
+   236→                      </PieChart>
+   237→                    </ResponsiveContainer>
+   238→                  ) : (
+   239→                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">No reservations in this period</div>
+   240→                  )}
+   241→                </CardContent>
+   242→              </Card>
+   243→
+   244→              {/* Peak hours bar (daily/monthly only) */}
+   245→              <Card>
+   246→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="size-4" /> {data.peakHours.length > 0 ? "Peak Check-In Hours" : "Check-In Summary"}</CardTitle></CardHeader>
+   247→                <CardContent>
+   248→                  {data.peakHours.length > 0 ? (
+   249→                    <ResponsiveContainer width="100%" height={260}>
+   250→                      <BarChart data={data.peakHours}>
+   251→                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   252→                        <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
+   253→                        <YAxis tick={{ fontSize: 10 }} />
+   254→                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+   255→                        <Bar dataKey="count" name="Check-Ins" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+   256→                      </BarChart>
+   257→                    </ResponsiveContainer>
+   258→                  ) : (
+   259→                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">No hourly data for this period</div>
+   260→                  )}
+   261→                </CardContent>
+   262→              </Card>
+   263→            </div>
+   264→
+   265→            {/* Frequent stay alerts */}
+   266→            {data.frequentStayAlerts.length > 0 && (
+   267→              <Card>
+   268→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="size-4" /> Frequent Stay Alerts</CardTitle></CardHeader>
+   269→                <CardContent>
+   270→                  <Table>
+   271→                    <TableHeader>
+   272→                      <TableRow>
+   273→                        <TableHead>{t('thguest', 'Guest')}</TableHead>
+   274→                        <TableHead>{t('thphoneId', 'Phone / ID')}</TableHead>
+   275→                        <TableHead>{t('thstays', 'Stays')}</TableHead>
+   276→                        <TableHead>{t('thavgDays', 'Avg Days')}</TableHead>
+   277→                        <TableHead>{t('thrisk', 'Risk')}</TableHead>
+   278→                      </TableRow>
+   279→                    </TableHeader>
+   280→                    <TableBody>
+   281→                      {data.frequentStayAlerts.slice(0, 10).map((f) => (
+   282→                        <TableRow key={f.id}>
+   283→                          <TableCell className="text-xs font-medium">{f.guestName}</TableCell>
+   284→                          <TableCell className="text-xs text-muted-foreground font-mono">{f.guestPhone || f.guestIdNumber}</TableCell>
+   285→                          <TableCell className="text-xs text-center font-semibold">{f.stayCount}</TableCell>
+   286→                          <TableCell className="text-xs text-center">{f.avgDaysBetween.toFixed(1)}</TableCell>
+   287→                          <TableCell>
+   288→                            <Badge variant="outline" className={`text-[10px] font-semibold ${f.riskLevel === "HIGH" ? "border-red-300 text-red-700 bg-red-50" : f.riskLevel === "MEDIUM" ? "border-amber-300 text-amber-700 bg-amber-50" : "border-slate-300 text-slate-600 bg-slate-50"}`}>
+   289→                              {f.riskLevel}
+   290→                            </Badge>
+   291→                          </TableCell>
+   292→                        </TableRow>
+   293→                      ))}
+   294→                    </TableBody>
+   295→                  </Table>
+   296→                </CardContent>
+   297→              </Card>
+   298→            )}
+   299→          </TabsContent>
+   300→
+   301→          {/* ═══════════════ OCCUPANCY TAB ═══════════════ */}
+   302→          <TabsContent value="occupancy" className="space-y-4 mt-4">
+   303→            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+   304→              <KpiCard icon={Building2} label="Total Providers" value={data.summary.totalProviders} />
+   305→              <KpiCard icon={BedDouble} label="Total Rooms" value={data.summary.totalRooms} />
+   306→              <KpiCard icon={Users} label="Active Guests" value={data.summary.activeGuests} sub="Currently checked in" />
+   307→            </div>
+   308→
+   309→            {data.occupancyByProvider.length > 0 ? (
+   310→              <Card>
+   311→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Occupancy by Provider</CardTitle></CardHeader>
+   312→                <CardContent>
+   313→                  <ResponsiveContainer width="100%" height={Math.max(250, data.occupancyByProvider.length * 40)}>
+   314→                    <BarChart data={data.occupancyByProvider} layout="vertical" margin={{ left: 40 }}>
+   315→                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   316→                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
+   317→                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
+   318→                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number) => `${v}%`} />
+   319→                      <Bar dataKey="rate" name="Occupancy %" fill="#2563eb" radius={[0, 4, 4, 0]}>
+   320→                        {data.occupancyByProvider.map((entry, i) => (
+   321→                          <Cell key={i} fill={entry.rate > 80 ? "#dc2626" : entry.rate > 50 ? "#ca8a04" : "#16a34a"} />
+   322→                        ))}
+   323→                      </Bar>
+   324→                    </BarChart>
+   325→                  </ResponsiveContainer>
+   326→                </CardContent>
+   327→              </Card>
+   328→            ) : providerId ? (
+   329→              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Provider-level occupancy is shown when "All Providers" is selected</CardContent></Card>
+   330→            ) : null}
+   331→
+   332→            {/* Occupancy table */}
+   333→            {data.occupancyByProvider.length > 0 && (
+   334→              <Card>
+   335→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Room Status Breakdown</CardTitle></CardHeader>
+   336→                <CardContent>
+   337→                  <Table>
+   338→                    <TableHeader>
+   339→                      <TableRow>
+   340→                        <TableHead>{t('thprovider', 'Provider')}</TableHead>
+   341→                        <TableHead>{t('thtotal', 'Total')}</TableHead>
+   342→                        <TableHead>{t('thoccupied', 'Occupied')}</TableHead>
+   343→                        <TableHead>{t('thavailable', 'Available')}</TableHead>
+   344→                        <TableHead>{t('threserved', 'Reserved')}</TableHead>
+   345→                        <TableHead>{t('thmaint', 'Maint.')}</TableHead>
+   346→                        <TableHead>{t('thrate', 'Rate')}</TableHead>
+   347→                      </TableRow>
+   348→                    </TableHeader>
+   349→                    <TableBody>
+   350→                      {data.occupancyByProvider.map((p, i) => (
+   351→                        <TableRow key={i}>
+   352→                          <TableCell className="text-xs font-medium">{p.name}</TableCell>
+   353→                          <TableCell className="text-xs text-center">{p.total}</TableCell>
+   354→                          <TableCell className="text-xs text-center font-semibold text-red-600">{p.occupied}</TableCell>
+   355→                          <TableCell className="text-xs text-center text-emerald-600">{p.available}</TableCell>
+   356→                          <TableCell className="text-xs text-center text-blue-600">{p.reserved}</TableCell>
+   357→                          <TableCell className="text-xs text-center text-amber-600">{p.maintenance}</TableCell>
+   358→                          <TableCell className="text-xs text-center">
+   359→                            <Badge variant="outline" className={`text-[10px] font-semibold ${p.rate > 80 ? "border-red-300 text-red-700" : p.rate > 50 ? "border-amber-300 text-amber-700" : "border-emerald-300 text-emerald-700"}`}>
+   360→                              {p.rate}%
+   361→                            </Badge>
+   362→                          </TableCell>
+   363→                        </TableRow>
+   364→                      ))}
+   365→                    </TableBody>
+   366→                  </Table>
+   367→                </CardContent>
+   368→              </Card>
+   369→            )}
+   370→          </TabsContent>
+   371→
+   372→          {/* ═══════════════ DEMOGRAPHICS TAB ═══════════════ */}
+   373→          <TabsContent value="demographics" className="space-y-4 mt-4">
+   374→            <div className="grid md:grid-cols-2 gap-4">
+   375→              {/* Nationality pie */}
+   376→              <Card>
+   377→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="size-4" /> Nationality Distribution</CardTitle></CardHeader>
+   378→                <CardContent>
+   379→                  {data.nationalities.length > 0 ? (
+   380→                    <ResponsiveContainer width="100%" height={300}>
+   381→                      <PieChart>
+   382→                        <Pie data={data.nationalities} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
+   383→                          {data.nationalities.map((_, i) => (
+   384→                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+   385→                          ))}
+   386→                        </Pie>
+   387→                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+   388→                      </PieChart>
+   389→                    </ResponsiveContainer>
+   390→                  ) : (
+   391→                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">No nationality data</div>
+   392→                  )}
+   393→                </CardContent>
+   394→              </Card>
+   395→
+   396→              {/* ID type distribution */}
+   397→              <Card>
+   398→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CreditCard className="size-4" /> ID Type Distribution</CardTitle></CardHeader>
+   399→                <CardContent>
+   400→                  {data.idTypes.length > 0 ? (
+   401→                    <ResponsiveContainer width="100%" height={300}>
+   402→                      <PieChart>
+   403→                        <Pie data={data.idTypes} dataKey="count" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={100} paddingAngle={3}>
+   404→                          {data.idTypes.map((_, i) => (
+   405→                            <Cell key={i} fill={COLORS[(i + 5) % COLORS.length]} />
+   406→                          ))}
+   407→                        </Pie>
+   408→                        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+   409→                        <Legend wrapperStyle={{ fontSize: 11 }} />
+   410→                      </PieChart>
+   411→                    </ResponsiveContainer>
+   412→                  ) : (
+   413→                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">No ID type data</div>
+   414→                  )}
+   415→                </CardContent>
+   416→              </Card>
+   417→            </div>
+   418→
+   419→            {/* Nationality table */}
+   420→            {data.nationalities.length > 0 && (
+   421→              <Card>
+   422→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Nationality Breakdown</CardTitle></CardHeader>
+   423→                <CardContent>
+   424→                  <div className="space-y-2">
+   425→                    {data.nationalities.map((n, i) => (
+   426→                      <div key={i} className="flex items-center gap-3">
+   427→                        <span className="text-xs text-muted-foreground w-6 text-right">{i + 1}.</span>
+   428→                        <span className="text-xs font-medium w-36 truncate">{n.name}</span>
+   429→                        <InlineBar value={n.count} max={data.nationalities[0].count} color="bg-primary" />
+   430→                      </div>
+   431→                    ))}
+   432→                  </div>
+   433→                </CardContent>
+   434→              </Card>
+   435→            )}
+   436→          </TabsContent>
+   437→
+   438→          {/* ═══════════════ PROVIDERS TAB ═══════════════ */}
+   439→          <TabsContent value="providers" className="space-y-4 mt-4">
+   440→            <Card>
+   441→              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Provider Activity Summary</CardTitle></CardHeader>
+   442→              <CardContent>
+   443→                {data.providerBreakdown.length > 0 ? (
+   444→                  <Table>
+   445→                    <TableHeader>
+   446→                      <TableRow>
+   447→                        <TableHead>{t('thkey', '#')}</TableHead>
+   448→                        <TableHead>{t('thprovider', 'Provider')}</TableHead>
+   449→                        <TableHead>{t('throoms', 'Rooms')}</TableHead>
+   450→                        <TableHead>{t('thguests', 'Guests')}</TableHead>
+   451→                        <TableHead>{t('thcheckins', 'Check-Ins')}</TableHead>
+   452→                        <TableHead>{t('thcheckouts', 'Check-Outs')}</TableHead>
+   453→                        <TableHead>{t('thsuspectMatches', 'Suspect Matches')}</TableHead>
+   454→                      </TableRow>
+   455→                    </TableHeader>
+   456→                    <TableBody>
+   457→                      {data.providerBreakdown.map((p, i) => (
+   458→                        <TableRow key={i}>
+   459→                          <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+   460→                          <TableCell className="text-xs font-medium">{p.name}</TableCell>
+   461→                          <TableCell className="text-xs text-center">{p.rooms}</TableCell>
+   462→                          <TableCell className="text-xs text-center font-semibold">{p.guests}</TableCell>
+   463→                          <TableCell className="text-xs text-center text-blue-600">{p.checkIns}</TableCell>
+   464→                          <TableCell className="text-xs text-center text-emerald-600">{p.checkOuts}</TableCell>
+   465→                          <TableCell className="text-xs text-center">
+   466→                            {p.matches > 0 ? (
+   467→                              <Badge variant="outline" className="text-[10px] font-semibold border-red-300 text-red-700 bg-red-50">{p.matches}</Badge>
+   468→                            ) : (
+   469→                              <span className="text-xs text-muted-foreground">0</span>
+   470→                            )}
+   471→                          </TableCell>
+   472→                        </TableRow>
+   473→                      ))}
+   474→                    </TableBody>
+   475→                  </Table>
+   476→                ) : (
+   477→                  <div className="py-12 text-center text-sm text-muted-foreground">No provider data available</div>
+   478→                )}
+   479→              </CardContent>
+   480→            </Card>
+   481→
+   482→            {/* Provider guests bar chart */}
+   483→            {data.providerBreakdown.length > 0 && (
+   484→              <Card>
+   485→                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Guests by Provider</CardTitle></CardHeader>
+   486→                <CardContent>
+   487→                  <ResponsiveContainer width="100%" height={Math.max(200, data.providerBreakdown.length * 35)}>
+   488→                    <BarChart data={data.providerBreakdown} layout="vertical" margin={{ left: 40 }}>
+   489→                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   490→                      <XAxis type="number" tick={{ fontSize: 10 }} />
+   491→                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
+   492→                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+   493→                      <Legend wrapperStyle={{ fontSize: 11 }} />
+   494→                      <Bar dataKey="guests" name="Guests" fill="#2563eb" radius={[0, 4, 4, 0]} />
+   495→                      <Bar dataKey="checkIns" name="Check-Ins" fill="#16a34a" radius={[0, 4, 4, 0]} />
+   496→                      <Bar dataKey="matches" name="Suspect Matches" fill="#dc2626" radius={[0, 4, 4, 0]} />
+   497→                    </BarChart>
+   498→                  </ResponsiveContainer>
+   499→                </CardContent>
+   500→              </Card>
+   501→            )}
+   502→          </TabsContent>
+   503→        </Tabs>
+   504→      ) : null}
+   505→    </div>
+   506→  );
+   507→}
+   508→
