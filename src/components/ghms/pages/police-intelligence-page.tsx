@@ -37,18 +37,18 @@ const RISK_STYLES: Record<string, string> = {
 };
 
 const MONTH_OPTIONS = [
-  { value: "1", label: "January" },
-  { value: "2", label: "February" },
-  { value: "3", label: "March" },
-  { value: "4", label: "April" },
-  { value: "5", label: "May" },
-  { value: "6", label: "June" },
-  { value: "7", label: "July" },
-  { value: "8", label: "August" },
-  { value: "9", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
+  { value: "1" },
+  { value: "2" },
+  { value: "3" },
+  { value: "4" },
+  { value: "5" },
+  { value: "6" },
+  { value: "7" },
+  { value: "8" },
+  { value: "9" },
+  { value: "10" },
+  { value: "11" },
+  { value: "12" },
 ];
 
 function buildYearOptions() {
@@ -74,11 +74,11 @@ function getRiskScore(p: { matchCount: number; criticalCount: number; highCount:
   return p.matchCount * 1 + p.criticalCount * 5 + p.highCount * 3;
 }
 
-const SEVERITY_CONFIG: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  CRITICAL: { bg: "bg-red-100", text: "text-red-800", border: "border-red-200", label: "Critical" },
-  HIGH: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200", label: "High" },
-  MEDIUM: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200", label: "Medium" },
-  NONE: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", label: "No Alerts" },
+const SEVERITY_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
+  CRITICAL: { bg: "bg-red-100", text: "text-red-800", border: "border-red-200" },
+  HIGH: { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-200" },
+  MEDIUM: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
+  NONE: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
 };
 
 export default function PoliceIntelligencePage() {
@@ -229,10 +229,10 @@ export default function PoliceIntelligencePage() {
   })();
 
   const tabs = [
-    { key: "hotspots" as const, label: "Crime Hotspots", icon: MapPin },
-    { key: "charts" as const, label: "Analytics", icon: BarChart3 },
-    { key: "frequent" as const, label: "Frequent Stays", icon: AlertTriangle },
-    { key: "audit" as const, label: "Activity Log", icon: Activity },
+    { key: "hotspots" as const, icon: MapPin },
+    { key: "charts" as const, icon: BarChart3 },
+    { key: "frequent" as const, icon: AlertTriangle },
+    { key: "audit" as const, icon: Activity },
   ];
 
   return (
@@ -269,7 +269,7 @@ export default function PoliceIntelligencePage() {
             <div className="grid gap-2">
               <Label>{t('lblmonth', 'Month')}</Label>
               <Select value={reportMonth} onValueChange={setReportMonth}>
-                <SelectTrigger id="report-month"><SelectValue placeholder="Select month" /></SelectTrigger>
+                <SelectTrigger id="report-month"><SelectValue placeholder={t('selectMonth')} /></SelectTrigger>
                 <SelectContent>
                   {MONTH_OPTIONS.map((m) => (
                     <SelectItem key={m.value} value={m.value}>{getMonthLabel(m.value)}</SelectItem>
@@ -280,7 +280,7 @@ export default function PoliceIntelligencePage() {
             <div className="grid gap-2">
               <Label>{t('lblyear', 'Year')}</Label>
               <Select value={reportYear} onValueChange={setReportYear}>
-                <SelectTrigger id="report-year"><SelectValue placeholder="Select year" /></SelectTrigger>
+                <SelectTrigger id="report-year"><SelectValue placeholder={t('selectYear')} /></SelectTrigger>
                 <SelectContent>
                   {YEAR_OPTIONS.map((y) => (
                     <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
@@ -577,13 +577,13 @@ export default function PoliceIntelligencePage() {
                         <span className="w-16 text-xs text-muted-foreground shrink-0">{m.month}</span>
                         <div className="flex-1 flex items-center gap-2">
                           <div className="flex-1 flex items-center gap-1">
-                            <span className="text-[10px] text-sky-600 w-5">R:{m.reservations}</span>
+                            <span className="text-[10px] text-sky-600 w-5">{t('chartR')}:{m.reservations}</span>
                             <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                               <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${Math.min(100, (m.reservations / Math.max(...data.occupancyCrimeCorrelation.map(x => x.reservations), 1)) * 100)}%` }} />
                             </div>
                           </div>
                           <div className="flex-1 flex items-center gap-1">
-                            <span className="text-[10px] text-red-600 w-5">A:{m.suspectMatches}</span>
+                            <span className="text-[10px] text-red-600 w-5">{t('chartA')}:{m.suspectMatches}</span>
                             <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                               <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${Math.min(100, (m.suspectMatches / Math.max(...data.occupancyCrimeCorrelation.map(x => x.suspectMatches), 1)) * 100)}%` }} />
                             </div>
@@ -617,8 +617,8 @@ export default function PoliceIntelligencePage() {
                         </div>
                         {(h.criticalCount > 0 || h.highCount > 0) && (
                           <div className="flex gap-0.5 shrink-0">
-                            {h.criticalCount > 0 && <Badge className="bg-red-100 text-red-800 text-[8px] px-1 py-0">C:{h.criticalCount}</Badge>}
-                            {h.highCount > 0 && <Badge className="bg-orange-100 text-orange-800 text-[8px] px-1 py-0">H:{h.highCount}</Badge>}
+                            {h.criticalCount > 0 && <Badge className="bg-red-100 text-red-800 text-[8px] px-1 py-0">{t('chartC')}:{h.criticalCount}</Badge>}
+                            {h.highCount > 0 && <Badge className="bg-orange-100 text-orange-800 text-[8px] px-1 py-0">{t('chartH')}:{h.highCount}</Badge>}
                           </div>
                         )}
                       </div>
@@ -649,7 +649,7 @@ export default function PoliceIntelligencePage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium truncate">{f.guestName}</p>
-                            <Badge variant="outline" className={`text-[9px] ${RISK_STYLES[f.riskLevel] || ""}`}>{f.riskLevel}</Badge>
+                            <Badge variant="outline" className={`text-[9px] ${RISK_STYLES[f.riskLevel] || ""}`}>{t('risk_' + f.riskLevel)}</Badge>
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">{f.guestPhone || f.guestIdNumber}</p>
                           <div className="flex flex-wrap gap-2 mt-1 text-[10px] text-muted-foreground">
@@ -685,7 +685,7 @@ export default function PoliceIntelligencePage() {
                       <div key={a.id} className="flex items-center justify-between py-2.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-[9px]">{a.action}</Badge>
+                            <Badge variant="secondary" className="text-[9px]">{t('action_' + a.action)}</Badge>
                             <p className="text-xs">{a.officerName || t('system')}</p>
                           </div>
                           {a.targetId && <p className="text-[10px] text-muted-foreground mt-0.5">{a.targetType}: {a.targetId.slice(0, 12)}...</p>}

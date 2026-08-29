@@ -1,0 +1,829 @@
+     1→     1→"use client";
+     2→     2→import { useTranslation } from "react-i18next";
+     3→     3→
+     4→     4→import { useState, useEffect, useCallback } from "react";
+     5→     5→import { useAppStore } from "@/lib/store";
+     6→     6→import {
+     7→     7→  apiGetBroadcastProviders,
+     8→     8→  apiSendBroadcast,
+     9→     9→  apiGetBroadcastHistory,
+    10→    10→} from "@/lib/api";
+    11→    11→import { toast } from "sonner";
+    12→    12→import { Button } from "@/components/ui/button";
+    13→    13→import { Badge } from "@/components/ui/badge";
+    14→    14→import { Input } from "@/components/ui/input";
+    15→    15→import { Label } from "@/components/ui/label";
+    16→    16→import { Textarea } from "@/components/ui/textarea";
+    17→    17→import { Skeleton } from "@/components/ui/skeleton";
+    18→    18→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+    19→    19→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    20→    20→import {
+    21→    21→  Select,
+    22→    22→  SelectContent,
+    23→    23→  SelectItem,
+    24→    24→  SelectTrigger,
+    25→    25→  SelectValue,
+    26→    26→} from "@/components/ui/select";
+    27→    27→import {
+    28→    28→  Table,
+    29→    29→  TableBody,
+    30→    30→  TableCell,
+    31→    31→  TableHead,
+    32→    32→  TableHeader,
+    33→    33→  TableRow,
+    34→    34→} from "@/components/ui/table";
+    35→    35→import {
+    36→    36→  Megaphone,
+    37→    37→  Send,
+    38→    38→  CheckCircle2,
+    39→    39→  XCircle,
+    40→    40→  Clock,
+    41→    41→  Shield,
+    42→    42→  ShieldCheck,
+    43→    43→  Building2,
+    44→    44→  MessageSquare,
+    45→    45→  Smartphone,
+    46→    46→  Bell,
+    47→    47→  AlertTriangle,
+    48→    48→  Radio,
+    49→    49→  CheckCheck,
+    50→    50→  History,
+    51→    51→} from "lucide-react";
+    52→    52→import { Checkbox } from "@/components/ui/checkbox";
+    53→    53→import { ScrollArea } from "@/components/ui/scroll-area";
+    54→    54→
+    55→    55→// ─── Types ─────────────────────────────────────────────────────────────────
+    56→    56→
+    57→    57→interface BroadcastProvider {
+    58→    58→  id: string;
+    59→    59→  name: string;
+    60→    60→  ownerName: string;
+    61→    61→  phone: string;
+    62→    62→  email: string;
+    63→    63→  address: string;
+    64→    64→  type: string;
+    65→    65→  status: string;
+    66→    66→  telegramChatId: string;
+    67→    67→  hasPhone: boolean;
+    68→    68→  hasTelegram: boolean;
+    69→    69→  roomCount: number;
+    70→    70→  guestCount: number;
+    71→    71→  userCount: number;
+    72→    72→}
+    73→    73→
+    74→    74→interface BroadcastRecord {
+    75→    75→  id: string;
+    76→    76→  title: string;
+    77→    77→  message: string;
+    78→    78→  channel: string;
+    79→    79→  priority: string;
+    80→    80→  targetType: string;
+    81→    81→  targetIds: string;
+    82→    82→  sentBy: string;
+    83→    83→  sentByName: string;
+    84→    84→  totalSent: number;
+    85→    85→  totalFailed: number;
+    86→    86→  status: string;
+    87→    87→  createdAt: string;
+    88→    88→}
+    89→    89→
+    90→    90→// ─── Channel config ─────────────────────────────────────────────────────────
+    91→    91→
+    92→    92→const CHANNELS = [
+    93→    93→  { value: "IN_APP", label: "In-App Notification", icon: Bell, color: "text-blue-500" },
+    94→    94→  { value: "SMS", label: "SMS", icon: Smartphone, color: "text-green-500" },
+    95→    95→  { value: "WHATSAPP", label: "WhatsApp", icon: MessageSquare, color: "text-emerald-500" },
+    96→    96→  { value: "TELEGRAM", label: "Telegram", icon: Send, color: "text-sky-500" },
+    97→    97→];
+    98→    98→
+    99→    99→const PRIORITIES = [
+   100→   100→  { value: "LOW", label: "Low", color: "bg-slate-100 text-slate-600" },
+   101→   101→  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-600" },
+   102→   102→  { value: "HIGH", label: "High", color: "bg-amber-100 text-amber-600" },
+   103→   103→  { value: "URGENT", label: "Urgent", color: "bg-rose-100 text-rose-600" },
+   104→   104→];
+   105→   105→
+   106→   106→function getPriorityBadge(priority: string) {
+   107→   107→  const p = PRIORITIES.find((pr) => pr.value === priority);
+   108→   108→  return p ? p : PRIORITIES[1];
+   109→   109→}
+   110→   110→
+   111→   111→function getChannelIcon(channel: string) {
+   112→   112→  return CHANNELS.find((c) => c.value === channel) || CHANNELS[0];
+   113→   113→}
+   114→   114→
+   115→   115→// ─── Main Component ────────────────────────────────────────────────────────
+   116→   116→
+   117→   117→export default function NotificationDispatchPage() {
+   118→   118→  const { t } = useTranslation("notificationDispatch");
+   119→   119→  const currentUser = useAppStore((s) => s.currentUser);
+   120→   120→  const isPolice = currentUser?.role === "POLICE";
+   121→   121→  const isAdmin = currentUser?.role === "SUPERUSER";
+   122→   122→  const isViewer = isPolice && currentUser?.policeRank === "VIEWER";
+   123→   123→
+   124→   124→  return (
+   125→   125→    <div className="flex h-full flex-col gap-6 p-4 md:p-6">
+   126→   126→      {/* Page Header */}
+   127→   127→      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+   128→   128→        <div>
+   129→   129→          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+   130→   130→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-amber-500 shadow-sm">
+   131→   131→              <Megaphone className="size-5 text-white" />
+   132→   132→            </div>
+   133→   133→            {t('pageTitle')}
+   134→   134→          </h1>
+   135→   135→          <p className="text-sm text-slate-500 mt-1">
+   136→   136→            {isPolice
+   137→   137→              ? t('pageSubtitlePolice')
+   138→   138→              : t('pageSubtitleAdmin')}
+   139→   139→          </p>
+   140→   140→        </div>
+   141→   141→        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+   142→   142→          {isPolice && (
+   143→   143→            <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-xs font-semibold">
+   144→   144→              <Shield className="mr-1 size-3" />
+   145→   145→              {t('badgePolice')} {currentUser?.policeRank || ""}
+   146→   146→            </Badge>
+   147→   147→          )}
+   148→   148→          {isAdmin && (
+   149→   149→            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-semibold">
+   150→   150→              <ShieldCheck className="mr-1 size-3" />
+   151→   151→              {t('badgeSystemAdmin')}
+   152→   152→            </Badge>
+   153→   153→          )}
+   154→   154→        </div>
+   155→   155→      </div>
+   156→   156→
+   157→   157→      <Tabs defaultValue="compose" className="flex-1">
+   158→   158→        <TabsList className="grid w-full max-w-md grid-cols-2">
+   159→   159→          <TabsTrigger value="compose" className="flex items-center gap-2">
+   160→   160→            <Radio className="size-4" />
+   161→   161→            {t('tabCompose')}
+   162→   162→          </TabsTrigger>
+   163→   163→          <TabsTrigger value="history" className="flex items-center gap-2">
+   164→   164→            <History className="size-4" />
+   165→   165→            {t('tabHistory')}
+   166→   166→          </TabsTrigger>
+   167→   167→        </TabsList>
+   168→   168→
+   169→   169→        <TabsContent value="compose" className="mt-6">
+   170→   170→          <ComposeTab isViewer={isViewer} isPolice={isPolice} isAdmin={isAdmin} />
+   171→   171→        </TabsContent>
+   172→   172→
+   173→   173→        <TabsContent value="history" className="mt-6">
+   174→   174→          <HistoryTab />
+   175→   175→        </TabsContent>
+   176→   176→      </Tabs>
+   177→   177→    </div>
+   178→   178→  );
+   179→   179→}
+   180→   180→
+   181→   181→// ─── Compose Tab ────────────────────────────────────────────────────────────
+   182→   182→
+   183→   183→function ComposeTab({
+   184→   184→  isViewer,
+   185→   185→  isPolice,
+   186→   186→  isAdmin,
+   187→   187→}: {
+   188→   188→  isViewer: boolean;
+   189→   189→  isPolice: boolean;
+   190→   190→  isAdmin: boolean;
+   191→   191→}) {
+   192→   192→  const { t } = useTranslation("notificationDispatch");
+   193→   193→
+   194→   194→  const getChannelLabel = (val: string) => {
+   195→   195→    const map: Record<string, string> = {
+   196→   196→      IN_APP: t('channelsInApp'),
+   197→   197→      SMS: t('channelsSms'),
+   198→   198→      WHATSAPP: t('channelsWhatsapp'),
+   199→   199→      TELEGRAM: t('channelsTelegram'),
+   200→   200→    };
+   201→   201→    return map[val] || val;
+   202→   202→  };
+   203→   203→  const getPriorityLabel = (val: string) => {
+   204→   204→    const map: Record<string, string> = {
+   205→   205→      LOW: t('prioritiesLow'),
+   206→   206→      NORMAL: t('prioritiesNormal'),
+   207→   207→      HIGH: t('prioritiesHigh'),
+   208→   208→      URGENT: t('prioritiesUrgent'),
+   209→   209→    };
+   210→   210→    return map[val] || val;
+   211→   211→  };
+   212→   212→
+   213→   213→  const [title, setTitle] = useState("");
+   214→   214→  const [message, setMessage] = useState("");
+   215→   215→  const [channel, setChannel] = useState("IN_APP");
+   216→   216→  const [priority, setPriority] = useState("NORMAL");
+   217→   217→  const [targetType, setTargetType] = useState<"ALL_PROVIDERS" | "SELECTED_PROVIDERS">("ALL_PROVIDERS");
+   218→   218→  const [providers, setProviders] = useState<BroadcastProvider[]>([]);
+   219→   219→  const [selectedProviders, setSelectedProviders] = useState<Set<string>>(new Set());
+   220→   220→  const [loading, setLoading] = useState(false);
+   221→   221→  const [sending, setSending] = useState(false);
+   222→   222→  const [search, setSearch] = useState("");
+   223→   223→
+   224→   224→  const fetchProviders = useCallback(async () => {
+   225→   225→    setLoading(true);
+   226→   226→    try {
+   227→   227→      const data = await apiGetBroadcastProviders();
+   228→   228→      const arr = Array.isArray(data) ? data : [];
+   229→   229→      setProviders(arr);
+   230→   230→    } catch (err) {
+   231→   231→      console.error("Failed to load providers:", err);
+   232→   232→      toast.error(t('errorLoadProviders'));
+   233→   233→    } finally {
+   234→   234→      setLoading(false);
+   235→   235→    }
+   236→   236→  }, [t]);
+   237→   237→
+   238→   238→  useEffect(() => {
+   239→   239→    fetchProviders();
+   240→   240→  }, [fetchProviders]);
+   241→   241→
+   242→   242→  // Filter providers by search
+   243→   243→  const filteredProviders = providers.filter(
+   244→   244→    (p) =>
+   245→   245→      p.name.toLowerCase().includes(search.toLowerCase()) ||
+   246→   246→      p.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+   247→   247→      p.address.toLowerCase().includes(search.toLowerCase())
+   248→   248→  );
+   249→   249→
+   250→   250→  const toggleProvider = (id: string) => {
+   251→   251→    setSelectedProviders((prev) => {
+   252→   252→      const next = new Set(prev);
+   253→   253→      if (next.has(id)) next.delete(id);
+   254→   254→      else next.add(id);
+   255→   255→      return next;
+   256→   256→    });
+   257→   257→  };
+   258→   258→
+   259→   259→  const toggleAll = () => {
+   260→   260→    if (selectedProviders.size === filteredProviders.length) {
+   261→   261→      setSelectedProviders(new Set());
+   262→   262→    } else {
+   263→   263→      setSelectedProviders(new Set(filteredProviders.map((p) => p.id)));
+   264→   264→    }
+   265→   265→  };
+   266→   266→
+   267→   267→  const canSend =
+   268→   268→    !isViewer && title.trim() && message.trim() &&
+   269→   269→    (targetType === "ALL_PROVIDERS" || selectedProviders.size > 0);
+   270→   270→
+   271→   271→  const handleSend = async () => {
+   272→   272→    if (!canSend) return;
+   273→   273→    setSending(true);
+   274→   274→    try {
+   275→   275→      const result = await apiSendBroadcast({
+   276→   276→        title: title.trim(),
+   277→   277→        message: message.trim(),
+   278→   278→        channel,
+   279→   279→        priority,
+   280→   280→        targetType,
+   281→   281→        providerIds: targetType === "SELECTED_PROVIDERS" ? Array.from(selectedProviders) : [],
+   282→   282→      });
+   283→   283→      toast.success(
+   284→   284→        t('successSent', { sent: result.sent, failed: result.failed }),
+   285→   285→        { description: t('successSentDesc', { channel: getChannelLabel(channel), priority: getPriorityLabel(priority) }) }
+   286→   286→      );
+   287→   287→      // Reset form
+   288→   288→      setTitle("");
+   289→   289→      setMessage("");
+   290→   290→      setPriority("NORMAL");
+   291→   291→      setSelectedProviders(new Set());
+   292→   292→      setTargetType("ALL_PROVIDERS");
+   293→   293→    } catch (err) {
+   294→   294→      toast.error(err instanceof Error ? err.message : t('errorSendBroadcast'));
+   295→   295→    } finally {
+   296→   296→      setSending(false);
+   297→   297→    }
+   298→   298→  };
+   299→   299→
+   300→   300→  // Check if selected channel is available for selected providers
+   301→   301→  const getChannelAvailability = () => {
+   302→   302→    if (targetType === "ALL_PROVIDERS") {
+   303→   303→      const targetList = filteredProviders;
+   304→   304→      if (channel === "SMS" || channel === "WHATSAPP") {
+   305→   305→        const withPhone = targetList.filter((p) => p.hasPhone).length;
+   306→   306→        return { available: withPhone, total: targetList.length, label: t('availabilityPhone') };
+   307→   307→      }
+   308→   308→      if (channel === "TELEGRAM") {
+   309→   309→        const withTelegram = targetList.filter((p) => p.hasTelegram).length;
+   310→   310→        return { available: withTelegram, total: targetList.length, label: t('availabilityTelegram') };
+   311→   311→      }
+   312→   312→      return { available: targetList.length, total: targetList.length, label: "" };
+   313→   313→    }
+   314→   314→    const selected = providers.filter((p) => selectedProviders.has(p.id));
+   315→   315→    if (channel === "SMS" || channel === "WHATSAPP") {
+   316→   316→      const withPhone = selected.filter((p) => p.hasPhone).length;
+   317→   317→      return { available: withPhone, total: selected.length, label: t('availabilityPhone') };
+   318→   318→    }
+   319→   319→    if (channel === "TELEGRAM") {
+   320→   320→      const withTelegram = selected.filter((p) => p.hasTelegram).length;
+   321→   321→      return { available: withTelegram, total: selected.length, label: t('availabilityTelegram') };
+   322→   322→    }
+   323→   323→    return { available: selected.length, total: selected.length, label: "" };
+   324→   324→  };
+   325→   325→
+   326→   326→  const availability = getChannelAvailability();
+   327→   327→
+   328→   328→  return (
+   329→   329→    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   330→   330→      {/* Left column — Compose form */}
+   331→   331→      <div className="lg:col-span-2 space-y-6">
+   332→   332→        <Card>
+   333→   333→          <CardHeader>
+   334→   334→            <CardTitle className="flex items-center gap-2">
+   335→   335→              <Radio className="size-5 text-primary" />
+   336→   336→              {t('composeTitle')}
+   337→   337→            </CardTitle>
+   338→   338→            <CardDescription>
+   339→   339→              {t('composeDescription')}
+   340→   340→              {isViewer && (
+   341→   341→                <span className="block mt-1 text-amber-600 font-medium">
+   342→   342→                  {t('viewerWarning')}
+   343→   343→                </span>
+   344→   344→              )}
+   345→   345→            </CardDescription>
+   346→   346→          </CardHeader>
+   347→   347→          <CardContent className="space-y-5">
+   348→   348→            {/* Title */}
+   349→   349→            <div className="space-y-2">
+   350→   350→              <Label htmlFor="title" className="text-sm font-medium">
+   351→   351→                {t('lblTitle')} <span className="text-rose-500">*</span>
+   352→   352→              </Label>
+   353→   353→              <Input
+   354→   354→                id="title"
+   355→   355→                placeholder={t('placeholderTitle')}
+   356→   356→                value={title}
+   357→   357→                onChange={(e) => setTitle(e.target.value)}
+   358→   358→                disabled={isViewer}
+   359→   359→              />
+   360→   360→            </div>
+   361→   361→
+   362→   362→            {/* Message */}
+   363→   363→            <div className="space-y-2">
+   364→   364→              <Label htmlFor="message" className="text-sm font-medium">
+   365→   365→                {t('lblMessage')} <span className="text-rose-500">*</span>
+   366→   366→              </Label>
+   367→   367→              <Textarea
+   368→   368→                id="message"
+   369→   369→                placeholder={t('placeholderMessage')}
+   370→   370→                value={message}
+   371→   371→                onChange={(e) => setMessage(e.target.value)}
+   372→   372→                rows={6}
+   373→   373→                disabled={isViewer}
+   374→   374→                className="resize-y"
+   375→   375→              />
+   376→   376→              <p className="text-xs text-slate-400">{message.length} {t('characters')}</p>
+   377→   377→            </div>
+   378→   378→
+   379→   379→            {/* Channel & Priority row */}
+   380→   380→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   381→   381→              <div className="space-y-2">
+   382→   382→                <Label>{t('lbldeliveryChannel', 'Delivery Channel')}</Label>
+   383→   383→                <Select value={channel} onValueChange={setChannel} disabled={isViewer}>
+   384→   384→                  <SelectTrigger>
+   385→   385→                    <SelectValue />
+   386→   386→                  </SelectTrigger>
+   387→   387→                  <SelectContent>
+   388→   388→                    {CHANNELS.map((ch) => {
+   389→   389→                      const Icon = ch.icon;
+   390→   390→                      return (
+   391→   391→                        <SelectItem key={ch.value} value={ch.value}>
+   392→   392→                          <span className="flex items-center gap-2">
+   393→   393→                            <Icon className={`size-4 ${ch.color}`} />
+   394→   394→                            {getChannelLabel(ch.value)}
+   395→   395→                          </span>
+   396→   396→                        </SelectItem>
+   397→   397→                      );
+   398→   398→                    })}
+   399→   399→                  </SelectContent>
+   400→   400→                </Select>
+   401→   401→                {/* Channel availability warning */}
+   402→   402→                {channel !== "IN_APP" && availability.label && (
+   403→   403→                  <div className={`text-xs mt-1.5 flex items-center gap-1.5 ${
+   404→   404→                    availability.available === 0
+   405→   405→                      ? "text-rose-600"
+   406→   406→                      : availability.available < availability.total
+   407→   407→                      ? "text-amber-600"
+   408→   408→                      : "text-emerald-600"
+   409→   409→                  }`}>
+   410→   410→                    {availability.available === 0 ? (
+   411→   411→                      <XCircle className="size-3" />
+   412→   412→                    ) : availability.available < availability.total ? (
+   413→   413→                      <AlertTriangle className="size-3" />
+   414→   414→                    ) : (
+   415→   415→                      <CheckCircle2 className="size-3" />
+   416→   416→                    )}
+   417→   417→                    {t('availabilityWarning', { available: availability.available, total: availability.total, label: availability.label })}
+   418→   418→                  </div>
+   419→   419→                )}
+   420→   420→              </div>
+   421→   421→              <div className="space-y-2">
+   422→   422→                <Label>{t('lblpriorityLevel', 'Priority Level')}</Label>
+   423→   423→                <Select value={priority} onValueChange={setPriority} disabled={isViewer}>
+   424→   424→                  <SelectTrigger>
+   425→   425→                    <SelectValue />
+   426→   426→                  </SelectTrigger>
+   427→   427→                  <SelectContent>
+   428→   428→                    {PRIORITIES.map((pr) => (
+   429→   429→                      <SelectItem key={pr.value} value={pr.value}>
+   430→   430→                        <span className="flex items-center gap-2">
+   431→   431→                          <span className={`inline-block h-2 w-2 rounded-full ${
+   432→   432→                            pr.value === "URGENT"
+   433→   433→                              ? "bg-rose-500"
+   434→   434→                              : pr.value === "HIGH"
+   435→   435→                              ? "bg-amber-500"
+   436→   436→                              : pr.value === "NORMAL"
+   437→   437→                              ? "bg-blue-500"
+   438→   438→                              : "bg-slate-400"
+   439→   439→                          }`} />
+   440→   440→                          {getPriorityLabel(pr.value)}
+   441→   441→                        </span>
+   442→   442→                      </SelectItem>
+   443→   443→                    ))}
+   444→   444→                  </SelectContent>
+   445→   445→                </Select>
+   446→   446→              </div>
+   447→   447→            </div>
+   448→   448→
+   449→   449→            {/* Target Type */}
+   450→   450→            <div className="space-y-2">
+   451→   451→              <Label>{t('lbltargetAudience', 'Target Audience')}</Label>
+   452→   452→              <div className="flex items-center gap-4">
+   453→   453→                <label className="flex items-center gap-2 cursor-pointer text-sm">
+   454→   454→                  <input
+   455→   455→                    type="radio"
+   456→   456→                    name="targetType"
+   457→   457→                    value="ALL_PROVIDERS"
+   458→   458→                    checked={targetType === "ALL_PROVIDERS"}
+   459→   459→                    onChange={() => setTargetType("ALL_PROVIDERS")}
+   460→   460→                    disabled={isViewer}
+   461→   461→                    className="accent-primary"
+   462→   462→                  />
+   463→   463→                  {t('allApprovedProviders')}
+   464→   464→                </label>
+   465→   465→                <label className="flex items-center gap-2 cursor-pointer text-sm">
+   466→   466→                  <input
+   467→   467→                    type="radio"
+   468→   468→                    name="targetType"
+   469→   469→                    value="SELECTED_PROVIDERS"
+   470→   470→                    checked={targetType === "SELECTED_PROVIDERS"}
+   471→   471→                    onChange={() => setTargetType("SELECTED_PROVIDERS")}
+   472→   472→                    disabled={isViewer}
+   473→   473→                    className="accent-primary"
+   474→   474→                  />
+   475→   475→                  {t('selectedProvidersOnly')}
+   476→   476→                </label>
+   477→   477→              </div>
+   478→   478→            </div>
+   479→   479→
+   480→   480→            {/* Send button */}
+   481→   481→            <div className="flex items-center gap-3 pt-2">
+   482→   482→              <Button
+   483→   483→                onClick={handleSend}
+   484→   484→                disabled={!canSend || sending}
+   485→   485→                className="bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white shadow-md"
+   486→   486→              >
+   487→   487→                {sending ? (
+   488→   488→                  <>
+   489→   489→                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+   490→   490→                    {t('dispatching')}
+   491→   491→                  </>
+   492→   492→                ) : (
+   493→   493→                  <>
+   494→   494→                    <Send className="mr-2 size-4" />
+   495→   495→                    {t('dispatchTo')}{" "}
+   496→   496→                    {targetType === "ALL_PROVIDERS"
+   497→   497→                      ? t('allCount', { count: providers.length })
+   498→   498→                      : t('selectedCount', { count: selectedProviders.size })}{" "}
+   499→   499→                    {t('providers')}
+   500→   500→                  </>
+   501→   501→                )}
+   502→   502→              </Button>
+   503→   503→              {priority === "URGENT" && (
+   504→   504→                <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 animate-pulse">
+   505→   505→                  <AlertTriangle className="mr-1 size-3" />
+   506→   506→                  {t('urgentBadge')}
+   507→   507→                </Badge>
+   508→   508→              )}
+   509→   509→            </div>
+   510→   510→          </CardContent>
+   511→   511→        </Card>
+   512→   512→      </div>
+   513→   513→
+   514→   514→      {/* Right column — Provider selection */}
+   515→   515→      <div className="space-y-4">
+   516→   516→        <Card>
+   517→   517→          <CardHeader className="pb-3">
+   518→   518→            <CardTitle className="text-base flex items-center justify-between">
+   519→   519→              <span className="flex items-center gap-2">
+   520→   520→                <Building2 className="size-4 text-primary" />
+   521→   521→                {t('providers')}
+   522→   522→              </span>
+   523→   523→              <Badge variant="secondary" className="text-xs">
+   524→   524→                {targetType === "ALL_PROVIDERS"
+   525→   525→                  ? providers.length
+   526→   526→                  : selectedProviders.size} / {providers.length}
+   527→   527→              </Badge>
+   528→   528→            </CardTitle>
+   529→   529→            {targetType === "SELECTED_PROVIDERS" && (
+   530→   530→              <>
+   531→   531→                <Input
+   532→   532→                  placeholder={t('searchProviders')}
+   533→   533→                  value={search}
+   534→   534→                  onChange={(e) => setSearch(e.target.value)}
+   535→   535→                  className="mt-2"
+   536→   536→                />
+   537→   537→                <div className="flex items-center justify-between mt-2">
+   538→   538→                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-500">
+   539→   539→                    <Checkbox
+   540→   540→                      checked={
+   541→   541→                        filteredProviders.length > 0 &&
+   542→   542→                        selectedProviders.size === filteredProviders.length
+   543→   543→                      }
+   544→   544→                      onCheckedChange={toggleAll}
+   545→   545→                      disabled={isViewer}
+   546→   546→                    />
+   547→   547→                    {t('selectAll')}
+   548→   548→                  </label>
+   549→   549→                </div>
+   550→   550→              </>
+   551→   551→            )}
+   552→   552→          </CardHeader>
+   553→   553→          <CardContent className="p-0">
+   554→   554→            {loading ? (
+   555→   555→              <div className="space-y-3 p-4">
+   556→   556→                {Array.from({ length: 5 }).map((_, i) => (
+   557→   557→                  <div key={i} className="flex items-center gap-3">
+   558→   558→                    <Skeleton className="h-4 w-4 rounded" />
+   559→   559→                    <div className="flex-1 space-y-1.5">
+   560→   560→                      <Skeleton className="h-3.5 w-3/4" />
+   561→   561→                      <Skeleton className="h-3 w-1/2" />
+   562→   562→                    </div>
+   563→   563→                  </div>
+   564→   564→                ))}
+   565→   565→              </div>
+   566→   566→            ) : providers.length === 0 ? (
+   567→   567→              <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
+   568→   568→                <Building2 className="size-8" />
+   569→   569→                <p className="text-sm">{t('emptyProviders')}</p>
+   570→   570→              </div>
+   571→   571→            ) : (
+   572→   572→              <ScrollArea className="h-[420px]">
+   573→   573→                <div className="px-4 pb-4 space-y-1">
+   574→   574→                  {(targetType === "ALL_PROVIDERS" ? providers : filteredProviders).map(
+   575→   575→                    (provider) => {
+   576→   576→                      const isSelected =
+   577→   577→                        targetType === "ALL_PROVIDERS" ||
+   578→   578→                        selectedProviders.has(provider.id);
+   579→   579→                      return (
+   580→   580→                        <div
+   581→   581→                          key={provider.id}
+   582→   582→                          className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+   583→   583→                            isSelected
+   584→   584→                              ? "border-primary/30 bg-primary/5"
+   585→   585→                              : "border-transparent hover:bg-slate-50"
+   586→   586→                          }`}
+   587→   587→                        >
+   588→   588→                          {targetType === "SELECTED_PROVIDERS" && (
+   589→   589→                            <Checkbox
+   590→   590→                              checked={isSelected}
+   591→   591→                              onCheckedChange={() => toggleProvider(provider.id)}
+   592→   592→                              disabled={isViewer}
+   593→   593→                              className="mt-0.5"
+   594→   594→                            />
+   595→   595→                          )}
+   596→   596→                          <div className="flex-1 min-w-0">
+   597→   597→                            <p className="text-sm font-medium text-slate-900 truncate">
+   598→   598→                              {provider.name}
+   599→   599→                            </p>
+   600→   600→                            <p className="text-xs text-slate-500 truncate">
+   601→   601→                              {provider.ownerName} · {provider.address}
+   602→   602→                            </p>
+   603→   603→                            <div className="flex items-center gap-2 mt-1.5">
+   604→   604→                              <Badge
+   605→   605→                                variant="outline"
+   606→   606→                                className="text-[10px] px-1.5 py-0"
+   607→   607→                              >
+   608→   608→                                {provider.type}
+   609→   609→                              </Badge>
+   610→   610→                              <span className="text-[10px] text-slate-400">
+   611→   611→                                {provider.roomCount} {t('rooms')} · {provider.guestCount} {t('guests')}
+   612→   612→                              </span>
+   613→   613→                            </div>
+   614→   614→                            <div className="flex items-center gap-3 mt-1.5">
+   615→   615→                              {provider.hasPhone && (
+   616→   616→                                <span className="flex items-center gap-1 text-[10px] text-emerald-600">
+   617→   617→                                  <Smartphone className="size-3" />
+   618→   618→                                  {t('smsWhatsapp')}
+   619→   619→                                </span>
+   620→   620→                              )}
+   621→   621→                              {provider.hasTelegram && (
+   622→   622→                                <span className="flex items-center gap-1 text-[10px] text-sky-600">
+   623→   623→                                  <Send className="size-3" />
+   624→   624→                                  Telegram
+   625→   625→                                </span>
+   626→   626→                              )}
+   627→   627→                              <span className="flex items-center gap-1 text-[10px] text-blue-600">
+   628→   628→                                <Bell className="size-3" />
+   629→   629→                                {t('inAppUsers', { count: provider.userCount })}
+   630→   630→                              </span>
+   631→   631→                            </div>
+   632→   632→                          </div>
+   633→   633→                        </div>
+   634→   634→                      );
+   635→   635→                    }
+   636→   636→                  )}
+   637→   637→                </div>
+   638→   638→              </ScrollArea>
+   639→   639→            )}
+   640→   640→          </CardContent>
+   641→   641→        </Card>
+   642→   642→      </div>
+   643→   643→    </div>
+   644→   644→  );
+   645→   645→}
+   646→   646→
+   647→   647→// ─── History Tab ────────────────────────────────────────────────────────────
+   648→   648→
+   649→   649→function HistoryTab() {
+   650→   650→  const { t } = useTranslation("notificationDispatch");
+   651→   651→
+   652→   652→  const getChannelLabel = (val: string) => {
+   653→   653→    const map: Record<string, string> = {
+   654→   654→      IN_APP: t('channelsInApp'),
+   655→   655→      SMS: t('channelsSms'),
+   656→   656→      WHATSAPP: t('channelsWhatsapp'),
+   657→   657→      TELEGRAM: t('channelsTelegram'),
+   658→   658→    };
+   659→   659→    return map[val] || val;
+   660→   660→  };
+   661→   661→  const getPriorityLabel = (val: string) => {
+   662→   662→    const map: Record<string, string> = {
+   663→   663→      LOW: t('prioritiesLow'),
+   664→   664→      NORMAL: t('prioritiesNormal'),
+   665→   665→      HIGH: t('prioritiesHigh'),
+   666→   666→      URGENT: t('prioritiesUrgent'),
+   667→   667→    };
+   668→   668→    return map[val] || val;
+   669→   669→  };
+   670→   670→
+   671→   671→  const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>([]);
+   672→   672→  const [loading, setLoading] = useState(true);
+   673→   673→  const [page, setPage] = useState(1);
+   674→   674→  const [totalPages, setTotalPages] = useState(1);
+   675→   675→
+   676→   676→  const fetchHistory = useCallback(async (p: number) => {
+   677→   677→    setLoading(true);
+   678→   678→    try {
+   679→   679→      const res = await apiGetBroadcastHistory(`page=${p}&limit=20`);
+   680→   680→      const data = Array.isArray(res?.data) ? res.data : [];
+   681→   681→      setBroadcasts(data);
+   682→   682→      setTotalPages(res?.totalPages || 1);
+   683→   683→    } catch (err) {
+   684→   684→      console.error("Failed to load broadcast history:", err);
+   685→   685→      toast.error(t('errorLoadHistory'));
+   686→   686→    } finally {
+   687→   687→      setLoading(false);
+   688→   688→    }
+   689→   689→  }, [t]);
+   690→   690→
+   691→   691→  useEffect(() => {
+   692→   692→    fetchHistory(page);
+   693→   693→  }, [page, fetchHistory]);
+   694→   694→
+   695→   695→  return (
+   696→   696→    <Card>
+   697→   697→      <CardHeader>
+   698→   698→        <CardTitle className="flex items-center gap-2">
+   699→   699→          <History className="size-5 text-primary" />
+   700→   700→          {t('historyTitle')}
+   701→   701→        </CardTitle>
+   702→   702→        <CardDescription>
+   703→   703→          {t('historyDescription')}
+   704→   704→        </CardDescription>
+   705→   705→      </CardHeader>
+   706→   706→      <CardContent>
+   707→   707→        {loading ? (
+   708→   708→          <div className="space-y-4">
+   709→   709→            {Array.from({ length: 5 }).map((_, i) => (
+   710→   710→              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+   711→   711→            ))}
+   712→   712→          </div>
+   713→   713→        ) : broadcasts.length === 0 ? (
+   714→   714→          <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+   715→   715→            <History className="size-12" />
+   716→   716→            <div className="text-center">
+   717→   717→              <p className="text-sm font-medium">{t('emptyHistory')}</p>
+   718→   718→              <p className="text-xs mt-1">{t('emptyHistorySub')}</p>
+   719→   719→            </div>
+   720→   720→          </div>
+   721→   721→        ) : (
+   722→   722→          <>
+   723→   723→            <div className="rounded-lg border overflow-hidden">
+   724→   724→              <Table>
+   725→   725→                <TableHeader>
+   726→   726→                  <TableRow>
+   727→   727→                    <TableHead>{t('thdate', 'Date')}</TableHead>
+   728→   728→                    <TableHead>{t('thtitle', 'Title')}</TableHead>
+   729→   729→                    <TableHead>{t('thchannel', 'Channel')}</TableHead>
+   730→   730→                    <TableHead>{t('thpriority', 'Priority')}</TableHead>
+   731→   731→                    <TableHead>{t('thtarget', 'Target')}</TableHead>
+   732→   732→                    <TableHead>{t('thdelivery', 'Delivery')}</TableHead>
+   733→   733→                  </TableRow>
+   734→   734→                </TableHeader>
+   735→   735→                <TableBody>
+   736→   736→                  {broadcasts.map((b) => {
+   737→   737→                    const ch = getChannelIcon(b.channel);
+   738→   738→                    const ChIcon = ch.icon;
+   739→   739→                    const pr = getPriorityBadge(b.priority);
+   740→   740→                    return (
+   741→   741→                      <TableRow key={b.id}>
+   742→   742→                        <TableCell className="text-xs text-slate-500">
+   743→   743→                          <div className="flex items-center gap-1.5">
+   744→   744→                            <Clock className="size-3" />
+   745→   745→                            {new Date(b.createdAt).toLocaleString()}
+   746→   746→                          </div>
+   747→   747→                          <div className="text-[10px] text-slate-400 mt-0.5">
+   748→   748→                            {t('sentBy', { name: b.sentByName || b.sentBy })}
+   749→   749→                          </div>
+   750→   750→                        </TableCell>
+   751→   751→                        <TableCell>
+   752→   752→                          <p className="text-sm font-medium text-slate-900 line-clamp-1">
+   753→   753→                            {b.title}
+   754→   754→                          </p>
+   755→   755→                          <p className="text-xs text-slate-400 line-clamp-1 max-w-[250px]">
+   756→   756→                            {b.message}
+   757→   757→                          </p>
+   758→   758→                        </TableCell>
+   759→   759→                        <TableCell>
+   760→   760→                          <span className={`flex items-center gap-1.5 text-xs ${ch.color}`}>
+   761→   761→                            <ChIcon className="size-3.5" />
+   762→   762→                            {getChannelLabel(b.channel)}
+   763→   763→                          </span>
+   764→   764→                        </TableCell>
+   765→   765→                        <TableCell>
+   766→   766→                          <Badge
+   767→   767→                            variant="outline"
+   768→   768→                            className={`text-[10px] px-1.5 py-0 ${pr.color}`}
+   769→   769→                          >
+   770→   770→                            {getPriorityLabel(b.priority)}
+   771→   771→                          </Badge>
+   772→   772→                        </TableCell>
+   773→   773→                        <TableCell className="text-xs">
+   774→   774→                          {b.targetType === "ALL_PROVIDERS"
+   775→   775→                            ? t('targetAll')
+   776→   776→                            : t('targetSelected', { count: JSON.parse(b.targetIds || "[]").length })}
+   777→   777→                        </TableCell>
+   778→   778→                        <TableCell className="text-right">
+   779→   779→                          <div className="flex items-center justify-end gap-3">
+   780→   780→                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+   781→   781→                              <CheckCheck className="size-3" />
+   782→   782→                              {b.totalSent}
+   783→   783→                            </span>
+   784→   784→                            {b.totalFailed > 0 && (
+   785→   785→                              <span className="flex items-center gap-1 text-xs text-rose-500">
+   786→   786→                                <XCircle className="size-3" />
+   787→   787→                                {b.totalFailed}
+   788→   788→                              </span>
+   789→   789→                            )}
+   790→   790→                          </div>
+   791→   791→                        </TableCell>
+   792→   792→                      </TableRow>
+   793→   793→                    );
+   794→   794→                  })}
+   795→   795→                </TableBody>
+   796→   796→              </Table>
+   797→   797→            </div>
+   798→   798→
+   799→   799→            {/* Pagination */}
+   800→   800→            {totalPages > 1 && (
+   801→   801→              <div className="flex items-center justify-center gap-2 mt-4">
+   802→   802→                <Button
+   803→   803→                  variant="outline"
+   804→   804→                  size="sm"
+   805→   805→                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+   806→   806→                  disabled={page <= 1}
+   807→   807→                >
+   808→   808→                  {t('previous')}
+   809→   809→                </Button>
+   810→   810→                <span className="text-sm text-slate-500">
+   811→   811→                  {t('pageOf', { page, total: totalPages })}
+   812→   812→                </span>
+   813→   813→                <Button
+   814→   814→                  variant="outline"
+   815→   815→                  size="sm"
+   816→   816→                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+   817→   817→                  disabled={page >= totalPages}
+   818→   818→                >
+   819→   819→                  {t('next')}
+   820→   820→                </Button>
+   821→   821→              </div>
+   822→   822→            )}
+   823→   823→          </>
+   824→   824→        )}
+   825→   825→      </CardContent>
+   826→   826→    </Card>
+   827→   827→  );
+   828→   828→}
+   829→   829→

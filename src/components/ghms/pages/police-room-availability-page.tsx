@@ -429,7 +429,7 @@ export default function PoliceRoomAvailabilityPage() {
               }`}>
                 {highAlertCount > 0
                   ? `${highAlertCount} ${t('highAlert')}` + (highAlertCount !== suspiciousCount ? `, ${suspiciousCount - highAlertCount} ${t('warning')}` : "")
-                  : `${suspiciousCount} ${t('warning')}${suspiciousCount > 1 ? "s" : ""}`}
+                  : `${suspiciousCount} ${t('warning')}${suspiciousCount > 1 ? t('plural') : ''}`}
                 {" "}— {t('suspiciousActivityDetected')}
               </p>
               <p className={`mt-0.5 text-xs ${
@@ -452,10 +452,10 @@ export default function PoliceRoomAvailabilityPage() {
           <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-100">
             {s.totalRooms > 0 && (
               <>
-                <div className="bg-emerald-500 transition-all" style={{ width: `${(s.availableRooms / s.totalRooms) * 100}%` }} title={`Available: ${s.availableRooms}`} />
-                <div className="bg-blue-500 transition-all" style={{ width: `${(s.occupiedRooms / s.totalRooms) * 100}%` }} title={`Occupied: ${s.occupiedRooms}`} />
-                <div className="bg-amber-500 transition-all" style={{ width: `${(s.reservedRooms / s.totalRooms) * 100}%` }} title={`Reserved: ${s.reservedRooms}`} />
-                <div className="bg-slate-300 transition-all" style={{ width: `${(s.maintenanceRooms / s.totalRooms) * 100}%` }} title={`Maintenance: ${s.maintenanceRooms}`} />
+                <div className="bg-emerald-500 transition-all" style={{ width: `${(s.availableRooms / s.totalRooms) * 100}%` }} title={`${t('available')}: ${s.availableRooms}`} />
+                <div className="bg-blue-500 transition-all" style={{ width: `${(s.occupiedRooms / s.totalRooms) * 100}%` }} title={`${t('occupied')}: ${s.occupiedRooms}`} />
+                <div className="bg-amber-500 transition-all" style={{ width: `${(s.reservedRooms / s.totalRooms) * 100}%` }} title={`${t('reserved')}: ${s.reservedRooms}`} />
+                <div className="bg-slate-300 transition-all" style={{ width: `${(s.maintenanceRooms / s.totalRooms) * 100}%` }} title={`${t('maintenance')}: ${s.maintenanceRooms}`} />
               </>
             )}
           </div>
@@ -502,7 +502,7 @@ export default function PoliceRoomAvailabilityPage() {
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               {t('providerRoomBreakdown')}
-              <Badge variant="outline" className="ml-1 text-[10px]">{filteredProviders.length} providers</Badge>
+              <Badge variant="outline" className="ml-1 text-[10px]">{t('providersCount', { count: filteredProviders.length })}</Badge>
             </CardTitle>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-2">
@@ -740,12 +740,12 @@ export default function PoliceRoomAvailabilityPage() {
                       <p className="text-[10px] text-slate-500">{t('detailAddress')}</p>
                       <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5 text-rose-500" />
-                        {detailProvider.address || "N/A"}
+                        {detailProvider.address || t('na')}
                       </p>
                     </div>
                     <div className="rounded-lg border p-3">
                       <p className="text-[10px] text-slate-500">{t('detailLicenseNo')}</p>
-                      <p className="text-sm font-semibold text-slate-900">{detailProvider.licenseNo || "N/A"}</p>
+                      <p className="text-sm font-semibold text-slate-900">{detailProvider.licenseNo || t('na')}</p>
                     </div>
                   </div>
                 </div>
@@ -817,10 +817,10 @@ export default function PoliceRoomAvailabilityPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-[11px] text-slate-400">
-                            {formatRoomType(room.type)} | F{room.floor} | {room.capacity} beds | {room.pricePerNight.toLocaleString()} ETB
+                            {formatRoomType(room.type)} | {t('floorAbbr')}{room.floor} | {room.capacity} {t('beds')} | {room.pricePerNight.toLocaleString()} ETB
                           </span>
                           <Badge variant="outline" className={`text-[10px] ${getRoomStatusColor(room.status)}`}>
-                            {room.status}
+                            {t('status_' + room.status)}
                           </Badge>
                         </div>
                       </div>

@@ -159,9 +159,9 @@ export default function PoliceSecurityPage() {
   };
 
   const tabs = [
-    { key: "audit" as const, label: "Audit Trail", icon: Activity },
-    { key: "geofence" as const, label: "Geofencing", icon: MapPin },
-    { key: "officers" as const, label: "Officers", icon: UserCog },
+    { key: "audit" as const, icon: Activity },
+    { key: "geofence" as const, icon: MapPin },
+    { key: "officers" as const, icon: UserCog },
   ];
 
   return (
@@ -279,7 +279,7 @@ export default function PoliceSecurityPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="text-[9px] bg-red-100 text-red-800 border-red-200">{g.severity}</Badge>
+                        <Badge variant="outline" className="text-[9px] bg-red-100 text-red-800 border-red-200">{t('severity_' + g.severity)}</Badge>
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600" onClick={() => deleteGeofence(g.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>

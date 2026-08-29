@@ -471,7 +471,7 @@ export default function OwnerAccountsPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Created: {new Date(police.createdAt).toLocaleDateString()}
+            {t('createdLabel')}: {new Date(police.createdAt).toLocaleDateString()}
           </p>
 
           <div className="flex gap-2">
@@ -653,7 +653,7 @@ export default function OwnerAccountsPage() {
                         <p className="font-semibold text-sm">{provider.name}</p>
                         {STATUS_ICON[provider.status]}
                         <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
-                          {provider.status}
+                          {t('status_' + provider.status)}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -700,7 +700,7 @@ export default function OwnerAccountsPage() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      <code className="font-mono">{police.username}</code> · Created {new Date(police.createdAt).toLocaleDateString()}
+                      <code className="font-mono">{police.username}</code> · {t('createdLabel')} {new Date(police.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -768,7 +768,7 @@ export default function OwnerAccountsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
-                          {provider.status}
+                          {t('status_' + provider.status)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -809,7 +809,7 @@ export default function OwnerAccountsPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
-                      {provider.status}
+                      {t('status_' + provider.status)}
                     </Badge>
                   </div>
 

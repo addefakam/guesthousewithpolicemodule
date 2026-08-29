@@ -2105,7 +2105,15 @@
     "statusInactive": "Inactive",
     "statusUpcoming": "Upcoming",
     "statusCompleted": "Completed",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "providerLabel": "Provider",
+    "typeLabel": "Type",
+    "idLabel": "ID",
+    "more": "more",
+    "severity_LOW": "Low",
+    "severity_MEDIUM": "Medium",
+    "severity_HIGH": "High",
+    "severity_CRITICAL": "Critical"
   },
   "notificationDispatch": {
     "pageTitle": "Notification Dispatch",
@@ -2242,7 +2250,24 @@
     "room": "Room",
     "providerLabel": "Provider",
     "totalCost": "Total Cost",
-    "type": "Type"
+    "type": "Type",
+    "severity_LOW": "Low",
+    "severity_MEDIUM": "Medium",
+    "severity_HIGH": "High",
+    "severity_CRITICAL": "Critical",
+    "status_ACTIVE": "Active",
+    "status_UPCOMING": "Upcoming",
+    "status_COMPLETED": "Completed",
+    "status_CANCELLED": "Cancelled",
+    "risk_LOW": "Low",
+    "risk_MEDIUM": "Medium",
+    "risk_HIGH": "High",
+    "linkType_PHONE": "Phone",
+    "linkType_ID_NUMBER": "ID Number",
+    "linkType_EMAIL": "Email",
+    "linkType_NAME": "Name",
+    "linkType_ADDRESS": "Address",
+    "linkType_NATIONALITY": "Nationality"
   },
   "security": {
     "pageTitle": "Security & Configuration",
@@ -2310,7 +2335,11 @@
     "actionLabelsViewedMatch": "Viewed Match",
     "actionLabelsExportedData": "Exported Data",
     "actionLabelsOfficerLogin": "Officer Login",
-    "actionLabelsScannedWatchlist": "Scanned Watchlist"
+    "actionLabelsScannedWatchlist": "Scanned Watchlist",
+    "severity_LOW": "Low",
+    "severity_MEDIUM": "Medium",
+    "severity_HIGH": "High",
+    "severity_CRITICAL": "Critical"
   },
   "anomalies": {
     "pageTitle": "Anomaly Detection",
@@ -2367,7 +2396,11 @@
     "typeDescsCashAnomaly": "Unusually large cash payment detected",
     "typeDescsCrossProviderId": "Same ID number with different names at multiple providers",
     "typeDescsShortStayPattern": "Repeated 1-night stays at multiple providers",
-    "typeDescsFakeIdPattern": "Same ID number shared by multiple guests"
+    "typeDescsFakeIdPattern": "Same ID number shared by multiple guests",
+    "severity_LOW": "Low",
+    "severity_MEDIUM": "Medium",
+    "severity_HIGH": "High",
+    "severity_CRITICAL": "Critical"
   },
   "ownerAccounts": {
     "pageTitlePolice": "Manage Officers",
@@ -2449,7 +2482,13 @@
     "rankAdminDesc": "Full management rights. Can create/edit/delete all police accounts below ADMIN.",
     "rankDetectiveDesc": "Can create Officer & Viewer accounts. Can edit/delete officers below Detective rank.",
     "rankOfficerDesc": "Can create Viewer accounts. Can edit/delete viewers.",
-    "rankViewerDesc": "Basic read-only access. Cannot create or manage other police."
+    "rankViewerDesc": "Basic read-only access. Cannot create or manage other police.",
+    "createdLabel": "Created",
+    "status_APPROVED": "Approved",
+    "status_PENDING": "Pending",
+    "status_REJECTED": "Rejected",
+    "status_SUSPENDED": "Suspended",
+    "status_ACTIVE": "Active"
   },
   "policeReports": {
     "pageTitle": "Police Reports",
@@ -2502,7 +2541,20 @@
     "legendSuspectMatches": "Suspect Matches",
     "csvHeaders": "Provider,Registered Guests,Check-Ins,Check-Outs,Suspect Matches,Rooms",
     "csvNationalityHeader": "Nationality,Count",
-    "csvSeverityHeader": "Severity,Count"
+    "csvSeverityHeader": "Severity,Count",
+    "csvProvider": "Provider",
+    "csvRegisteredGuests": "Registered Guests",
+    "csvCheckIns": "Check-Ins",
+    "csvCheckOuts": "Check-Outs",
+    "csvSuspectMatches": "Suspect Matches",
+    "csvRooms": "Rooms",
+    "csvNationality": "Nationality",
+    "csvCount": "Count",
+    "csvSeverity": "Severity",
+    "occupancyPercent": "Occupancy %",
+    "risk_HIGH": "High",
+    "risk_MEDIUM": "Medium",
+    "risk_LOW": "Low"
   },
   "policeIntelligence": {
     "pageTitle": "Intelligence Center",
@@ -2579,7 +2631,35 @@
     "month9": "September",
     "month10": "October",
     "month11": "November",
-    "month12": "December"
+    "month12": "December",
+    "selectMonth": "Select month",
+    "selectYear": "Select year",
+    "chartR": "R",
+    "chartA": "A",
+    "chartC": "C",
+    "chartH": "H",
+    "risk_HIGH": "High",
+    "risk_MEDIUM": "Medium",
+    "risk_LOW": "Low",
+    "action_VIEWED": "Viewed",
+    "action_DOWNLOADED": "Downloaded",
+    "action_EXPORTED": "Exported",
+    "action_CREATED": "Created",
+    "action_UPDATED": "Updated",
+    "action_DELETED": "Deleted",
+    "action_LOGIN": "Login",
+    "action_LOGOUT": "Logout",
+    "action_VIEW_GUEST": "View Guest",
+    "action_CHECK_IN": "Check In",
+    "action_CHECK_OUT": "Check Out",
+    "action_DOWNLOAD_REPORT": "Download Report",
+    "action_DISPATCH_NOTIFICATION": "Dispatch Notification",
+    "action_MARK_ALERT_READ": "Mark Alert Read",
+    "action_ADD_SUSPECT": "Add Suspect",
+    "action_EDIT_SUSPECT": "Edit Suspect",
+    "action_DELETE_SUSPECT": "Delete Suspect",
+    "action_CREATE_INVESTIGATION": "Create Investigation",
+    "action_UPDATE_INVESTIGATION": "Update Investigation"
   },
   "roomAvailability": {
     "pageTitle": "City-Wide Room Availability",
@@ -2667,7 +2747,19 @@
     "successSuspended": "\"{{name}}\" has been suspended. Notification sent to provider.",
     "errorSuspend": "Failed to suspend provider",
     "flagRoomHiding": "possible room hiding",
-    "flagNoAvailable": "No available rooms — all occupied, reserved, or in maintenance"
+    "flagNoAvailable": "No available rooms — all occupied, reserved, or in maintenance",
+    "plural": "s",
+    "available": "Available",
+    "occupied": "Occupied",
+    "reserved": "Reserved",
+    "maintenance": "Maintenance",
+    "providersCount": "{{count}} providers",
+    "na": "N/A",
+    "floorAbbr": "F",
+    "status_AVAILABLE": "Available",
+    "status_OCCUPIED": "Occupied",
+    "status_RESERVED": "Reserved",
+    "status_MAINTENANCE": "Maintenance"
   },
   "jointOps": {
     "pageTitle": "Joint Operations",
@@ -2708,6 +2800,12 @@
     "confirmAction": "Confirm Action",
     "successEmergency": "Emergency {{action}} completed.",
     "errorLoadStats": "Failed to load stats",
-    "errorLoadUsers": "Failed to load users"
+    "errorLoadUsers": "Failed to load users",
+    "failedAction": "Failed: {{action}}",
+    "role_SUPERUSER": "Superuser",
+    "role_POLICE": "Police",
+    "role_OPERATOR": "Operator",
+    "role_PROVIDER": "Provider",
+    "role_DISPATCHER": "Dispatcher"
   }
 }

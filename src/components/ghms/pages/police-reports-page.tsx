@@ -130,15 +130,18 @@ export default function PoliceReportsPage() {
 
   const exportCSV = useCallback(() => {
     if (!data) return;
-    const rows = ["Provider,Registered Guests,Check-Ins,Check-Outs,Suspect Matches,Rooms"];
+    const csvHeaders = [t('csvProvider'), t('csvRegisteredGuests'), t('csvCheckIns'), t('csvCheckOuts'), t('csvSuspectMatches'), t('csvRooms')].join(',');
+    const nationalityHeader = [t('csvNationality'), t('csvCount')].join(',');
+    const severityHeader = [t('csvSeverity'), t('csvCount')].join(',');
+    const rows = [csvHeaders];
     for (const p of data.providerBreakdown) {
       rows.push(`"${p.name}",${p.guests},${p.checkIns},${p.checkOuts},${p.matches},${p.rooms}`);
     }
     rows.push("");
-    rows.push("Nationality,Count");
+    rows.push(nationalityHeader);
     for (const n of data.nationalities) rows.push(`"${n.name}",${n.count}`);
     rows.push("");
-    rows.push("Severity,Count");
+    rows.push(severityHeader);
     for (const s of data.suspectSeverities) rows.push(`${s.name},${s.count}`);
     const blob = new Blob([rows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -286,7 +289,7 @@ export default function PoliceReportsPage() {
                           <TableCell className="text-xs text-center">{f.avgDaysBetween.toFixed(1)}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`text-[10px] font-semibold ${f.riskLevel === "HIGH" ? "border-red-300 text-red-700 bg-red-50" : f.riskLevel === "MEDIUM" ? "border-amber-300 text-amber-700 bg-amber-50" : "border-slate-300 text-slate-600 bg-slate-50"}`}>
-                              {f.riskLevel}
+                              {t('risk_' + f.riskLevel)}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -316,7 +319,7 @@ export default function PoliceReportsPage() {
                       <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number) => `${v}%`} />
-                      <Bar dataKey="rate" name="Occupancy %" fill="#2563eb" radius={[0, 4, 4, 0]}>
+                      <Bar dataKey="rate" name={t('occupancyPercent')} fill="#2563eb" radius={[0, 4, 4, 0]}>
                         {data.occupancyByProvider.map((entry, i) => (
                           <Cell key={i} fill={entry.rate > 80 ? "#dc2626" : entry.rate > 50 ? "#ca8a04" : "#16a34a"} />
                         ))}

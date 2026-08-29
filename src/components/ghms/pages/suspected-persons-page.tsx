@@ -114,11 +114,7 @@ const SEVERITY_STYLES: Record<string, string> = {
   CRITICAL: "bg-red-100 text-red-800 border-red-200",
 };
 
-const MATCH_TYPE_LABELS: Record<string, string> = {
-  RESERVATION: "Reservation",
-  DAYTIME_BOOKING: "Daytime",
-  GUEST_CHECKIN: "Check-in",
-};
+// MATCH_TYPE_LABELS removed – see getMatchTypeLabel inside component
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-800",
@@ -163,13 +159,13 @@ function formatDateTime(dateStr: string) {
 }
 
 const ID_TYPE_OPTIONS = [
-  { value: "National_ID", label: "National ID" },
-  { value: "Passport", label: "Passport" },
-  { value: "Driver_License", label: "Driver License" },
-  { value: "Military_ID", label: "Military ID" },
-  { value: "Refugee_ID", label: "Refugee ID" },
-  { value: "Voter_ID", label: "Voter ID" },
-  { value: "Other", label: "Other" },
+  { value: "National_ID" },
+  { value: "Passport" },
+  { value: "Driver_License" },
+  { value: "Military_ID" },
+  { value: "Refugee_ID" },
+  { value: "Voter_ID" },
+  { value: "Other" },
 ];
 
 const emptyForm = {
@@ -199,6 +195,15 @@ export default function SuspectedPersonsPage() {
       Other: t('idTypeOther'),
     };
     return map[val] || val;
+  };
+
+  const getMatchTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      RESERVATION: t('matchTypeReservation'),
+      DAYTIME_BOOKING: t('matchTypeDaytime'),
+      GUEST_CHECKIN: t('matchTypeCheckin'),
+    };
+    return map[type] || type;
   };
 
   const [activeTab, setActiveTab] = useState<"watchlist" | "scanner">("watchlist");
@@ -538,11 +543,11 @@ export default function SuspectedPersonsPage() {
                         <div key={m.id} className="rounded-lg border-2 border-red-200 bg-white p-3">
                           <div className="flex items-center justify-between">
                             <p className="font-bold text-red-800">{m.suspectedPerson.name}</p>
-                            <Badge className="bg-red-100 text-red-800 border-red-200 text-[9px]">{m.suspectedPerson.severity}</Badge>
+                            <Badge className="bg-red-100 text-red-800 border-red-200 text-[9px]">{t('severity_' + m.suspectedPerson.severity)}</Badge>
                           </div>
                           <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                            <span>Provider: {m.providerName}</span>
-                            <span>Type: {m.matchType}</span>
+                            <span>{t('providerLabel')}: {m.providerName}</span>
+                            <span>{t('typeLabel')}: {getMatchTypeLabel(m.matchType)}</span>
                             <span>{new Date(m.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
@@ -589,7 +594,7 @@ export default function SuspectedPersonsPage() {
                           </div>
                         </div>
                         <div className="ml-13">
-                          <p className="text-[10px] font-medium text-muted-foreground mb-1">Provider: <span className="text-foreground">{g.provider?.name || "Unknown"}</span></p>
+                          <p className="text-[10px] font-medium text-muted-foreground mb-1">{t('providerLabel')}: <span className="text-foreground">{g.provider?.name || t('unknown')}</span></p>
                           {g.reservations.length > 0 && (
                             <div className="space-y-1">
                               <p className="text-[10px] font-medium text-muted-foreground">{t('recentStays')}</p>
@@ -722,7 +727,7 @@ export default function SuspectedPersonsPage() {
                               {person.name}
                             </p>
                             <Badge variant="outline" className={`shrink-0 text-[9px] ${SEVERITY_STYLES[person.severity] || ""}`}>
-                              {person.severity}
+                              {t('severity_' + person.severity)}
                             </Badge>
                             {!person.is_active && (
                               <Badge variant="outline" className="shrink-0 text-[9px] bg-slate-50 text-slate-400 border-slate-200">
@@ -741,7 +746,7 @@ export default function SuspectedPersonsPage() {
                                   </span>
                                 ))
                               : person.idNumber && (
-                                  <span className="text-[10px] text-muted-foreground">ID: {person.idNumber}</span>
+                                  <span className="text-[10px] text-muted-foreground">{t('idLabel')}: {person.idNumber}</span>
                                 )
                             }
                             <span className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
@@ -811,14 +816,14 @@ export default function SuspectedPersonsPage() {
                                 : <p className="font-mono text-sm">{person.idNumber || "—"}</p>
                               }
                               {person.identifiers && person.identifiers.length > 2 && (
-                                <p className="text-[10px] text-muted-foreground">+{person.identifiers.length - 2} more</p>
+                                <p className="text-[10px] text-muted-foreground">+{person.identifiers.length - 2} {t('more')}</p>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>{person.nationality || "—"}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className={SEVERITY_STYLES[person.severity] || ""}>
-                              {person.severity}
+                              {t('severity_' + person.severity)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -916,10 +921,10 @@ export default function SuspectedPersonsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="LOW">Low</SelectItem>
-                    <SelectItem value="MEDIUM">Medium</SelectItem>
-                    <SelectItem value="HIGH">High</SelectItem>
-                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                    <SelectItem value="LOW">{t('severity_LOW')}</SelectItem>
+                    <SelectItem value="MEDIUM">{t('severity_MEDIUM')}</SelectItem>
+                    <SelectItem value="HIGH">{t('severity_HIGH')}</SelectItem>
+                    <SelectItem value="CRITICAL">{t('severity_CRITICAL')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1045,7 +1050,7 @@ export default function SuspectedPersonsPage() {
             </DialogTitle>
             <DialogDescription className="flex items-center gap-2">
               <Badge variant="outline" className={SEVERITY_STYLES[detailPerson?.severity || ""] || ""}>
-                {detailPerson?.severity}
+                {t('severity_' + (detailPerson?.severity || ''))}
               </Badge>
               {!detailPerson?.is_active && (
                 <Badge variant="secondary">{t('inactive')}</Badge>
@@ -1121,7 +1126,7 @@ export default function SuspectedPersonsPage() {
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{match.guestName}</p>
                           <Badge variant="outline" className="text-[9px]">
-                            {MATCH_TYPE_LABELS[match.matchType] || match.matchType}
+                            {getMatchTypeLabel(match.matchType)}
                           </Badge>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">

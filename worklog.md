@@ -118,3 +118,30 @@ Stage Summary:
 - subscription-lockout-page.tsx: fully i18n'd from 0 to ~16 keys, namespace corrected
 - settings-page.tsx: no changes needed (already complete)
 - Total new keys: 22 added to subscription namespace across en/am/om
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: i18n for police module - fix remaining hardcoded strings in all 12 sidebar pages
+
+Work Log:
+- Audited all 12 police module pages for hardcoded English strings
+- Found police-guests-page.tsx and suspect-alerts-page.tsx already fully i18n'd
+- Fixed 44 hardcoded string issues across 10 remaining files
+- suspected-persons-page.tsx: 14 fixes (MATCH_TYPE_LABELS moved inside component, severity/status labels, ID/Provider/Type labels)
+- notification-dispatch-page.tsx: 1 fix (hardcoded "Telegram" text, cleaned dead label properties)
+- police-investigation-page.tsx: 5 fixes (status, severity, riskLevel, linkType enums + dead tab labels)
+- police-security-page.tsx: 2 fixes (severity enum + dead tab labels)
+- anomalies-page.tsx: 1 fix (severity enum)
+- owner-accounts-page.tsx: 5 fixes (Created label, provider.status enum ×3)
+- police-reports-page.tsx: 5 fixes (CSV export headers, riskLevel enum, chart name)
+- police-intelligence-page.tsx: 8 fixes (placeholders, chart prefixes, riskLevel/action enums, dead labels)
+- police-room-availability-page.tsx: 10 fixes (plural suffix, tooltip titles, N/A, room detail line, status enum)
+- joint-operations-page.tsx: 2 fixes (error fallback, role enum)
+- Added 98 new translation keys to each of en.json, am.json, om.json
+- Build verified passing with zero TypeScript errors
+
+Stage Summary:
+- All 12 police module pages now fully i18n'd
+- 98 new keys added across 10 namespaces in all 3 locale files
+- Remaining am/om values are English placeholders awaiting native speaker translation

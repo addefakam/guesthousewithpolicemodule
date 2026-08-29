@@ -1,0 +1,1084 @@
+     1→     1→"use client";
+     2→     2→import { useTranslation } from "react-i18next";
+     3→     3→
+     4→     4→import { useState, useEffect, useCallback, type FormEvent } from "react";
+     5→     5→import { useAppStore } from "@/lib/store";
+     6→     6→import {
+     7→     7→  apiGetOwnerAccounts,
+     8→     8→  apiUpdateOwnerAccount,
+     9→     9→  apiPoliceOfficers,
+    10→    10→  apiPoliceCreateOfficer,
+    11→    11→  apiPoliceUpdateOfficer,
+    12→    12→  apiPoliceDeleteOfficer,
+    13→    13→} from "@/lib/api";
+    14→    14→import { toast } from "sonner";
+    15→    15→import { Button } from "@/components/ui/button";
+    16→    16→import { Badge } from "@/components/ui/badge";
+    17→    17→import { Input } from "@/components/ui/input";
+    18→    18→import { Label } from "@/components/ui/label";
+    19→    19→import { Skeleton } from "@/components/ui/skeleton";
+    20→    20→import {
+    21→    21→  Card,
+    22→    22→  CardContent,
+    23→    23→  CardHeader,
+    24→    24→  CardTitle,
+    25→    25→  CardDescription,
+    26→    26→} from "@/components/ui/card";
+    27→    27→import {
+    28→    28→  Dialog,
+    29→    29→  DialogContent,
+    30→    30→  DialogHeader,
+    31→    31→  DialogTitle,
+    32→    32→  DialogDescription,
+    33→    33→  DialogFooter,
+    34→    34→} from "@/components/ui/dialog";
+    35→    35→import {
+    36→    36→  Select,
+    37→    37→  SelectContent,
+    38→    38→  SelectItem,
+    39→    39→  SelectTrigger,
+    40→    40→  SelectValue,
+    41→    41→} from "@/components/ui/select";
+    42→    42→import {
+    43→    43→  UserCog,
+    44→    44→  KeyRound,
+    45→    45→  Building2,
+    46→    46→  Shield,
+    47→    47→  Loader2,
+    48→    48→  Eye,
+    49→    49→  EyeOff,
+    50→    50→  Search,
+    51→    51→  Users,
+    52→    52→  Lock,
+    53→    53→  AlertTriangle,
+    54→    54→  CheckCircle2,
+    55→    55→  Clock,
+    56→    56→  Ban,
+    57→    57→  ChevronRight,
+    58→    58→  Info,
+    59→    59→  Plus,
+    60→    60→  Pencil,
+    61→    61→  Trash2,
+    62→    62→  Crown,
+    63→    63→} from "lucide-react";
+    64→    64→
+    65→    65→interface AccountUser {
+    66→    66→  id: string;
+    67→    67→  username: string;
+    68→    68→  name: string;
+    69→    69→  role: string;
+    70→    70→  policeRank?: string;
+    71→    71→  providerId: string | null;
+    72→    72→  permissions?: string;
+    73→    73→  createdAt: string;
+    74→    74→  provider?: { name: string } | null;
+    75→    75→}
+    76→    76→
+    77→    77→interface ProviderWithOwner {
+    78→    78→  id: string;
+    79→    79→  name: string;
+    80→    80→  ownerName: string;
+    81→    81→  phone: string;
+    82→    82→  email: string;
+    83→    83→  status: string;
+    84→    84→  createdAt: string;
+    85→    85→  users: AccountUser[];
+    86→    86→}
+    87→    87→
+    88→    88→interface ApiResponse {
+    89→    89→  providers: ProviderWithOwner[];
+    90→    90→  policeUsers: AccountUser[];
+    91→    91→}
+    92→    92→
+    93→    93→const STATUS_BADGE: Record<string, string> = {
+    94→    94→  APPROVED: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    95→    95→  PENDING: "bg-amber-100 text-amber-700 border-amber-200",
+    96→    96→  REJECTED: "bg-red-100 text-red-700 border-red-200",
+    97→    97→  SUSPENDED: "bg-slate-200 text-slate-700 border-slate-300",
+    98→    98→};
+    99→    99→
+   100→   100→const STATUS_ICON: Record<string, React.ReactNode> = {
+   101→   101→  APPROVED: <CheckCircle2 className="size-4 text-emerald-600" />,
+   102→   102→  PENDING: <Clock className="size-4 text-amber-600" />,
+   103→   103→  REJECTED: <Ban className="size-4 text-red-600" />,
+   104→   104→  SUSPENDED: <AlertTriangle className="size-4 text-slate-600" />,
+   105→   105→};
+   106→   106→
+   107→   107→const POLICE_RANK_BADGE: Record<string, string> = {
+   108→   108→  ADMIN: "bg-amber-100 text-amber-800 border-amber-200",
+   109→   109→  DETECTIVE: "bg-violet-100 text-violet-800 border-violet-200",
+   110→   110→  OFFICER: "bg-sky-100 text-sky-800 border-sky-200",
+   111→   111→  VIEWER: "bg-slate-100 text-slate-600 border-slate-200",
+   112→   112→};
+   113→   113→
+   114→   114→// Rank hierarchy for permission check
+   115→   115→const RANK_ORDER: Record<string, number> = { VIEWER: 0, OFFICER: 1, DETECTIVE: 2, ADMIN: 3 };
+   116→   116→
+   117→   117→type TabType = "overview" | "owners" | "police";
+   118→   118→
+   119→   119→export default function OwnerAccountsPage() {
+   120→   120→  const { t } = useTranslation("ownerAccounts");
+   121→   121→  const { currentUser, refreshKey } = useAppStore();
+   122→   122→  const [providers, setProviders] = useState<ProviderWithOwner[]>([]);
+   123→   123→  const [policeUsers, setPoliceUsers] = useState<AccountUser[]>([]);
+   124→   124→  const [loading, setLoading] = useState(true);
+   125→   125→  const [search, setSearch] = useState("");
+   126→   126→  const [activeTab, setActiveTab] = useState<TabType>(
+   127→   127→    currentUser?.role === "POLICE" ? "police" : "overview"
+   128→   128→  );
+   129→   129→
+   130→   130→  const getRankLabel = (val: string) => {
+   131→   131→    const map: Record<string, string> = {
+   132→   132→      ADMIN: t('rankPoliceAdmin'),
+   133→   133→      DETECTIVE: t('rankDetective'),
+   134→   134→      OFFICER: t('rankOfficer'),
+   135→   135→      VIEWER: t('rankViewer'),
+   136→   136→    };
+   137→   137→    return map[val] || val;
+   138→   138→  };
+   139→   139→  const getRankDesc = (val: string) => {
+   140→   140→    const map: Record<string, string> = {
+   141→   141→      ADMIN: t('rankAdminDesc'),
+   142→   142→      DETECTIVE: t('rankDetectiveDesc'),
+   143→   143→      OFFICER: t('rankOfficerDesc'),
+   144→   144→      VIEWER: t('rankViewerDesc'),
+   145→   145→    };
+   146→   146→    return map[val] || val;
+   147→   147→  };
+   148→   148→
+   149→   149→  // Determine if current user can manage police
+   150→   150→  const canManagePolice =
+   151→   151→    currentUser?.role === "SUPERUSER" ||
+   152→   152→    (currentUser?.role === "POLICE" &&
+   153→   153→      (RANK_ORDER[currentUser?.policeRank || ""] || 0) >= RANK_ORDER.OFFICER);
+   154→   154→
+   155→   155→  // Which ranks can this user create?
+   156→   156→  // - SUPERUSER: ADMIN only (server-side enforces the same constraint)
+   157→   157→  // - POLICE: one level below their own rank
+   158→   158→  const maxCreatableRank =
+   159→   159→    currentUser?.role === "SUPERUSER"
+   160→   160→      ? "ADMIN"
+   161→   161→      : currentUser?.role === "POLICE"
+   162→   162→        ? currentUser?.policeRank === "ADMIN"
+   163→   163→          ? "DETECTIVE"
+   164→   164→          : currentUser?.policeRank === "DETECTIVE"
+   165→   165→            ? "OFFICER"
+   166→   166→            : currentUser?.policeRank === "OFFICER"
+   167→   167→              ? "VIEWER"
+   168→   168→              : ""
+   169→   169→        : "";
+   170→   170→
+   171→   171→  // Ranks available in the dropdown for the Add/Edit dialog
+   172→   172→  // - SUPERUSER: only ADMIN
+   173→   173→  // - POLICE: from VIEWER up to maxCreatableRank
+   174→   174→  const availableRanks =
+   175→   175→    currentUser?.role === "SUPERUSER"
+   176→   176→      ? ["ADMIN"]
+   177→   177→      : maxCreatableRank
+   178→   178→        ? Object.keys(RANK_ORDER).filter((r) => (RANK_ORDER[r] || 0) <= (RANK_ORDER[maxCreatableRank] || 0))
+   179→   179→        : [];
+   180→   180→
+   181→   181→  // Whether the current user can edit/delete a specific police officer.
+   182→   182→  // - SUPERUSER: only ADMIN-rank officers
+   183→   183→  // - POLICE: ranks strictly below their own (existing logic)
+   184→   184→  const canManageOfficer = (police: AccountUser): boolean => {
+   185→   185→    if (!canManagePolice) return false;
+   186→   186→    if (police.id === currentUser?.id) return false;
+   187→   187→    if (currentUser?.role === "SUPERUSER") {
+   188→   188→      return (police.policeRank || "OFFICER") === "ADMIN";
+   189→   189→    }
+   190→   190→    // POLICE
+   191→   191→    const myRank = (currentUser?.policeRank || "VIEWER") as string;
+   192→   192→    const myLevel = RANK_ORDER[myRank] || 0;
+   193→   193→    const targetLevel = RANK_ORDER[police.policeRank || "OFFICER"] || 0;
+   194→   194→    return targetLevel < myLevel;
+   195→   195→  };
+   196→   196→
+   197→   197→  // ── Reset credentials dialog ──
+   198→   198→  const [resetOpen, setResetOpen] = useState(false);
+   199→   199→  const [resetUserId, setResetUserId] = useState("");
+   200→   200→  const [resetUsername, setResetUsername] = useState("");
+   201→   201→  const [resetPassword, setResetPassword] = useState("");
+   202→   202→  const [showPassword, setShowPassword] = useState(false);
+   203→   203→  const [saving, setSaving] = useState(false);
+   204→   204→  const [resetLabel, setResetLabel] = useState("");
+   205→   205→  const [resetSublabel, setResetSublabel] = useState("");
+   206→   206→
+   207→   207→  // ── Add/Edit police dialog ──
+   208→   208→  const [policeDialogOpen, setPoliceDialogOpen] = useState(false);
+   209→   209→  const [editMode, setEditMode] = useState(false);
+   210→   210→  const [editPoliceId, setEditPoliceId] = useState("");
+   211→   211→  const [policeName, setPoliceName] = useState("");
+   212→   212→  const [policeUsername, setPoliceUsername] = useState("");
+   213→   213→  const [policePassword, setPolicePassword] = useState("");
+   214→   214→  const [policeRank, setPoliceRank] = useState("OFFICER");
+   215→   215→  const [policeSaving, setPoliceSaving] = useState(false);
+   216→   216→  const [showPolicePassword, setShowPolicePassword] = useState(false);
+   217→   217→
+   218→   218→  // ── Delete confirmation ──
+   219→   219→  const [deleteOpen, setDeleteOpen] = useState(false);
+   220→   220→  const [deleteTarget, setDeleteTarget] = useState<AccountUser | null>(null);
+   221→   221→  const [deleting, setDeleting] = useState(false);
+   222→   222→
+   223→   223→  const fetchAccounts = useCallback(async () => {
+   224→   224→    setLoading(true);
+   225→   225→    try {
+   226→   226→      if (currentUser?.role === "POLICE") {
+   227→   227→        // POLICE users fetch from police-officers endpoint
+   228→   228→        const data = await apiPoliceOfficers();
+   229→   229→        setPoliceUsers(Array.isArray(data) ? data : []);
+   230→   230→      } else {
+   231→   231→        const data: ApiResponse = await apiGetOwnerAccounts();
+   232→   232→        setProviders(Array.isArray(data.providers) ? data.providers : []);
+   233→   233→        setPoliceUsers(Array.isArray(data.policeUsers) ? data.policeUsers : []);
+   234→   234→      }
+   235→   235→    } catch {
+   236→   236→      toast.error(t('errorLoad'));
+   237→   237→    } finally {
+   238→   238→      setLoading(false);
+   239→   239→    }
+   240→   240→  }, [currentUser?.role, t]);
+   241→   241→
+   242→   242→  const fetchPoliceOnly = useCallback(async () => {
+   243→   243→    try {
+   244→   244→      const data = await apiPoliceOfficers();
+   245→   245→      setPoliceUsers(Array.isArray(data) ? data : []);
+   246→   246→    } catch {
+   247→   247→      // silent
+   248→   248→    }
+   249→   249→  }, []);
+   250→   250→
+   251→   251→  useEffect(() => {
+   252→   252→    fetchAccounts();
+   253→   253→  }, [fetchAccounts, refreshKey]);
+   254→   254→
+   255→   255→  // ── Owner reset handlers ──
+   256→   256→  const openOwnerReset = (provider: ProviderWithOwner) => {
+   257→   257→    const ownerUser = provider.users[0];
+   258→   258→    setResetUserId(ownerUser?.id || "");
+   259→   259→    setResetUsername(ownerUser?.username || "");
+   260→   260→    setResetPassword("");
+   261→   261→    setShowPassword(false);
+   262→   262→    setResetLabel(provider.name);
+   263→   263→    setResetSublabel(`${provider.ownerName}  ·  ${provider.phone}`);
+   264→   264→    setResetOpen(true);
+   265→   265→  };
+   266→   266→
+   267→   267→  const openPoliceReset = (police: AccountUser) => {
+   268→   268→    setResetUserId(police.id);
+   269→   269→    setResetUsername(police.username);
+   270→   270→    setResetPassword("");
+   271→   271→    setShowPassword(false);
+   272→   272→    setResetLabel(t('policeAccount'));
+   273→   273→    setResetSublabel(police.name);
+   274→   274→    setResetOpen(true);
+   275→   275→  };
+   276→   276→
+   277→   277→  const handleReset = async (e: FormEvent) => {
+   278→   278→    e.preventDefault();
+   279→   279→    if (!resetUserId) return;
+   280→   280→    if (!resetUsername.trim()) {
+   281→   281→      toast.error(t('errorUsernameRequired'));
+   282→   282→      return;
+   283→   283→    }
+   284→   284→    setSaving(true);
+   285→   285→    try {
+   286→   286→      const updateData: Record<string, unknown> = {};
+   287→   287→      if (resetUsername.trim()) updateData.username = resetUsername.trim();
+   288→   288→      if (resetPassword.trim()) updateData.password = resetPassword.trim();
+   289→   289→      if (Object.keys(updateData).length === 0) {
+   290→   290→        toast.error(t('errorNoChanges'));
+   291→   291→        setSaving(false);
+   292→   292→        return;
+   293→   293→      }
+   294→   294→      await apiUpdateOwnerAccount(resetUserId, updateData);
+   295→   295→      toast.success(t('successCredentialsUpdated'));
+   296→   296→      setResetOpen(false);
+   297→   297→      fetchAccounts();
+   298→   298→    } catch (err: unknown) {
+   299→   299→      const msg = err instanceof Error ? err.message : t('errorUpdateCredentials');
+   300→   300→      toast.error(msg);
+   301→   301→    } finally {
+   302→   302→      setSaving(false);
+   303→   303→    }
+   304→   304→  };
+   305→   305→
+   306→   306→  // ── Police CRUD handlers ──
+   307→   307→  const openAddPolice = () => {
+   308→   308→    setEditMode(false);
+   309→   309→    setEditPoliceId("");
+   310→   310→    setPoliceName("");
+   311→   311→    setPoliceUsername("");
+   312→   312→    setPolicePassword("");
+   313→   313→    setPoliceRank(
+   314→   314→      maxCreatableRank === "DETECTIVE"
+   315→   315→        ? "OFFICER"
+   316→   316→        : maxCreatableRank === "OFFICER"
+   317→   317→          ? "VIEWER"
+   318→   318→          : availableRanks[0] || "VIEWER"
+   319→   319→    );
+   320→   320→    setShowPolicePassword(false);
+   321→   321→    setPoliceDialogOpen(true);
+   322→   322→  };
+   323→   323→
+   324→   324→  const openEditPolice = (police: AccountUser) => {
+   325→   325→    setEditMode(true);
+   326→   326→    setEditPoliceId(police.id);
+   327→   327→    setPoliceName(police.name);
+   328→   328→    setPoliceUsername(police.username);
+   329→   329→    setPolicePassword("");
+   330→   330→    setPoliceRank(police.policeRank || "VIEWER");
+   331→   331→    setShowPolicePassword(false);
+   332→   332→    setPoliceDialogOpen(true);
+   333→   333→  };
+   334→   334→
+   335→   335→  const handlePoliceSubmit = async (e: FormEvent) => {
+   336→   336→    e.preventDefault();
+   337→   337→    if (!policeName.trim() || !policeUsername.trim()) {
+   338→   338→      toast.error(t('errorNameUsernameRequired'));
+   339→   339→      return;
+   340→   340→    }
+   341→   341→    if (!editMode && !policePassword.trim()) {
+   342→   342→      toast.error(t('errorPasswordRequired'));
+   343→   343→      return;
+   344→   344→    }
+   345→   345→
+   346→   346→    setPoliceSaving(true);
+   347→   347→    try {
+   348→   348→      if (editMode) {
+   349→   349→        // Update existing officer
+   350→   350→        const updateData: Record<string, unknown> = {
+   351→   351→          id: editPoliceId,
+   352→   352→          name: policeName.trim(),
+   353→   353→          policeRank,
+   354→   354→        };
+   355→   355→        if (policePassword.trim()) {
+   356→   356→          updateData.password = policePassword.trim();
+   357→   357→        }
+   358→   358→        await apiPoliceUpdateOfficer(updateData);
+   359→   359→        toast.success(t('successOfficerUpdated'));
+   360→   360→      } else {
+   361→   361→        // Create new officer
+   362→   362→        await apiPoliceCreateOfficer({
+   363→   363→          username: policeUsername.trim(),
+   364→   364→          password: policePassword.trim(),
+   365→   365→          name: policeName.trim(),
+   366→   366→          policeRank,
+   367→   367→        });
+   368→   368→        toast.success(t('successOfficerCreated'));
+   369→   369→      }
+   370→   370→      setPoliceDialogOpen(false);
+   371→   371→      fetchPoliceOnly();
+   372→   372→      if (currentUser?.role !== "POLICE") fetchAccounts();
+   373→   373→    } catch (err: unknown) {
+   374→   374→      const msg = err instanceof Error ? err.message : t('errorSaveOfficer');
+   375→   375→      toast.error(msg);
+   376→   376→    } finally {
+   377→   377→      setPoliceSaving(false);
+   378→   378→    }
+   379→   379→  };
+   380→   380→
+   381→   381→  const openDeleteConfirm = (police: AccountUser) => {
+   382→   382→    setDeleteTarget(police);
+   383→   383→    setDeleteOpen(true);
+   384→   384→  };
+   385→   385→
+   386→   386→  const handleDelete = async () => {
+   387→   387→    if (!deleteTarget) return;
+   388→   388→    setDeleting(true);
+   389→   389→    try {
+   390→   390→      await apiPoliceDeleteOfficer(deleteTarget.id);
+   391→   391→      toast.success(t('successOfficerDeleted'));
+   392→   392→      setDeleteOpen(false);
+   393→   393→      setDeleteTarget(null);
+   394→   394→      fetchPoliceOnly();
+   395→   395→      if (currentUser?.role !== "POLICE") fetchAccounts();
+   396→   396→    } catch (err: unknown) {
+   397→   397→      const msg = err instanceof Error ? err.message : t('errorDeleteOfficer');
+   398→   398→      toast.error(msg);
+   399→   399→    } finally {
+   400→   400→      setDeleting(false);
+   401→   401→    }
+   402→   402→  };
+   403→   403→
+   404→   404→  // ── Filtering ──
+   405→   405→  const filteredProviders = providers.filter(
+   406→   406→    (p) =>
+   407→   407→      p.name.toLowerCase().includes(search.toLowerCase()) ||
+   408→   408→      p.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+   409→   409→      p.phone.includes(search) ||
+   410→   410→      p.users.some((u) => u.username.toLowerCase().includes(search.toLowerCase()))
+   411→   411→  );
+   412→   412→
+   413→   413→  const filteredPolice = policeUsers.filter(
+   414→   414→    (u) =>
+   415→   415→      u.name.toLowerCase().includes(search.toLowerCase()) ||
+   416→   416→      u.username.toLowerCase().includes(search.toLowerCase())
+   417→   417→  );
+   418→   418→
+   419→   419→  const hasNoResults =
+   420→   420→    (activeTab === "overview" && filteredProviders.length === 0 && filteredPolice.length === 0) ||
+   421→   421→    (activeTab === "owners" && filteredProviders.length === 0) ||
+   422→   422→    (activeTab === "police" && filteredPolice.length === 0);
+   423→   423→
+   424→   424→  const totalProviders = providers.length;
+   425→   425→  const approvedProviders = providers.filter((p) => p.status === "APPROVED").length;
+   426→   426→  const pendingProviders = providers.filter((p) => p.status === "PENDING").length;
+   427→   427→  const totalPolice = policeUsers.length;
+   428→   428→
+   429→   429→  if (loading) {
+   430→   430→    return (
+   431→   431→      <div className="space-y-6 p-4 md:p-6">
+   432→   432→        <Skeleton className="h-8 w-64" />
+   433→   433→        <Skeleton className="h-10 w-full max-w-sm" />
+   434→   434→        <div className="space-y-3">
+   435→   435→          {Array.from({ length: 4 }).map((_, i) => (
+   436→   436→            <Skeleton key={i} className="h-24 rounded-lg" />
+   437→   437→          ))}
+   438→   438→        </div>
+   439→   439→      </div>
+   440→   440→    );
+   441→   441→  }
+   442→   442→
+   443→   443→  // ── Render Police Table Row ──
+   444→   444→  const renderPoliceRow = (police: AccountUser, isMobile = false) => {
+   445→   445→    const rank = police.policeRank || "OFFICER";
+   446→   446→    const isSelf = police.id === currentUser?.id;
+   447→   447→
+   448→   448→    if (isMobile) {
+   449→   449→      return (
+   450→   450→        <div key={police.id} className="rounded-lg border p-4 space-y-3">
+   451→   451→          <div className="flex items-center gap-2">
+   452→   452→            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+   453→   453→              <Shield className="h-4 w-4 text-rose-600" />
+   454→   454→            </div>
+   455→   455→            <div className="min-w-0 flex-1">
+   456→   456→              <div className="flex items-center gap-2">
+   457→   457→                <p className="font-semibold text-sm truncate">{police.name}</p>
+   458→   458→                {rank !== "OFFICER" && (
+   459→   459→                  <Badge variant="outline" className={`text-[10px] px-1.5 ${POLICE_RANK_BADGE[rank] || ""}`}>
+   460→   460→                    {getRankLabel(rank)}
+   461→   461→                  </Badge>
+   462→   462→                )}
+   463→   463→                {isSelf && (
+   464→   464→                  <Badge variant="secondary" className="text-[10px] px-1.5">{t('you')}</Badge>
+   465→   465→                )}
+   466→   466→              </div>
+   467→   467→              <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   468→   468→                {police.username}
+   469→   469→              </code>
+   470→   470→            </div>
+   471→   471→          </div>
+   472→   472→
+   473→   473→          <p className="text-xs text-muted-foreground">
+   474→   474→            Created: {new Date(police.createdAt).toLocaleDateString()}
+   475→   475→          </p>
+   476→   476→
+   477→   477→          <div className="flex gap-2">
+   478→   478→            {canManageOfficer(police) && (
+   479→   479→              <>
+   480→   480→                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditPolice(police)}>
+   481→   481→                  <Pencil className="h-3.5 w-3.5" />
+   482→   482→                  {t('edit')}
+   483→   483→                </Button>
+   484→   484→                <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => openDeleteConfirm(police)}>
+   485→   485→                  <Trash2 className="h-3.5 w-3.5" />
+   486→   486→                </Button>
+   487→   487→              </>
+   488→   488→            )}
+   489→   489→            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openPoliceReset(police)}>
+   490→   490→              <KeyRound className="h-3.5 w-3.5" />
+   491→   491→              {t('reset')}
+   492→   492→            </Button>
+   493→   493→          </div>
+   494→   494→        </div>
+   495→   495→      );
+   496→   496→    }
+   497→   497→
+   498→   498→    // Desktop row
+   499→   499→    return (
+   500→   500→      <tr key={police.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+   501→   501→        <td className="px-4 py-3">
+   502→   502→          <div className="flex items-center gap-2">
+   503→   503→            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100">
+   504→   504→              <Shield className="h-4 w-4 text-rose-600" />
+   505→   505→            </div>
+   506→   506→            <span className="font-medium">{police.name}</span>
+   507→   507→            {isSelf && (
+   508→   508→              <Badge variant="secondary" className="text-[10px] px-1.5">{t('you')}</Badge>
+   509→   509→            )}
+   510→   510→          </div>
+   511→   511→        </td>
+   512→   512→        <td className="px-4 py-3">
+   513→   513→          <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   514→   514→            {police.username}
+   515→   515→          </code>
+   516→   516→        </td>
+   517→   517→        <td className="px-4 py-3">
+   518→   518→          <Badge variant="outline" className={`text-xs ${POLICE_RANK_BADGE[rank] || "bg-rose-100 text-rose-700 border-rose-200"}`}>
+   519→   519→            {getRankLabel(rank)}
+   520→   520→          </Badge>
+   521→   521→        </td>
+   522→   522→        <td className="px-4 py-3 text-muted-foreground text-xs">
+   523→   523→          {new Date(police.createdAt).toLocaleDateString()}
+   524→   524→        </td>
+   525→   525→        <td className="px-4 py-3">
+   526→   526→          <div className="flex items-center justify-end gap-1.5">
+   527→   527→            {canManageOfficer(police) && (
+   528→   528→              <>
+   529→   529→                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditPolice(police)}>
+   530→   530→                  <Pencil className="h-3.5 w-3.5" />
+   531→   531→                </Button>
+   532→   532→                <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => openDeleteConfirm(police)}>
+   533→   533→                  <Trash2 className="h-3.5 w-3.5" />
+   534→   534→                </Button>
+   535→   535→              </>
+   536→   536→            )}
+   537→   537→            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openPoliceReset(police)}>
+   538→   538→              <KeyRound className="h-3.5 w-3.5" />
+   539→   539→              {t('reset')}
+   540→   540→            </Button>
+   541→   541→          </div>
+   542→   542→        </td>
+   543→   543→      </tr>
+   544→   544→    );
+   545→   545→  };
+   546→   546→
+   547→   547→  return (
+   548→   548→    <div className="space-y-6 p-4 md:p-6">
+   549→   549→      {/* Header */}
+   550→   550→      <div>
+   551→   551→        <h1 className="text-2xl font-bold tracking-tight">
+   552→   552→          {currentUser?.role === "POLICE"
+   553→   553→            ? t('pageTitlePolice')
+   554→   554→            : currentUser?.role === "SUPERUSER"
+   555→   555→              ? t('pageTitleAdmin')
+   556→   556→              : t('pageTitleAdmin')}
+   557→   557→        </h1>
+   558→   558→        <p className="text-sm text-muted-foreground">
+   559→   559→          {currentUser?.role === "POLICE"
+   560→   560→            ? t('pageSubtitlePolice')
+   561→   561→            : currentUser?.role === "SUPERUSER"
+   562→   562→              ? t('pageSubtitleSuperuser')
+   563→   563→              : t('pageSubtitleFallback')}
+   564→   564→        </p>
+   565→   565→      </div>
+   566→   566→
+   567→   567→      {/* Tabs — POLICE users only see the police tab */}
+   568→   568→      {currentUser?.role !== "POLICE" && (
+   569→   569→        <div className="flex gap-1 rounded-lg border bg-muted/50 p-1 w-fit">
+   570→   570→          {([
+   571→   571→            { key: "overview" as TabType, label: t('tabOverview'), icon: Users, count: totalProviders + totalPolice },
+   572→   572→            { key: "owners" as TabType, label: t('tabOwners'), icon: Building2, count: totalProviders },
+   573→   573→            { key: "police" as TabType, label: t('tabPolice'), icon: Shield, count: totalPolice },
+   574→   574→          ]).map((tab) => (
+   575→   575→            <button
+   576→   576→              key={tab.key}
+   577→   577→              onClick={() => { setActiveTab(tab.key); setSearch(""); }}
+   578→   578→              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+   579→   579→                activeTab === tab.key
+   580→   580→                  ? "bg-background text-foreground shadow-sm"
+   581→   581→                  : "text-muted-foreground hover:text-foreground"
+   582→   582→              }`}
+   583→   583→            >
+   584→   584→              <tab.icon className="h-4 w-4" />
+   585→   585→              {tab.label}
+   586→   586→              <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+   587→   587→                {tab.count}
+   588→   588→              </Badge>
+   589→   589→            </button>
+   590→   590→          ))}
+   591→   591→        </div>
+   592→   592→      )}
+   593→   593→
+   594→   594→      {/* Search + Add Officer */}
+   595→   595→      <div className="flex gap-2 max-w-lg">
+   596→   596→        <div className="relative flex-1 max-w-sm">
+   597→   597→          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   598→   598→          <Input
+   599→   599→            placeholder={
+   600→   600→              activeTab === "police" || currentUser?.role === "POLICE"
+   601→   601→                ? t('searchPolice')
+   602→   602→                : t('searchAll')
+   603→   603→            }
+   604→   604→            value={search}
+   605→   605→            onChange={(e) => setSearch(e.target.value)}
+   606→   606→            className="pl-9"
+   607→   607→          />
+   608→   608→        </div>
+   609→   609→        {(activeTab === "police" || currentUser?.role === "POLICE") && canManagePolice && maxCreatableRank && (
+   610→   610→          <Button onClick={openAddPolice} className="gap-2">
+   611→   611→            <Plus className="h-4 w-4" />
+   612→   612→            {t('addOfficer')}
+   613→   613→          </Button>
+   614→   614→        )}
+   615→   615→      </div>
+   616→   616→
+   617→   617→      {hasNoResults ? (
+   618→   618→        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+   619→   619→          <UserCog className="mb-4 h-12 w-12 opacity-30" />
+   620→   620→          <p className="font-medium text-lg">
+   621→   621→            {search ? t('emptySearch') : t('emptyTab', { tab: activeTab })}
+   622→   622→          </p>
+   623→   623→          <p className="text-sm mt-1">
+   624→   624→            {search
+   625→   625→              ? t('emptySearchHint')
+   626→   626→              : t('emptyTabHint')}
+   627→   627→          </p>
+   628→   628→        </div>
+   629→   629→      ) : activeTab === "overview" ? (
+   630→   630→        /* ─── Overview Tab ─── */
+   631→   631→        <>
+   632→   632→          {/* Providers Section */}
+   633→   633→          <div>
+   634→   634→            <div className="flex items-center gap-2 mb-3">
+   635→   635→              <Building2 className="size-5 text-emerald-600" />
+   636→   636→              <h2 className="text-lg font-semibold">{t('providerAccounts')}</h2>
+   637→   637→              <Badge variant="secondary">{filteredProviders.length}</Badge>
+   638→   638→            </div>
+   639→   639→            <div className="space-y-2">
+   640→   640→              {filteredProviders.map((provider) => {
+   641→   641→                const ownerUser = provider.users[0];
+   642→   642→                return (
+   643→   643→                  <div
+   644→   644→                    key={provider.id}
+   645→   645→                    className="flex items-center gap-4 rounded-lg border p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+   646→   646→                    onClick={() => openOwnerReset(provider)}
+   647→   647→                  >
+   648→   648→                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+   649→   649→                      <Building2 className="h-5 w-5 text-primary" />
+   650→   650→                    </div>
+   651→   651→                    <div className="flex-1 min-w-0">
+   652→   652→                      <div className="flex items-center gap-2">
+   653→   653→                        <p className="font-semibold text-sm">{provider.name}</p>
+   654→   654→                        {STATUS_ICON[provider.status]}
+   655→   655→                        <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   656→   656→                          {provider.status}
+   657→   657→                        </Badge>
+   658→   658→                      </div>
+   659→   659→                      <p className="text-xs text-muted-foreground">
+   660→   660→                        {provider.ownerName} · {provider.phone} · <code className="font-mono">{ownerUser?.username || "—"}</code>
+   661→   661→                      </p>
+   662→   662→                    </div>
+   663→   663→                    <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+   664→   664→                      <KeyRound className="h-3.5 w-3.5" />
+   665→   665→                      {t('resetCredentials')}
+   666→   666→                    </Button>
+   667→   667→                  </div>
+   668→   668→                );
+   669→   669→              })}
+   670→   670→            </div>
+   671→   671→          </div>
+   672→   672→
+   673→   673→          {/* Police Section */}
+   674→   674→          <div>
+   675→   675→            <div className="flex items-center gap-2 mb-3">
+   676→   676→              <Shield className="size-5 text-rose-600" />
+   677→   677→              <h2 className="text-lg font-semibold">{t('policeAccounts')}</h2>
+   678→   678→              <Badge variant="secondary">{filteredPolice.length}</Badge>
+   679→   679→              {canManagePolice && maxCreatableRank && (
+   680→   680→                <Button size="sm" className="ml-auto gap-1.5" onClick={openAddPolice}>
+   681→   681→                  <Plus className="h-3.5 w-3.5" />
+   682→   682→                  {t('addOfficer')}
+   683→   683→                </Button>
+   684→   684→              )}
+   685→   685→            </div>
+   686→   686→            <div className="space-y-2">
+   687→   687→              {filteredPolice.map((police) => (
+   688→   688→                <div
+   689→   689→                  key={police.id}
+   690→   690→                  className="flex items-center gap-4 rounded-lg border p-4 hover:bg-muted/30 transition-colors"
+   691→   691→                >
+   692→   692→                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+   693→   693→                    <Shield className="h-5 w-5 text-rose-600" />
+   694→   694→                  </div>
+   695→   695→                  <div className="flex-1 min-w-0">
+   696→   696→                    <div className="flex items-center gap-2">
+   697→   697→                      <p className="font-semibold text-sm">{police.name}</p>
+   698→   698→                      <Badge variant="outline" className={`text-[10px] px-1.5 ${POLICE_RANK_BADGE[police.policeRank || ""] || "bg-rose-100 text-rose-700 border-rose-200"}`}>
+   699→   699→                        {getRankLabel(police.policeRank || "")}
+   700→   700→                      </Badge>
+   701→   701→                    </div>
+   702→   702→                    <p className="text-xs text-muted-foreground">
+   703→   703→                      <code className="font-mono">{police.username}</code> · Created {new Date(police.createdAt).toLocaleDateString()}
+   704→   704→                    </p>
+   705→   705→                  </div>
+   706→   706→                  <div className="flex items-center gap-1.5 shrink-0">
+   707→   707→                    {canManageOfficer(police) && (
+   708→   708→                      <>
+   709→   709→                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditPolice(police)}>
+   710→   710→                          <Pencil className="h-3.5 w-3.5" />
+   711→   711→                        </Button>
+   712→   712→                        <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => openDeleteConfirm(police)}>
+   713→   713→                          <Trash2 className="h-3.5 w-3.5" />
+   714→   714→                        </Button>
+   715→   715→                      </>
+   716→   716→                    )}
+   717→   717→                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openPoliceReset(police)}>
+   718→   718→                      <KeyRound className="h-3.5 w-3.5" />
+   719→   719→                    </Button>
+   720→   720→                  </div>
+   721→   721→                </div>
+   722→   722→              ))}
+   723→   723→            </div>
+   724→   724→          </div>
+   725→   725→        </>
+   726→   726→      ) : activeTab === "owners" ? (
+   727→   727→        /* ─── Owners Tab ─── */
+   728→   728→        <>
+   729→   729→          {/* Desktop Table */}
+   730→   730→          <div className="hidden md:block rounded-lg border">
+   731→   731→            <table className="w-full text-sm">
+   732→   732→              <thead>
+   733→   733→                <tr className="border-b bg-muted/50">
+   734→   734→                  <th className="px-4 py-3 text-left font-semibold">{t('thProvider')}</th>
+   735→   735→                  <th className="px-4 py-3 text-left font-semibold">{t('thOwner')}</th>
+   736→   736→                  <th className="px-4 py-3 text-left font-semibold">{t('thUsername')}</th>
+   737→   737→                  <th className="px-4 py-3 text-left font-semibold">{t('thPhone')}</th>
+   738→   738→                  <th className="px-4 py-3 text-left font-semibold">{t('thStatus')}</th>
+   739→   739→                  <th className="px-4 py-3 text-right font-semibold">{t('thAction')}</th>
+   740→   740→                </tr>
+   741→   741→              </thead>
+   742→   742→              <tbody>
+   743→   743→                {filteredProviders.map((provider) => {
+   744→   744→                  const ownerUser = provider.users[0];
+   745→   745→                  return (
+   746→   746→                    <tr
+   747→   747→                      key={provider.id}
+   748→   748→                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+   749→   749→                    >
+   750→   750→                      <td className="px-4 py-3">
+   751→   751→                        <div className="flex items-center gap-2">
+   752→   752→                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+   753→   753→                            <Building2 className="h-4 w-4 text-primary" />
+   754→   754→                          </div>
+   755→   755→                          <span className="font-medium">{provider.name}</span>
+   756→   756→                        </div>
+   757→   757→                      </td>
+   758→   758→                      <td className="px-4 py-3 text-muted-foreground">
+   759→   759→                        {provider.ownerName}
+   760→   760→                      </td>
+   761→   761→                      <td className="px-4 py-3">
+   762→   762→                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   763→   763→                          {ownerUser?.username || "—"}
+   764→   764→                        </code>
+   765→   765→                      </td>
+   766→   766→                      <td className="px-4 py-3 text-muted-foreground">
+   767→   767→                        {provider.phone}
+   768→   768→                      </td>
+   769→   769→                      <td className="px-4 py-3">
+   770→   770→                        <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   771→   771→                          {provider.status}
+   772→   772→                        </Badge>
+   773→   773→                      </td>
+   774→   774→                      <td className="px-4 py-3 text-right">
+   775→   775→                        <Button
+   776→   776→                          variant="outline"
+   777→   777→                          size="sm"
+   778→   778→                          className="gap-1.5"
+   779→   779→                          onClick={() => openOwnerReset(provider)}
+   780→   780→                        >
+   781→   781→                          <KeyRound className="h-3.5 w-3.5" />
+   782→   782→                          {t('resetCredentials')}
+   783→   783→                        </Button>
+   784→   784→                      </td>
+   785→   785→                    </tr>
+   786→   786→                  );
+   787→   787→                })}
+   788→   788→              </tbody>
+   789→   789→            </table>
+   790→   790→          </div>
+   791→   791→
+   792→   792→          {/* Mobile Cards */}
+   793→   793→          <div className="md:hidden space-y-3">
+   794→   794→            {filteredProviders.map((provider) => {
+   795→   795→              const ownerUser = provider.users[0];
+   796→   796→              return (
+   797→   797→                <div
+   798→   798→                  key={provider.id}
+   799→   799→                  className="rounded-lg border p-4 space-y-3"
+   800→   800→                >
+   801→   801→                  <div className="flex items-start justify-between gap-2">
+   802→   802→                    <div className="flex items-center gap-2 min-w-0">
+   803→   803→                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+   804→   804→                        <Building2 className="h-4 w-4 text-primary" />
+   805→   805→                      </div>
+   806→   806→                      <div className="min-w-0">
+   807→   807→                        <p className="font-semibold text-sm truncate">{provider.name}</p>
+   808→   808→                        <p className="text-xs text-muted-foreground">{provider.ownerName}</p>
+   809→   809→                      </div>
+   810→   810→                    </div>
+   811→   811→                    <Badge variant="outline" className={STATUS_BADGE[provider.status] || ""}>
+   812→   812→                      {provider.status}
+   813→   813→                    </Badge>
+   814→   814→                  </div>
+   815→   815→
+   816→   816→                  <div className="grid grid-cols-2 gap-2 text-sm">
+   817→   817→                    <div>
+   818→   818→                      <p className="text-xs text-muted-foreground">{t('thUsername')}</p>
+   819→   819→                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+   820→   820→                        {ownerUser?.username || "—"}
+   821→   821→                      </code>
+   822→   822→                    </div>
+   823→   823→                    <div>
+   824→   824→                      <p className="text-xs text-muted-foreground">{t('thPhone')}</p>
+   825→   825→                      <p className="text-sm">{provider.phone}</p>
+   826→   826→                    </div>
+   827→   827→                  </div>
+   828→   828→
+   829→   829→                  <Button
+   830→   830→                    variant="outline"
+   831→   831→                    size="sm"
+   832→   832→                    className="w-full gap-1.5"
+   833→   833→                    onClick={() => openOwnerReset(provider)}
+   834→   834→                  >
+   835→   835→                    <KeyRound className="h-3.5 w-3.5" />
+   836→   836→                    {t('resetCredentials')}
+   837→   837→                  </Button>
+   838→   838→                </div>
+   839→   839→              );
+   840→   840→            })}
+   841→   841→          </div>
+   842→   842→        </>
+   843→   843→      ) : (
+   844→   844→        /* ─── Police Tab ─── */
+   845→   845→        <>
+   846→   846→          {/* Desktop Table */}
+   847→   847→          <div className="hidden md:block rounded-lg border">
+   848→   848→            <table className="w-full text-sm">
+   849→   849→              <thead>
+   850→   850→                <tr className="border-b bg-muted/50">
+   851→   851→                  <th className="px-4 py-3 text-left font-semibold">{t('thName')}</th>
+   852→   852→                  <th className="px-4 py-3 text-left font-semibold">{t('thUsername')}</th>
+   853→   853→                  <th className="px-4 py-3 text-left font-semibold">{t('thRank')}</th>
+   854→   854→                  <th className="px-4 py-3 text-left font-semibold">{t('thCreated')}</th>
+   855→   855→                  <th className="px-4 py-3 text-right font-semibold">{t('thActions')}</th>
+   856→   856→                </tr>
+   857→   857→              </thead>
+   858→   858→              <tbody>
+   859→   859→                {filteredPolice.map((police) => renderPoliceRow(police, false))}
+   860→   860→              </tbody>
+   861→   861→            </table>
+   862→   862→          </div>
+   863→   863→
+   864→   864→          {/* Mobile Cards */}
+   865→   865→          <div className="md:hidden space-y-3">
+   866→   866→            {filteredPolice.map((police) => renderPoliceRow(police, true))}
+   867→   867→          </div>
+   868→   868→        </>
+   869→   869→      )}
+   870→   870→
+   871→   871→      {/* ── Reset Credentials Dialog ── */}
+   872→   872→      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+   873→   873→        <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md max-h-[85vh] overflow-y-auto">
+   874→   874→          <DialogHeader>
+   875→   875→            <DialogTitle className="flex items-center gap-2">
+   876→   876→              <KeyRound className="h-5 w-5 text-primary" />
+   877→   877→              {t('resetCredentials')}
+   878→   878→            </DialogTitle>
+   879→   879→            <DialogDescription>
+   880→   880→              {t('resetDialogDesc', { label: resetLabel, sublabel: resetSublabel })}
+   881→   881→            </DialogDescription>
+   882→   882→          </DialogHeader>
+   883→   883→          <form onSubmit={handleReset} className="space-y-4">
+   884→   884→            <div className="space-y-2">
+   885→   885→              <Label>{t('lblusername', 'Username')} *</Label>
+   886→   886→              <Input
+   887→   887→                id="reset-username"
+   888→   888→                placeholder={t('resetUsernamePlaceholder')}
+   889→   889→                value={resetUsername}
+   890→   890→                onChange={(e) => setResetUsername(e.target.value)}
+   891→   891→                autoFocus
+   892→   892→              />
+   893→   893→            </div>
+   894→   894→            <div className="space-y-2">
+   895→   895→              <Label>{t('lblnewPassword', 'New Password')}</Label>
+   896→   896→              <div className="relative">
+   897→   897→                <Input
+   898→   898→                  id="reset-password"
+   899→   899→                  type={showPassword ? "text" : "password"}
+   900→   900→                  placeholder={t('resetPasswordPlaceholder')}
+   901→   901→                  value={resetPassword}
+   902→   902→                  onChange={(e) => setResetPassword(e.target.value)}
+   903→   903→                  className="pr-10"
+   904→   904→                />
+   905→   905→                <button
+   906→   906→                  type="button"
+   907→   907→                  onClick={() => setShowPassword(!showPassword)}
+   908→   908→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   909→   909→                >
+   910→   910→                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+   911→   911→                </button>
+   912→   912→              </div>
+   913→   913→              <p className="text-xs text-muted-foreground">
+   914→   914→                {t('resetPasswordHint')}
+   915→   915→              </p>
+   916→   916→            </div>
+   917→   917→            <DialogFooter>
+   918→   918→              <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
+   919→   919→                {t('cancel')}
+   920→   920→              </Button>
+   921→   921→              <Button type="submit" disabled={saving} className="gap-2">
+   922→   922→                {saving ? (
+   923→   923→                  <>
+   924→   924→                    <Loader2 className="h-4 w-4 animate-spin" />
+   925→   925→                    {t('saving')}
+   926→   926→                  </>
+   927→   927→                ) : (
+   928→   928→                  <>
+   929→   929→                    <KeyRound className="h-4 w-4" />
+   930→   930→                    {t('saveCredentials')}
+   931→   931→                  </>
+   932→   932→                )}
+   933→   933→              </Button>
+   934→   934→            </DialogFooter>
+   935→   935→          </form>
+   936→   936→        </DialogContent>
+   937→   937→      </Dialog>
+   938→   938→
+   939→   939→      {/* ── Add/Edit Police Dialog ── */}
+   940→   940→      <Dialog open={policeDialogOpen} onOpenChange={setPoliceDialogOpen}>
+   941→   941→        <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md max-h-[85vh] overflow-y-auto">
+   942→   942→          <DialogHeader>
+   943→   943→            <DialogTitle className="flex items-center gap-2">
+   944→   944→              <Shield className="h-5 w-5 text-rose-600" />
+   945→   945→              {editMode ? t('editOfficerTitle') : t('addOfficerTitle')}
+   946→   946→            </DialogTitle>
+   947→   947→            <DialogDescription>
+   948→   948→              {editMode
+   949→   949→                ? currentUser?.role === "SUPERUSER"
+   950→   950→                  ? t('editDescSuperuser')
+   951→   951→                  : t('editDescPolice')
+   952→   952→                : currentUser?.role === "SUPERUSER"
+   953→   953→                  ? t('addDescSuperuser')
+   954→   954→                  : t('addDescPolice', { rank: getRankLabel(maxCreatableRank) })}
+   955→   955→            </DialogDescription>
+   956→   956→          </DialogHeader>
+   957→   957→          <form onSubmit={handlePoliceSubmit} className="space-y-4">
+   958→   958→            {!editMode && (
+   959→   959→              <div className="space-y-2">
+   960→   960→                <Label>{t('lblusername', 'Username')} *</Label>
+   961→   961→                <Input
+   962→   962→                  id="police-username"
+   963→   963→                  placeholder={t('placeholderUsername')}
+   964→   964→                  value={policeUsername}
+   965→   965→                  onChange={(e) => setPoliceUsername(e.target.value)}
+   966→   966→                  autoFocus
+   967→   967→                />
+   968→   968→              </div>
+   969→   969→            )}
+   970→   970→
+   971→   971→            <div className="space-y-2">
+   972→   972→              <Label>{t('lblfullName', 'Full Name')} *</Label>
+   973→   973→              <Input
+   974→   974→                id="police-name"
+   975→   975→                placeholder={t('placeholderName')}
+   976→   976→                value={policeName}
+   977→   977→                onChange={(e) => setPoliceName(e.target.value)}
+   978→   978→              />
+   979→   979→            </div>
+   980→   980→
+   981→   981→            <div className="space-y-2">
+   982→   982→              <Label>{t('lblrank', 'Rank')} *</Label>
+   983→   983→              <Select value={policeRank} onValueChange={setPoliceRank}>
+   984→   984→                <SelectTrigger>
+   985→   985→                  <SelectValue placeholder={t('selectRank')} />
+   986→   986→                </SelectTrigger>
+   987→   987→                <SelectContent>
+   988→   988→                  {availableRanks.map((r) => (
+   989→   989→                    <SelectItem key={r} value={r}>
+   990→   990→                      <div className="flex items-center gap-2">
+   991→   991→                        <span>{getRankLabel(r)}</span>
+   992→   992→                      </div>
+   993→   993→                    </SelectItem>
+   994→   994→                  ))}
+   995→   995→                </SelectContent>
+   996→   996→              </Select>
+   997→   997→              <p className="text-xs text-muted-foreground">
+   998→   998→                {currentUser?.role === "SUPERUSER"
+   999→   999→                  ? t('rankHintSuperuser')
+  1000→  1000→                  : getRankDesc(policeRank)}
+  1001→  1001→              </p>
+  1002→  1002→            </div>
+  1003→  1003→
+  1004→  1004→            <div className="space-y-2">
+  1005→  1005→              <Label htmlFor="police-password">
+  1006→  1006→                {editMode ? t('newPassword') : t('passwordRequired')}
+  1007→  1007→              </Label>
+  1008→  1008→              <div className="relative">
+  1009→  1009→                <Input
+  1010→  1010→                  id="police-password"
+  1011→  1011→                  type={showPolicePassword ? "text" : "password"}
+  1012→  1012→                  placeholder={editMode ? t('placeholderPasswordEdit') : t('placeholderPasswordCreate')}
+  1013→  1013→                  value={policePassword}
+  1014→  1014→                  onChange={(e) => setPolicePassword(e.target.value)}
+  1015→  1015→                  className="pr-10"
+  1016→  1016→                />
+  1017→  1017→                <button
+  1018→  1018→                  type="button"
+  1019→  1019→                  onClick={() => setShowPolicePassword(!showPolicePassword)}
+  1020→  1020→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+  1021→  1021→                >
+  1022→  1022→                  {showPolicePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+  1023→  1023→                </button>
+  1024→  1024→              </div>
+  1025→  1025→            </div>
+  1026→  1026→
+  1027→  1027→            <DialogFooter>
+  1028→  1028→              <Button type="button" variant="outline" onClick={() => setPoliceDialogOpen(false)}>
+  1029→  1029→                {t('cancel')}
+  1030→  1030→              </Button>
+  1031→  1031→              <Button type="submit" disabled={policeSaving} className="gap-2">
+  1032→  1032→                {policeSaving ? (
+  1033→  1033→                  <>
+  1034→  1034→                    <Loader2 className="h-4 w-4 animate-spin" />
+  1035→  1035→                    {editMode ? t('updating') : t('creating')}
+  1036→  1036→                  </>
+  1037→  1037→                ) : (
+  1038→  1038→                  <>
+  1039→  1039→                    <Shield className="h-4 w-4" />
+  1040→  1040→                    {editMode ? t('updateOfficer') : t('createOfficer')}
+  1041→  1041→                  </>
+  1042→  1042→                )}
+  1043→  1043→              </Button>
+  1044→  1044→            </DialogFooter>
+  1045→  1045→          </form>
+  1046→  1046→        </DialogContent>
+  1047→  1047→      </Dialog>
+  1048→  1048→
+  1049→  1049→      {/* ── Delete Confirmation Dialog ── */}
+  1050→  1050→      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1051→  1051→        <DialogContent className="mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full sm:max-w-md">
+  1052→  1052→          <DialogHeader>
+  1053→  1053→            <DialogTitle className="flex items-center gap-2 text-red-600">
+  1054→  1054→              <AlertTriangle className="h-5 w-5" />
+  1055→  1055→              {t('deleteOfficerTitle')}
+  1056→  1056→            </DialogTitle>
+  1057→  1057→            <DialogDescription>
+  1058→  1058→              {t('deleteOfficerDesc', { name: deleteTarget?.name, username: deleteTarget?.username })}
+  1059→  1059→            </DialogDescription>
+  1060→  1060→          </DialogHeader>
+  1061→  1061→          <DialogFooter className="gap-2 sm:gap-0">
+  1062→  1062→            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+  1063→  1063→              {t('cancel')}
+  1064→  1064→            </Button>
+  1065→  1065→            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
+  1066→  1066→              {deleting ? (
+  1067→  1067→                <>
+  1068→  1068→                  <Loader2 className="h-4 w-4 animate-spin" />
+  1069→  1069→                  {t('deleting')}
+  1070→  1070→                </>
+  1071→  1071→              ) : (
+  1072→  1072→                <>
+  1073→  1073→                  <Trash2 className="h-4 w-4" />
+  1074→  1074→                  {t('deleteOfficer')}
+  1075→  1075→                </>
+  1076→  1076→              )}
+  1077→  1077→            </Button>
+  1078→  1078→          </DialogFooter>
+  1079→  1079→        </DialogContent>
+  1080→  1080→      </Dialog>
+  1081→  1081→    </div>
+  1082→  1082→  );
+  1083→  1083→}
+  1084→  1084→

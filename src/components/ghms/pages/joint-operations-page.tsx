@@ -109,7 +109,7 @@ export default function JointOperationsPage() {
       toast.success(data.message || t('successEmergency', { action }));
       fetchStats(); // Refresh stats
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : `Failed: ${action}`;
+      const message = err instanceof Error ? err.message : t('failedAction', { action });
       toast.error(message);
     } finally {
       setActioning(false);
@@ -363,7 +363,7 @@ export default function JointOperationsPage() {
                               : "bg-sky-100 text-sky-800 border-sky-200"
                           }`}
                         >
-                          {u.role}
+                          {t('role_' + u.role)}
                         </Badge>
                       </td>
                       <td className="px-4 py-2 text-slate-600">

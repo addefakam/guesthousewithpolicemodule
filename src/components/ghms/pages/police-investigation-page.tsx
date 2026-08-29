@@ -164,11 +164,11 @@ export default function PoliceInvestigationPage() {
   };
 
   const tabs = [
-    { key: "movement" as const, label: "Guest Movement", icon: ArrowRight },
-    { key: "frequent" as const, label: "Frequent Stays", icon: AlertTriangle },
-    { key: "linking" as const, label: "Guest Linking", icon: GitBranch },
-    { key: "alerts" as const, label: "Alert Settings", icon: Shield },
-    { key: "export" as const, label: "Legal Export", icon: Download },
+    { key: "movement" as const, icon: ArrowRight },
+    { key: "frequent" as const, icon: AlertTriangle },
+    { key: "linking" as const, icon: GitBranch },
+    { key: "alerts" as const, icon: Shield },
+    { key: "export" as const, icon: Download },
   ];
 
   return (
@@ -228,7 +228,7 @@ export default function PoliceInvestigationPage() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{g.provider?.name || t('unknown')}</p>
-                              <Badge className={`text-[9px] ${STATUS_COLORS[r.status] || ""}`}>{r.status}</Badge>
+                              <Badge className={`text-[9px] ${STATUS_COLORS[r.status] || ""}`}>{t('status_' + r.status)}</Badge>
                             </div>
                             <span className="text-[10px] text-muted-foreground">{r.room?.number || ""} {r.room?.type || ""}</span>
                           </div>
@@ -259,7 +259,7 @@ export default function PoliceInvestigationPage() {
                           <span>{m.providerName}</span><span>{m.matchType}</span><span>{new Date(m.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[9px] bg-red-50 text-red-800 border-red-200">{m.suspectedPerson.severity}</Badge>
+                      <Badge variant="outline" className="text-[9px] bg-red-50 text-red-800 border-red-200">{t('severity_' + m.suspectedPerson.severity)}</Badge>
                     </div>
                   ))}
                 </div>
@@ -399,7 +399,7 @@ export default function PoliceInvestigationPage() {
                               <p className="text-sm font-semibold truncate">{f.guestName}</p>
                               <Badge variant="outline" className={`text-[10px] gap-0.5 ${riskColor}`}>
                                 <span className={riskIcon}>●</span>
-                                {f.riskLevel} {t('riskBadge')}
+                                {t('risk_' + f.riskLevel)} {t('riskBadge')}
                               </Badge>
                               {f.isReviewed && (
                                 <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600">
@@ -496,7 +496,7 @@ export default function PoliceInvestigationPage() {
                   {linkedGroups.map((group, gi) => (
                     <div key={gi} className="p-3 sm:px-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary" className="text-[9px]">{group.linkType}</Badge>
+                        <Badge variant="secondary" className="text-[9px]">{t('linkType_' + group.linkType)}</Badge>
                         <span className="text-xs font-mono text-muted-foreground">{group.linkValue}</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

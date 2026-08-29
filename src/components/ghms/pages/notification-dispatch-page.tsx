@@ -90,17 +90,17 @@ interface BroadcastRecord {
 // ─── Channel config ─────────────────────────────────────────────────────────
 
 const CHANNELS = [
-  { value: "IN_APP", label: "In-App Notification", icon: Bell, color: "text-blue-500" },
-  { value: "SMS", label: "SMS", icon: Smartphone, color: "text-green-500" },
-  { value: "WHATSAPP", label: "WhatsApp", icon: MessageSquare, color: "text-emerald-500" },
-  { value: "TELEGRAM", label: "Telegram", icon: Send, color: "text-sky-500" },
+  { value: "IN_APP", icon: Bell, color: "text-blue-500" },
+  { value: "SMS", icon: Smartphone, color: "text-green-500" },
+  { value: "WHATSAPP", icon: MessageSquare, color: "text-emerald-500" },
+  { value: "TELEGRAM", icon: Send, color: "text-sky-500" },
 ];
 
 const PRIORITIES = [
-  { value: "LOW", label: "Low", color: "bg-slate-100 text-slate-600" },
-  { value: "NORMAL", label: "Normal", color: "bg-blue-100 text-blue-600" },
-  { value: "HIGH", label: "High", color: "bg-amber-100 text-amber-600" },
-  { value: "URGENT", label: "Urgent", color: "bg-rose-100 text-rose-600" },
+  { value: "LOW", color: "bg-slate-100 text-slate-600" },
+  { value: "NORMAL", color: "bg-blue-100 text-blue-600" },
+  { value: "HIGH", color: "bg-amber-100 text-amber-600" },
+  { value: "URGENT", color: "bg-rose-100 text-rose-600" },
 ];
 
 function getPriorityBadge(priority: string) {
@@ -621,7 +621,7 @@ function ComposeTab({
                               {provider.hasTelegram && (
                                 <span className="flex items-center gap-1 text-[10px] text-sky-600">
                                   <Send className="size-3" />
-                                  Telegram
+                                  {t('channelsTelegram')}
                                 </span>
                               )}
                               <span className="flex items-center gap-1 text-[10px] text-blue-600">

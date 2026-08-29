@@ -413,7 +413,7 @@ export default function AnomaliesPage() {
                         </TableCell>
                         <TableCell className="py-3">
                           <Badge className={SEVERITY_STYLES[a.severity] || SEVERITY_STYLES.LOW}>
-                            {a.severity}
+                            {t('severity_' + a.severity)}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 text-right">
