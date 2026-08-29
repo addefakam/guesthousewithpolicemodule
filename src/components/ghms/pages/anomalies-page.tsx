@@ -55,25 +55,15 @@ const SEVERITY_STYLES: Record<string, string> = {
   LOW: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  IDENTITY_MISMATCH: "Identity Mismatch",
-  RAPID_MULTI_PROVIDER: "Rapid Multi-Provider",
-  NO_SHOW_PATTERN: "No-Show Pattern",
-  CASH_ANOMALY: "Cash Anomaly",
-  CROSS_PROVIDER_ID: "Cross-Provider ID",
-  SHORT_STAY_PATTERN: "Short Stay Pattern",
-  FAKE_ID_PATTERN: "Fake ID Pattern",
-};
-
-const TYPE_DESCRIPTIONS: Record<string, string> = {
-  IDENTITY_MISMATCH: "Same phone linked to different names or IDs across providers",
-  RAPID_MULTI_PROVIDER: "Bookings at 2+ providers within 48 hours",
-  NO_SHOW_PATTERN: "3+ cancelled or unfulfilled reservations",
-  CASH_ANOMALY: "Unusually large cash payment detected",
-  CROSS_PROVIDER_ID: "Same ID number with different names at multiple providers",
-  SHORT_STAY_PATTERN: "Repeated 1-night stays at multiple providers",
-  FAKE_ID_PATTERN: "Same ID number shared by multiple guests",
-};
+const ANOMALY_TYPES = [
+  "IDENTITY_MISMATCH",
+  "RAPID_MULTI_PROVIDER",
+  "NO_SHOW_PATTERN",
+  "CASH_ANOMALY",
+  "CROSS_PROVIDER_ID",
+  "SHORT_STAY_PATTERN",
+  "FAKE_ID_PATTERN",
+] as const;
 
 function getRiskColor(score: number): string {
   if (score >= 75) return "text-red-600";
@@ -89,25 +79,8 @@ function getRiskBg(score: number): string {
   return "bg-emerald-50";
 }
 
-function formatTime(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ${hrs % 24}h ago`;
-  } catch {
-    return dateStr;
-  }
-}
-
 export default function AnomaliesPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("anomalies");
   const { refreshKey } = useAppStore();
   const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
   const [stats, setStats] = useState<AnomalyStats | null>(null);
@@ -121,6 +94,49 @@ export default function AnomaliesPage() {
   const [detectionEnabled, setDetectionEnabled] = useState<boolean>(false);
 
   const pagination = usePagination({ totalItems: stats?.total || 0 });
+
+  const getTypeLabel = (val: string) => {
+    const map: Record<string, string> = {
+      IDENTITY_MISMATCH: t('typeLabelsIdentityMismatch'),
+      RAPID_MULTI_PROVIDER: t('typeLabelsRapidMultiProvider'),
+      NO_SHOW_PATTERN: t('typeLabelsNoShowPattern'),
+      CASH_ANOMALY: t('typeLabelsCashAnomaly'),
+      CROSS_PROVIDER_ID: t('typeLabelsCrossProviderId'),
+      SHORT_STAY_PATTERN: t('typeLabelsShortStayPattern'),
+      FAKE_ID_PATTERN: t('typeLabelsFakeIdPattern'),
+    };
+    return map[val] || val;
+  };
+
+  const getTypeDesc = (val: string) => {
+    const map: Record<string, string> = {
+      IDENTITY_MISMATCH: t('typeDescsIdentityMismatch'),
+      RAPID_MULTI_PROVIDER: t('typeDescsRapidMultiProvider'),
+      NO_SHOW_PATTERN: t('typeDescsNoShowPattern'),
+      CASH_ANOMALY: t('typeDescsCashAnomaly'),
+      CROSS_PROVIDER_ID: t('typeDescsCrossProviderId'),
+      SHORT_STAY_PATTERN: t('typeDescsShortStayPattern'),
+      FAKE_ID_PATTERN: t('typeDescsFakeIdPattern'),
+    };
+    return map[val] || val;
+  };
+
+  const formatTime = (dateStr: string): string => {
+    try {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 1) return t('timeJustNow');
+      if (mins < 60) return t('timeMinutesAgo', { m: mins });
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return t('timeHoursAgo', { h: hrs, m: mins % 60 });
+      const days = Math.floor(hrs / 24);
+      return t('timeDaysAgo', { d: days, h: hrs % 24 });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -140,10 +156,10 @@ export default function AnomaliesPage() {
         setDetectionEnabled(data.enabled);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load anomalies");
+      toast.error(err instanceof Error ? err.message : t('errorLoad'));
     } finally {
-    setLoading(false);
-  }
+      setLoading(false);
+    }
   }, [selectedType, selectedSeverity, pagination.currentPage, pagination.pageSize, refreshKey]);
 
   const handleScan = async () => {
@@ -154,25 +170,25 @@ export default function AnomaliesPage() {
       toast.success(result.message);
       fetchData(); // Refresh after scan
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Scan failed");
+      toast.error(err instanceof Error ? err.message : t('errorScan'));
     } finally {
-    setScanning(false);
-  }
+      setScanning(false);
+    }
   };
 
   const handleReview = async () => {
     if (selectedIds.size === 0) {
-      toast.error("Select anomalies to review");
+      toast.error(t('errorSelectToReview'));
       return;
     }
     try {
       await apiReviewAnomalies([...selectedIds]);
-      toast.success(`Reviewed ${selectedIds.size} anomalies`);
+      toast.success(t('successReviewed', { count: selectedIds.size }));
       setSelectedIds(new Set());
       fetchData();
     } catch (err) {
-      toast.error("Failed to review anomalies");
-  }
+      toast.error(t('errorReview'));
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -191,24 +207,24 @@ export default function AnomaliesPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Anomaly Detection</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
           <p className="text-sm text-gray-500">
-            AI-powered pattern analysis — automatically detects suspicious behavior across all providers
+            {t('pageSubtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {detectionEnabled ? (
             <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-xs font-medium px-2.5 py-1">
-              <ToggleRight className="h-3 w-3 mr-1" />Active
+              <ToggleRight className="h-3 w-3 mr-1" />{t('active')}
             </Badge>
           ) : (
             <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs font-medium px-2.5 py-1">
-              <ToggleLeft className="h-3 w-3 mr-1" />Inactive
+              <ToggleLeft className="h-3 w-3 mr-1" />{t('inactive')}
             </Badge>
           )}
           {unreviewedCount > 0 && (
             <Badge className="bg-red-500 text-white text-xs font-bold px-2.5 py-1">
-              {unreviewedCount} unreviewed
+              {unreviewedCount} {t('unreviewed')}
             </Badge>
           )}
           <Button
@@ -222,7 +238,7 @@ export default function AnomaliesPage() {
             ) : (
               <>
                 <RefreshCw className="h-4 w-4" />
-                Run System Scan
+                {t('runSystemScan')}
               </>
             )}
           </Button>
@@ -235,7 +251,7 @@ export default function AnomaliesPage() {
           <Card className="border-l-4 border-l-sky-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Total Anomalies</span>
+                <span className="text-sm text-gray-500">{t('statTotal')}</span>
                 <span className="text-2xl font-bold text-gray-900">{stats.total}</span>
               </div>
             </CardContent>
@@ -243,7 +259,7 @@ export default function AnomaliesPage() {
           <Card className="border-l-4 border-l-rose-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Unreviewed</span>
+                <span className="text-sm text-gray-500">{t('statUnreviewed')}</span>
                 <span className="text-2xl font-bold text-rose-600">{stats.unreviewed}</span>
               </div>
             </CardContent>
@@ -251,7 +267,7 @@ export default function AnomaliesPage() {
           <Card className="border-l-4 border-l-amber-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Last 30 Days</span>
+                <span className="text-sm text-gray-500">{t('statLast30Days')}</span>
                 <span className="text-2xl font-bold text-amber-600">{stats.last30Days}</span>
               </div>
             </CardContent>
@@ -259,7 +275,7 @@ export default function AnomaliesPage() {
           <Card className="border-l-4 border-l-violet-200">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Anomaly Types</span>
+                <span className="text-sm text-gray-500">{t('statAnomalyTypes')}</span>
                 <span className="text-2xl font-bold text-violet-600">{stats.byType.length}</span>
               </div>
             </CardContent>
@@ -272,25 +288,25 @@ export default function AnomaliesPage() {
         <div className="flex flex-1 gap-2">
           <Select value={selectedType} onValueChange={setSelectedType}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Types" />
+              <SelectValue placeholder={t('allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              {Object.entries(TYPE_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
+              <SelectItem value="">{t('allTypes')}</SelectItem>
+              {ANOMALY_TYPES.map((key) => (
+                <SelectItem key={key} value={key}>{getTypeLabel(key)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Severity" />
+              <SelectValue placeholder={t('allSeverity')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Severity</SelectItem>
-              <SelectItem value="CRITICAL">Critical</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="">{t('allSeverity')}</SelectItem>
+              <SelectItem value="CRITICAL">{t('severityCritical')}</SelectItem>
+              <SelectItem value="HIGH">{t('severityHigh')}</SelectItem>
+              <SelectItem value="MEDIUM">{t('severityMedium')}</SelectItem>
+              <SelectItem value="LOW">{t('severityLow')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -298,10 +314,10 @@ export default function AnomaliesPage() {
           {reviewMode ? (
             <>
               <Button variant="outline" size="sm" onClick={() => setReviewMode(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button variant="default" size="sm" onClick={handleReview}>
-                Mark Reviewed ({selectedIds.size})
+                {t('markReviewed', { count: selectedIds.size })}
               </Button>
             </>
           ) : (
@@ -310,7 +326,7 @@ export default function AnomaliesPage() {
               size="sm"
               onClick={() => setReviewMode(true)}
             >
-              Select to Review
+              {t('selectToReview')}
             </Button>
           )}
         </div>
@@ -321,7 +337,7 @@ export default function AnomaliesPage() {
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
           <ToggleLeft className="h-4 w-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">
-            <strong>Automatic detection is OFF.</strong> Reservation creation and check-in will not trigger anomaly analysis. Toggle it from the sidebar to enable.
+            {t('detectionOffBanner')}
           </p>
         </div>
       )}
@@ -344,10 +360,9 @@ export default function AnomaliesPage() {
       ) : anomalies.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400">
           <BrainCircuit className="h-12 w-12 mb-3 opacity-30" />
-          <p className="text-sm font-medium">No anomalies detected</p>
+          <p className="text-sm font-medium">{t('emptyTitle')}</p>
           <p className="text-xs text-gray-400 mt-1">
-            Anomalies are automatically detected when reservations are created or guests check in.
-            {" "}You can also run a manual system scan.
+            {t('emptyDescription')}
           </p>
         </div>
       ) : (
@@ -392,7 +407,7 @@ export default function AnomaliesPage() {
                               <Zap className="h-4 w-4 text-violet-500" />
                             )}
                             <span className="text-xs font-medium text-gray-700">
-                              {TYPE_LABELS[a.type] || a.type}
+                              {getTypeLabel(a.type)}
                             </span>
                           </div>
                         </TableCell>
@@ -409,7 +424,7 @@ export default function AnomaliesPage() {
                             <p className="text-xs font-medium text-gray-900 truncate max-w-[150px]" title={a.guestName}>{a.guestName}</p>
                           {a.guestIdNumber && (
                             <p className="text-[10px] text-gray-400 truncate max-w-[150px]" title={a.guestIdNumber}>
-                              ID: {a.guestIdNumber}
+                              {t('idPrefix')} {a.guestIdNumber}
                             </p>
                           )}
                           </div>
@@ -451,40 +466,35 @@ export default function AnomaliesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Info className="h-4 w-4 text-sky-500" />
-            How It Works
+            {t('howItWorks')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-gray-600">
           <p>
-            The Smart Anomaly Detection engine uses <strong>rule-based pattern analysis</strong> (no external AI API)
-            to automatically detect suspicious behavior across all guesthouses in the system.
+            {t('howItWorksDesc')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(TYPE_DESCRIPTIONS).map(([type, desc]) => (
+            {ANOMALY_TYPES.map((type) => (
               <div key={type} className="rounded-lg border border-gray-100 p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-violet-500" />
-                  <span className="font-medium text-gray-900">{TYPE_LABELS[type]}</span>
+                  <span className="font-medium text-gray-900">{getTypeLabel(type)}</span>
                 </div>
-                <p className="text-xs text-gray-500">{desc}</p>
+                <p className="text-xs text-gray-500">{getTypeDesc(type)}</p>
               </div>
             ))}
           </div>
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="h-4 w-4 text-amber-600" />
-              <span className="font-medium text-amber-800">Risk Scoring</span>
+              <span className="font-medium text-amber-800">{t('riskScoring')}</span>
             </div>
             <p className="text-xs text-amber-700">
-              Each anomaly gets a risk score (0–100) based on the type and pattern.
-              Scores are weighted: ID fraud = 45, cross-provider ID = 40, rapid multi-provider = 35, etc.
-              Higher scores trigger automatic police notifications.
+              {t('riskScoringDesc')}
             </p>
           </div>
           <p className="text-xs text-gray-400 mt-3">
-            <strong>Toggle:</strong> When ON, detection runs automatically on every reservation creation and guest check-in.
-            When OFF, zero performance impact on those operations.
-            <strong>Manual Scan</strong> always works regardless of the toggle.
+            {t('toggleDesc')}
           </p>
         </CardContent>
       </Card>
@@ -493,16 +503,15 @@ export default function AnomaliesPage() {
       <Dialog open={reviewMode} onOpenChange={(open) => { if (!open) setReviewMode(false); setSelectedIds(new Set()); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Review Anomalies</DialogTitle>
+            <DialogTitle>{t('reviewDialogTitle')}</DialogTitle>
             <DialogDescription>
-              {selectedIds.size} anomaly(ies) selected for review. This marks them as reviewed.
-            Reviewed anomalies won't appear in the unreviewed count.
-          </DialogDescription>
+              {t('reviewDialogDesc', { count: selectedIds.size })}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-              <Button variant="outline" onClick={() => setReviewMode(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setReviewMode(false)}>{t('cancel')}</Button>
               <Button onClick={handleReview} disabled={selectedIds.size === 0}>
-                Confirm ({selectedIds.size})
+                {t('confirmReview', { count: selectedIds.size })}
               </Button>
           </DialogFooter>
         </DialogContent>

@@ -115,7 +115,7 @@ function getChannelIcon(channel: string) {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NotificationDispatchPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("notificationDispatch");
   const currentUser = useAppStore((s) => s.currentUser);
   const isPolice = currentUser?.role === "POLICE";
   const isAdmin = currentUser?.role === "SUPERUSER";
@@ -130,25 +130,25 @@ export default function NotificationDispatchPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-amber-500 shadow-sm">
               <Megaphone className="size-5 text-white" />
             </div>
-            Notification Dispatch
+            {t('pageTitle')}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {isPolice
-              ? "Send notifications to all guest house service providers from the police module"
-              : "Send system-wide notifications to all guest house service providers"}
+              ? t('pageSubtitlePolice')
+              : t('pageSubtitleAdmin')}
           </p>
         </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
           {isPolice && (
             <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-xs font-semibold">
               <Shield className="mr-1 size-3" />
-              Police {currentUser?.policeRank || ""}
+              {t('badgePolice')} {currentUser?.policeRank || ""}
             </Badge>
           )}
           {isAdmin && (
             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-semibold">
               <ShieldCheck className="mr-1 size-3" />
-              System Admin
+              {t('badgeSystemAdmin')}
             </Badge>
           )}
         </div>
@@ -158,11 +158,11 @@ export default function NotificationDispatchPage() {
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="compose" className="flex items-center gap-2">
             <Radio className="size-4" />
-            Compose
+            {t('tabCompose')}
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="size-4" />
-            History
+            {t('tabHistory')}
           </TabsTrigger>
         </TabsList>
 
@@ -189,6 +189,27 @@ function ComposeTab({
   isPolice: boolean;
   isAdmin: boolean;
 }) {
+  const { t } = useTranslation("notificationDispatch");
+
+  const getChannelLabel = (val: string) => {
+    const map: Record<string, string> = {
+      IN_APP: t('channelsInApp'),
+      SMS: t('channelsSms'),
+      WHATSAPP: t('channelsWhatsapp'),
+      TELEGRAM: t('channelsTelegram'),
+    };
+    return map[val] || val;
+  };
+  const getPriorityLabel = (val: string) => {
+    const map: Record<string, string> = {
+      LOW: t('prioritiesLow'),
+      NORMAL: t('prioritiesNormal'),
+      HIGH: t('prioritiesHigh'),
+      URGENT: t('prioritiesUrgent'),
+    };
+    return map[val] || val;
+  };
+
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [channel, setChannel] = useState("IN_APP");
@@ -208,11 +229,11 @@ function ComposeTab({
       setProviders(arr);
     } catch (err) {
       console.error("Failed to load providers:", err);
-      toast.error("Failed to load provider list");
+      toast.error(t('errorLoadProviders'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchProviders();
@@ -260,8 +281,8 @@ function ComposeTab({
         providerIds: targetType === "SELECTED_PROVIDERS" ? Array.from(selectedProviders) : [],
       });
       toast.success(
-        `Notification sent! ${result.sent} delivered, ${result.failed} failed`,
-        { description: `Channel: ${channel} | Priority: ${priority}` }
+        t('successSent', { sent: result.sent, failed: result.failed }),
+        { description: t('successSentDesc', { channel: getChannelLabel(channel), priority: getPriorityLabel(priority) }) }
       );
       // Reset form
       setTitle("");
@@ -270,7 +291,7 @@ function ComposeTab({
       setSelectedProviders(new Set());
       setTargetType("ALL_PROVIDERS");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send broadcast");
+      toast.error(err instanceof Error ? err.message : t('errorSendBroadcast'));
     } finally {
       setSending(false);
     }
@@ -282,22 +303,22 @@ function ComposeTab({
       const targetList = filteredProviders;
       if (channel === "SMS" || channel === "WHATSAPP") {
         const withPhone = targetList.filter((p) => p.hasPhone).length;
-        return { available: withPhone, total: targetList.length, label: "phone number" };
+        return { available: withPhone, total: targetList.length, label: t('availabilityPhone') };
       }
       if (channel === "TELEGRAM") {
         const withTelegram = targetList.filter((p) => p.hasTelegram).length;
-        return { available: withTelegram, total: targetList.length, label: "Telegram chat ID" };
+        return { available: withTelegram, total: targetList.length, label: t('availabilityTelegram') };
       }
       return { available: targetList.length, total: targetList.length, label: "" };
     }
     const selected = providers.filter((p) => selectedProviders.has(p.id));
     if (channel === "SMS" || channel === "WHATSAPP") {
       const withPhone = selected.filter((p) => p.hasPhone).length;
-      return { available: withPhone, total: selected.length, label: "phone number" };
+      return { available: withPhone, total: selected.length, label: t('availabilityPhone') };
     }
     if (channel === "TELEGRAM") {
       const withTelegram = selected.filter((p) => p.hasTelegram).length;
-      return { available: withTelegram, total: selected.length, label: "Telegram chat ID" };
+      return { available: withTelegram, total: selected.length, label: t('availabilityTelegram') };
     }
     return { available: selected.length, total: selected.length, label: "" };
   };
@@ -312,13 +333,13 @@ function ComposeTab({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Radio className="size-5 text-primary" />
-              Compose Notification
+              {t('composeTitle')}
             </CardTitle>
             <CardDescription>
-              Create a notification to dispatch to guest house service providers.
+              {t('composeDescription')}
               {isViewer && (
                 <span className="block mt-1 text-amber-600 font-medium">
-                  Your rank (Viewer) is read-only. Contact an Officer or Admin to send notifications.
+                  {t('viewerWarning')}
                 </span>
               )}
             </CardDescription>
@@ -327,11 +348,11 @@ function ComposeTab({
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title" className="text-sm font-medium">
-                Title <span className="text-rose-500">*</span>
+                {t('lblTitle')} <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="title"
-                placeholder="e.g., Safety Inspection Notice, New Regulation Alert"
+                placeholder={t('placeholderTitle')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isViewer}
@@ -341,18 +362,18 @@ function ComposeTab({
             {/* Message */}
             <div className="space-y-2">
               <Label htmlFor="message" className="text-sm font-medium">
-                Message <span className="text-rose-500">*</span>
+                {t('lblMessage')} <span className="text-rose-500">*</span>
               </Label>
               <Textarea
                 id="message"
-                placeholder="Write the notification message content here...\n\nThis will be delivered to all selected service providers."
+                placeholder={t('placeholderMessage')}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={6}
                 disabled={isViewer}
                 className="resize-y"
               />
-              <p className="text-xs text-slate-400">{message.length} characters</p>
+              <p className="text-xs text-slate-400">{message.length} {t('characters')}</p>
             </div>
 
             {/* Channel & Priority row */}
@@ -370,7 +391,7 @@ function ComposeTab({
                         <SelectItem key={ch.value} value={ch.value}>
                           <span className="flex items-center gap-2">
                             <Icon className={`size-4 ${ch.color}`} />
-                            {ch.label}
+                            {getChannelLabel(ch.value)}
                           </span>
                         </SelectItem>
                       );
@@ -393,11 +414,10 @@ function ComposeTab({
                     ) : (
                       <CheckCircle2 className="size-3" />
                     )}
-                    {availability.available} of {availability.total} providers have a {availability.label} configured
+                    {t('availabilityWarning', { available: availability.available, total: availability.total, label: availability.label })}
                   </div>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label>{t('lblpriorityLevel', 'Priority Level')}</Label>
                 <Select value={priority} onValueChange={setPriority} disabled={isViewer}>
@@ -417,7 +437,7 @@ function ComposeTab({
                               ? "bg-blue-500"
                               : "bg-slate-400"
                           }`} />
-                          {pr.label}
+                          {getPriorityLabel(pr.value)}
                         </span>
                       </SelectItem>
                     ))}
@@ -440,7 +460,7 @@ function ComposeTab({
                     disabled={isViewer}
                     className="accent-primary"
                   />
-                  All Approved Providers
+                  {t('allApprovedProviders')}
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
@@ -452,7 +472,7 @@ function ComposeTab({
                     disabled={isViewer}
                     className="accent-primary"
                   />
-                  Selected Providers Only
+                  {t('selectedProvidersOnly')}
                 </label>
               </div>
             </div>
@@ -467,23 +487,23 @@ function ComposeTab({
                 {sending ? (
                   <>
                     <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Dispatching...
+                    {t('dispatching')}
                   </>
                 ) : (
                   <>
                     <Send className="mr-2 size-4" />
-                    Dispatch to {" "}
+                    {t('dispatchTo')}{" "}
                     {targetType === "ALL_PROVIDERS"
-                      ? `All (${providers.length})`
-                      : `${selectedProviders.size} Selected`}{" "}
-                    Providers
+                      ? t('allCount', { count: providers.length })
+                      : t('selectedCount', { count: selectedProviders.size })}{" "}
+                    {t('providers')}
                   </>
                 )}
               </Button>
               {priority === "URGENT" && (
                 <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 animate-pulse">
                   <AlertTriangle className="mr-1 size-3" />
-                  URGENT
+                  {t('urgentBadge')}
                 </Badge>
               )}
             </div>
@@ -498,7 +518,7 @@ function ComposeTab({
             <CardTitle className="text-base flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Building2 className="size-4 text-primary" />
-                Providers
+                {t('providers')}
               </span>
               <Badge variant="secondary" className="text-xs">
                 {targetType === "ALL_PROVIDERS"
@@ -509,7 +529,7 @@ function ComposeTab({
             {targetType === "SELECTED_PROVIDERS" && (
               <>
                 <Input
-                  placeholder="Search providers..."
+                  placeholder={t('searchProviders')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="mt-2"
@@ -524,7 +544,7 @@ function ComposeTab({
                       onCheckedChange={toggleAll}
                       disabled={isViewer}
                     />
-                    Select All
+                    {t('selectAll')}
                   </label>
                 </div>
               </>
@@ -546,7 +566,7 @@ function ComposeTab({
             ) : providers.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-slate-400">
                 <Building2 className="size-8" />
-                <p className="text-sm">No approved providers found</p>
+                <p className="text-sm">{t('emptyProviders')}</p>
               </div>
             ) : (
               <ScrollArea className="h-[420px]">
@@ -588,14 +608,14 @@ function ComposeTab({
                                 {provider.type}
                               </Badge>
                               <span className="text-[10px] text-slate-400">
-                                {provider.roomCount} rooms · {provider.guestCount} guests
+                                {provider.roomCount} {t('rooms')} · {provider.guestCount} {t('guests')}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 mt-1.5">
                               {provider.hasPhone && (
                                 <span className="flex items-center gap-1 text-[10px] text-emerald-600">
                                   <Smartphone className="size-3" />
-                                  SMS/WhatsApp
+                                  {t('smsWhatsapp')}
                                 </span>
                               )}
                               {provider.hasTelegram && (
@@ -606,7 +626,7 @@ function ComposeTab({
                               )}
                               <span className="flex items-center gap-1 text-[10px] text-blue-600">
                                 <Bell className="size-3" />
-                                In-App ({provider.userCount} users)
+                                {t('inAppUsers', { count: provider.userCount })}
                               </span>
                             </div>
                           </div>
@@ -627,6 +647,27 @@ function ComposeTab({
 // ─── History Tab ────────────────────────────────────────────────────────────
 
 function HistoryTab() {
+  const { t } = useTranslation("notificationDispatch");
+
+  const getChannelLabel = (val: string) => {
+    const map: Record<string, string> = {
+      IN_APP: t('channelsInApp'),
+      SMS: t('channelsSms'),
+      WHATSAPP: t('channelsWhatsapp'),
+      TELEGRAM: t('channelsTelegram'),
+    };
+    return map[val] || val;
+  };
+  const getPriorityLabel = (val: string) => {
+    const map: Record<string, string> = {
+      LOW: t('prioritiesLow'),
+      NORMAL: t('prioritiesNormal'),
+      HIGH: t('prioritiesHigh'),
+      URGENT: t('prioritiesUrgent'),
+    };
+    return map[val] || val;
+  };
+
   const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -641,11 +682,11 @@ function HistoryTab() {
       setTotalPages(res?.totalPages || 1);
     } catch (err) {
       console.error("Failed to load broadcast history:", err);
-      toast.error("Failed to load broadcast history");
+      toast.error(t('errorLoadHistory'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchHistory(page);
@@ -656,10 +697,10 @@ function HistoryTab() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="size-5 text-primary" />
-          Broadcast History
+          {t('historyTitle')}
         </CardTitle>
         <CardDescription>
-          View all previously dispatched notifications and their delivery status.
+          {t('historyDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -673,8 +714,8 @@ function HistoryTab() {
           <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
             <History className="size-12" />
             <div className="text-center">
-              <p className="text-sm font-medium">No broadcast history yet</p>
-              <p className="text-xs mt-1">Dispatched notifications will appear here</p>
+              <p className="text-sm font-medium">{t('emptyHistory')}</p>
+              <p className="text-xs mt-1">{t('emptyHistorySub')}</p>
             </div>
           </div>
         ) : (
@@ -704,7 +745,7 @@ function HistoryTab() {
                             {new Date(b.createdAt).toLocaleString()}
                           </div>
                           <div className="text-[10px] text-slate-400 mt-0.5">
-                            by {b.sentByName || b.sentBy}
+                            {t('sentBy', { name: b.sentByName || b.sentBy })}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -718,7 +759,7 @@ function HistoryTab() {
                         <TableCell>
                           <span className={`flex items-center gap-1.5 text-xs ${ch.color}`}>
                             <ChIcon className="size-3.5" />
-                            {b.channel}
+                            {getChannelLabel(b.channel)}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -726,13 +767,13 @@ function HistoryTab() {
                             variant="outline"
                             className={`text-[10px] px-1.5 py-0 ${pr.color}`}
                           >
-                            {b.priority}
+                            {getPriorityLabel(b.priority)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
                           {b.targetType === "ALL_PROVIDERS"
-                            ? "All"
-                            : `${JSON.parse(b.targetIds || "[]").length} selected`}
+                            ? t('targetAll')
+                            : t('targetSelected', { count: JSON.parse(b.targetIds || "[]").length })}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-3">
@@ -764,10 +805,10 @@ function HistoryTab() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                 >
-                  Previous
+                  {t('previous')}
                 </Button>
                 <span className="text-sm text-slate-500">
-                  Page {page} of {totalPages}
+                  {t('pageOf', { page, total: totalPages })}
                 </span>
                 <Button
                   variant="outline"
@@ -775,7 +816,7 @@ function HistoryTab() {
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
                 >
-                  Next
+                  {t('next')}
                 </Button>
               </div>
             )}

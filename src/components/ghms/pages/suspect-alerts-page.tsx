@@ -99,7 +99,7 @@ function parseDetails(detailsStr: string): Record<string, unknown> {
 }
 
 export default function SuspectAlertsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("suspectAlerts");
   const { refreshKey, triggerRefresh } = useAppStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -123,7 +123,7 @@ export default function SuspectAlertsPage() {
       setMatches(sorted);
       setUnreadCount(data.unreadCount || 0);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load alerts";
+      const message = err instanceof Error ? err.message : t('failedToLoad');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -153,13 +153,22 @@ export default function SuspectAlertsPage() {
       await apiMarkMatchesRead({ markAllRead: true });
       setMatches((prev) => prev.map((m) => ({ ...m, isRead: true })));
       setUnreadCount(0);
-      toast.success("All alerts marked as read");
+      toast.success(t('allAlertsMarked'));
     } catch (err: unknown) {
-      toast.error("Failed to mark all as read");
+      toast.error(t('failedMarkAll'));
     }
   };
 
   const details = selectedMatch ? parseDetails(selectedMatch.details) : {};
+
+  const getMatchTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      RESERVATION: t('matchTypeReservation'),
+      DAYTIME_BOOKING: t('matchTypeDaytime'),
+      GUEST_CHECKIN: t('matchTypeCheckin'),
+    };
+    return map[type] || type;
+  };
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
@@ -167,15 +176,15 @@ export default function SuspectAlertsPage() {
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-semibold">Suspect Alerts</h2>
+            <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
             {unreadCount > 0 && (
               <Badge className="bg-red-500 text-white hover:bg-red-600 text-[10px] px-1.5">
-                {unreadCount} new
+                {unreadCount} {t('new')}
               </Badge>
             )}
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Automatic alerts when suspected persons make reservations
+            {t('pageSubtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -186,7 +195,7 @@ export default function SuspectAlertsPage() {
                 filter === "all" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              All
+              {t('all')}
             </button>
             <button
               onClick={() => setFilter("unread")}
@@ -194,7 +203,7 @@ export default function SuspectAlertsPage() {
                 filter === "unread" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Unread ({unreadCount})
+              {t('unread', { count: unreadCount })}
             </button>
           </div>
           {unreadCount > 0 && (
@@ -205,7 +214,7 @@ export default function SuspectAlertsPage() {
               className="h-8 text-xs"
             >
               <CheckCheck className="mr-1 h-3.5 w-3.5" />
-              Mark All Read
+              {t('markAllRead')}
             </Button>
           )}
         </div>
@@ -224,11 +233,11 @@ export default function SuspectAlertsPage() {
             <ShieldAlert className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
             <p className="text-xs sm:text-sm text-muted-foreground">
               {filter === "unread"
-                ? "No unread alerts"
-                : "No suspect match alerts yet"}
+                ? t('noUnreadAlerts')
+                : t('noAlertsYet')}
             </p>
             <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground/70">
-              Alerts appear here when a suspected person makes a reservation
+              {t('alertsWillAppear')}
             </p>
           </div>
         ) : (
@@ -257,16 +266,16 @@ export default function SuspectAlertsPage() {
                       </Badge>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      Matched: {match.suspectedPerson.name}
+                      {t('matched', { name: match.suspectedPerson.name })}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Building2 className="h-2.5 w-2.5" />
-                        {match.providerName || "Unknown"}
+                        {match.providerName || t('unknown')}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <FileWarning className="h-2.5 w-2.5" />
-                        {MATCH_TYPE_LABELS[match.matchType] || match.matchType}
+                        {getMatchTypeLabel(match.matchType)}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Clock className="h-2.5 w-2.5" />
@@ -285,7 +294,7 @@ export default function SuspectAlertsPage() {
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>{t('thsuspectName', 'Suspect Name')}</TableHead>
-                    <TableHead>{t('thseverity', 'Severity')}</TableHead>
+                    <TableHead>{t('common:thseverity')}</TableHead>
                     <TableHead>{t('thlocation', 'Location')}</TableHead>
                     <TableHead>{t('thdetectedAt', 'Detected At')}</TableHead>
                   </TableRow>
@@ -311,7 +320,7 @@ export default function SuspectAlertsPage() {
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-sm">{match.providerName || "Unknown"}</span>
+                          <span className="text-sm">{match.providerName || t('unknown')}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -332,7 +341,7 @@ export default function SuspectAlertsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <ShieldAlert className="h-5 w-5 text-red-600" />
-              Suspect Match Alert
+              {t('suspectMatchAlert')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               {formatDateTime(selectedMatch?.createdAt || "")}
@@ -342,7 +351,7 @@ export default function SuspectAlertsPage() {
             <div className="space-y-4">
               {/* Suspect Info */}
               <div className="rounded-lg border-2 border-red-200 bg-red-50/50 p-3 sm:p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-red-700">Suspected Person</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-red-700">{t('suspectedPerson')}</p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-red-800">{selectedMatch.suspectedPerson.name}</p>
@@ -359,7 +368,7 @@ export default function SuspectAlertsPage() {
                   {selectedMatch.suspectedPerson.idNumber && (
                     <div className="flex items-center gap-2 text-xs">
                       <FileWarning className="h-3.5 w-3.5 text-red-600" />
-                      <span>ID: {selectedMatch.suspectedPerson.idNumber}</span>
+                      <span>{t('idPrefix', { id: selectedMatch.suspectedPerson.idNumber })}</span>
                     </div>
                   )}
                   {selectedMatch.suspectedPerson.description && (
@@ -374,7 +383,7 @@ export default function SuspectAlertsPage() {
 
               {/* Matched Person Info */}
               <div className="space-y-3 text-sm">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Matched Guest</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('matchedGuest')}</p>
                 <div className="flex items-center gap-2.5">
                   <UserCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
@@ -385,7 +394,7 @@ export default function SuspectAlertsPage() {
                 {selectedMatch.guestIdNumber && (
                   <div className="flex items-center gap-2.5">
                     <FileWarning className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <p className="font-mono text-xs">ID: {selectedMatch.guestIdNumber}</p>
+                    <p className="font-mono text-xs">{t('guestIdPrefix', { id: selectedMatch.guestIdNumber })}</p>
                   </div>
                 )}
               </div>
@@ -394,26 +403,26 @@ export default function SuspectAlertsPage() {
 
               {/* Location & Booking Details */}
               <div className="space-y-3 text-sm">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Location & Booking</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('locationBooking')}</p>
                 <div className="flex items-center gap-2.5">
                   <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Service Provider</p>
-                    <p className="font-medium">{selectedMatch.providerName || "Unknown"}</p>
+                    <p className="text-[10px] text-muted-foreground">{t('serviceProvider')}</p>
+                    <p className="font-medium">{selectedMatch.providerName || t('unknown')}</p>
                   </div>
                 </div>
                 {Boolean(details.roomNumber) && (
                   <div className="flex items-center gap-2.5">
                     <DoorOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Room</p>
+                      <p className="text-[10px] text-muted-foreground">{t('room')}</p>
                       <p className="font-medium">{String(details.roomNumber)}{details.roomName ? ` - ${String(details.roomName)}` : ""}</p>
                     </div>
                   </div>
                 )}
                 <div className="flex items-center gap-2.5">
                   <Badge variant="outline" className="text-xs">
-                    {MATCH_TYPE_LABELS[selectedMatch.matchType] || selectedMatch.matchType}
+                    {getMatchTypeLabel(selectedMatch.matchType)}
                   </Badge>
                 </div>
 
@@ -424,7 +433,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Check-in</p>
+                          <p className="text-[10px] text-muted-foreground">{t('checkIn')}</p>
                           <p className="text-xs font-medium">{String(details.checkIn)}</p>
                         </div>
                       </div>
@@ -433,7 +442,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Check-out</p>
+                          <p className="text-[10px] text-muted-foreground">{t('checkOut')}</p>
                           <p className="text-xs font-medium">{String(details.checkOut)}</p>
                         </div>
                       </div>
@@ -442,7 +451,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Room</p>
+                          <p className="text-[10px] text-muted-foreground">{t('room')}</p>
                           <p className="text-xs font-medium">{String(details.roomNumber)}</p>
                         </div>
                       </div>
@@ -451,7 +460,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Sun className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Nights</p>
+                          <p className="text-[10px] text-muted-foreground">{t('nights')}</p>
                           <p className="text-xs font-medium">{String(details.nights)}</p>
                         </div>
                       </div>
@@ -460,7 +469,7 @@ export default function SuspectAlertsPage() {
                       <div className="col-span-2 flex items-center gap-2">
                         <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Total Cost</p>
+                          <p className="text-[10px] text-muted-foreground">{t('totalCost')}</p>
                           <p className="text-xs font-medium">ETB {Number(details.totalCost).toLocaleString()}</p>
                         </div>
                       </div>
@@ -474,7 +483,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Date</p>
+                          <p className="text-[10px] text-muted-foreground">{t('date')}</p>
                           <p className="text-xs font-medium">{String(details.date)}</p>
                         </div>
                       </div>
@@ -483,7 +492,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Time</p>
+                          <p className="text-[10px] text-muted-foreground">{t('time')}</p>
                           <p className="text-xs font-medium">{String(details.time)}</p>
                         </div>
                       </div>
@@ -492,7 +501,7 @@ export default function SuspectAlertsPage() {
                       <div className="col-span-2 flex items-center gap-2">
                         <Sun className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Service</p>
+                          <p className="text-[10px] text-muted-foreground">{t('service')}</p>
                           <p className="text-xs font-medium">{String(details.serviceName)}</p>
                         </div>
                       </div>
@@ -501,7 +510,7 @@ export default function SuspectAlertsPage() {
                       <div className="col-span-2 flex items-center gap-2">
                         <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Total Cost</p>
+                          <p className="text-[10px] text-muted-foreground">{t('totalCost')}</p>
                           <p className="text-xs font-medium">ETB {Number(details.totalCost).toLocaleString()}</p>
                         </div>
                       </div>
@@ -515,7 +524,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Nationality</p>
+                          <p className="text-[10px] text-muted-foreground">{t('nationality')}</p>
                           <p className="text-xs font-medium">{String(details.nationality)}</p>
                         </div>
                       </div>
@@ -524,7 +533,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Address</p>
+                          <p className="text-[10px] text-muted-foreground">{t('address')}</p>
                           <p className="text-xs font-medium">{String(details.address)}</p>
                         </div>
                       </div>
@@ -533,7 +542,7 @@ export default function SuspectAlertsPage() {
                       <div className="flex items-center gap-2">
                         <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                         <div>
-                          <p className="text-[10px] text-muted-foreground">Email</p>
+                          <p className="text-[10px] text-muted-foreground">{t('email')}</p>
                           <p className="text-xs font-medium">{String(details.email)}</p>
                         </div>
                       </div>

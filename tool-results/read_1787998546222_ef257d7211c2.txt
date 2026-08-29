@@ -1,0 +1,974 @@
+     1→"use client";
+     2→import { useTranslation } from "react-i18next";
+     3→
+     4→import { useState, useEffect, useCallback, useMemo } from "react";
+     5→import { usePagination } from "@/hooks/use-pagination";
+     6→import { PaginationControls } from "@/components/shared/pagination-controls";
+     7→import {
+     8→  BedDouble,
+     9→  Bed,
+    10→  Users,
+    11→  Search,
+    12→  Phone,
+    13→  MapPin,
+    14→  Building2,
+    15→  AlertTriangle,
+    16→  ChevronDown,
+    17→  ChevronUp,
+    18→  Loader2,
+    19→  Eye,
+    20→  RefreshCw,
+    21→  CalendarDays,
+    22→  BarChart3,
+    23→  Wrench,
+    24→  Lock,
+    25→  Clock,
+    26→  ShieldAlert,
+    27→  TrendingUp,
+    28→  PhoneCall,
+    29→  Mail,
+    30→  Copy,
+    31→  Ban,
+    32→  Send,
+    33→} from "lucide-react";
+    34→import { toast } from "sonner";
+    35→import { apiPoliceRoomAvailability, apiPoliceSuspendProvider } from "@/lib/api";
+    36→
+    37→import { Button } from "@/components/ui/button";
+    38→import { Badge } from "@/components/ui/badge";
+    39→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    40→import { Input } from "@/components/ui/input";
+    41→import { Textarea } from "@/components/ui/textarea";
+    42→import {
+    43→  Select,
+    44→  SelectContent,
+    45→  SelectItem,
+    46→  SelectTrigger,
+    47→  SelectValue,
+    48→} from "@/components/ui/select";
+    49→import {
+    50→  Dialog,
+    51→  DialogContent,
+    52→  DialogHeader,
+    53→  DialogTitle,
+    54→  DialogDescription,
+    55→} from "@/components/ui/dialog";
+    56→import { Progress } from "@/components/ui/progress";
+    57→import { Separator } from "@/components/ui/separator";
+    58→
+    59→// ── Types ──
+    60→interface RoomInfo {
+    61→  id: string;
+    62→  number: string;
+    63→  name: string;
+    64→  type: string;
+    65→  status: string;
+    66→  floor: number;
+    67→  capacity: number;
+    68→  pricePerNight: number;
+    69→}
+    70→
+    71→interface ProviderStats {
+    72→  id: string;
+    73→  name: string;
+    74→  ownerName: string;
+    75→  phone: string;
+    76→  address: string;
+    77→  licenseNo: string;
+    78→  latitude: number;
+    79→  longitude: number;
+    80→  total: number;
+    81→  available: number;
+    82→  occupied: number;
+    83→  reserved: number;
+    84→  maintenance: number;
+    85→  utilizationRate: number;
+    86→  totalCapacity: number;
+    87→  avgPrice: number;
+    88→  rooms: RoomInfo[];
+    89→}
+    90→
+    91→interface RoomTypeStat {
+    92→  type: string;
+    93→  count: number;
+    94→}
+    95→
+    96→interface Summary {
+    97→  totalProviders: number;
+    98→  totalRooms: number;
+    99→  totalCapacity: number;
+   100→  availableRooms: number;
+   101→  occupiedRooms: number;
+   102→  reservedRooms: number;
+   103→  maintenanceRooms: number;
+   104→  utilizationRate: number;
+   105→}
+   106→
+   107→// ── Suspicious provider detection ──
+   108→interface SuspicionFlag {
+   109→  type: "high_maintenance" | "zero_available" | "all_non_available";
+   110→  message: string;
+   111→  severity: "HIGH" | "MEDIUM";
+   112→}
+   113→
+   114→function detectSuspicion(p: ProviderStats, t: (key: string, opts?: Record<string, unknown>) => string): SuspicionFlag[] {
+   115→  const flags: SuspicionFlag[] = [];
+   116→
+   117→  if (p.total === 0) return flags;
+   118→
+   119→  // More than 30% rooms in maintenance = suspicious hiding
+   120→  const maintPct = (p.maintenance / p.total) * 100;
+   121→  if (maintPct >= 30 && p.maintenance > 0) {
+   122→    flags.push({
+   123→      type: "high_maintenance",
+   124→      message: t('flagRoomHiding', { maintenance: p.maintenance, total: p.total, pct: Math.round(maintPct) }),
+   125→      severity: maintPct >= 50 ? "HIGH" : "MEDIUM",
+   126→    });
+   127→  }
+   128→
+   129→  // All rooms occupied/reserved/maintenance with zero available — suspicious during festivals
+   130→  if (p.available === 0 && p.total > 0) {
+   131→    flags.push({
+   132→      type: "zero_available",
+   133→      message: t('flagNoAvailable'),
+   134→      severity: "MEDIUM",
+   135→    });
+   136→  }
+   137→
+   138→  return flags;
+   139→}
+   140→
+   141→// ── Helpers ──
+   142→function formatRoomType(type: string): string {
+   143→  return type.charAt(0) + type.slice(1).toLowerCase().replace("_", "-");
+   144→}
+   145→
+   146→function getRoomStatusColor(status: string): string {
+   147→  switch (status) {
+   148→    case "AVAILABLE": return "bg-emerald-100 text-emerald-800 border-emerald-200";
+   149→    case "OCCUPIED": return "bg-blue-100 text-blue-800 border-blue-200";
+   150→    case "RESERVED": return "bg-amber-100 text-amber-800 border-amber-200";
+   151→    case "MAINTENANCE": return "bg-slate-200 text-slate-600 border-slate-300";
+   152→    default: return "bg-slate-100 text-slate-600 border-slate-200";
+   153→  }
+   154→}
+   155→
+   156→function getUtilizationColor(rate: number): string {
+   157→  if (rate >= 90) return "text-rose-600";
+   158→  if (rate >= 70) return "text-amber-600";
+   159→  return "text-emerald-600";
+   160→}
+   161→
+   162→function getUtilizationBarColor(rate: number): string {
+   163→  if (rate >= 90) return "bg-rose-500";
+   164→  if (rate >= 70) return "bg-amber-500";
+   165→  return "bg-emerald-500";
+   166→}
+   167→
+   168→// ── Page ──
+   169→export default function PoliceRoomAvailabilityPage() {
+   170→  const { t } = useTranslation("roomAvailability");
+   171→  const [data, setData] = useState<{
+   172→    summary: Summary;
+   173→    roomTypes: RoomTypeStat[];
+   174→    providers: ProviderStats[];
+   175→  } | null>(null);
+   176→  const [loading, setLoading] = useState(true);
+   177→  const [searchTerm, setSearchTerm] = useState("");
+   178→  const [sortBy, setSortBy] = useState("name");
+   179→  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+   180→  const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
+   181→  const [detailProvider, setDetailProvider] = useState<ProviderStats | null>(null);
+   182→  const [showSuspiciousOnly, setShowSuspiciousOnly] = useState(false);
+   183→  // Suspension dialog state
+   184→  const [suspendProvider, setSuspendProvider] = useState<ProviderStats | null>(null);
+   185→  const [suspensionReason, setSuspensionReason] = useState("");
+   186→  const [providerMessage, setProviderMessage] = useState("");
+   187→  const [suspending, setSuspending] = useState(false);
+   188→  const providerPagination = usePagination({ totalItems: 0, initialPageSize: 10, pageSizeOptions: [5, 10, 20, 50] });
+   189→
+   190→  const fetchData = useCallback(async () => {
+   191→    try {
+   192→      setLoading(true);
+   193→      const result = await apiPoliceRoomAvailability();
+   194→      if (result && typeof result === "object") {
+   195→        result.providers = Array.isArray(result.providers) ? result.providers : [];
+   196→        result.roomTypes = Array.isArray(result.roomTypes) ? result.roomTypes : [];
+   197→      }
+   198→      setData(result);
+   199→    } catch (err: unknown) {
+   200→      toast.error(err instanceof Error ? err.message : t('errorLoad'));
+   201→    } finally {
+   202→      setLoading(false);
+   203→    }
+   204→  }, []);
+   205→
+   206→  // ── Handle suspension ──
+   207→  const handleOpenSuspend = (provider: ProviderStats) => {
+   208→    setSuspendProvider(provider);
+   209→    setSuspensionReason("");
+   210→    setProviderMessage("");
+   211→  };
+   212→
+   213→  const handleSuspend = async () => {
+   214→    if (!suspendProvider) return;
+   215→    if (!suspensionReason.trim()) {
+   216→      toast.error(t('errorReasonRequired'));
+   217→      return;
+   218→    }
+   219→    try {
+   220→      setSuspending(true);
+   221→      await apiPoliceSuspendProvider({
+   222→        providerId: suspendProvider.id,
+   223→        suspensionReason: suspensionReason.trim(),
+   224→        providerMessage: providerMessage.trim() || undefined,
+   225→      });
+   226→      toast.success(t('successSuspended', { name: suspendProvider.name }));
+   227→      setSuspendProvider(null);
+   228→      setSuspensionReason("");
+   229→      setProviderMessage("");
+   230→      // Refresh data to remove the suspended provider from the list
+   231→      fetchData();
+   232→    } catch (err: unknown) {
+   233→      toast.error(err instanceof Error ? err.message : t('errorSuspend'));
+   234→    } finally {
+   235→      setSuspending(false);
+   236→    }
+   237→  };
+   238→
+   239→  useEffect(() => {
+   240→    fetchData();
+   241→  }, [fetchData]);
+   242→
+   243→  // ── Compute suspicion for all providers ──
+   244→  const suspicionMap = data?.providers
+   245→    ? new Map(data.providers.map((p) => [p.id, detectSuspicion(p, t)]))
+   246→    : new Map();
+   247→
+   248→  const suspiciousCount = data?.providers
+   249→    ? data.providers.filter((p) => suspicionMap.get(p.id)?.length > 0).length
+   250→    : 0;
+   251→
+   252→  const highAlertCount = data?.providers
+   253→    ? data.providers.filter((p) =>
+   254→        suspicionMap.get(p.id)?.some((f) => f.severity === "HIGH")
+   255→      ).length
+   256→    : 0;
+   257→
+   258→  // ── Sort providers ──
+   259→  const sortedProviders = data?.providers
+   260→    ? [...data.providers].sort((a, b) => {
+   261→        let cmp = 0;
+   262→        switch (sortBy) {
+   263→          case "name": cmp = a.name.localeCompare(b.name); break;
+   264→          case "rooms": cmp = a.total - b.total; break;
+   265→          case "available": cmp = a.available - b.available; break;
+   266→          case "occupied": cmp = a.occupied - b.occupied; break;
+   267→          case "utilization": cmp = a.utilizationRate - b.utilizationRate; break;
+   268→          case "capacity": cmp = a.totalCapacity - b.totalCapacity; break;
+   269→          case "maintenance": cmp = a.maintenance - b.maintenance; break;
+   270→          default: cmp = a.name.localeCompare(b.name);
+   271→        }
+   272→        return sortDir === "asc" ? cmp : -cmp;
+   273→      })
+   274→    : [];
+   275→
+   276→  // ── Filter by search and suspicious toggle ──
+   277→  const filteredProviders = sortedProviders.filter((p) => {
+   278→    if (showSuspiciousOnly && suspicionMap.get(p.id)?.length === 0) return false;
+   279→    if (!searchTerm.trim()) return true;
+   280→    const term = searchTerm.toLowerCase();
+   281→    return (
+   282→      p.name.toLowerCase().includes(term) ||
+   283→      p.ownerName.toLowerCase().includes(term) ||
+   284→      p.phone.includes(term) ||
+   285→      p.address.toLowerCase().includes(term)
+   286→    );
+   287→  });
+   288→
+   289→  // Reset to page 1 when filters change
+   290→  useEffect(() => {
+   291→    providerPagination.resetToFirst();
+   292→  }, [searchTerm, showSuspiciousOnly]);
+   293→
+   294→  // Update total items when filtered list changes
+   295→  useEffect(() => {
+   296→    providerPagination.setTotalItems(filteredProviders.length);
+   297→  }, [filteredProviders.length]);
+   298→
+   299→  const paginatedProviders = useMemo(() => providerPagination.paginate(filteredProviders), [filteredProviders, providerPagination]);
+   300→
+   301→  if (loading) {
+   302→    return (
+   303→      <div className="flex h-full min-h-[60vh] items-center justify-center">
+   304→        <Loader2 className="size-8 animate-spin text-primary/60" />
+   305→      </div>
+   306→    );
+   307→  }
+   308→
+   309→  if (!data) return null;
+   310→
+   311→  const s = data.summary;
+   312→
+   313→  return (
+   314→    <div className="space-y-6 p-4 md:p-6">
+   315→      {/* ── Header ── */}
+   316→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   317→        <div>
+   318→          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+   319→            <BedDouble className="h-6 w-6 text-blue-600" />
+   320→            {t('pageTitle')}
+   321→          </h1>
+   322→          <p className="mt-1 text-sm text-slate-500">
+   323→            {t('pageSubtitle')}
+   324→          </p>
+   325→        </div>
+   326→        <div className="flex items-center gap-2">
+   327→          <Button variant="outline" size="icon" onClick={fetchData} title={t('refreshData')}>
+   328→            <RefreshCw className="h-4 w-4" />
+   329→          </Button>
+   330→        </div>
+   331→      </div>
+   332→
+   333→      {/* ── City Summary Cards ── */}
+   334→      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+   335→        <Card>
+   336→          <CardContent className="p-3">
+   337→            <div className="flex items-center gap-1.5">
+   338→              <Building2 className="h-3.5 w-3.5 text-slate-400" />
+   339→              <p className="text-[10px] text-slate-500">{t('statProviders')}</p>
+   340→            </div>
+   341→            <p className="mt-1 text-xl font-bold text-slate-900">{s.totalProviders}</p>
+   342→          </CardContent>
+   343→        </Card>
+   344→        <Card>
+   345→          <CardContent className="p-3">
+   346→            <div className="flex items-center gap-1.5">
+   347→              <BedDouble className="h-3.5 w-3.5 text-slate-400" />
+   348→              <p className="text-[10px] text-slate-500">{t('statTotalRooms')}</p>
+   349→            </div>
+   350→            <p className="mt-1 text-xl font-bold text-slate-900">{s.totalRooms}</p>
+   351→          </CardContent>
+   352→        </Card>
+   353→        <Card className="border-emerald-200">
+   354→          <CardContent className="p-3">
+   355→            <div className="flex items-center gap-1.5">
+   356→              <Bed className="h-3.5 w-3.5 text-emerald-500" />
+   357→              <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
+   358→            </div>
+   359→            <p className="mt-1 text-xl font-bold text-emerald-700">{s.availableRooms}</p>
+   360→          </CardContent>
+   361→        </Card>
+   362→        <Card className="border-blue-200">
+   363→          <CardContent className="p-3">
+   364→            <div className="flex items-center gap-1.5">
+   365→              <Users className="h-3.5 w-3.5 text-blue-500" />
+   366→              <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
+   367→            </div>
+   368→            <p className="mt-1 text-xl font-bold text-blue-700">{s.occupiedRooms}</p>
+   369→          </CardContent>
+   370→        </Card>
+   371→        <Card className="border-amber-200">
+   372→          <CardContent className="p-3">
+   373→            <div className="flex items-center gap-1.5">
+   374→              <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
+   375→              <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
+   376→            </div>
+   377→            <p className="mt-1 text-xl font-bold text-amber-700">{s.reservedRooms}</p>
+   378→          </CardContent>
+   379→        </Card>
+   380→        <Card className="border-slate-300">
+   381→          <CardContent className="p-3">
+   382→            <div className="flex items-center gap-1.5">
+   383→              <Wrench className="h-3.5 w-3.5 text-slate-400" />
+   384→              <p className="text-[10px] text-slate-500">{t('statMaintenance')}</p>
+   385→            </div>
+   386→            <p className="mt-1 text-xl font-bold text-slate-600">{s.maintenanceRooms}</p>
+   387→          </CardContent>
+   388→        </Card>
+   389→        <Card className="border-blue-200">
+   390→          <CardContent className="p-3">
+   391→            <div className="flex items-center gap-1.5">
+   392→              <Users className="h-3.5 w-3.5 text-blue-500" />
+   393→              <p className="text-[10px] text-blue-600">{t('statCapacity')}</p>
+   394→            </div>
+   395→            <p className="mt-1 text-xl font-bold text-blue-700">{s.totalCapacity}</p>
+   396→          </CardContent>
+   397→        </Card>
+   398→        <Card className="border-violet-200">
+   399→          <CardContent className="p-3">
+   400→            <div className="flex items-center gap-1.5">
+   401→              <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
+   402→              <p className="text-[10px] text-violet-600">{t('statUtilization')}</p>
+   403→            </div>
+   404→            <p className={`mt-1 text-xl font-bold ${getUtilizationColor(s.utilizationRate)}`}>
+   405→              {s.utilizationRate}%
+   406→            </p>
+   407→          </CardContent>
+   408→        </Card>
+   409→      </div>
+   410→
+   411→      {/* ── Suspicious Activity Alert Banner ── */}
+   412→      {suspiciousCount > 0 && (
+   413→        <div className={`rounded-lg border p-4 ${
+   414→          highAlertCount > 0
+   415→            ? "border-rose-300 bg-rose-50"
+   416→            : "border-amber-300 bg-amber-50"
+   417→        }`}>
+   418→          <div className="flex items-start gap-3">
+   419→            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+   420→              highAlertCount > 0 ? "bg-rose-100" : "bg-amber-100"
+   421→            }`}>
+   422→              <ShieldAlert className={`h-5 w-5 ${
+   423→                highAlertCount > 0 ? "text-rose-600" : "text-amber-600"
+   424→              }`} />
+   425→            </div>
+   426→            <div className="min-w-0 flex-1">
+   427→              <p className={`text-sm font-bold ${
+   428→                highAlertCount > 0 ? "text-rose-800" : "text-amber-800"
+   429→              }`}>
+   430→                {highAlertCount > 0
+   431→                  ? `${highAlertCount} ${t('highAlert')}` + (highAlertCount !== suspiciousCount ? `, ${suspiciousCount - highAlertCount} ${t('warning')}` : "")
+   432→                  : `${suspiciousCount} ${t('warning')}${suspiciousCount > 1 ? "s" : ""}`}
+   433→                {" "}— {t('suspiciousActivityDetected')}
+   434→              </p>
+   435→              <p className={`mt-0.5 text-xs ${
+   436→                highAlertCount > 0 ? "text-rose-700" : "text-amber-700"
+   437→              }`}>
+   438→                {t('suspiciousBannerDesc', { count: suspiciousCount })}
+   439→              </p>
+   440→            </div>
+   441→          </div>
+   442→        </div>
+   443→      )}
+   444→
+   445→      {/* ── Utilization Overview Bar ── */}
+   446→      <Card>
+   447→        <CardContent className="p-4">
+   448→          <div className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
+   449→            <span>{t('cityWideUtilization')}</span>
+   450→            <span className={getUtilizationColor(s.utilizationRate)}>{s.utilizationRate}%</span>
+   451→          </div>
+   452→          <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-100">
+   453→            {s.totalRooms > 0 && (
+   454→              <>
+   455→                <div className="bg-emerald-500 transition-all" style={{ width: `${(s.availableRooms / s.totalRooms) * 100}%` }} title={`Available: ${s.availableRooms}`} />
+   456→                <div className="bg-blue-500 transition-all" style={{ width: `${(s.occupiedRooms / s.totalRooms) * 100}%` }} title={`Occupied: ${s.occupiedRooms}`} />
+   457→                <div className="bg-amber-500 transition-all" style={{ width: `${(s.reservedRooms / s.totalRooms) * 100}%` }} title={`Reserved: ${s.reservedRooms}`} />
+   458→                <div className="bg-slate-300 transition-all" style={{ width: `${(s.maintenanceRooms / s.totalRooms) * 100}%` }} title={`Maintenance: ${s.maintenanceRooms}`} />
+   459→              </>
+   460→            )}
+   461→          </div>
+   462→          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500">
+   463→            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> {t('legendAvailable', { count: s.availableRooms })}</span>
+   464→            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> {t('legendOccupied', { count: s.occupiedRooms })}</span>
+   465→            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-amber-500" /> {t('legendReserved', { count: s.reservedRooms })}</span>
+   466→            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-slate-300" /> {t('legendMaintenance', { count: s.maintenanceRooms })}</span>
+   467→          </div>
+   468→        </CardContent>
+   469→      </Card>
+   470→
+   471→      {/* ── Room Type Distribution ── */}
+   472→      <Card>
+   473→        <CardHeader className="pb-2">
+   474→          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+   475→            <BedDouble className="h-4 w-4" />
+   476→            {t('roomTypesDistribution')}
+   477→          </CardTitle>
+   478→        </CardHeader>
+   479→        <CardContent>
+   480→          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+   481→            {data.roomTypes.map((rt) => {
+   482→              const pct = s.totalRooms > 0 ? Math.round((rt.count / s.totalRooms) * 100) : 0;
+   483→              return (
+   484→                <div key={rt.type} className="rounded-lg border p-3 text-center">
+   485→                  <p className="text-[11px] text-slate-500">{formatRoomType(rt.type)}</p>
+   486→                  <p className="mt-1 text-xl font-bold text-slate-900">{rt.count}</p>
+   487→                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+   488→                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+   489→                  </div>
+   490→                  <p className="mt-1 text-[10px] text-slate-400">{pct}%</p>
+   491→                </div>
+   492→              );
+   493→            })}
+   494→          </div>
+   495→        </CardContent>
+   496→      </Card>
+   497→
+   498→      {/* ── Provider List ── */}
+   499→      <Card>
+   500→        <CardHeader className="pb-2">
+   501→          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   502→            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+   503→              <Building2 className="h-4 w-4" />
+   504→              {t('providerRoomBreakdown')}
+   505→              <Badge variant="outline" className="ml-1 text-[10px]">{filteredProviders.length} providers</Badge>
+   506→            </CardTitle>
+   507→          </div>
+   508→          <div className="flex flex-col gap-2 sm:flex-row sm:items-center mt-2">
+   509→            <div className="relative flex-1">
+   510→              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+   511→              <Input
+   512→                placeholder={t('searchPlaceholder')}
+   513→                value={searchTerm}
+   514→                onChange={(e) => setSearchTerm(e.target.value)}
+   515→                className="pl-8 h-9 text-sm"
+   516→              />
+   517→            </div>
+   518→            <div className="flex items-center gap-2">
+   519→              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setSortDir("asc"); }}>
+   520→                <SelectTrigger className="h-9 w-[140px] text-sm">
+   521→                  <SelectValue />
+   522→                </SelectTrigger>
+   523→                <SelectContent>
+   524→                  <SelectItem value="name">{t('sortName')}</SelectItem>
+   525→                  <SelectItem value="rooms">{t('sortTotalRooms')}</SelectItem>
+   526→                  <SelectItem value="available">{t('sortAvailable')}</SelectItem>
+   527→                  <SelectItem value="occupied">{t('sortOccupied')}</SelectItem>
+   528→                  <SelectItem value="maintenance">{t('sortMaintenance')}</SelectItem>
+   529→                  <SelectItem value="utilization">{t('sortUtilization')}</SelectItem>
+   530→                  <SelectItem value="capacity">{t('sortCapacity')}</SelectItem>
+   531→                </SelectContent>
+   532→              </Select>
+   533→              <Button
+   534→                variant="outline"
+   535→                size="icon"
+   536→                className="h-9 w-9"
+   537→                onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+   538→                title={sortDir === "asc" ? t('sortAsc') : t('sortDesc')}
+   539→              >
+   540→                {sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+   541→              </Button>
+   542→              {suspiciousCount > 0 && (
+   543→                <Button
+   544→                  variant={showSuspiciousOnly ? "default" : "outline"}
+   545→                  size="sm"
+   546→                  className={`h-9 gap-1.5 text-xs ${showSuspiciousOnly ? "bg-rose-600 hover:bg-rose-700" : ""}`}
+   547→                  onClick={() => setShowSuspiciousOnly(!showSuspiciousOnly)}
+   548→                >
+   549→                  <ShieldAlert className="h-3.5 w-3.5" />
+   550→                  {showSuspiciousOnly ? t('showingSuspicious') : t('suspiciousCount', { count: suspiciousCount })}
+   551→                </Button>
+   552→              )}
+   553→            </div>
+   554→          </div>
+   555→        </CardHeader>
+   556→        <CardContent className="p-0">
+   557→          <div className="overflow-x-auto">
+   558→            <table className="w-full text-sm">
+   559→              <thead className="bg-slate-50 border-b">
+   560→                <tr>
+   561→                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thGuesthouse')}</th>
+   562→                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thOwnerContact')}</th>
+   563→                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t('thRooms')}</th>
+   564→                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">
+   565→                    <span className="text-emerald-600">{t('thAvail')}</span>
+   566→                    <span className="text-slate-300 mx-0.5">/</span>
+   567→                    <span className="text-blue-600">{t('thOcc')}</span>
+   568→                    <span className="text-slate-300 mx-0.5">/</span>
+   569→                    <span className="text-amber-600">{t('thRes')}</span>
+   570→                    <span className="text-slate-300 mx-0.5">/</span>
+   571→                    <span className="text-slate-400">{t('thMaint')}</span>
+   572→                  </th>
+   573→                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t('thCapacity')}</th>
+   574→                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thUtilization')}</th>
+   575→                  <th className="px-4 py-2.5 text-right font-medium text-slate-600">{t('thActions')}</th>
+   576→                </tr>
+   577→              </thead>
+   578→              <tbody>
+   579→                {paginatedProviders.length === 0 ? (
+   580→                  <tr>
+   581→                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+   582→                      {showSuspiciousOnly ? t('emptySuspicious') : t('emptyProviders')}
+   583→                    </td>
+   584→                  </tr>
+   585→                ) : (
+   586→                  paginatedProviders.map((p) => {
+   587→                    const flags = suspicionMap.get(p.id) || [];
+   588→                    const hasHighAlert = flags.some((f) => f.severity === "HIGH");
+   589→                    return (
+   590→                      <tr
+   591→                        key={p.id}
+   592→                        className={`border-b hover:bg-slate-50 cursor-pointer ${
+   593→                          hasHighAlert ? "bg-rose-50/50 hover:bg-rose-50" : flags.length > 0 ? "bg-amber-50/30" : ""
+   594→                        }`}
+   595→                        onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
+   596→                      >
+   597→                        <td className="px-4 py-3">
+   598→                          <div className="flex items-center gap-2">
+   599→                            <p className="font-medium text-slate-900">{p.name}</p>
+   600→                            {hasHighAlert && (
+   601→                              <Badge variant="outline" className="text-[9px] bg-rose-100 text-rose-700 border-rose-300">
+   602→                                {t('highAlertBadge')}
+   603→                              </Badge>
+   604→                            )}
+   605→                            {flags.length > 0 && !hasHighAlert && (
+   606→                              <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-700 border-amber-300">
+   607→                                {t('flaggedBadge')}
+   608→                              </Badge>
+   609→                            )}
+   610→                          </div>
+   611→                          <p className="text-[11px] text-slate-400 truncate max-w-[200px]">{p.address}</p>
+   612→                        </td>
+   613→                        <td className="px-4 py-3">
+   614→                          <p className="text-slate-700">{p.ownerName}</p>
+   615→                          <p className="text-[11px] text-slate-400 flex items-center gap-1">
+   616→                            <Phone className="h-3 w-3" /> {p.phone}
+   617→                          </p>
+   618→                        </td>
+   619→                        <td className="px-4 py-3 text-center">
+   620→                          <span className="font-bold text-slate-900">{p.total}</span>
+   621→                        </td>
+   622→                        <td className="px-4 py-3">
+   623→                          <div className="flex items-center justify-center gap-1.5">
+   624→                            <span className="inline-flex items-center justify-center rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 min-w-[24px]">{p.available}</span>
+   625→                            <span className="inline-flex items-center justify-center rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 min-w-[24px]">{p.occupied}</span>
+   626→                            <span className="inline-flex items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 min-w-[24px]">{p.reserved}</span>
+   627→                            <span className={`inline-flex items-center justify-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold min-w-[24px] ${
+   628→                              p.maintenance > 0 && (p.maintenance / p.total) >= 0.3
+   629→                                ? "bg-rose-100 text-rose-700"
+   630→                                : "bg-slate-100 text-slate-500"
+   631→                            }`}>{p.maintenance}</span>
+   632→                          </div>
+   633→                        </td>
+   634→                        <td className="px-4 py-3 text-center">
+   635→                          <span className="text-slate-700">{p.totalCapacity} {t('beds')}</span>
+   636→                        </td>
+   637→                        <td className="px-4 py-3">
+   638→                          <div className="flex items-center gap-2">
+   639→                            <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-slate-100 max-w-[80px]">
+   640→                              <div className={`h-full rounded-full ${getUtilizationBarColor(p.utilizationRate)}`} style={{ width: `${p.utilizationRate}%` }} />
+   641→                            </div>
+   642→                            <span className={`text-xs font-bold ${getUtilizationColor(p.utilizationRate)}`}>
+   643→                              {p.utilizationRate}%
+   644→                            </span>
+   645→                          </div>
+   646→                        </td>
+   647→                        <td className="px-4 py-3 text-right">
+   648→                          <div className="flex items-center justify-end gap-1">
+   649→                            <Button
+   650→                              variant="ghost"
+   651→                              size="sm"
+   652→                              onClick={(e) => { e.stopPropagation(); setDetailProvider(p); }}
+   653→                              title={t('viewDetails')}
+   654→                            >
+   655→                              <Eye className="h-3.5 w-3.5" />
+   656→                            </Button>
+   657→                            <Button
+   658→                              variant="ghost"
+   659→                              size="sm"
+   660→                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+   661→                              onClick={(e) => { e.stopPropagation(); handleOpenSuspend(p); }}
+   662→                              title={t('suspendProvider')}
+   663→                            >
+   664→                              <Ban className="h-3.5 w-3.5" />
+   665→                            </Button>
+   666→                          </div>
+   667→                        </td>
+   668→                      </tr>
+   669→                    );
+   670→                  })
+   671→                )}
+   672→              </tbody>
+   673→            </table>
+   674→          </div>
+   675→        </CardContent>
+   676→      </Card>
+   677→
+   678→      {/* ── Detail Dialog ── */}
+   679→      <Dialog open={!!detailProvider} onOpenChange={() => setDetailProvider(null)}>
+   680→        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+   681→          <DialogHeader>
+   682→            <DialogTitle className="flex items-center gap-2">
+   683→              <Building2 className="h-5 w-5 text-blue-600" />
+   684→              {detailProvider?.name}
+   685→            </DialogTitle>
+   686→            <DialogDescription>
+   687→              {t('detailDialogDesc')}
+   688→            </DialogDescription>
+   689→          </DialogHeader>
+   690→          {detailProvider && (() => {
+   691→            const flags = suspicionMap.get(detailProvider.id) || [];
+   692→            const hasHighAlert = flags.some((f) => f.severity === "HIGH");
+   693→            return (
+   694→              <div className="space-y-4">
+   695→                {/* Suspicion alerts */}
+   696→                {flags.length > 0 && (
+   697→                  <div className={`rounded-lg border p-3 ${
+   698→                    hasHighAlert ? "border-rose-300 bg-rose-50" : "border-amber-300 bg-amber-50"
+   699→                  }`}>
+   700→                    <div className="flex items-center gap-2 mb-1.5">
+   701→                      <AlertTriangle className={`h-4 w-4 ${hasHighAlert ? "text-rose-600" : "text-amber-600"}`} />
+   702→                      <p className={`text-xs font-bold ${hasHighAlert ? "text-rose-800" : "text-amber-800"}`}>
+   703→                        {hasHighAlert ? t('detailHighAlert') : t('detailWarning')}
+   704→                      </p>
+   705→                    </div>
+   706→                    {flags.map((flag, i) => (
+   707→                      <p key={i} className={`text-xs ${hasHighAlert ? "text-rose-700" : "text-amber-700"}`}>
+   708→                        • {flag.message}
+   709→                      </p>
+   710→                    ))}
+   711→                  </div>
+   712→                )}
+   713→
+   714→                {/* Contact Info */}
+   715→                <div className="rounded-lg border p-4">
+   716→                  <p className="text-xs font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+   717→                    <PhoneCall className="h-3.5 w-3.5 text-blue-600" />
+   718→                    {t('directContact')}
+   719→                  </p>
+   720→                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   721→                    <div className="rounded-lg border p-3">
+   722→                      <p className="text-[10px] text-slate-500">{t('detailOwner')}</p>
+   723→                      <p className="text-sm font-semibold text-slate-900">{detailProvider.ownerName}</p>
+   724→                    </div>
+   725→                    <div className="rounded-lg border p-3">
+   726→                      <p className="text-[10px] text-slate-500">{t('detailPhone')}</p>
+   727→                      <p className="text-sm font-semibold text-blue-700 flex items-center gap-1">
+   728→                        <Phone className="h-3.5 w-3.5" />
+   729→                        {detailProvider.phone}
+   730→                        <button
+   731→                          onClick={() => { navigator.clipboard.writeText(detailProvider.phone); toast.success(t('phoneCopied')); }}
+   732→                          className="ml-auto p-0.5 text-slate-400 hover:text-slate-600"
+   733→                          title={t('copyPhone')}
+   734→                        >
+   735→                          <Copy className="h-3 w-3" />
+   736→                        </button>
+   737→                      </p>
+   738→                    </div>
+   739→                    <div className="rounded-lg border p-3">
+   740→                      <p className="text-[10px] text-slate-500">{t('detailAddress')}</p>
+   741→                      <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
+   742→                        <MapPin className="h-3.5 w-3.5 text-rose-500" />
+   743→                        {detailProvider.address || "N/A"}
+   744→                      </p>
+   745→                    </div>
+   746→                    <div className="rounded-lg border p-3">
+   747→                      <p className="text-[10px] text-slate-500">{t('detailLicenseNo')}</p>
+   748→                      <p className="text-sm font-semibold text-slate-900">{detailProvider.licenseNo || "N/A"}</p>
+   749→                    </div>
+   750→                  </div>
+   751→                </div>
+   752→
+   753→                <Separator />
+   754→
+   755→                {/* Stats */}
+   756→                <div className="grid grid-cols-5 gap-2">
+   757→                  <div className="rounded-lg border p-2.5 text-center">
+   758→                    <p className="text-[10px] text-slate-500">{t('detailTotal')}</p>
+   759→                    <p className="text-lg font-bold text-slate-900">{detailProvider.total}</p>
+   760→                  </div>
+   761→                  <div className="rounded-lg border border-emerald-200 p-2.5 text-center">
+   762→                    <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
+   763→                    <p className="text-lg font-bold text-emerald-700">{detailProvider.available}</p>
+   764→                  </div>
+   765→                  <div className="rounded-lg border border-blue-200 p-2.5 text-center">
+   766→                    <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
+   767→                    <p className="text-lg font-bold text-blue-700">{detailProvider.occupied}</p>
+   768→                  </div>
+   769→                  <div className="rounded-lg border border-amber-200 p-2.5 text-center">
+   770→                    <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
+   771→                    <p className="text-lg font-bold text-amber-700">{detailProvider.reserved}</p>
+   772→                  </div>
+   773→                  <div className={`rounded-lg border p-2.5 text-center ${
+   774→                    detailProvider.maintenance > 0 && (detailProvider.maintenance / detailProvider.total) >= 0.3
+   775→                      ? "border-rose-300 bg-rose-50"
+   776→                      : "border-slate-300"
+   777→                  }`}>
+   778→                    <p className={`text-[10px] ${
+   779→                      detailProvider.maintenance > 0 && (detailProvider.maintenance / detailProvider.total) >= 0.3
+   780→                        ? "text-rose-600"
+   781→                        : "text-slate-500"
+   782→                    }`}>{t('statMaintenance')}</p>
+   783→                    <p className={`text-lg font-bold ${
+   784→                      detailProvider.maintenance > 0 && (detailProvider.maintenance / detailProvider.total) >= 0.3
+   785→                        ? "text-rose-700"
+   786→                        : "text-slate-600"
+   787→                    }`}>{detailProvider.maintenance}</p>
+   788→                  </div>
+   789→                </div>
+   790→
+   791→                {/* Utilization */}
+   792→                <div className="rounded-lg border p-3">
+   793→                  <div className="flex items-center justify-between text-sm mb-1.5">
+   794→                    <span className="text-slate-600 font-medium">{t('occupancyUtilization')}</span>
+   795→                    <span className={`font-bold ${getUtilizationColor(detailProvider.utilizationRate)}`}>
+   796→                      {detailProvider.utilizationRate}%
+   797→                    </span>
+   798→                  </div>
+   799→                  <Progress value={detailProvider.utilizationRate} className="h-2" />
+   800→                  <div className="mt-1.5 flex gap-3 text-[11px] text-slate-400">
+   801→                    <span>{t('avgPrice', { price: detailProvider.avgPrice.toLocaleString() })}</span>
+   802→                    <span>{t('totalCapacity', { count: detailProvider.totalCapacity })}</span>
+   803→                  </div>
+   804→                </div>
+   805→
+   806→                {/* Room List */}
+   807→                <div>
+   808→                  <p className="text-xs font-semibold text-slate-700 mb-2">
+   809→                    {t('roomDetails', { count: detailProvider.rooms.length })}
+   810→                  </p>
+   811→                  <div className="max-h-[300px] overflow-y-auto space-y-1">
+   812→                    {detailProvider.rooms.map((room) => (
+   813→                      <div key={room.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+   814→                        <div className="flex items-center gap-3">
+   815→                          <span className="text-sm font-bold text-slate-900 w-10">#{room.number}</span>
+   816→                          <span className="text-xs text-slate-600">{room.name}</span>
+   817→                        </div>
+   818→                        <div className="flex items-center gap-3">
+   819→                          <span className="text-[11px] text-slate-400">
+   820→                            {formatRoomType(room.type)} | F{room.floor} | {room.capacity} beds | {room.pricePerNight.toLocaleString()} ETB
+   821→                          </span>
+   822→                          <Badge variant="outline" className={`text-[10px] ${getRoomStatusColor(room.status)}`}>
+   823→                            {room.status}
+   824→                          </Badge>
+   825→                        </div>
+   826→                      </div>
+   827→                    ))}
+   828→                  </div>
+   829→                </div>
+   830→
+   831→                {/* Suspend Button */}
+   832→                <Separator />
+   833→                <div className="flex items-center justify-end">
+   834→                  <Button
+   835→                    variant="destructive"
+   836→                    size="sm"
+   837→                    className="gap-1.5"
+   838→                    onClick={() => {
+   839→                      setDetailProvider(null);
+   840→                      handleOpenSuspend(detailProvider);
+   841→                    }}
+   842→                  >
+   843→                    <Ban className="h-4 w-4" />
+   844→                    {t('suspendThisGuesthouse')}
+   845→                  </Button>
+   846→                </div>
+   847→              </div>
+   848→            );
+   849→          })()}
+   850→        </DialogContent>
+   851→      </Dialog>
+   852→
+   853→      {/* ── Suspend Provider Dialog ── */}
+   854→      <Dialog open={!!suspendProvider} onOpenChange={(open) => { if (!open) setSuspendProvider(null); }}>
+   855→        <DialogContent className="sm:max-w-lg">
+   856→          <DialogHeader>
+   857→            <DialogTitle className="flex items-center gap-2 text-rose-700">
+   858→              <Ban className="h-5 w-5" />
+   859→              Suspend Guesthouse
+   860→            </DialogTitle>
+   861→            <DialogDescription>
+   862→              Suspend this provider and send them a notification with the reason.
+   863→            </DialogDescription>
+   864→          </DialogHeader>
+   865→          {suspendProvider && (
+   866→            <div className="space-y-4">
+   867→              {/* Provider info summary */}
+   868→              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+   869→                <div className="flex items-center gap-3">
+   870→                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+   871→                    <Building2 className="h-5 w-5 text-rose-600" />
+   872→                  </div>
+   873→                  <div>
+   874→                    <p className="text-sm font-bold text-slate-900">{suspendProvider.name}</p>
+   875→                    <p className="text-xs text-slate-500">{suspendProvider.ownerName} &middot; {suspendProvider.phone}</p>
+   876→                    <p className="text-[11px] text-slate-400">{suspendProvider.address}</p>
+   877→                  </div>
+   878→                </div>
+   879→              </div>
+   880→
+   881→              {/* Suspension Reason (required) */}
+   882→              <div>
+   883→                <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+   884→                  Reason for Suspension <span className="text-rose-500">*</span>
+   885→                </label>
+   886→                <Textarea
+   887→                  value={suspensionReason}
+   888→                  onChange={(e) => setSuspensionReason(e.target.value)}
+   889→                  placeholder="Write the detailed reason for suspending this guesthouse..."
+   890→                  className="min-h-[100px] resize-none"
+   891→                  maxLength={1000}
+   892→                />
+   893→                <p className="mt-1 text-[11px] text-slate-400 text-right">{suspensionReason.length}/1000</p>
+   894→              </div>
+   895→
+   896→              {/* Short Message to Provider */}
+   897→              <div>
+   898→                <label className="text-sm font-medium text-slate-700 mb-1.5 block">
+   899→                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+   900→                </label>
+   901→                <Textarea
+   902→                  value={providerMessage}
+   903→                  onChange={(e) => setProviderMessage(e.target.value)}
+   904→                  placeholder="Short message that will be sent to the provider about their suspension..."
+   905→                  className="min-h-[80px] resize-none"
+   906→                  maxLength={500}
+   907→                />
+   908→                <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
+   909→                <p className="mt-1 text-[11px] text-slate-500">
+   910→                  If empty, a default notification with the suspension reason will be sent automatically.
+   911→                </p>
+   912→              </div>
+   913→
+   914→              {/* Warning */}
+   915→              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+   916→                <div className="flex items-start gap-2">
+   917→                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+   918→                  <p className="text-xs text-amber-800">
+   919→                    This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
+   920→                    Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+   921→                  </p>
+   922→                </div>
+   923→              </div>
+   924→
+   925→              {/* Actions */}
+   926→              <div className="flex items-center justify-end gap-2 pt-2">
+   927→                <Button
+   928→                  variant="outline"
+   929→                  onClick={() => setSuspendProvider(null)}
+   930→                  disabled={suspending}
+   931→                >
+   932→                  Cancel
+   933→                </Button>
+   934→                <Button
+   935→                  variant="destructive"
+   936→                  className="gap-1.5"
+   937→                  onClick={handleSuspend}
+   938→                  disabled={suspending || !suspensionReason.trim()}
+   939→                >
+   940→                  {suspending ? (
+   941→                    <>
+   942→                      <Loader2 className="h-4 w-4 animate-spin" />
+   943→                      Suspending...
+   944→                    </>
+   945→                  ) : (
+   946→                    <>
+   947→                      <Send className="h-4 w-4" />
+   948→                      Suspend &amp; Send Notification
+   949→                    </>
+   950→                  )}
+   951→                </Button>
+   952→              </div>
+   953→            </div>
+   954→          )}
+   955→        </DialogContent>
+   956→      </Dialog>
+   957→
+   958→      {/* ── Pagination Controls ── */}
+   959→      {filteredProviders.length > 0 && (
+   960→        <PaginationControls
+   961→          currentPage={providerPagination.currentPage}
+   962→          totalPages={providerPagination.totalPages}
+   963→          pageSize={providerPagination.pageSize}
+   964→          pageSizeOptions={providerPagination.pageSizeOptions}
+   965→          totalItems={filteredProviders.length}
+   966→          rangeInfo={providerPagination.rangeInfo}
+   967→          goToPage={providerPagination.goToPage}
+   968→          setPageSize={providerPagination.setPageSize}
+   969→        />
+   970→      )}
+   971→    </div>
+   972→  );
+   973→}
+   974→

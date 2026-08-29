@@ -111,7 +111,7 @@ interface SuspicionFlag {
   severity: "HIGH" | "MEDIUM";
 }
 
-function detectSuspicion(p: ProviderStats): SuspicionFlag[] {
+function detectSuspicion(p: ProviderStats, t: (key: string, opts?: Record<string, unknown>) => string): SuspicionFlag[] {
   const flags: SuspicionFlag[] = [];
 
   if (p.total === 0) return flags;
@@ -121,7 +121,7 @@ function detectSuspicion(p: ProviderStats): SuspicionFlag[] {
   if (maintPct >= 30 && p.maintenance > 0) {
     flags.push({
       type: "high_maintenance",
-      message: `${p.maintenance}/${p.total} rooms (${Math.round(maintPct)}%) in maintenance — possible room hiding`,
+      message: t('flagRoomHiding', { maintenance: p.maintenance, total: p.total, pct: Math.round(maintPct) }),
       severity: maintPct >= 50 ? "HIGH" : "MEDIUM",
     });
   }
@@ -130,7 +130,7 @@ function detectSuspicion(p: ProviderStats): SuspicionFlag[] {
   if (p.available === 0 && p.total > 0) {
     flags.push({
       type: "zero_available",
-      message: "No available rooms — all occupied, reserved, or in maintenance",
+      message: t('flagNoAvailable'),
       severity: "MEDIUM",
     });
   }
@@ -167,7 +167,7 @@ function getUtilizationBarColor(rate: number): string {
 
 // ── Page ──
 export default function PoliceRoomAvailabilityPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("roomAvailability");
   const [data, setData] = useState<{
     summary: Summary;
     roomTypes: RoomTypeStat[];
@@ -197,7 +197,7 @@ export default function PoliceRoomAvailabilityPage() {
       }
       setData(result);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      toast.error(err instanceof Error ? err.message : t('errorLoad'));
     } finally {
       setLoading(false);
     }
@@ -213,7 +213,7 @@ export default function PoliceRoomAvailabilityPage() {
   const handleSuspend = async () => {
     if (!suspendProvider) return;
     if (!suspensionReason.trim()) {
-      toast.error("Please provide a reason for suspension");
+      toast.error(t('errorReasonRequired'));
       return;
     }
     try {
@@ -223,14 +223,14 @@ export default function PoliceRoomAvailabilityPage() {
         suspensionReason: suspensionReason.trim(),
         providerMessage: providerMessage.trim() || undefined,
       });
-      toast.success(`"${suspendProvider.name}" has been suspended. Notification sent to provider.`);
+      toast.success(t('successSuspended', { name: suspendProvider.name }));
       setSuspendProvider(null);
       setSuspensionReason("");
       setProviderMessage("");
       // Refresh data to remove the suspended provider from the list
       fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to suspend provider");
+      toast.error(err instanceof Error ? err.message : t('errorSuspend'));
     } finally {
       setSuspending(false);
     }
@@ -242,7 +242,7 @@ export default function PoliceRoomAvailabilityPage() {
 
   // ── Compute suspicion for all providers ──
   const suspicionMap = data?.providers
-    ? new Map(data.providers.map((p) => [p.id, detectSuspicion(p)]))
+    ? new Map(data.providers.map((p) => [p.id, detectSuspicion(p, t)]))
     : new Map();
 
   const suspiciousCount = data?.providers
@@ -317,14 +317,14 @@ export default function PoliceRoomAvailabilityPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <BedDouble className="h-6 w-6 text-blue-600" />
-            City-Wide Room Availability
+            {t('pageTitle')}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Monitor room availability across all guesthouses. Detect suspicious room hiding during festivals and verify through direct contact.
+            {t('pageSubtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={fetchData} title="Refresh data">
+          <Button variant="outline" size="icon" onClick={fetchData} title={t('refreshData')}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -336,7 +336,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">Providers</p>
+              <p className="text-[10px] text-slate-500">{t('statProviders')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalProviders}</p>
           </CardContent>
@@ -345,7 +345,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <BedDouble className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">Total Rooms</p>
+              <p className="text-[10px] text-slate-500">{t('statTotalRooms')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalRooms}</p>
           </CardContent>
@@ -354,7 +354,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <Bed className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-[10px] text-emerald-600">Available</p>
+              <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-emerald-700">{s.availableRooms}</p>
           </CardContent>
@@ -363,7 +363,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-blue-500" />
-              <p className="text-[10px] text-blue-600">Occupied</p>
+              <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.occupiedRooms}</p>
           </CardContent>
@@ -372,7 +372,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
-              <p className="text-[10px] text-amber-600">Reserved</p>
+              <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-amber-700">{s.reservedRooms}</p>
           </CardContent>
@@ -381,7 +381,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <Wrench className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">Maintenance</p>
+              <p className="text-[10px] text-slate-500">{t('statMaintenance')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-slate-600">{s.maintenanceRooms}</p>
           </CardContent>
@@ -390,7 +390,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-blue-500" />
-              <p className="text-[10px] text-blue-600">Capacity</p>
+              <p className="text-[10px] text-blue-600">{t('statCapacity')}</p>
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.totalCapacity}</p>
           </CardContent>
@@ -399,7 +399,7 @@ export default function PoliceRoomAvailabilityPage() {
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
               <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
-              <p className="text-[10px] text-violet-600">Utilization</p>
+              <p className="text-[10px] text-violet-600">{t('statUtilization')}</p>
             </div>
             <p className={`mt-1 text-xl font-bold ${getUtilizationColor(s.utilizationRate)}`}>
               {s.utilizationRate}%
@@ -428,16 +428,14 @@ export default function PoliceRoomAvailabilityPage() {
                 highAlertCount > 0 ? "text-rose-800" : "text-amber-800"
               }`}>
                 {highAlertCount > 0
-                  ? `${highAlertCount} High Alert` + (highAlertCount !== suspiciousCount ? `, ${suspiciousCount - highAlertCount} Warning` : "")
-                  : `${suspiciousCount} Warning${suspiciousCount > 1 ? "s" : ""}`}
-                {" "}— Suspicious Room Activity Detected
+                  ? `${highAlertCount} ${t('highAlert')}` + (highAlertCount !== suspiciousCount ? `, ${suspiciousCount - highAlertCount} ${t('warning')}` : "")
+                  : `${suspiciousCount} ${t('warning')}${suspiciousCount > 1 ? "s" : ""}`}
+                {" "}— {t('suspiciousActivityDetected')}
               </p>
               <p className={`mt-0.5 text-xs ${
                 highAlertCount > 0 ? "text-rose-700" : "text-amber-700"
               }`}>
-                {suspiciousCount} provider{suspiciousCount > 1 ? "s" : ""} flagged for potential room hiding. 
-                Providers with excessive maintenance rooms or zero availability may be withholding rooms during peak demand periods. 
-                Use the &quot;Suspicious Only&quot; filter below to investigate, and contact owners directly.
+                {t('suspiciousBannerDesc', { count: suspiciousCount })}
               </p>
             </div>
           </div>
@@ -448,7 +446,7 @@ export default function PoliceRoomAvailabilityPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
-            <span>City-Wide Room Utilization</span>
+            <span>{t('cityWideUtilization')}</span>
             <span className={getUtilizationColor(s.utilizationRate)}>{s.utilizationRate}%</span>
           </div>
           <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-100">
@@ -462,10 +460,10 @@ export default function PoliceRoomAvailabilityPage() {
             )}
           </div>
           <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> Available ({s.availableRooms})</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> Occupied ({s.occupiedRooms})</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-amber-500" /> Reserved ({s.reservedRooms})</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-slate-300" /> Maintenance ({s.maintenanceRooms})</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> {t('legendAvailable', { count: s.availableRooms })}</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> {t('legendOccupied', { count: s.occupiedRooms })}</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-amber-500" /> {t('legendReserved', { count: s.reservedRooms })}</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-slate-300" /> {t('legendMaintenance', { count: s.maintenanceRooms })}</span>
           </div>
         </CardContent>
       </Card>
@@ -475,7 +473,7 @@ export default function PoliceRoomAvailabilityPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <BedDouble className="h-4 w-4" />
-            Room Types Distribution
+            {t('roomTypesDistribution')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -503,7 +501,7 @@ export default function PoliceRoomAvailabilityPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              Provider Room Breakdown
+              {t('providerRoomBreakdown')}
               <Badge variant="outline" className="ml-1 text-[10px]">{filteredProviders.length} providers</Badge>
             </CardTitle>
           </div>
@@ -511,7 +509,7 @@ export default function PoliceRoomAvailabilityPage() {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search by name, owner, phone, address..."
+                placeholder={t('searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 h-9 text-sm"
@@ -523,13 +521,13 @@ export default function PoliceRoomAvailabilityPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="rooms">Total Rooms</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="occupied">Occupied</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="utilization">Utilization %</SelectItem>
-                  <SelectItem value="capacity">Capacity</SelectItem>
+                  <SelectItem value="name">{t('sortName')}</SelectItem>
+                  <SelectItem value="rooms">{t('sortTotalRooms')}</SelectItem>
+                  <SelectItem value="available">{t('sortAvailable')}</SelectItem>
+                  <SelectItem value="occupied">{t('sortOccupied')}</SelectItem>
+                  <SelectItem value="maintenance">{t('sortMaintenance')}</SelectItem>
+                  <SelectItem value="utilization">{t('sortUtilization')}</SelectItem>
+                  <SelectItem value="capacity">{t('sortCapacity')}</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -537,7 +535,7 @@ export default function PoliceRoomAvailabilityPage() {
                 size="icon"
                 className="h-9 w-9"
                 onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                title={sortDir === "asc" ? "Sort ascending" : "Sort descending"}
+                title={sortDir === "asc" ? t('sortAsc') : t('sortDesc')}
               >
                 {sortDir === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
@@ -549,7 +547,7 @@ export default function PoliceRoomAvailabilityPage() {
                   onClick={() => setShowSuspiciousOnly(!showSuspiciousOnly)}
                 >
                   <ShieldAlert className="h-3.5 w-3.5" />
-                  {showSuspiciousOnly ? "Showing Suspicious" : `Suspicious (${suspiciousCount})`}
+                  {showSuspiciousOnly ? t('showingSuspicious') : t('suspiciousCount', { count: suspiciousCount })}
                 </Button>
               )}
             </div>
@@ -560,28 +558,28 @@ export default function PoliceRoomAvailabilityPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Guesthouse</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Owner / Contact</th>
-                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">Rooms</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thGuesthouse')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thOwnerContact')}</th>
+                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t('thRooms')}</th>
                   <th className="px-4 py-2.5 text-center font-medium text-slate-600">
-                    <span className="text-emerald-600">Avail</span>
+                    <span className="text-emerald-600">{t('thAvail')}</span>
                     <span className="text-slate-300 mx-0.5">/</span>
-                    <span className="text-blue-600">Occ</span>
+                    <span className="text-blue-600">{t('thOcc')}</span>
                     <span className="text-slate-300 mx-0.5">/</span>
-                    <span className="text-amber-600">Res</span>
+                    <span className="text-amber-600">{t('thRes')}</span>
                     <span className="text-slate-300 mx-0.5">/</span>
-                    <span className="text-slate-400">Maint</span>
+                    <span className="text-slate-400">{t('thMaint')}</span>
                   </th>
-                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">Capacity</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">Utilization</th>
-                  <th className="px-4 py-2.5 text-right font-medium text-slate-600">Actions</th>
+                  <th className="px-4 py-2.5 text-center font-medium text-slate-600">{t('thCapacity')}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-slate-600">{t('thUtilization')}</th>
+                  <th className="px-4 py-2.5 text-right font-medium text-slate-600">{t('thActions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedProviders.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                      {showSuspiciousOnly ? "No suspicious providers found." : "No providers found."}
+                      {showSuspiciousOnly ? t('emptySuspicious') : t('emptyProviders')}
                     </td>
                   </tr>
                 ) : (
@@ -601,12 +599,12 @@ export default function PoliceRoomAvailabilityPage() {
                             <p className="font-medium text-slate-900">{p.name}</p>
                             {hasHighAlert && (
                               <Badge variant="outline" className="text-[9px] bg-rose-100 text-rose-700 border-rose-300">
-                                HIGH ALERT
+                                {t('highAlertBadge')}
                               </Badge>
                             )}
                             {flags.length > 0 && !hasHighAlert && (
                               <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-700 border-amber-300">
-                                FLAGGED
+                                {t('flaggedBadge')}
                               </Badge>
                             )}
                           </div>
@@ -634,7 +632,7 @@ export default function PoliceRoomAvailabilityPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-slate-700">{p.totalCapacity} beds</span>
+                          <span className="text-slate-700">{p.totalCapacity} {t('beds')}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -652,7 +650,7 @@ export default function PoliceRoomAvailabilityPage() {
                               variant="ghost"
                               size="sm"
                               onClick={(e) => { e.stopPropagation(); setDetailProvider(p); }}
-                              title="View details & contact info"
+                              title={t('viewDetails')}
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
@@ -661,7 +659,7 @@ export default function PoliceRoomAvailabilityPage() {
                               size="sm"
                               className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                               onClick={(e) => { e.stopPropagation(); handleOpenSuspend(p); }}
-                              title="Suspend this provider"
+                              title={t('suspendProvider')}
                             >
                               <Ban className="h-3.5 w-3.5" />
                             </Button>
@@ -686,7 +684,7 @@ export default function PoliceRoomAvailabilityPage() {
               {detailProvider?.name}
             </DialogTitle>
             <DialogDescription>
-              Room availability details and direct contact information for police follow-up
+              {t('detailDialogDesc')}
             </DialogDescription>
           </DialogHeader>
           {detailProvider && (() => {
@@ -702,7 +700,7 @@ export default function PoliceRoomAvailabilityPage() {
                     <div className="flex items-center gap-2 mb-1.5">
                       <AlertTriangle className={`h-4 w-4 ${hasHighAlert ? "text-rose-600" : "text-amber-600"}`} />
                       <p className={`text-xs font-bold ${hasHighAlert ? "text-rose-800" : "text-amber-800"}`}>
-                        {hasHighAlert ? "HIGH ALERT" : "WARNING"} — Suspicious Room Activity
+                        {hasHighAlert ? t('detailHighAlert') : t('detailWarning')}
                       </p>
                     </div>
                     {flags.map((flag, i) => (
@@ -717,36 +715,36 @@ export default function PoliceRoomAvailabilityPage() {
                 <div className="rounded-lg border p-4">
                   <p className="text-xs font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
                     <PhoneCall className="h-3.5 w-3.5 text-blue-600" />
-                    Direct Contact Information
+                    {t('directContact')}
                   </p>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-lg border p-3">
-                      <p className="text-[10px] text-slate-500">Owner</p>
+                      <p className="text-[10px] text-slate-500">{t('detailOwner')}</p>
                       <p className="text-sm font-semibold text-slate-900">{detailProvider.ownerName}</p>
                     </div>
                     <div className="rounded-lg border p-3">
-                      <p className="text-[10px] text-slate-500">Phone</p>
+                      <p className="text-[10px] text-slate-500">{t('detailPhone')}</p>
                       <p className="text-sm font-semibold text-blue-700 flex items-center gap-1">
                         <Phone className="h-3.5 w-3.5" />
                         {detailProvider.phone}
                         <button
-                          onClick={() => { navigator.clipboard.writeText(detailProvider.phone); toast.success("Phone copied"); }}
+                          onClick={() => { navigator.clipboard.writeText(detailProvider.phone); toast.success(t('phoneCopied')); }}
                           className="ml-auto p-0.5 text-slate-400 hover:text-slate-600"
-                          title="Copy phone"
+                          title={t('copyPhone')}
                         >
                           <Copy className="h-3 w-3" />
                         </button>
                       </p>
                     </div>
                     <div className="rounded-lg border p-3">
-                      <p className="text-[10px] text-slate-500">Address</p>
+                      <p className="text-[10px] text-slate-500">{t('detailAddress')}</p>
                       <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5 text-rose-500" />
                         {detailProvider.address || "N/A"}
                       </p>
                     </div>
                     <div className="rounded-lg border p-3">
-                      <p className="text-[10px] text-slate-500">License No.</p>
+                      <p className="text-[10px] text-slate-500">{t('detailLicenseNo')}</p>
                       <p className="text-sm font-semibold text-slate-900">{detailProvider.licenseNo || "N/A"}</p>
                     </div>
                   </div>
@@ -757,19 +755,19 @@ export default function PoliceRoomAvailabilityPage() {
                 {/* Stats */}
                 <div className="grid grid-cols-5 gap-2">
                   <div className="rounded-lg border p-2.5 text-center">
-                    <p className="text-[10px] text-slate-500">Total</p>
+                    <p className="text-[10px] text-slate-500">{t('detailTotal')}</p>
                     <p className="text-lg font-bold text-slate-900">{detailProvider.total}</p>
                   </div>
                   <div className="rounded-lg border border-emerald-200 p-2.5 text-center">
-                    <p className="text-[10px] text-emerald-600">Available</p>
+                    <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
                     <p className="text-lg font-bold text-emerald-700">{detailProvider.available}</p>
                   </div>
                   <div className="rounded-lg border border-blue-200 p-2.5 text-center">
-                    <p className="text-[10px] text-blue-600">Occupied</p>
+                    <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
                     <p className="text-lg font-bold text-blue-700">{detailProvider.occupied}</p>
                   </div>
                   <div className="rounded-lg border border-amber-200 p-2.5 text-center">
-                    <p className="text-[10px] text-amber-600">Reserved</p>
+                    <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
                     <p className="text-lg font-bold text-amber-700">{detailProvider.reserved}</p>
                   </div>
                   <div className={`rounded-lg border p-2.5 text-center ${
@@ -781,7 +779,7 @@ export default function PoliceRoomAvailabilityPage() {
                       detailProvider.maintenance > 0 && (detailProvider.maintenance / detailProvider.total) >= 0.3
                         ? "text-rose-600"
                         : "text-slate-500"
-                    }`}>Maintenance</p>
+                    }`}>{t('statMaintenance')}</p>
                     <p className={`text-lg font-bold ${
                       detailProvider.maintenance > 0 && (detailProvider.maintenance / detailProvider.total) >= 0.3
                         ? "text-rose-700"
@@ -793,22 +791,22 @@ export default function PoliceRoomAvailabilityPage() {
                 {/* Utilization */}
                 <div className="rounded-lg border p-3">
                   <div className="flex items-center justify-between text-sm mb-1.5">
-                    <span className="text-slate-600 font-medium">Occupancy Utilization</span>
+                    <span className="text-slate-600 font-medium">{t('occupancyUtilization')}</span>
                     <span className={`font-bold ${getUtilizationColor(detailProvider.utilizationRate)}`}>
                       {detailProvider.utilizationRate}%
                     </span>
                   </div>
                   <Progress value={detailProvider.utilizationRate} className="h-2" />
                   <div className="mt-1.5 flex gap-3 text-[11px] text-slate-400">
-                    <span>Avg Price: {detailProvider.avgPrice.toLocaleString()} ETB/night</span>
-                    <span>Total Capacity: {detailProvider.totalCapacity} beds</span>
+                    <span>{t('avgPrice', { price: detailProvider.avgPrice.toLocaleString() })}</span>
+                    <span>{t('totalCapacity', { count: detailProvider.totalCapacity })}</span>
                   </div>
                 </div>
 
                 {/* Room List */}
                 <div>
                   <p className="text-xs font-semibold text-slate-700 mb-2">
-                    Room Details ({detailProvider.rooms.length})
+                    {t('roomDetails', { count: detailProvider.rooms.length })}
                   </p>
                   <div className="max-h-[300px] overflow-y-auto space-y-1">
                     {detailProvider.rooms.map((room) => (
@@ -843,7 +841,7 @@ export default function PoliceRoomAvailabilityPage() {
                     }}
                   >
                     <Ban className="h-4 w-4" />
-                    Suspend This Guesthouse
+                    {t('suspendThisGuesthouse')}
                   </Button>
                 </div>
               </div>
@@ -858,10 +856,10 @@ export default function PoliceRoomAvailabilityPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-700">
               <Ban className="h-5 w-5" />
-              Suspend Guesthouse
+              {t('suspendGuesthouseTitle')}
             </DialogTitle>
             <DialogDescription>
-              Suspend this provider and send them a notification with the reason.
+              {t('suspendDialogDesc')}
             </DialogDescription>
           </DialogHeader>
           {suspendProvider && (
@@ -883,12 +881,12 @@ export default function PoliceRoomAvailabilityPage() {
               {/* Suspension Reason (required) */}
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Reason for Suspension <span className="text-rose-500">*</span>
+                  {t('reasonForSuspicion')} <span className="text-rose-500">*</span>
                 </label>
                 <Textarea
                   value={suspensionReason}
                   onChange={(e) => setSuspensionReason(e.target.value)}
-                  placeholder="Write the detailed reason for suspending this guesthouse..."
+                  placeholder={t('reasonPlaceholder')}
                   className="min-h-[100px] resize-none"
                   maxLength={1000}
                 />
@@ -898,18 +896,18 @@ export default function PoliceRoomAvailabilityPage() {
               {/* Short Message to Provider */}
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('messageToProvider')} <span className="text-slate-400 font-normal">{t('optional')}</span>
                 </label>
                 <Textarea
                   value={providerMessage}
                   onChange={(e) => setProviderMessage(e.target.value)}
-                  placeholder="Short message that will be sent to the provider about their suspension..."
+                  placeholder={t('messagePlaceholder')}
                   className="min-h-[80px] resize-none"
                   maxLength={500}
                 />
                 <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  If empty, a default notification with the suspension reason will be sent automatically.
+                  {t('messageHint')}
                 </p>
               </div>
 
@@ -918,8 +916,7 @@ export default function PoliceRoomAvailabilityPage() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
-                    This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
-                    Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+                    {t('suspensionWarning')}
                   </p>
                 </div>
               </div>
@@ -931,7 +928,7 @@ export default function PoliceRoomAvailabilityPage() {
                   onClick={() => setSuspendProvider(null)}
                   disabled={suspending}
                 >
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -942,12 +939,12 @@ export default function PoliceRoomAvailabilityPage() {
                   {suspending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Suspending...
+                      {t('suspending')}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Suspend &amp; Send Notification
+                      {t('suspendAndNotify')}
                     </>
                   )}
                 </Button>

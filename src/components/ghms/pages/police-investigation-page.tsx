@@ -47,7 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PoliceInvestigationPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("investigation");
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState<"movement" | "frequent" | "linking" | "alerts" | "export">("movement");
 
@@ -80,7 +80,7 @@ export default function PoliceInvestigationPage() {
   // Fetch frequent stays
   const fetchFreq = useCallback(async () => {
     try { setFreqLoading(true); const d = await apiPoliceFrequentStays(); setFreqStays(Array.isArray(d) ? d : []); }
-    catch { toast.error("Failed to load frequent stays"); }
+    catch { toast.error(t('errorLoadFrequent')); }
     finally { setFreqLoading(false); }
   }, []);
 
@@ -92,14 +92,14 @@ export default function PoliceInvestigationPage() {
       setLinkedGroups(d.linkedGroups || []);
       setLinkTotal(d.total || 0);
       setLinkTotalPages(d.totalPages || 1);
-    } catch { toast.error("Failed to load guest links"); }
+    } catch { toast.error(t('errorLoadLinks')); }
     finally { setLinkLoading(false); }
   }, [linkPage, linkPageSize]);
 
   // Fetch alert config
   const fetchConfig = useCallback(async () => {
     try { setConfigLoading(true); const d: any = await apiPoliceAlertConfig(); setConfig(d); }
-    catch { toast.error("Failed to load config"); }
+    catch { toast.error(t('errorLoadConfig')); }
     finally { setConfigLoading(false); }
   }, []);
 
@@ -116,7 +116,7 @@ export default function PoliceInvestigationPage() {
       const d: any = await apiPoliceMovement(q);
       setGuests(d.guests || []);
       setMatches(d.suspectMatches || []);
-    } catch { toast.error("Search failed"); }
+    } catch { toast.error(t('errorSearch')); }
     finally { setMoveLoading(false); }
   };
 
@@ -124,9 +124,9 @@ export default function PoliceInvestigationPage() {
     try {
       setAnalyzing(true);
       const d: any = await apiPoliceTriggerFrequentAnalysis();
-      toast.success(d.message || "Analysis complete");
+      toast.success(d.message || t('successAnalysis'));
       fetchFreq();
-    } catch { toast.error("Analysis failed"); }
+    } catch { toast.error(t('errorAnalysis')); }
     finally { setAnalyzing(false); }
   };
 
@@ -135,8 +135,8 @@ export default function PoliceInvestigationPage() {
     try {
       setConfigSaving(true);
       await apiPoliceUpdateAlertConfig(config as Record<string, unknown>);
-      toast.success("Alert config saved");
-    } catch { toast.error("Failed to save config"); }
+      toast.success(t('successConfigSaved'));
+    } catch { toast.error(t('errorSaveConfig')); }
     finally { setConfigSaving(false); }
   };
 
@@ -148,8 +148,19 @@ export default function PoliceInvestigationPage() {
       a.href = url;
       a.download = `police-${type}-${Date.now()}.${format}`;
       a.click();
-      toast.success("Export downloaded");
-    } catch { toast.error("Export failed"); }
+      toast.success(t('successExport'));
+    } catch { toast.error(t('errorExport')); }
+  };
+
+  const getTabLabel = (val: string) => {
+    const map: Record<string, string> = {
+      movement: t('tabsMovement'),
+      frequent: t('tabsFrequent'),
+      linking: t('tabsLinking'),
+      alerts: t('tabsAlerts'),
+      export: t('tabsExport'),
+    };
+    return map[val] || val;
   };
 
   const tabs = [
@@ -164,8 +175,8 @@ export default function PoliceInvestigationPage() {
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Investigation Tools</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Track guest movement, detect patterns, find linked identities, alert settings, and legal data export</p>
+          <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -175,7 +186,7 @@ export default function PoliceInvestigationPage() {
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
               activeTab === tab.key ? "bg-sky-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}>
-            <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+            <tab.icon className="h-3.5 w-3.5" /> {getTabLabel(tab.key)}
           </button>
         ))}
       </div>
@@ -184,15 +195,15 @@ export default function PoliceInvestigationPage() {
       {activeTab === "movement" && (
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-sm">Search Guest Across All Providers</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('searchTitle')}</CardTitle></CardHeader>
             <CardContent className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Guest name, phone, or ID number..." value={search} onChange={(e) => setSearch(e.target.value)}
+                <Input placeholder={t('searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && searchMovement()} className="pl-9" />
               </div>
               <Button onClick={searchMovement} disabled={moveLoading || !search.trim()} className="bg-sky-600 hover:bg-sky-700 text-white">
-                <Search className="mr-1 h-3.5 w-3.5" /> {moveLoading ? "Searching..." : "Track"}
+                <Search className="mr-1 h-3.5 w-3.5" /> {moveLoading ? t('searching') : t('track')}
               </Button>
             </CardContent>
           </Card>
@@ -201,7 +212,7 @@ export default function PoliceInvestigationPage() {
 
           {guests.length > 0 && guests[0].reservations.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">Reservation Timeline</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('reservationTimeline')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="relative space-y-0">
                   {guests.flatMap((g) =>
@@ -216,14 +227,14 @@ export default function PoliceInvestigationPage() {
                         <div className="flex-1 rounded-lg border p-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{g.provider?.name || "Unknown"}</p>
+                              <p className="text-sm font-medium">{g.provider?.name || t('unknown')}</p>
                               <Badge className={`text-[9px] ${STATUS_COLORS[r.status] || ""}`}>{r.status}</Badge>
                             </div>
                             <span className="text-[10px] text-muted-foreground">{r.room?.number || ""} {r.room?.type || ""}</span>
                           </div>
                           <div className="flex flex-wrap gap-3 mt-1.5 text-[10px] text-muted-foreground">
                             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {r.checkIn} → {r.checkOut}</span>
-                            <span>{r.nights} nights</span>
+                            <span>{r.nights} {t('nights')}</span>
                             <span className="font-medium text-emerald-600">ETB {r.totalCost.toLocaleString()}</span>
                           </div>
                         </div>
@@ -237,7 +248,7 @@ export default function PoliceInvestigationPage() {
 
           {matches.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2 text-sm text-red-700"><ShieldAlert className="h-4 w-4" /> Suspect Matches for this Guest</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2 text-sm text-red-700"><ShieldAlert className="h-4 w-4" /> {t('suspectMatchesTitle')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="divide-y">
                   {matches.map((m) => (
@@ -270,7 +281,7 @@ export default function PoliceInvestigationPage() {
                     <AlertTriangle className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Alerts</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('statTotalAlerts')}</p>
                     <p className="text-base font-semibold">{freqStays.length}</p>
                   </div>
                 </div>
@@ -281,7 +292,7 @@ export default function PoliceInvestigationPage() {
                     <ShieldAlert className="h-4 w-4 text-red-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">High Risk</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('statHighRisk')}</p>
                     <p className="text-base font-semibold text-red-700">{freqStays.filter(f => f.riskLevel === "HIGH").length}</p>
                   </div>
                 </div>
@@ -292,7 +303,7 @@ export default function PoliceInvestigationPage() {
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Medium Risk</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('statMediumRisk')}</p>
                     <p className="text-base font-semibold text-amber-700">{freqStays.filter(f => f.riskLevel === "MEDIUM").length}</p>
                   </div>
                 </div>
@@ -303,7 +314,7 @@ export default function PoliceInvestigationPage() {
                     <Users className="h-4 w-4 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Low Risk</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{t('statLowRisk')}</p>
                     <p className="text-base font-semibold text-emerald-700">{freqStays.filter(f => f.riskLevel === "LOW").length}</p>
                   </div>
                 </div>
@@ -316,15 +327,15 @@ export default function PoliceInvestigationPage() {
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  Frequent Stay Alerts
+                  {t('frequentStayTitle')}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Guests with multiple stays across providers within 30 days
+                  {t('frequentStayDesc')}
                 </p>
               </div>
               <Button variant="default" size="sm" onClick={triggerAnalysis} disabled={analyzing} className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5 shrink-0">
                 <RefreshCw className={`h-3.5 w-3.5 ${analyzing ? "animate-spin" : ""}`} />
-                {analyzing ? "Analyzing..." : "Run Analysis"}
+                {analyzing ? t('analyzing') : t('runAnalysis')}
               </Button>
             </CardHeader>
             <CardContent className="p-0">
@@ -351,13 +362,13 @@ export default function PoliceInvestigationPage() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-3">
                     <AlertTriangle className="h-7 w-7 text-muted-foreground opacity-60" />
                   </div>
-                  <p className="text-sm font-medium">No frequent stay alerts yet</p>
+                  <p className="text-sm font-medium">{t('emptyFrequent')}</p>
                   <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                    Run an analysis to scan for guests with multiple stays across providers within a 30-day window.
+                    {t('emptyFrequentSub')}
                   </p>
                   <Button variant="outline" size="sm" onClick={triggerAnalysis} disabled={analyzing} className="mt-4 gap-1.5">
                     <RefreshCw className={`h-3.5 w-3.5 ${analyzing ? "animate-spin" : ""}`} />
-                    {analyzing ? "Analyzing..." : "Run Analysis Now"}
+                    {analyzing ? t('analyzing') : t('runAnalysisNow')}
                   </Button>
                 </div>
               ) : (
@@ -388,11 +399,11 @@ export default function PoliceInvestigationPage() {
                               <p className="text-sm font-semibold truncate">{f.guestName}</p>
                               <Badge variant="outline" className={`text-[10px] gap-0.5 ${riskColor}`}>
                                 <span className={riskIcon}>●</span>
-                                {f.riskLevel} RISK
+                                {f.riskLevel} {t('riskBadge')}
                               </Badge>
                               {f.isReviewed && (
                                 <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600">
-                                  Reviewed
+                                  {t('reviewed')}
                                 </Badge>
                               )}
                             </div>
@@ -421,16 +432,16 @@ export default function PoliceInvestigationPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700 border border-blue-100">
                                 <Users className="h-3 w-3" />
-                                {f.stayCount} stays
+                                {f.stayCount} {t('stays')}
                               </span>
                               <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-1 text-[11px] font-medium text-violet-700 border border-violet-100">
                                 <Calendar className="h-3 w-3" />
-                                {f.avgDaysBetween}d avg gap
+                                {f.avgDaysBetween}d {t('avgGap')}
                               </span>
                               {providers.length > 0 && (
                                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 border border-amber-100">
                                   <Building2 className="h-3 w-3" />
-                                  {providers.length} {providers.length === 1 ? "provider" : "providers"}
+                                  {providers.length === 1 ? t('provider_one', { count: providers.length }) : t('provider_other', { count: providers.length })}
                                 </span>
                               )}
                             </div>
@@ -474,12 +485,12 @@ export default function PoliceInvestigationPage() {
       {activeTab === "linking" && (
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><GitBranch className="h-4 w-4" /> Linked Guests (Same Phone/ID)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><GitBranch className="h-4 w-4" /> {t('linkedGuestsTitle')}</CardTitle></CardHeader>
             <CardContent className="p-0">
               {linkLoading ? (
                 <div className="space-y-3 p-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
               ) : linkedGroups.length === 0 ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">No linked guests found</p>
+                <p className="py-8 text-center text-xs text-muted-foreground">{t('emptyLinked')}</p>
               ) : (
                 <div className="divide-y">
                   {linkedGroups.map((group, gi) => (
@@ -511,14 +522,14 @@ export default function PoliceInvestigationPage() {
           {linkTotal > 0 && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-2">
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>Showing {linkTotal === 0 ? 0 : (linkPage - 1) * linkPageSize + 1}–{Math.min(linkPage * linkPageSize, linkTotal)} of {linkTotal}</span>
+                <span>{t('showing', { from: linkTotal === 0 ? 0 : (linkPage - 1) * linkPageSize + 1, to: Math.min(linkPage * linkPageSize, linkTotal), total: linkTotal })}</span>
                 <Select value={String(linkPageSize)} onValueChange={(v) => { setLinkPageSize(Number(v)); setLinkPage(1); }}>
                   <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10 / page</SelectItem>
-                    <SelectItem value="20">20 / page</SelectItem>
-                    <SelectItem value="50">50 / page</SelectItem>
-                    <SelectItem value="100">100 / page</SelectItem>
+                    <SelectItem value="10">{t('pageSize10')}</SelectItem>
+                    <SelectItem value="20">{t('pageSize20')}</SelectItem>
+                    <SelectItem value="50">{t('pageSize50')}</SelectItem>
+                    <SelectItem value="100">{t('pageSize100')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -526,7 +537,7 @@ export default function PoliceInvestigationPage() {
                 <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={linkPage <= 1} onClick={() => setLinkPage(linkPage - 1)}>
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-xs px-2">Page {linkPage} of {linkTotalPages}</span>
+                <span className="text-xs px-2">{t('pageOf', { page: linkPage, total: linkTotalPages })}</span>
                 <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={linkPage >= linkTotalPages} onClick={() => setLinkPage(linkPage + 1)}>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
@@ -539,31 +550,31 @@ export default function PoliceInvestigationPage() {
       {/* Alert Configuration */}
       {activeTab === "alerts" && config && (
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Shield className="h-4 w-4" /> Alert Notification Settings</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Shield className="h-4 w-4" /> {t('alertSettingsTitle')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {configLoading ? <Skeleton className="h-48 w-full" /> : (
               <>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">Email Alerts</p><p className="text-[10px] text-muted-foreground">Send alerts to email addresses</p></div></div>
+                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">{t('emailAlerts')}</p><p className="text-[10px] text-muted-foreground">{t('emailAlertsDesc')}</p></div></div>
                     <button onClick={() => setConfig({ ...config, emailEnabled: !config.emailEnabled })} className={"h-5 w-9 rounded-full transition-colors " + (config.emailEnabled ? "bg-emerald-600" : "bg-slate-200")}>
                       <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.emailEnabled ? "translate-x-4" : "translate-x-0.5")} />
                     </button>
                   </div>
                   {config.emailEnabled && (
-                    <div className="ml-8"><Label>{t('lblemailRecipientsCommaseparated', 'Email Recipients (comma-separated)')}</Label><Input value={config.emailRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, emailRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="officer1@police.gov.et, officer2@police.gov.et" className="text-xs" /></div>
+                    <div className="ml-8"><Label>{t('common:lblemailRecipientsCommaseparated', 'Email Recipients (comma-separated)')}</Label><Input value={config.emailRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, emailRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="officer1@police.gov.et, officer2@police.gov.et" className="text-xs" /></div>
                   )}
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">SMS Alerts</p><p className="text-[10px] text-muted-foreground">Send alerts via SMS</p></div></div>
+                    <div className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">{t('smsAlerts')}</p><p className="text-[10px] text-muted-foreground">{t('smsAlertsDesc')}</p></div></div>
                     <button onClick={() => setConfig({ ...config, smsEnabled: !config.smsEnabled })} className={"h-5 w-9 rounded-full transition-colors " + (config.smsEnabled ? "bg-emerald-600" : "bg-slate-200")}>
                       <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.smsEnabled ? "translate-x-4" : "translate-x-0.5")} />
                     </button>
                   </div>
                   {config.smsEnabled && (
-                    <div className="ml-8"><Label>{t('lblsmsRecipientsCommaseparated', 'SMS Recipients (comma-separated)')}</Label><Input value={config.smsRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, smsRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="+251911234567, +251922345678" className="text-xs" /></div>
+                    <div className="ml-8"><Label>{t('common:lblsmsRecipientsCommaseparated', 'SMS Recipients (comma-separated)')}</Label><Input value={config.smsRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, smsRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="+251911234567, +251922345678" className="text-xs" /></div>
                   )}
                 </div>
 
@@ -571,13 +582,13 @@ export default function PoliceInvestigationPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>{t('lblescalationDelayMinutes', 'Escalation Delay (minutes)')}</Label>
+                    <Label>{t('common:lblescalationDelayMinutes', 'Escalation Delay (minutes)')}</Label>
                     <Input type="number" value={config.escalationDelayMins} onChange={(e) => setConfig({ ...config, escalationDelayMins: parseInt(e.target.value) || 60 })} className="text-xs" />
-                    <p className="text-[10px] text-muted-foreground">How long before escalating HIGH alerts</p>
+                    <p className="text-[10px] text-muted-foreground">{t('escalationDesc')}</p>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between rounded-lg border p-3">
-                      <div><p className="text-sm font-medium">CRITICAL = Immediate</p><p className="text-[10px] text-muted-foreground">CRITICAL severity alerts are sent immediately</p></div>
+                      <div><p className="text-sm font-medium">{t('criticalImmediate')}</p><p className="text-[10px] text-muted-foreground">{t('criticalImmediateDesc')}</p></div>
                       <button onClick={() => setConfig({ ...config, criticalImmediate: !config.criticalImmediate })} className={"h-5 w-9 rounded-full transition-colors " + (config.criticalImmediate ? "bg-red-600" : "bg-slate-200")}>
                         <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.criticalImmediate ? "translate-x-4" : "translate-x-0.5")} />
                       </button>
@@ -587,7 +598,7 @@ export default function PoliceInvestigationPage() {
 
                 <div className="flex justify-end">
                   <Button size="sm" onClick={saveConfig} disabled={configSaving} className="bg-sky-600 hover:bg-sky-700 text-white">
-                    <RefreshCw className={"mr-1 h-3.5 w-3.5 " + (configSaving ? "animate-spin" : "")} /> {configSaving ? "Saving..." : "Save Settings"}
+                    <RefreshCw className={"mr-1 h-3.5 w-3.5 " + (configSaving ? "animate-spin" : "")} /> {configSaving ? t('saving') : t('saveSettings')}
                   </Button>
                 </div>
               </>
@@ -600,14 +611,14 @@ export default function PoliceInvestigationPage() {
       {activeTab === "export" && (
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Download className="h-4 w-4" /> Legal Data Export</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Download className="h-4 w-4" /> {t('legalExportTitle')}</CardTitle></CardHeader>
             <CardContent>
-              <p className="text-xs text-muted-foreground mb-4">Export data in court-admissible format. All exports include metadata (timestamp, officer, source) for legal documentation.</p>
+              <p className="text-xs text-muted-foreground mb-4">{t('legalExportDesc')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { type: "guests", label: "Guest Registry", desc: "All guest records across providers", color: "bg-sky-50 border-sky-200 text-sky-800" },
-                  { type: "matches", label: "Suspect Matches", desc: "All suspect match alerts", color: "bg-red-50 border-red-200 text-red-800" },
-                  { type: "audit", label: "Audit Trail", desc: "Officer activity log", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+                  { type: "guests", label: t('exportGuestRegistry'), desc: t('exportGuestRegistryDesc'), color: "bg-sky-50 border-sky-200 text-sky-800" },
+                  { type: "matches", label: t('exportSuspectMatches'), desc: t('exportSuspectMatchesDesc'), color: "bg-red-50 border-red-200 text-red-800" },
+                  { type: "audit", label: t('exportAuditTrail'), desc: t('exportAuditTrailDesc'), color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
                 ].map((exp) => (
                   <div key={exp.type} className={`rounded-lg border p-3 ${exp.color}`}>
                     <p className="text-sm font-medium">{exp.label}</p>
@@ -622,10 +633,10 @@ export default function PoliceInvestigationPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-sm">Export Everything</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('exportEverythingTitle')}</CardTitle></CardHeader>
             <CardContent className="flex gap-2">
-              <Button size="sm" onClick={() => handleExport("all", "json")} className="bg-sky-600 hover:bg-sky-700 text-white"><Download className="mr-1 h-3.5 w-3.5" /> Full Export (JSON)</Button>
-              <Button size="sm" variant="outline" onClick={() => handleExport("all", "csv")}><Download className="mr-1 h-3.5 w-3.5" /> Full Export (CSV)</Button>
+              <Button size="sm" onClick={() => handleExport("all", "json")} className="bg-sky-600 hover:bg-sky-700 text-white"><Download className="mr-1 h-3.5 w-3.5" /> {t('fullExportJson')}</Button>
+              <Button size="sm" variant="outline" onClick={() => handleExport("all", "csv")}><Download className="mr-1 h-3.5 w-3.5" /> {t('fullExportCsv')}</Button>
             </CardContent>
           </Card>
         </div>

@@ -56,7 +56,7 @@ interface SystemStats {
  * - System audit review
  */
 export default function JointOperationsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("jointOps");
   const { currentUser, jointSession, setJointSession, setJointLoginDialogOpen } = useAppStore();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function JointOperationsPage() {
       const data = await req("/api/joint-ops/stats");
       setStats(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load stats";
+      const message = err instanceof Error ? err.message : t('errorLoadStats');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -106,7 +106,7 @@ export default function JointOperationsPage() {
         method: "POST",
         body: JSON.stringify({ action }),
       });
-      toast.success(data.message || `Emergency ${action} completed.`);
+      toast.success(data.message || t('successEmergency', { action }));
       fetchStats(); // Refresh stats
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed: ${action}`;
@@ -124,7 +124,7 @@ export default function JointOperationsPage() {
       setAllUsers(data.users || []);
       setShowUsers(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load users";
+      const message = err instanceof Error ? err.message : t('errorLoadUsers');
       toast.error(message);
     }
   };
@@ -138,21 +138,20 @@ export default function JointOperationsPage() {
             <Lock className="h-8 w-8 text-slate-400" />
           </div>
           <h2 className="text-xl font-bold text-slate-900">
-            Joint Operations Locked
+            {t('lockedTitle')}
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            This section requires both a System Admin (SUPERUSER) and a Police
-            Admin to be logged in simultaneously on this device.
+            {t('lockedDescription')}
           </p>
           <p className="mt-1 text-sm text-slate-400">
-            Current session: {currentUser?.name} ({currentUser?.role})
+            {t('currentSession', { name: currentUser?.name, role: currentUser?.role })}
           </p>
           <Button
             onClick={() => setJointLoginDialogOpen(true)}
             className="mt-6 gap-2"
           >
             <ShieldCheck className="h-4 w-4" />
-            Start Joint Session
+            {t('startJointSession')}
           </Button>
         </div>
       </div>
@@ -166,15 +165,15 @@ export default function JointOperationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-emerald-600" />
-            Joint Operations
+            {t('pageTitle')}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Dual-authorized operations — requires both System Admin and Police Admin.
+            {t('pageSubtitle')}
           </p>
         </div>
         <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-3 py-1 text-xs font-semibold">
           <ShieldCheck className="mr-1 h-3 w-3" />
-          JOINT SESSION ACTIVE
+          {t('jointSessionActive')}
         </Badge>
       </div>
 
@@ -182,14 +181,14 @@ export default function JointOperationsPage() {
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
         <div className="flex items-center gap-4 text-sm">
           <div>
-            <span className="text-emerald-600 font-medium">System Admin:</span>{" "}
+            <span className="text-emerald-600 font-medium">{t('systemAdminLabel')}</span>{" "}
             <span className="text-emerald-900 font-semibold">
               {jointSession.superuser?.name || "—"}
             </span>
           </div>
           <Separator orientation="vertical" className="h-4 bg-emerald-300" />
           <div>
-            <span className="text-emerald-600 font-medium">Police Admin:</span>{" "}
+            <span className="text-emerald-600 font-medium">{t('policeAdminLabel')}</span>{" "}
             <span className="text-emerald-900 font-semibold">
               {jointSession.policeAdmin?.name || "—"}
             </span>
@@ -201,11 +200,11 @@ export default function JointOperationsPage() {
             onClick={async () => {
               await apiJointLogout();
               setJointSession({ active: false, superuser: null, policeAdmin: null });
-              toast.success("Joint session ended.");
+              toast.success(t('successSessionEnded'));
             }}
           >
             <Unlock className="mr-1 h-3.5 w-3.5" />
-            End Session
+            {t('endSession')}
           </Button>
         </div>
       </div>
@@ -226,7 +225,7 @@ export default function JointOperationsPage() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <Users className="h-3 w-3" /> Users
+                  <Users className="h-3 w-3" /> {t('statUsers')}
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{stats?.totalUsers || 0}</p>
               </CardContent>
@@ -234,7 +233,7 @@ export default function JointOperationsPage() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <Building2 className="h-3 w-3" /> Guesthouses
+                  <Building2 className="h-3 w-3" /> {t('statGuesthouses')}
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{stats?.totalProviders || 0}</p>
               </CardContent>
@@ -242,7 +241,7 @@ export default function JointOperationsPage() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <Globe className="h-3 w-3" /> Guests
+                  <Globe className="h-3 w-3" /> {t('statGuests')}
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{stats?.totalGuests || 0}</p>
               </CardContent>
@@ -250,7 +249,7 @@ export default function JointOperationsPage() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <Activity className="h-3 w-3" /> Rooms
+                  <Activity className="h-3 w-3" /> {t('statRooms')}
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{stats?.totalRooms || 0}</p>
               </CardContent>
@@ -258,7 +257,7 @@ export default function JointOperationsPage() {
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Reservations
+                  <CheckCircle2 className="h-3 w-3" /> {t('statReservations')}
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{stats?.totalReservations || 0}</p>
               </CardContent>
@@ -273,10 +272,10 @@ export default function JointOperationsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-rose-600" />
-              Emergency Actions
+              {t('emergencyActionsTitle')}
             </CardTitle>
             <CardDescription>
-              These actions require dual authorization. All actions are audit-logged.
+              {t('emergencyActionsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -287,7 +286,7 @@ export default function JointOperationsPage() {
               disabled={actioning}
             >
               <Lock className="h-4 w-4" />
-              Emergency Suspend All Guesthouses
+              {t('emergencySuspendAll')}
             </Button>
             <Button
               variant="outline"
@@ -296,7 +295,7 @@ export default function JointOperationsPage() {
               disabled={actioning}
             >
               <Unlock className="h-4 w-4" />
-              Emergency Unsuspend All Guesthouses
+              {t('emergencyUnsuspendAll')}
             </Button>
           </CardContent>
         </Card>
@@ -305,10 +304,10 @@ export default function JointOperationsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600" />
-              System Intelligence
+              {t('systemIntelligenceTitle')}
             </CardTitle>
             <CardDescription>
-              View system-wide information for operational decisions.
+              {t('systemIntelligenceDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -319,7 +318,7 @@ export default function JointOperationsPage() {
               disabled={loading}
             >
               <Users className="h-4 w-4" />
-              View All User Accounts
+              {t('viewAllUsers')}
             </Button>
           </CardContent>
         </Card>
@@ -329,9 +328,9 @@ export default function JointOperationsPage() {
       {showUsers && allUsers && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">All User Accounts</CardTitle>
+            <CardTitle className="text-base">{t('allUserAccountsTitle')}</CardTitle>
             <CardDescription>
-              {allUsers.length} total users in the system
+              {t('totalUsersInSystem', { count: allUsers.length })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -339,11 +338,11 @@ export default function JointOperationsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 border-b">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium text-slate-600">Username</th>
-                    <th className="px-4 py-2 text-left font-medium text-slate-600">Name</th>
-                    <th className="px-4 py-2 text-left font-medium text-slate-600">Role</th>
-                    <th className="px-4 py-2 text-left font-medium text-slate-600">Rank</th>
-                    <th className="px-4 py-2 text-left font-medium text-slate-600">Provider</th>
+                    <th className="px-4 py-2 text-left font-medium text-slate-600">{t('thUsername')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-slate-600">{t('thName')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-slate-600">{t('thRole')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-slate-600">{t('thRank')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-slate-600">{t('thProvider')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -388,34 +387,23 @@ export default function JointOperationsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-rose-600" />
-              Confirm Emergency Action
+              {t('confirmEmergencyTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === "suspend-all" ? (
-                <>
-                  This will <strong>suspend ALL guesthouses</strong> in the system immediately.
-                  No new check-ins will be allowed until manually unsuspended. This action
-                  is performed under dual authorization of both{" "}
-                  {jointSession.superuser?.name} and {jointSession.policeAdmin?.name}.
-                </>
-              ) : (
-                <>
-                  This will <strong>unsuspend ALL guesthouses</strong> in the system immediately.
-                  All guesthouses will return to their previous status. This action is performed
-                  under dual authorization of both {jointSession.superuser?.name} and{" "}
-                  {jointSession.policeAdmin?.name}.
-                </>
-              )}
+              {confirmAction === "suspend-all"
+                ? t('confirmSuspendAllDesc', { superuser: jointSession.superuser?.name, policeAdmin: jointSession.policeAdmin?.name })
+                : t('confirmUnsuspendAllDesc', { superuser: jointSession.superuser?.name, policeAdmin: jointSession.policeAdmin?.name })
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={actioning}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={actioning}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-rose-600 hover:bg-rose-700"
               onClick={() => handleEmergencyAction(confirmAction || "")}
               disabled={actioning}
             >
-              {actioning ? "Executing..." : "Confirm Action"}
+              {actioning ? t('executing') : t('confirmAction')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

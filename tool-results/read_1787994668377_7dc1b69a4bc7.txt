@@ -1,0 +1,636 @@
+     1→"use client";
+     2→import { useTranslation } from "react-i18next";
+     3→
+     4→import { useState, useEffect, useCallback } from "react";
+     5→import { useAppStore } from "@/lib/store";
+     6→import { apiPoliceMovement, apiPoliceFrequentStays, apiPoliceTriggerFrequentAnalysis, apiPoliceGuestLinking, apiPoliceAlertConfig, apiPoliceUpdateAlertConfig, apiPoliceExport } from "@/lib/api";
+     7→import { toast } from "sonner";
+     8→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { Skeleton } from "@/components/ui/skeleton";
+    11→import { Input } from "@/components/ui/input";
+    12→import { Label } from "@/components/ui/label";
+    13→import { Separator } from "@/components/ui/separator";
+    14→import { Button } from "@/components/ui/button";
+    15→import {
+    16→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    17→} from "@/components/ui/select";
+    18→import { usePagination } from "@/hooks/use-pagination";
+    19→import { PaginationControls } from "@/components/shared/pagination-controls";
+    20→import {
+    21→  Search, ArrowRight, AlertTriangle, RefreshCw, Users, GitBranch,
+    22→  Phone, CreditCard, MapPin, Calendar, Building2, ShieldAlert,
+    23→  Shield, Download, Mail, Smartphone,
+    24→  ChevronLeft, ChevronRight,
+    25→} from "lucide-react";
+    26→
+    27→interface GuestResult {
+    28→  id: string; name: string; phone: string; email: string; idNumber: string;
+    29→  nationality: string; provider: { id: string; name: string; address: string } | null;
+    30→  reservations: { id: string; checkIn: string; checkOut: string; status: string; nights: number; totalCost: number; room: { number: string; name: string; type: string } }[];
+    31→}
+    32→interface MatchResult {
+    33→  id: string; guestName: string; guestPhone: string; matchType: string; providerName: string;
+    34→  createdAt: string; suspectedPerson: { name: string; severity: string; description: string };
+    35→}
+    36→interface LinkedGroup {
+    37→  linkType: string; linkValue: string;
+    38→  guests: { id: string; name: string; phone: string; idNumber: string; providerName: string; nationality: string }[];
+    39→}
+    40→interface AlertConfig { id: string; emailEnabled: boolean; emailRecipients: string; smsEnabled: boolean; smsRecipients: string; escalationDelayMins: number; criticalImmediate: boolean; }
+    41→
+    42→const STATUS_COLORS: Record<string, string> = {
+    43→  ACTIVE: "bg-emerald-100 text-emerald-800",
+    44→  UPCOMING: "bg-blue-100 text-blue-800",
+    45→  COMPLETED: "bg-slate-100 text-slate-800",
+    46→  CANCELLED: "bg-red-100 text-red-800",
+    47→};
+    48→
+    49→export default function PoliceInvestigationPage() {
+    50→  const { t } = useTranslation();
+    51→  const { refreshKey } = useAppStore();
+    52→  const [activeTab, setActiveTab] = useState<"movement" | "frequent" | "linking" | "alerts" | "export">("movement");
+    53→
+    54→  // Alert Config
+    55→  const [config, setConfig] = useState<AlertConfig | null>(null);
+    56→  const [configLoading, setConfigLoading] = useState(true);
+    57→  const [configSaving, setConfigSaving] = useState(false);
+    58→
+    59→  // Movement
+    60→  const [search, setSearch] = useState("");
+    61→  const [guests, setGuests] = useState<GuestResult[]>([]);
+    62→  const [matches, setMatches] = useState<MatchResult[]>([]);
+    63→  const [moveLoading, setMoveLoading] = useState(false);
+    64→
+    65→  // Frequent
+    66→  const [freqStays, setFreqStays] = useState<any[]>([]);
+    67→  const [freqLoading, setFreqLoading] = useState(true);
+    68→  const [analyzing, setAnalyzing] = useState(false);
+    69→  const freqPag = usePagination({ totalItems: freqStays.length, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
+    70→  const pagFreq = freqPag.paginate(freqStays);
+    71→
+    72→  // Linking
+    73→  const [linkedGroups, setLinkedGroups] = useState<LinkedGroup[]>([]);
+    74→  const [linkLoading, setLinkLoading] = useState(true);
+    75→  const [linkTotal, setLinkTotal] = useState(0);
+    76→  const [linkTotalPages, setLinkTotalPages] = useState(1);
+    77→  const [linkPage, setLinkPage] = useState(1);
+    78→  const [linkPageSize, setLinkPageSize] = useState(5);
+    79→
+    80→  // Fetch frequent stays
+    81→  const fetchFreq = useCallback(async () => {
+    82→    try { setFreqLoading(true); const d = await apiPoliceFrequentStays(); setFreqStays(Array.isArray(d) ? d : []); }
+    83→    catch { toast.error("Failed to load frequent stays"); }
+    84→    finally { setFreqLoading(false); }
+    85→  }, []);
+    86→
+    87→  // Fetch linked guests
+    88→  const fetchLinks = useCallback(async () => {
+    89→    try {
+    90→      setLinkLoading(true);
+    91→      const d: any = await apiPoliceGuestLinking({ page: linkPage, pageSize: linkPageSize });
+    92→      setLinkedGroups(d.linkedGroups || []);
+    93→      setLinkTotal(d.total || 0);
+    94→      setLinkTotalPages(d.totalPages || 1);
+    95→    } catch { toast.error("Failed to load guest links"); }
+    96→    finally { setLinkLoading(false); }
+    97→  }, [linkPage, linkPageSize]);
+    98→
+    99→  // Fetch alert config
+   100→  const fetchConfig = useCallback(async () => {
+   101→    try { setConfigLoading(true); const d: any = await apiPoliceAlertConfig(); setConfig(d); }
+   102→    catch { toast.error("Failed to load config"); }
+   103→    finally { setConfigLoading(false); }
+   104→  }, []);
+   105→
+   106→  useEffect(() => { fetchFreq(); }, [fetchFreq, refreshKey]);
+   107→  useEffect(() => { fetchLinks(); }, [fetchLinks, refreshKey]);
+   108→  useEffect(() => { if (activeTab === "alerts") fetchConfig(); }, [activeTab, fetchConfig, refreshKey]);
+   109→
+   110→  // Search movement
+   111→  const searchMovement = async () => {
+   112→    if (!search.trim()) return;
+   113→    try {
+   114→      setMoveLoading(true);
+   115→      const q = search.includes("@") ? `email=${search}` : /^\d+$/.test(search.replace(/\s/g, "")) ? `phone=${search.replace(/\s/g, "")}` : `name=${search}`;
+   116→      const d: any = await apiPoliceMovement(q);
+   117→      setGuests(d.guests || []);
+   118→      setMatches(d.suspectMatches || []);
+   119→    } catch { toast.error("Search failed"); }
+   120→    finally { setMoveLoading(false); }
+   121→  };
+   122→
+   123→  const triggerAnalysis = async () => {
+   124→    try {
+   125→      setAnalyzing(true);
+   126→      const d: any = await apiPoliceTriggerFrequentAnalysis();
+   127→      toast.success(d.message || "Analysis complete");
+   128→      fetchFreq();
+   129→    } catch { toast.error("Analysis failed"); }
+   130→    finally { setAnalyzing(false); }
+   131→  };
+   132→
+   133→  const saveConfig = async () => {
+   134→    if (!config) return;
+   135→    try {
+   136→      setConfigSaving(true);
+   137→      await apiPoliceUpdateAlertConfig(config as Record<string, unknown>);
+   138→      toast.success("Alert config saved");
+   139→    } catch { toast.error("Failed to save config"); }
+   140→    finally { setConfigSaving(false); }
+   141→  };
+   142→
+   143→  const handleExport = async (type: string, format: string) => {
+   144→    try {
+   145→      const blob = await apiPoliceExport(`type=${type}&format=${format}`);
+   146→      const url = window.URL.createObjectURL(blob as any);
+   147→      const a = document.createElement("a");
+   148→      a.href = url;
+   149→      a.download = `police-${type}-${Date.now()}.${format}`;
+   150→      a.click();
+   151→      toast.success("Export downloaded");
+   152→    } catch { toast.error("Export failed"); }
+   153→  };
+   154→
+   155→  const tabs = [
+   156→    { key: "movement" as const, label: "Guest Movement", icon: ArrowRight },
+   157→    { key: "frequent" as const, label: "Frequent Stays", icon: AlertTriangle },
+   158→    { key: "linking" as const, label: "Guest Linking", icon: GitBranch },
+   159→    { key: "alerts" as const, label: "Alert Settings", icon: Shield },
+   160→    { key: "export" as const, label: "Legal Export", icon: Download },
+   161→  ];
+   162→
+   163→  return (
+   164→    <div className="space-y-4 p-3 sm:p-4 md:p-6">
+   165→      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+   166→        <div>
+   167→          <h2 className="text-base sm:text-lg font-semibold">Investigation Tools</h2>
+   168→          <p className="text-xs sm:text-sm text-muted-foreground">Track guest movement, detect patterns, find linked identities, alert settings, and legal data export</p>
+   169→        </div>
+   170→      </div>
+   171→
+   172→      <div className="flex gap-1 overflow-x-auto rounded-lg border bg-muted/50 p-0.5">
+   173→        {tabs.map((tab) => (
+   174→          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+   175→            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+   176→              activeTab === tab.key ? "bg-sky-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+   177→            }`}>
+   178→            <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+   179→          </button>
+   180→        ))}
+   181→      </div>
+   182→
+   183→      {/* Guest Movement Tracker */}
+   184→      {activeTab === "movement" && (
+   185→        <div className="space-y-4">
+   186→          <Card>
+   187→            <CardHeader><CardTitle className="text-sm">Search Guest Across All Providers</CardTitle></CardHeader>
+   188→            <CardContent className="flex flex-col sm:flex-row gap-2">
+   189→              <div className="relative flex-1">
+   190→                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   191→                <Input placeholder="Guest name, phone, or ID number..." value={search} onChange={(e) => setSearch(e.target.value)}
+   192→                  onKeyDown={(e) => e.key === "Enter" && searchMovement()} className="pl-9" />
+   193→              </div>
+   194→              <Button onClick={searchMovement} disabled={moveLoading || !search.trim()} className="bg-sky-600 hover:bg-sky-700 text-white">
+   195→                <Search className="mr-1 h-3.5 w-3.5" /> {moveLoading ? "Searching..." : "Track"}
+   196→              </Button>
+   197→            </CardContent>
+   198→          </Card>
+   199→
+   200→          {moveLoading && <Skeleton className="h-32 w-full rounded-xl" />}
+   201→
+   202→          {guests.length > 0 && guests[0].reservations.length > 0 && (
+   203→            <Card>
+   204→              <CardHeader><CardTitle className="text-sm">Reservation Timeline</CardTitle></CardHeader>
+   205→              <CardContent>
+   206→                <div className="relative space-y-0">
+   207→                  {guests.flatMap((g) =>
+   208→                    g.reservations.map((r, i) => (
+   209→                      <div key={r.id} className="flex gap-3 pb-4">
+   210→                        <div className="flex flex-col items-center">
+   211→                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
+   212→                            <Building2 className="h-4 w-4 text-slate-600" />
+   213→                          </div>
+   214→                          {i < g.reservations.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1" />}
+   215→                        </div>
+   216→                        <div className="flex-1 rounded-lg border p-3">
+   217→                          <div className="flex items-center justify-between gap-2">
+   218→                            <div className="flex items-center gap-2">
+   219→                              <p className="text-sm font-medium">{g.provider?.name || "Unknown"}</p>
+   220→                              <Badge className={`text-[9px] ${STATUS_COLORS[r.status] || ""}`}>{r.status}</Badge>
+   221→                            </div>
+   222→                            <span className="text-[10px] text-muted-foreground">{r.room?.number || ""} {r.room?.type || ""}</span>
+   223→                          </div>
+   224→                          <div className="flex flex-wrap gap-3 mt-1.5 text-[10px] text-muted-foreground">
+   225→                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {r.checkIn} → {r.checkOut}</span>
+   226→                            <span>{r.nights} nights</span>
+   227→                            <span className="font-medium text-emerald-600">ETB {r.totalCost.toLocaleString()}</span>
+   228→                          </div>
+   229→                        </div>
+   230→                      </div>
+   231→                    ))
+   232→                  )}
+   233→                </div>
+   234→              </CardContent>
+   235→            </Card>
+   236→          )}
+   237→
+   238→          {matches.length > 0 && (
+   239→            <Card>
+   240→              <CardHeader><CardTitle className="flex items-center gap-2 text-sm text-red-700"><ShieldAlert className="h-4 w-4" /> Suspect Matches for this Guest</CardTitle></CardHeader>
+   241→              <CardContent>
+   242→                <div className="divide-y">
+   243→                  {matches.map((m) => (
+   244→                    <div key={m.id} className="flex items-center justify-between py-2.5">
+   245→                      <div>
+   246→                        <p className="text-sm font-medium text-red-700">{m.suspectedPerson.name}</p>
+   247→                        <div className="flex gap-2 mt-0.5 text-[10px] text-muted-foreground">
+   248→                          <span>{m.providerName}</span><span>{m.matchType}</span><span>{new Date(m.createdAt).toLocaleDateString()}</span>
+   249→                        </div>
+   250→                      </div>
+   251→                      <Badge variant="outline" className="text-[9px] bg-red-50 text-red-800 border-red-200">{m.suspectedPerson.severity}</Badge>
+   252→                    </div>
+   253→                  ))}
+   254→                </div>
+   255→              </CardContent>
+   256→            </Card>
+   257→          )}
+   258→        </div>
+   259→      )}
+   260→
+   261→      {/* Frequent Stay Alerts */}
+   262→      {activeTab === "frequent" && (
+   263→        <div className="space-y-4">
+   264→          {/* Summary stats */}
+   265→          {!freqLoading && freqStays.length > 0 && (
+   266→            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   267→              <Card className="p-3">
+   268→                <div className="flex items-center gap-2">
+   269→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
+   270→                    <AlertTriangle className="h-4 w-4 text-blue-600" />
+   271→                  </div>
+   272→                  <div>
+   273→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Alerts</p>
+   274→                    <p className="text-base font-semibold">{freqStays.length}</p>
+   275→                  </div>
+   276→                </div>
+   277→              </Card>
+   278→              <Card className="p-3">
+   279→                <div className="flex items-center gap-2">
+   280→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100">
+   281→                    <ShieldAlert className="h-4 w-4 text-red-600" />
+   282→                  </div>
+   283→                  <div>
+   284→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">High Risk</p>
+   285→                    <p className="text-base font-semibold text-red-700">{freqStays.filter(f => f.riskLevel === "HIGH").length}</p>
+   286→                  </div>
+   287→                </div>
+   288→              </Card>
+   289→              <Card className="p-3">
+   290→                <div className="flex items-center gap-2">
+   291→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+   292→                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+   293→                  </div>
+   294→                  <div>
+   295→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Medium Risk</p>
+   296→                    <p className="text-base font-semibold text-amber-700">{freqStays.filter(f => f.riskLevel === "MEDIUM").length}</p>
+   297→                  </div>
+   298→                </div>
+   299→              </Card>
+   300→              <Card className="p-3">
+   301→                <div className="flex items-center gap-2">
+   302→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+   303→                    <Users className="h-4 w-4 text-emerald-600" />
+   304→                  </div>
+   305→                  <div>
+   306→                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Low Risk</p>
+   307→                    <p className="text-base font-semibold text-emerald-700">{freqStays.filter(f => f.riskLevel === "LOW").length}</p>
+   308→                  </div>
+   309→                </div>
+   310→              </Card>
+   311→            </div>
+   312→          )}
+   313→
+   314→          <Card>
+   315→            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+   316→              <div className="space-y-1">
+   317→                <CardTitle className="flex items-center gap-2 text-sm">
+   318→                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+   319→                  Frequent Stay Alerts
+   320→                </CardTitle>
+   321→                <p className="text-xs text-muted-foreground">
+   322→                  Guests with multiple stays across providers within 30 days
+   323→                </p>
+   324→              </div>
+   325→              <Button variant="default" size="sm" onClick={triggerAnalysis} disabled={analyzing} className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5 shrink-0">
+   326→                <RefreshCw className={`h-3.5 w-3.5 ${analyzing ? "animate-spin" : ""}`} />
+   327→                {analyzing ? "Analyzing..." : "Run Analysis"}
+   328→              </Button>
+   329→            </CardHeader>
+   330→            <CardContent className="p-0">
+   331→              {freqLoading ? (
+   332→                <div className="space-y-3 p-4">
+   333→                  {[1, 2, 3].map((i) => (
+   334→                    <div key={i} className="flex items-start gap-3 rounded-lg border p-3">
+   335→                      <Skeleton className="h-10 w-10 rounded-full" />
+   336→                      <div className="flex-1 space-y-2">
+   337→                        <Skeleton className="h-4 w-1/3" />
+   338→                        <Skeleton className="h-3 w-1/2" />
+   339→                        <div className="flex gap-2 mt-2">
+   340→                          <Skeleton className="h-5 w-16 rounded-full" />
+   341→                          <Skeleton className="h-5 w-20 rounded-full" />
+   342→                          <Skeleton className="h-5 w-24 rounded-full" />
+   343→                        </div>
+   344→                      </div>
+   345→                      <Skeleton className="h-6 w-14 rounded-full" />
+   346→                    </div>
+   347→                  ))}
+   348→                </div>
+   349→              ) : pagFreq.length === 0 ? (
+   350→                <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+   351→                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-3">
+   352→                    <AlertTriangle className="h-7 w-7 text-muted-foreground opacity-60" />
+   353→                  </div>
+   354→                  <p className="text-sm font-medium">No frequent stay alerts yet</p>
+   355→                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+   356→                    Run an analysis to scan for guests with multiple stays across providers within a 30-day window.
+   357→                  </p>
+   358→                  <Button variant="outline" size="sm" onClick={triggerAnalysis} disabled={analyzing} className="mt-4 gap-1.5">
+   359→                    <RefreshCw className={`h-3.5 w-3.5 ${analyzing ? "animate-spin" : ""}`} />
+   360→                    {analyzing ? "Analyzing..." : "Run Analysis Now"}
+   361→                  </Button>
+   362→                </div>
+   363→              ) : (
+   364→                <div className="divide-y">
+   365→                  {pagFreq.map((f) => {
+   366→                    const providers: string[] = (() => {
+   367→                      try { return JSON.parse(f.providerNames || "[]") as string[]; } catch { return []; }
+   368→                    })();
+   369→                    const riskColor = f.riskLevel === "HIGH"
+   370→                      ? "bg-red-100 text-red-800 border-red-200"
+   371→                      : f.riskLevel === "LOW"
+   372→                        ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+   373→                        : "bg-amber-100 text-amber-800 border-amber-200";
+   374→                    const riskIcon = f.riskLevel === "HIGH" ? "text-red-600" : f.riskLevel === "LOW" ? "text-emerald-600" : "text-amber-600";
+   375→                    const initials = (f.guestName || "?").split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+   376→
+   377→                    return (
+   378→                      <div key={f.id} className="p-3 sm:p-4 hover:bg-muted/30 transition-colors">
+   379→                        <div className="flex items-start gap-3">
+   380→                          {/* Avatar */}
+   381→                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-100 to-rose-200 text-rose-800 text-xs font-semibold">
+   382→                            {initials}
+   383→                          </div>
+   384→
+   385→                          {/* Main content */}
+   386→                          <div className="flex-1 min-w-0 space-y-2">
+   387→                            <div className="flex flex-wrap items-center gap-2">
+   388→                              <p className="text-sm font-semibold truncate">{f.guestName}</p>
+   389→                              <Badge variant="outline" className={`text-[10px] gap-0.5 ${riskColor}`}>
+   390→                                <span className={riskIcon}>●</span>
+   391→                                {f.riskLevel} RISK
+   392→                              </Badge>
+   393→                              {f.isReviewed && (
+   394→                                <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-600">
+   395→                                  Reviewed
+   396→                                </Badge>
+   397→                              )}
+   398→                            </div>
+   399→
+   400→                            {/* Contact info */}
+   401→                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+   402→                              {f.guestPhone && (
+   403→                                <span className="flex items-center gap-1">
+   404→                                  <Phone className="h-3 w-3" />
+   405→                                  <code className="font-mono">{f.guestPhone}</code>
+   406→                                </span>
+   407→                              )}
+   408→                              {f.guestIdNumber && (
+   409→                                <span className="flex items-center gap-1">
+   410→                                  <CreditCard className="h-3 w-3" />
+   411→                                  <code className="font-mono">{f.guestIdNumber}</code>
+   412→                                </span>
+   413→                              )}
+   414→                              <span className="flex items-center gap-1">
+   415→                                <Calendar className="h-3 w-3" />
+   416→                                {new Date(f.createdAt).toLocaleDateString()}
+   417→                              </span>
+   418→                            </div>
+   419→
+   420→                            {/* Stats row */}
+   421→                            <div className="flex flex-wrap items-center gap-2">
+   422→                              <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700 border border-blue-100">
+   423→                                <Users className="h-3 w-3" />
+   424→                                {f.stayCount} stays
+   425→                              </span>
+   426→                              <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-1 text-[11px] font-medium text-violet-700 border border-violet-100">
+   427→                                <Calendar className="h-3 w-3" />
+   428→                                {f.avgDaysBetween}d avg gap
+   429→                              </span>
+   430→                              {providers.length > 0 && (
+   431→                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 border border-amber-100">
+   432→                                  <Building2 className="h-3 w-3" />
+   433→                                  {providers.length} {providers.length === 1 ? "provider" : "providers"}
+   434→                                </span>
+   435→                              )}
+   436→                            </div>
+   437→
+   438→                            {/* Provider chips */}
+   439→                            {providers.length > 0 && (
+   440→                              <div className="flex flex-wrap gap-1 pt-1">
+   441→                                {providers.map((p, i) => (
+   442→                                  <span key={i} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+   443→                                    {p}
+   444→                                  </span>
+   445→                                ))}
+   446→                              </div>
+   447→                            )}
+   448→                          </div>
+   449→                        </div>
+   450→                      </div>
+   451→                    );
+   452→                  })}
+   453→                </div>
+   454→              )}
+   455→            </CardContent>
+   456→          </Card>
+   457→
+   458→          {freqStays.length > freqPag.pageSize && (
+   459→            <PaginationControls
+   460→              currentPage={freqPag.currentPage}
+   461→              totalPages={freqPag.totalPages}
+   462→              pageSize={freqPag.pageSize}
+   463→              pageSizeOptions={freqPag.pageSizeOptions}
+   464→              totalItems={freqStays.length}
+   465→              rangeInfo={freqPag.rangeInfo}
+   466→              goToPage={freqPag.goToPage}
+   467→              setPageSize={freqPag.setPageSize}
+   468→            />
+   469→          )}
+   470→        </div>
+   471→      )}
+   472→
+   473→      {/* Guest Linking */}
+   474→      {activeTab === "linking" && (
+   475→        <div className="space-y-4">
+   476→          <Card>
+   477→            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><GitBranch className="h-4 w-4" /> Linked Guests (Same Phone/ID)</CardTitle></CardHeader>
+   478→            <CardContent className="p-0">
+   479→              {linkLoading ? (
+   480→                <div className="space-y-3 p-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div>
+   481→              ) : linkedGroups.length === 0 ? (
+   482→                <p className="py-8 text-center text-xs text-muted-foreground">No linked guests found</p>
+   483→              ) : (
+   484→                <div className="divide-y">
+   485→                  {linkedGroups.map((group, gi) => (
+   486→                    <div key={gi} className="p-3 sm:px-4">
+   487→                      <div className="flex items-center gap-2 mb-2">
+   488→                        <Badge variant="secondary" className="text-[9px]">{group.linkType}</Badge>
+   489→                        <span className="text-xs font-mono text-muted-foreground">{group.linkValue}</span>
+   490→                      </div>
+   491→                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+   492→                        {group.guests.map((g) => (
+   493→                          <div key={g.id} className="rounded-lg border p-2.5">
+   494→                            <div className="flex items-center justify-between">
+   495→                              <p className="text-sm font-medium truncate">{g.name}</p>
+   496→                              <Badge variant="outline" className="text-[9px] shrink-0">{g.providerName}</Badge>
+   497→                            </div>
+   498→                            <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
+   499→                              {g.phone && <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" />{g.phone}</span>}
+   500→                              {g.nationality && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{g.nationality}</span>}
+   501→                            </div>
+   502→                          </div>
+   503→                        ))}
+   504→                      </div>
+   505→                    </div>
+   506→                  ))}
+   507→                </div>
+   508→              )}
+   509→            </CardContent>
+   510→          </Card>
+   511→          {linkTotal > 0 && (
+   512→            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-2">
+   513→              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+   514→                <span>Showing {linkTotal === 0 ? 0 : (linkPage - 1) * linkPageSize + 1}–{Math.min(linkPage * linkPageSize, linkTotal)} of {linkTotal}</span>
+   515→                <Select value={String(linkPageSize)} onValueChange={(v) => { setLinkPageSize(Number(v)); setLinkPage(1); }}>
+   516→                  <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue /></SelectTrigger>
+   517→                  <SelectContent>
+   518→                    <SelectItem value="10">10 / page</SelectItem>
+   519→                    <SelectItem value="20">20 / page</SelectItem>
+   520→                    <SelectItem value="50">50 / page</SelectItem>
+   521→                    <SelectItem value="100">100 / page</SelectItem>
+   522→                  </SelectContent>
+   523→                </Select>
+   524→              </div>
+   525→              <div className="flex items-center gap-1">
+   526→                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={linkPage <= 1} onClick={() => setLinkPage(linkPage - 1)}>
+   527→                  <ChevronLeft className="h-3.5 w-3.5" />
+   528→                </Button>
+   529→                <span className="text-xs px-2">Page {linkPage} of {linkTotalPages}</span>
+   530→                <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={linkPage >= linkTotalPages} onClick={() => setLinkPage(linkPage + 1)}>
+   531→                  <ChevronRight className="h-3.5 w-3.5" />
+   532→                </Button>
+   533→              </div>
+   534→            </div>
+   535→          )}
+   536→        </div>
+   537→      )}
+   538→
+   539→      {/* Alert Configuration */}
+   540→      {activeTab === "alerts" && config && (
+   541→        <Card>
+   542→          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Shield className="h-4 w-4" /> Alert Notification Settings</CardTitle></CardHeader>
+   543→          <CardContent className="space-y-4">
+   544→            {configLoading ? <Skeleton className="h-48 w-full" /> : (
+   545→              <>
+   546→                <div className="space-y-3">
+   547→                  <div className="flex items-center justify-between rounded-lg border p-3">
+   548→                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">Email Alerts</p><p className="text-[10px] text-muted-foreground">Send alerts to email addresses</p></div></div>
+   549→                    <button onClick={() => setConfig({ ...config, emailEnabled: !config.emailEnabled })} className={"h-5 w-9 rounded-full transition-colors " + (config.emailEnabled ? "bg-emerald-600" : "bg-slate-200")}>
+   550→                      <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.emailEnabled ? "translate-x-4" : "translate-x-0.5")} />
+   551→                    </button>
+   552→                  </div>
+   553→                  {config.emailEnabled && (
+   554→                    <div className="ml-8"><Label>{t('lblemailRecipientsCommaseparated', 'Email Recipients (comma-separated)')}</Label><Input value={config.emailRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, emailRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="officer1@police.gov.et, officer2@police.gov.et" className="text-xs" /></div>
+   555→                  )}
+   556→                </div>
+   557→
+   558→                <div className="space-y-3">
+   559→                  <div className="flex items-center justify-between rounded-lg border p-3">
+   560→                    <div className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm font-medium">SMS Alerts</p><p className="text-[10px] text-muted-foreground">Send alerts via SMS</p></div></div>
+   561→                    <button onClick={() => setConfig({ ...config, smsEnabled: !config.smsEnabled })} className={"h-5 w-9 rounded-full transition-colors " + (config.smsEnabled ? "bg-emerald-600" : "bg-slate-200")}>
+   562→                      <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.smsEnabled ? "translate-x-4" : "translate-x-0.5")} />
+   563→                    </button>
+   564→                  </div>
+   565→                  {config.smsEnabled && (
+   566→                    <div className="ml-8"><Label>{t('lblsmsRecipientsCommaseparated', 'SMS Recipients (comma-separated)')}</Label><Input value={config.smsRecipients.replace(/[\[\]"]/g, "")} onChange={(e) => setConfig({ ...config, smsRecipients: JSON.stringify(e.target.value.split(",").map((s) => s.trim())) })} placeholder="+251911234567, +251922345678" className="text-xs" /></div>
+   567→                  )}
+   568→                </div>
+   569→
+   570→                <Separator />
+   571→
+   572→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   573→                  <div className="space-y-1.5">
+   574→                    <Label>{t('lblescalationDelayMinutes', 'Escalation Delay (minutes)')}</Label>
+   575→                    <Input type="number" value={config.escalationDelayMins} onChange={(e) => setConfig({ ...config, escalationDelayMins: parseInt(e.target.value) || 60 })} className="text-xs" />
+   576→                    <p className="text-[10px] text-muted-foreground">How long before escalating HIGH alerts</p>
+   577→                  </div>
+   578→                  <div className="space-y-3">
+   579→                    <div className="flex items-center justify-between rounded-lg border p-3">
+   580→                      <div><p className="text-sm font-medium">CRITICAL = Immediate</p><p className="text-[10px] text-muted-foreground">CRITICAL severity alerts are sent immediately</p></div>
+   581→                      <button onClick={() => setConfig({ ...config, criticalImmediate: !config.criticalImmediate })} className={"h-5 w-9 rounded-full transition-colors " + (config.criticalImmediate ? "bg-red-600" : "bg-slate-200")}>
+   582→                        <div className={"h-4 w-4 rounded-full bg-white shadow transition-transform " + (config.criticalImmediate ? "translate-x-4" : "translate-x-0.5")} />
+   583→                      </button>
+   584→                    </div>
+   585→                  </div>
+   586→                </div>
+   587→
+   588→                <div className="flex justify-end">
+   589→                  <Button size="sm" onClick={saveConfig} disabled={configSaving} className="bg-sky-600 hover:bg-sky-700 text-white">
+   590→                    <RefreshCw className={"mr-1 h-3.5 w-3.5 " + (configSaving ? "animate-spin" : "")} /> {configSaving ? "Saving..." : "Save Settings"}
+   591→                  </Button>
+   592→                </div>
+   593→              </>
+   594→            )}
+   595→          </CardContent>
+   596→        </Card>
+   597→      )}
+   598→
+   599→      {/* Legal Export */}
+   600→      {activeTab === "export" && (
+   601→        <div className="space-y-4">
+   602→          <Card>
+   603→            <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Download className="h-4 w-4" /> Legal Data Export</CardTitle></CardHeader>
+   604→            <CardContent>
+   605→              <p className="text-xs text-muted-foreground mb-4">Export data in court-admissible format. All exports include metadata (timestamp, officer, source) for legal documentation.</p>
+   606→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   607→                {[
+   608→                  { type: "guests", label: "Guest Registry", desc: "All guest records across providers", color: "bg-sky-50 border-sky-200 text-sky-800" },
+   609→                  { type: "matches", label: "Suspect Matches", desc: "All suspect match alerts", color: "bg-red-50 border-red-200 text-red-800" },
+   610→                  { type: "audit", label: "Audit Trail", desc: "Officer activity log", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
+   611→                ].map((exp) => (
+   612→                  <div key={exp.type} className={`rounded-lg border p-3 ${exp.color}`}>
+   613→                    <p className="text-sm font-medium">{exp.label}</p>
+   614→                    <p className="text-[10px] opacity-75 mb-3">{exp.desc}</p>
+   615→                    <div className="flex gap-1.5">
+   616→                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => handleExport(exp.type, "json")}>JSON</Button>
+   617→                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => handleExport(exp.type, "csv")}>CSV</Button>
+   618→                    </div>
+   619→                  </div>
+   620→                ))}
+   621→              </div>
+   622→            </CardContent>
+   623→          </Card>
+   624→          <Card>
+   625→            <CardHeader><CardTitle className="text-sm">Export Everything</CardTitle></CardHeader>
+   626→            <CardContent className="flex gap-2">
+   627→              <Button size="sm" onClick={() => handleExport("all", "json")} className="bg-sky-600 hover:bg-sky-700 text-white"><Download className="mr-1 h-3.5 w-3.5" /> Full Export (JSON)</Button>
+   628→              <Button size="sm" variant="outline" onClick={() => handleExport("all", "csv")}><Download className="mr-1 h-3.5 w-3.5" /> Full Export (CSV)</Button>
+   629→            </CardContent>
+   630→          </Card>
+   631→        </div>
+   632→      )}
+   633→    </div>
+   634→  );
+   635→}
+   636→

@@ -82,7 +82,7 @@ const SEVERITY_CONFIG: Record<string, { bg: string; text: string; border: string
 };
 
 export default function PoliceIntelligencePage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("policeIntelligence");
   const { refreshKey } = useAppStore();
   const [data, setData] = useState<{ frequentStays: FreqStayItem[]; hotspotData: HotspotItem[]; allProviderLocations: ProviderLocation[]; occupancyCrimeCorrelation: MonthlyItem[]; recentActivity: AuditItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,6 +106,37 @@ export default function PoliceIntelligencePage() {
   const auditPag = usePagination({ totalItems: 0, initialPageSize: 20, pageSizeOptions: [10, 20, 50, 100] });
   const rankingPag = usePagination({ totalItems: 0, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
 
+  // i18n helpers
+  const getTabLabel = (val: string) => {
+    const map: Record<string, string> = {
+      hotspots: t('tabsHotspots'),
+      charts: t('tabsCharts'),
+      frequent: t('tabsFrequent'),
+      audit: t('tabsAudit'),
+    };
+    return map[val] || val;
+  };
+
+  const getMonthLabel = (val: string) => {
+    const map: Record<string, string> = {
+      '1': t('month1'), '2': t('month2'), '3': t('month3'),
+      '4': t('month4'), '5': t('month5'), '6': t('month6'),
+      '7': t('month7'), '8': t('month8'), '9': t('month9'),
+      '10': t('month10'), '11': t('month11'), '12': t('month12'),
+    };
+    return map[val] || val;
+  };
+
+  const getSeverityLabel = (val: string) => {
+    const map: Record<string, string> = {
+      CRITICAL: t('severityCritical'),
+      HIGH: t('severityHigh'),
+      MEDIUM: t('severityMedium'),
+      NONE: t('severityNoAlerts'),
+    };
+    return map[val] || val;
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -119,7 +150,7 @@ export default function PoliceIntelligencePage() {
       }
       setData(res);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to load intelligence data";
+      const msg = e instanceof Error ? e.message : t('errorLoad');
       toast.error(msg);
     }
     finally { setLoading(false); }
@@ -175,9 +206,9 @@ export default function PoliceIntelligencePage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setReportOpen(false);
-      toast.success("Report downloaded successfully");
+      toast.success(t('successReportDownloaded'));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to generate report";
+      const msg = e instanceof Error ? e.message : t('errorGenerateReport');
       toast.error(msg);
     } finally {
       setReportGenerating(false);
@@ -209,15 +240,15 @@ export default function PoliceIntelligencePage() {
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Intelligence Center</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Crime analytics, hotspot analysis, and pattern detection</p>
+          <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
-            <FileDown className="mr-1.5 h-3.5 w-3.5" /> Download Report
+            <FileDown className="mr-1.5 h-3.5 w-3.5" /> {t('downloadReport')}
           </Button>
           <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+            <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> {t('refresh')}
           </Button>
         </div>
       </div>
@@ -228,10 +259,10 @@ export default function PoliceIntelligencePage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileDown className="h-5 w-5" />
-              Download Monthly Report
+              {t('downloadMonthlyTitle')}
             </DialogTitle>
             <DialogDescription>
-              Generate a printable HTML intelligence report for the selected month.
+              {t('downloadMonthlyDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
@@ -241,7 +272,7 @@ export default function PoliceIntelligencePage() {
                 <SelectTrigger id="report-month"><SelectValue placeholder="Select month" /></SelectTrigger>
                 <SelectContent>
                   {MONTH_OPTIONS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>{getMonthLabel(m.value)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -260,13 +291,13 @@ export default function PoliceIntelligencePage() {
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setReportOpen(false)} disabled={reportGenerating}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={handleDownloadReport} disabled={reportGenerating}>
               {reportGenerating ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generating...</>
+                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> {t('generating')}</>
               ) : (
-                <><FileDown className="mr-1.5 h-3.5 w-3.5" /> Download</>
+                <><FileDown className="mr-1.5 h-3.5 w-3.5" /> {t('download')}</>
               )}
             </Button>
           </DialogFooter>
@@ -281,7 +312,7 @@ export default function PoliceIntelligencePage() {
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
               activeTab === tab.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}>
-            <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+            <tab.icon className="h-3.5 w-3.5" /> {getTabLabel(tab.key)}
           </button>
         ))}
       </div>
@@ -292,7 +323,7 @@ export default function PoliceIntelligencePage() {
           <Skeleton className="h-12 w-full" />
         </div>
       ) : !data ? (
-        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No intelligence data available</p></CardContent></Card>
+        <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">{t('emptyData')}</p></CardContent></Card>
       ) : (
         <>
           {/* Crime Hotspots - Full Information Display */}
@@ -301,11 +332,11 @@ export default function PoliceIntelligencePage() {
               {/* Summary Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {[
-                  { label: "Providers", value: hotspotStats.total, icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
-                  { label: "With Alerts", value: hotspotStats.withAlerts, icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
-                  { label: "Critical", value: hotspotStats.critical, icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
-                  { label: "Total Matches", value: hotspotStats.totalMatches, icon: MapPin, color: "text-orange-600", bg: "bg-orange-50" },
-                  { label: "Total Guests", value: hotspotStats.totalGuests, icon: Users, color: "text-sky-600", bg: "bg-sky-50" },
+                  { label: t('statProviders'), value: hotspotStats.total, icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
+                  { label: t('statWithAlerts'), value: hotspotStats.withAlerts, icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
+                  { label: t('statCritical'), value: hotspotStats.critical, icon: ShieldAlert, color: "text-red-600", bg: "bg-red-50" },
+                  { label: t('statTotalMatches'), value: hotspotStats.totalMatches, icon: MapPin, color: "text-orange-600", bg: "bg-orange-50" },
+                  { label: t('statTotalGuests'), value: hotspotStats.totalGuests, icon: Users, color: "text-sky-600", bg: "bg-sky-50" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border bg-card p-2.5">
                     <div className="flex items-center gap-1.5 mb-1">
@@ -332,7 +363,7 @@ export default function PoliceIntelligencePage() {
                           : "bg-card text-muted-foreground border-border hover:bg-muted"
                       }`}
                     >
-                      {sev === "NONE" ? "No Alerts" : sev === "ALL" ? "All" : sev}
+                      {sev === "NONE" ? t('filterNoAlerts') : sev === "ALL" ? t('filterAll') : getSeverityLabel(sev)}
                       {sev !== "ALL" && sev !== "NONE" && (
                         <span className="ml-1">
                           ({(data.allProviderLocations || []).filter((p) => getSeverity(p) === sev).length})
@@ -346,7 +377,7 @@ export default function PoliceIntelligencePage() {
                     <MapPin className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search by name, address, type, or phone..."
+                      placeholder={t('searchPlaceholder')}
                       value={hotspotSearch}
                       onChange={(e) => setHotspotSearch(e.target.value)}
                       className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -354,7 +385,7 @@ export default function PoliceIntelligencePage() {
                   </div>
                 </div>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {filteredHotspots.length} guesthouse{filteredHotspots.length !== 1 ? "s" : ""} found
+                  {t('guesthousesFound', { count: filteredHotspots.length })}
                 </span>
               </div>
 
@@ -363,8 +394,8 @@ export default function PoliceIntelligencePage() {
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Building2 className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">No guesthouses match the current filter</p>
-                    <p className="text-xs text-muted-foreground mt-1">Try adjusting the severity filter or search query</p>
+                    <p className="text-sm text-muted-foreground">{t('emptyHotspots')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('emptyHotspotsSub')}</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -394,12 +425,12 @@ export default function PoliceIntelligencePage() {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-semibold truncate">{p.name}</p>
-                                  <p className="text-[10px] text-muted-foreground capitalize">{p.type || "Guesthouse"}</p>
+                                  <p className="text-[10px] text-muted-foreground capitalize">{p.type || t('guesthouse')}</p>
                                 </div>
                               </div>
                             </div>
                             <Badge variant="outline" className={`text-[9px] shrink-0 ${sevCfg.bg} ${sevCfg.text} ${sevCfg.border}`}>
-                              {sevCfg.label}
+                              {getSeverityLabel(sev)}
                             </Badge>
                           </div>
                         </div>
@@ -408,7 +439,7 @@ export default function PoliceIntelligencePage() {
                         <div className="px-3 pb-2">
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                             <MapPin className="h-2.5 w-2.5 shrink-0" />
-                            <span className="truncate">{p.address || "No address set"}</span>
+                            <span className="truncate">{p.address || t('noAddress')}</span>
                           </div>
                         </div>
 
@@ -416,21 +447,21 @@ export default function PoliceIntelligencePage() {
                           <div className="grid grid-cols-4 gap-1.5">
                             <div className="text-center rounded-md bg-muted/50 p-1.5">
                               <p className="text-sm font-bold">{p.guestCount}</p>
-                              <p className="text-[8px] text-muted-foreground">Guests</p>
+                              <p className="text-[8px] text-muted-foreground">{t('statGuests')}</p>
                             </div>
                             <div className="text-center rounded-md bg-muted/50 p-1.5">
                               <p className="text-sm font-bold">{p.roomCount}</p>
-                              <p className="text-[8px] text-muted-foreground">Rooms</p>
+                              <p className="text-[8px] text-muted-foreground">{t('statRooms')}</p>
                             </div>
                             <div className="text-center rounded-md bg-muted/50 p-1.5">
                               <p className={`text-sm font-bold ${p.matchCount > 0 ? "text-red-600" : ""}`}>{p.matchCount}</p>
-                              <p className="text-[8px] text-muted-foreground">Matches</p>
+                              <p className="text-[8px] text-muted-foreground">{t('statMatches')}</p>
                             </div>
                             <div className="text-center rounded-md bg-muted/50 p-1.5">
                               <p className={`text-sm font-bold ${p.criticalCount > 0 ? "text-red-700" : p.highCount > 0 ? "text-orange-600" : ""}`}>
                                 {p.criticalCount + p.highCount}
                               </p>
-                              <p className="text-[8px] text-muted-foreground">High/Crit</p>
+                              <p className="text-[8px] text-muted-foreground">{t('statHighCrit')}</p>
                             </div>
                           </div>
                         </div>
@@ -441,9 +472,9 @@ export default function PoliceIntelligencePage() {
                           className="w-full flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 border-t transition-colors"
                         >
                           {isExpanded ? (
-                            <><ChevronUp className="h-3 w-3" /> Less Details</>
+                            <><ChevronUp className="h-3 w-3" /> {t('lessDetails')}</>
                           ) : (
-                            <><ChevronDown className="h-3 w-3" /> Full Details</>
+                            <><ChevronDown className="h-3 w-3" /> {t('fullDetails')}</>
                           )}
                         </button>
 
@@ -454,18 +485,18 @@ export default function PoliceIntelligencePage() {
                             <div className="space-y-1.5">
                               <div className="flex items-center gap-2 text-xs">
                                 <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
-                                <span>{p.phone || "No phone"}</span>
+                                <span>{p.phone || t('noPhone')}</span>
                               </div>
                               <div className="flex items-start gap-2 text-xs">
                                 <Globe className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                                <span>{p.address || "No address on file"}</span>
+                                <span>{p.address || t('noAddressOnFile')}</span>
                               </div>
                               <div className="flex items-center gap-2 text-xs">
                                 <Crosshair className="h-3 w-3 text-muted-foreground shrink-0" />
                                 <span className="font-mono text-[10px]">
                                   {p.hasCoordinates
                                     ? `${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}`
-                                    : "Coordinates not set"}
+                                    : t('noCoordinates')}
                                 </span>
                               </div>
                             </div>
@@ -473,19 +504,19 @@ export default function PoliceIntelligencePage() {
                             {/* Match Breakdown */}
                             {p.matchCount > 0 && (
                               <div className="rounded-md border p-2 bg-red-50/50 border-red-100">
-                                <p className="text-[10px] font-semibold text-red-700 mb-1.5">Alert Breakdown</p>
+                                <p className="text-[10px] font-semibold text-red-700 mb-1.5">{t('alertBreakdown')}</p>
                                 <div className="flex gap-3">
                                   <div className="flex items-center gap-1.5">
                                     <span className="h-2 w-2 rounded-full bg-red-500" />
-                                    <span className="text-[10px]">Critical: <strong>{p.criticalCount}</strong></span>
+                                    <span className="text-[10px]">{t('breakdownCritical')} <strong>{p.criticalCount}</strong></span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <span className="h-2 w-2 rounded-full bg-orange-500" />
-                                    <span className="text-[10px]">High: <strong>{p.highCount}</strong></span>
+                                    <span className="text-[10px]">{t('breakdownHigh')} <strong>{p.highCount}</strong></span>
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <span className="h-2 w-2 rounded-full bg-amber-500" />
-                                    <span className="text-[10px]">Total: <strong>{p.matchCount}</strong></span>
+                                    <span className="text-[10px]">{t('breakdownTotal')} <strong>{p.matchCount}</strong></span>
                                   </div>
                                 </div>
                               </div>
@@ -494,7 +525,7 @@ export default function PoliceIntelligencePage() {
                             {/* Risk Score Bar */}
                             <div>
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] text-muted-foreground">Risk Score</span>
+                                <span className="text-[10px] text-muted-foreground">{t('riskScore')}</span>
                                 <span className="text-[10px] font-bold">
                                   {p.matchCount === 0 ? "0" : getRiskScore(p)}
                                 </span>
@@ -538,7 +569,7 @@ export default function PoliceIntelligencePage() {
           {activeTab === "charts" && (
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><TrendingUp className="h-4 w-4" /> Occupancy vs. Suspect Matches (6 Months)</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><TrendingUp className="h-4 w-4" /> {t('occupancyVsMatches')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {data.occupancyCrimeCorrelation.map((m) => (
@@ -562,27 +593,27 @@ export default function PoliceIntelligencePage() {
                     ))}
                   </div>
                   <div className="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" /> Reservations</span>
-                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> Suspect Matches</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-500" /> {t('legendReservations')}</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> {t('legendSuspectMatches')}</span>
                   </div>
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4" /> Provider Hotspot Rankings</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4" /> {t('hotspotRankings')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {pagRankings.map((h, i) => (
                       <div key={h.providerId || i} className="flex items-center gap-3">
                         <span className="w-5 text-xs font-bold text-muted-foreground">{(rankingPag.currentPage - 1) * rankingPag.pageSize + i + 1}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{h.providerName || "Unknown"}</p>
+                          <p className="text-sm font-medium truncate">{h.providerName || t('unknown')}</p>
                           <div className="h-2 bg-muted rounded-full overflow-hidden mt-1">
                             <div className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all" style={{ width: `${Math.min(100, (h.matchCount / Math.max(...data.hotspotData.map(x => x.matchCount), 1)) * 100)}%` }} />
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-bold">{h.matchCount}</p>
-                          <p className="text-[10px] text-muted-foreground">matches</p>
+                          <p className="text-[10px] text-muted-foreground">{t('matches')}</p>
                         </div>
                         {(h.criticalCount > 0 || h.highCount > 0) && (
                           <div className="flex gap-0.5 shrink-0">
@@ -592,7 +623,7 @@ export default function PoliceIntelligencePage() {
                         )}
                       </div>
                     ))}
-                    {data.hotspotData.length === 0 && <p className="text-center text-xs text-muted-foreground py-4">No hotspot data</p>}
+                    {data.hotspotData.length === 0 && <p className="text-center text-xs text-muted-foreground py-4">{t('emptyHotspotData')}</p>}
                   </div>
                   {data.hotspotData.length > rankingPag.pageSize && (
                     <PaginationControls currentPage={rankingPag.currentPage} totalPages={rankingPag.totalPages} pageSize={rankingPag.pageSize} pageSizeOptions={rankingPag.pageSizeOptions} totalItems={data.hotspotData.length} rangeInfo={rankingPag.rangeInfo} goToPage={rankingPag.goToPage} setPageSize={rankingPag.setPageSize} />
@@ -606,11 +637,11 @@ export default function PoliceIntelligencePage() {
           {activeTab === "frequent" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-amber-500" /> Frequent Stay Alerts</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm"><AlertTriangle className="h-4 w-4 text-amber-500" /> {t('frequentStayAlerts')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.frequentStays.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-muted-foreground">No frequent stay patterns detected. Patterns appear when guests stay at multiple guesthouses with short intervals.</p>
+                  <p className="py-8 text-center text-xs text-muted-foreground">{t('emptyFrequent')}</p>
                 ) : (
                   <div className="divide-y">
                     {pagFreq.map((f) => (
@@ -622,9 +653,9 @@ export default function PoliceIntelligencePage() {
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">{f.guestPhone || f.guestIdNumber}</p>
                           <div className="flex flex-wrap gap-2 mt-1 text-[10px] text-muted-foreground">
-                            <span>{f.stayCount} stays</span>
-                            <span>{f.avgDaysBetween} avg days between</span>
-                            <span>Providers: {JSON.parse(f.providerNames || "[]").join(", ")}</span>
+                            <span>{f.stayCount} {t('stays')}</span>
+                            <span>{f.avgDaysBetween} {t('avgDaysBetween')}</span>
+                            <span>{t('providersLabel')} {JSON.parse(f.providerNames || "[]").join(", ")}</span>
                           </div>
                         </div>
                         <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(f.createdAt).toLocaleDateString()}</span>
@@ -643,11 +674,11 @@ export default function PoliceIntelligencePage() {
           {activeTab === "audit" && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-sm"><Activity className="h-4 w-4" /> Recent Activity</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm"><Activity className="h-4 w-4" /> {t('recentActivity')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {data.recentActivity.length === 0 ? (
-                  <p className="py-8 text-center text-xs text-muted-foreground">No activity recorded yet</p>
+                  <p className="py-8 text-center text-xs text-muted-foreground">{t('emptyActivity')}</p>
                 ) : (
                   <div className="divide-y">
                     {pagAudit.map((a) => (
@@ -655,7 +686,7 @@ export default function PoliceIntelligencePage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-[9px]">{a.action}</Badge>
-                            <p className="text-xs">{a.officerName || "System"}</p>
+                            <p className="text-xs">{a.officerName || t('system')}</p>
                           </div>
                           {a.targetId && <p className="text-[10px] text-muted-foreground mt-0.5">{a.targetType}: {a.targetId.slice(0, 12)}...</p>}
                         </div>

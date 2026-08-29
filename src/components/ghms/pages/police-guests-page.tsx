@@ -84,7 +84,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function PoliceGuestsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("policeGuests");
   const { refreshKey } = useAppStore();
   const [guests, setGuests] = useState<Guest[]>([]);
   const [total, setTotal] = useState(0);
@@ -119,7 +119,7 @@ export default function PoliceGuestsPage() {
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load guests";
+      const message = err instanceof Error ? err.message : t('failedToLoad');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -150,15 +150,15 @@ export default function PoliceGuestsPage() {
       {/* Search Bar */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Guest Registry</h2>
+          <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Search across all providers
+            {t('pageSubtitle')}
           </p>
         </div>
         <div className="relative w-full sm:w-72 md:w-80">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Name, phone, or ID..."
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9 sm:h-10"
@@ -169,7 +169,7 @@ export default function PoliceGuestsPage() {
       {/* Results count */}
       {!loading && total > 0 && (
         <p className="text-xs text-muted-foreground px-1">
-          {total} guest{total !== 1 ? "s" : ""} found
+          {t('guestsFound', { total })}
           {debouncedSearch ? ` for "${debouncedSearch}"` : ""}
         </p>
       )}
@@ -186,7 +186,7 @@ export default function PoliceGuestsPage() {
           <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
             <UserCircle className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
             <p className="text-xs sm:text-sm text-muted-foreground">
-              {debouncedSearch ? "No guests match your search" : "No guests registered yet"}
+              {debouncedSearch ? t('noGuestsMatch') : t('noGuestsYet')}
             </p>
           </div>
         ) : (
@@ -211,11 +211,11 @@ export default function PoliceGuestsPage() {
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Building2 className="h-2.5 w-2.5" />
-                        {guest.provider?.name || "Unknown"}
+                        {guest.provider?.name || t('unknown')}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <BedDouble className="h-2.5 w-2.5" />
-                        {guest.totalStays} stay{guest.totalStays !== 1 ? "s" : ""}
+                        {guest.totalStays} {t('staysLabel')}
                       </span>
                       <span className="text-[10px] font-medium text-emerald-600">
                         {formatCurrency(guest.totalSpent)}
@@ -231,15 +231,15 @@ export default function PoliceGuestsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('thguestName', 'Guest Name')}</TableHead>
-                    <TableHead>{t('thphone', 'Phone')}</TableHead>
-                    <TableHead>{t('thidNumber', 'ID Number')}</TableHead>
-                    <TableHead>{t('thidType', 'ID Type')}</TableHead>
-                    <TableHead>{t('thnationality', 'Nationality')}</TableHead>
-                    <TableHead>{t('thprovider', 'Provider')}</TableHead>
-                    <TableHead>{t('thtotalSpent', 'Total Spent')}</TableHead>
-                    <TableHead>{t('thstays', 'Stays')}</TableHead>
-                    <TableHead>{t('thvip', 'VIP')}</TableHead>
+                    <TableHead>{t('common:thguestName')}</TableHead>
+                    <TableHead>{t('common:thphone')}</TableHead>
+                    <TableHead>{t('common:thidNumber')}</TableHead>
+                    <TableHead>{t('common:thidType')}</TableHead>
+                    <TableHead>{t('common:thnationality')}</TableHead>
+                    <TableHead>{t('common:thprovider')}</TableHead>
+                    <TableHead>{t('common:thtotalSpent')}</TableHead>
+                    <TableHead>{t('common:thstays')}</TableHead>
+                    <TableHead>{t('common:thvip')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,7 +278,7 @@ export default function PoliceGuestsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="font-normal">
-                          {guest.provider?.name || "Unknown"}
+                          {guest.provider?.name || t('unknown')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(guest.totalSpent)}</TableCell>
@@ -315,7 +315,7 @@ export default function PoliceGuestsPage() {
               )}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              {selectedGuest?.provider?.name || "Unknown Provider"}
+              {selectedGuest?.provider?.name || t('unknownProvider')}
             </DialogDescription>
           </DialogHeader>
           {selectedGuest && (
@@ -325,15 +325,15 @@ export default function PoliceGuestsPage() {
                 <div className="rounded-lg border bg-muted/30 p-2.5 sm:p-3 text-center">
                   <CreditCard className="mx-auto mb-1 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                   <p className="text-sm sm:text-lg font-bold leading-tight">{formatCurrency(selectedGuest.totalSpent)}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Spent</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">{t('spent')}</p>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-2.5 sm:p-3 text-center">
                   <p className="text-sm sm:text-lg font-bold leading-tight">{selectedGuest.totalStays}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Stays</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">{t('staysLabel')}</p>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-2.5 sm:p-3 text-center">
-                  <p className="text-sm sm:text-lg font-bold leading-tight">{selectedGuest.vip ? "Yes" : "No"}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">VIP</p>
+                  <p className="text-sm sm:text-lg font-bold leading-tight">{selectedGuest.vip ? t('yes') : t('no')}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">{t('vip')}</p>
                 </div>
               </div>
 
@@ -344,7 +344,7 @@ export default function PoliceGuestsPage() {
                 <div className="flex items-center gap-2.5">
                   <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Phone</p>
+                    <p className="text-[10px] text-muted-foreground">{t('detailPhone')}</p>
                     <p className="font-medium">{selectedGuest.phone}</p>
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function PoliceGuestsPage() {
                   <div className="flex items-center gap-2.5">
                     <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Email</p>
+                      <p className="text-[10px] text-muted-foreground">{t('detailEmail')}</p>
                       <p className="font-medium">{selectedGuest.email}</p>
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function PoliceGuestsPage() {
                   <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[8px] font-bold text-slate-600">ID</span>
                   <div>
                     <p className="text-[10px] text-muted-foreground">
-                      {selectedGuest.idType || "ID Number"}
+                      {selectedGuest.idType || t('detailIdType')}
                     </p>
                     <p className="font-mono font-medium">
                       {selectedGuest.idNumber || "—"}
@@ -372,7 +372,7 @@ export default function PoliceGuestsPage() {
                   <div className="flex items-center gap-2.5">
                     <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Nationality</p>
+                      <p className="text-[10px] text-muted-foreground">{t('detailNationality')}</p>
                       <p className="font-medium">{selectedGuest.nationality}</p>
                     </div>
                   </div>
@@ -381,7 +381,7 @@ export default function PoliceGuestsPage() {
                   <div className="flex items-start gap-2.5">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Address</p>
+                      <p className="text-[10px] text-muted-foreground">{t('detailAddress')}</p>
                       {selectedGuest.region ? (
                         <AddressDisplay
                           region={selectedGuest.region}
@@ -400,7 +400,7 @@ export default function PoliceGuestsPage() {
                 <div className="flex items-center gap-2.5">
                   <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <div>
-                    <p className="text-[10px] text-muted-foreground">Registered</p>
+                    <p className="text-[10px] text-muted-foreground">{t('detailRegistered')}</p>
                     <p className="font-medium">{formatDate(selectedGuest.createdAt)}</p>
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function PoliceGuestsPage() {
                 <>
                   <Separator />
                   <div className="space-y-1.5">
-                    <Label>{t('lblnotes', 'Notes')}</Label>
+                    <Label>{t('common:lblnotes')}</Label>
                     <p className="rounded-lg bg-muted/50 p-3 text-xs sm:text-sm">{selectedGuest.notes}</p>
                   </div>
                 </>
@@ -424,14 +424,14 @@ export default function PoliceGuestsPage() {
       {!loading && total > 0 && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-2">
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Showing {rangeFrom}–{rangeTo} of {total}</span>
+            <span>{t('showing', { from: rangeFrom, to: rangeTo, total })}</span>
             <Select value={String(pageSize)} onValueChange={(v) => changePageSize(Number(v))}>
               <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10 / page</SelectItem>
-                <SelectItem value="20">20 / page</SelectItem>
-                <SelectItem value="50">50 / page</SelectItem>
-                <SelectItem value="100">100 / page</SelectItem>
+                <SelectItem value="10">{t('perPage', { count: 10 })}</SelectItem>
+                <SelectItem value="20">{t('perPage', { count: 20 })}</SelectItem>
+                <SelectItem value="50">{t('perPage', { count: 50 })}</SelectItem>
+                <SelectItem value="100">{t('perPage', { count: 100 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -439,7 +439,7 @@ export default function PoliceGuestsPage() {
             <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-xs px-2">Page {page} of {totalPages}</span>
+            <span className="text-xs px-2">{t('pageOf', { page, total: totalPages })}</span>
             <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>

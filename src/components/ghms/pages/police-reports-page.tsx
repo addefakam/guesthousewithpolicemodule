@@ -106,7 +106,7 @@ function SkeletonGrid() {
 }
 
 export default function PoliceReportsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("policeReports");
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("monthly");
@@ -120,7 +120,7 @@ export default function PoliceReportsPage() {
       const res = await apiPoliceReports({ period, date, providerId });
       setData(res);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to load report");
+      toast.error(e instanceof Error ? e.message : t('errorLoad'));
     } finally {
       setLoading(false);
     }
@@ -147,7 +147,7 @@ export default function PoliceReportsPage() {
     a.download = `police-report-${data.period}-${data.date}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV exported");
+    toast.success(t('successCsvExport'));
   }, [data]);
 
   return (
@@ -155,18 +155,18 @@ export default function PoliceReportsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Police Reports</h2>
+          <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {data ? data.label : "City-wide guest monitoring and security analytics"}
+            {data ? data.label : t('pageSubtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={period} onValueChange={(v) => setPeriod(v)}>
             <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
+              <SelectItem value="daily">{t('periodDaily')}</SelectItem>
+              <SelectItem value="monthly">{t('periodMonthly')}</SelectItem>
+              <SelectItem value="yearly">{t('periodYearly')}</SelectItem>
             </SelectContent>
           </Select>
           <Input
@@ -177,9 +177,9 @@ export default function PoliceReportsPage() {
           />
           {data && data.providers.length > 0 && (
             <Select value={providerId} onValueChange={(v) => setProviderId(v === "_all" ? "" : v)}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="All Providers" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder={t('allProviders')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_all">All Providers</SelectItem>
+                <SelectItem value="_all">{t('allProviders')}</SelectItem>
                 {data.providers.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
@@ -187,10 +187,10 @@ export default function PoliceReportsPage() {
             </Select>
           )}
           <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading} className="h-8 text-xs">
-            <RefreshCw className={`mr-1 h-3 w-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+            <RefreshCw className={`mr-1 h-3 w-3 ${loading ? "animate-spin" : ""}`} /> {t('refresh')}
           </Button>
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={!data} className="h-8 text-xs">
-            <Download className="mr-1 h-3 w-3" /> CSV
+            <Download className="mr-1 h-3 w-3" /> {t('csv')}
           </Button>
         </div>
       </div>
@@ -198,27 +198,27 @@ export default function PoliceReportsPage() {
       {loading ? <SkeletonGrid /> : data ? (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
-            <TabsTrigger value="overview" className="text-xs gap-1.5 h-8"><BarChart3 className="size-3.5" /> Overview</TabsTrigger>
-            <TabsTrigger value="occupancy" className="text-xs gap-1.5 h-8"><BedDouble className="size-3.5" /> Occupancy</TabsTrigger>
-            <TabsTrigger value="demographics" className="text-xs gap-1.5 h-8"><Globe className="size-3.5" /> Demographics</TabsTrigger>
-            <TabsTrigger value="providers" className="text-xs gap-1.5 h-8"><Building2 className="size-3.5" /> Providers</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs gap-1.5 h-8"><BarChart3 className="size-3.5" /> {t('tabOverview')}</TabsTrigger>
+            <TabsTrigger value="occupancy" className="text-xs gap-1.5 h-8"><BedDouble className="size-3.5" /> {t('tabOccupancy')}</TabsTrigger>
+            <TabsTrigger value="demographics" className="text-xs gap-1.5 h-8"><Globe className="size-3.5" /> {t('tabDemographics')}</TabsTrigger>
+            <TabsTrigger value="providers" className="text-xs gap-1.5 h-8"><Building2 className="size-3.5" /> {t('tabProviders')}</TabsTrigger>
           </TabsList>
 
           {/* ═══════════════ OVERVIEW TAB ═══════════════ */}
           <TabsContent value="overview" className="space-y-4 mt-4">
             {/* KPI row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KpiCard icon={Users} label="Registered Guests" value={data.summary.totalGuests} sub={providerId ? "In selected provider" : `Across ${data.summary.totalProviders} providers`} />
-              <KpiCard icon={UserCheck} label="Check-Ins" value={data.summary.totalCheckIns} sub={`${data.summary.activeGuests} currently active`} />
-              <KpiCard icon={UserMinus} label="Check-Outs" value={data.summary.totalCheckOuts} sub={`${data.summary.totalReservations} total reservations`} />
-              <KpiCard icon={AlertTriangle} label="Suspect Matches" value={data.summary.totalMatches} color={data.summary.totalMatches > 0 ? "text-red-600" : "text-emerald-600"} sub={data.summary.totalMatches > 0 ? "Requires attention" : "No alerts"} />
+              <KpiCard icon={Users} label={t('kpiRegisteredGuests')} value={data.summary.totalGuests} sub={providerId ? t('kpiInSelectedProvider') : t('kpiAcrossProviders', { count: data.summary.totalProviders })} />
+              <KpiCard icon={UserCheck} label={t('kpiCheckIns')} value={data.summary.totalCheckIns} sub={`${data.summary.activeGuests} ${t('kpiCurrentlyActive')}`} />
+              <KpiCard icon={UserMinus} label={t('kpiCheckOuts')} value={data.summary.totalCheckOuts} sub={`${data.summary.totalReservations} ${t('kpiTotalReservations')}`} />
+              <KpiCard icon={AlertTriangle} label={t('kpiSuspectMatches')} value={data.summary.totalMatches} color={data.summary.totalMatches > 0 ? "text-red-600" : "text-emerald-600"} sub={data.summary.totalMatches > 0 ? t('kpiRequiresAttention') : t('kpiNoAlerts')} />
             </div>
 
             {/* Charts row */}
             <div className="grid md:grid-cols-2 gap-4">
               {/* Reservation status pie */}
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CalendarDays className="size-4" /> Reservation Status</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CalendarDays className="size-4" /> {t('reservationStatus')}</CardTitle></CardHeader>
                 <CardContent>
                   {data.reservationStatuses.length > 0 ? (
                     <ResponsiveContainer width="100%" height={260}>
@@ -236,14 +236,14 @@ export default function PoliceReportsPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">No reservations in this period</div>
+                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">{t('emptyReservations')}</div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Peak hours bar (daily/monthly only) */}
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="size-4" /> {data.peakHours.length > 0 ? "Peak Check-In Hours" : "Check-In Summary"}</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Clock className="size-4" /> {data.peakHours.length > 0 ? t('peakCheckInHours') : t('checkInSummary')}</CardTitle></CardHeader>
                 <CardContent>
                   {data.peakHours.length > 0 ? (
                     <ResponsiveContainer width="100%" height={260}>
@@ -252,11 +252,11 @@ export default function PoliceReportsPage() {
                         <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
                         <YAxis tick={{ fontSize: 10 }} />
                         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                        <Bar dataKey="count" name="Check-Ins" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" name={t('legendCheckIns')} fill="#1e3a5f" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">No hourly data for this period</div>
+                    <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">{t('emptyHourlyData')}</div>
                   )}
                 </CardContent>
               </Card>
@@ -265,7 +265,7 @@ export default function PoliceReportsPage() {
             {/* Frequent stay alerts */}
             {data.frequentStayAlerts.length > 0 && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="size-4" /> Frequent Stay Alerts</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="size-4" /> {t('frequentStayAlerts')}</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
@@ -301,14 +301,14 @@ export default function PoliceReportsPage() {
           {/* ═══════════════ OCCUPANCY TAB ═══════════════ */}
           <TabsContent value="occupancy" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <KpiCard icon={Building2} label="Total Providers" value={data.summary.totalProviders} />
-              <KpiCard icon={BedDouble} label="Total Rooms" value={data.summary.totalRooms} />
-              <KpiCard icon={Users} label="Active Guests" value={data.summary.activeGuests} sub="Currently checked in" />
+              <KpiCard icon={Building2} label={t('kpiTotalProviders')} value={data.summary.totalProviders} />
+              <KpiCard icon={BedDouble} label={t('kpiTotalRooms')} value={data.summary.totalRooms} />
+              <KpiCard icon={Users} label={t('kpiActiveGuests')} value={data.summary.activeGuests} sub={t('kpiCurrentlyCheckedIn')} />
             </div>
 
             {data.occupancyByProvider.length > 0 ? (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Occupancy by Provider</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('occupancyByProvider')}</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={Math.max(250, data.occupancyByProvider.length * 40)}>
                     <BarChart data={data.occupancyByProvider} layout="vertical" margin={{ left: 40 }}>
@@ -326,13 +326,13 @@ export default function PoliceReportsPage() {
                 </CardContent>
               </Card>
             ) : providerId ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Provider-level occupancy is shown when "All Providers" is selected</CardContent></Card>
+              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">{t('occupancyProviderHint')}</CardContent></Card>
             ) : null}
 
             {/* Occupancy table */}
             {data.occupancyByProvider.length > 0 && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Room Status Breakdown</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('roomStatusBreakdown')}</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
@@ -374,7 +374,7 @@ export default function PoliceReportsPage() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Nationality pie */}
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="size-4" /> Nationality Distribution</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Globe className="size-4" /> {t('nationalityDistribution')}</CardTitle></CardHeader>
                 <CardContent>
                   {data.nationalities.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -388,14 +388,14 @@ export default function PoliceReportsPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">No nationality data</div>
+                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">{t('emptyNationality')}</div>
                   )}
                 </CardContent>
               </Card>
 
               {/* ID type distribution */}
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CreditCard className="size-4" /> ID Type Distribution</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><CreditCard className="size-4" /> {t('idTypeDistribution')}</CardTitle></CardHeader>
                 <CardContent>
                   {data.idTypes.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -410,7 +410,7 @@ export default function PoliceReportsPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">No ID type data</div>
+                    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">{t('emptyIdType')}</div>
                   )}
                 </CardContent>
               </Card>
@@ -419,7 +419,7 @@ export default function PoliceReportsPage() {
             {/* Nationality table */}
             {data.nationalities.length > 0 && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Nationality Breakdown</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('nationalityBreakdown')}</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {data.nationalities.map((n, i) => (
@@ -438,7 +438,7 @@ export default function PoliceReportsPage() {
           {/* ═══════════════ PROVIDERS TAB ═══════════════ */}
           <TabsContent value="providers" className="space-y-4 mt-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Provider Activity Summary</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('providerActivitySummary')}</CardTitle></CardHeader>
               <CardContent>
                 {data.providerBreakdown.length > 0 ? (
                   <Table>
@@ -474,7 +474,7 @@ export default function PoliceReportsPage() {
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="py-12 text-center text-sm text-muted-foreground">No provider data available</div>
+                  <div className="py-12 text-center text-sm text-muted-foreground">{t('emptyProviderData')}</div>
                 )}
               </CardContent>
             </Card>
@@ -482,7 +482,7 @@ export default function PoliceReportsPage() {
             {/* Provider guests bar chart */}
             {data.providerBreakdown.length > 0 && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Guests by Provider</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('guestsByProvider')}</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={Math.max(200, data.providerBreakdown.length * 35)}>
                     <BarChart data={data.providerBreakdown} layout="vertical" margin={{ left: 40 }}>
@@ -491,9 +491,9 @@ export default function PoliceReportsPage() {
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="guests" name="Guests" fill="#2563eb" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="checkIns" name="Check-Ins" fill="#16a34a" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="matches" name="Suspect Matches" fill="#dc2626" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="guests" name={t('legendGuests')} fill="#2563eb" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="checkIns" name={t('legendCheckIns')} fill="#16a34a" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="matches" name={t('legendSuspectMatches')} fill="#dc2626" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>

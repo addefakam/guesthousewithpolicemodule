@@ -111,27 +111,13 @@ const POLICE_RANK_BADGE: Record<string, string> = {
   VIEWER: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
-const POLICE_RANK_LABEL: Record<string, string> = {
-  ADMIN: "Police Admin",
-  DETECTIVE: "Detective",
-  OFFICER: "Officer",
-  VIEWER: "Viewer",
-};
-
-const POLICE_RANK_DESC: Record<string, string> = {
-  ADMIN: "Full management rights. Can create/edit/delete all police accounts below ADMIN.",
-  DETECTIVE: "Can create Officer & Viewer accounts. Can edit/delete officers below Detective rank.",
-  OFFICER: "Can create Viewer accounts. Can edit/delete viewers.",
-  VIEWER: "Basic read-only access. Cannot create or manage other police.",
-};
-
 // Rank hierarchy for permission check
 const RANK_ORDER: Record<string, number> = { VIEWER: 0, OFFICER: 1, DETECTIVE: 2, ADMIN: 3 };
 
 type TabType = "overview" | "owners" | "police";
 
 export default function OwnerAccountsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("ownerAccounts");
   const { currentUser, refreshKey } = useAppStore();
   const [providers, setProviders] = useState<ProviderWithOwner[]>([]);
   const [policeUsers, setPoliceUsers] = useState<AccountUser[]>([]);
@@ -140,6 +126,25 @@ export default function OwnerAccountsPage() {
   const [activeTab, setActiveTab] = useState<TabType>(
     currentUser?.role === "POLICE" ? "police" : "overview"
   );
+
+  const getRankLabel = (val: string) => {
+    const map: Record<string, string> = {
+      ADMIN: t('rankPoliceAdmin'),
+      DETECTIVE: t('rankDetective'),
+      OFFICER: t('rankOfficer'),
+      VIEWER: t('rankViewer'),
+    };
+    return map[val] || val;
+  };
+  const getRankDesc = (val: string) => {
+    const map: Record<string, string> = {
+      ADMIN: t('rankAdminDesc'),
+      DETECTIVE: t('rankDetectiveDesc'),
+      OFFICER: t('rankOfficerDesc'),
+      VIEWER: t('rankViewerDesc'),
+    };
+    return map[val] || val;
+  };
 
   // Determine if current user can manage police
   const canManagePolice =
@@ -228,11 +233,11 @@ export default function OwnerAccountsPage() {
         setPoliceUsers(Array.isArray(data.policeUsers) ? data.policeUsers : []);
       }
     } catch {
-      toast.error("Failed to load accounts");
+      toast.error(t('errorLoad'));
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.role]);
+  }, [currentUser?.role, t]);
 
   const fetchPoliceOnly = useCallback(async () => {
     try {
@@ -264,7 +269,7 @@ export default function OwnerAccountsPage() {
     setResetUsername(police.username);
     setResetPassword("");
     setShowPassword(false);
-    setResetLabel("Police Account");
+    setResetLabel(t('policeAccount'));
     setResetSublabel(police.name);
     setResetOpen(true);
   };
@@ -273,7 +278,7 @@ export default function OwnerAccountsPage() {
     e.preventDefault();
     if (!resetUserId) return;
     if (!resetUsername.trim()) {
-      toast.error("Username is required");
+      toast.error(t('errorUsernameRequired'));
       return;
     }
     setSaving(true);
@@ -282,16 +287,16 @@ export default function OwnerAccountsPage() {
       if (resetUsername.trim()) updateData.username = resetUsername.trim();
       if (resetPassword.trim()) updateData.password = resetPassword.trim();
       if (Object.keys(updateData).length === 0) {
-        toast.error("No changes to save");
+        toast.error(t('errorNoChanges'));
         setSaving(false);
         return;
       }
       await apiUpdateOwnerAccount(resetUserId, updateData);
-      toast.success("Credentials updated successfully");
+      toast.success(t('successCredentialsUpdated'));
       setResetOpen(false);
       fetchAccounts();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update credentials";
+      const msg = err instanceof Error ? err.message : t('errorUpdateCredentials');
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -330,11 +335,11 @@ export default function OwnerAccountsPage() {
   const handlePoliceSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!policeName.trim() || !policeUsername.trim()) {
-      toast.error("Name and username are required");
+      toast.error(t('errorNameUsernameRequired'));
       return;
     }
     if (!editMode && !policePassword.trim()) {
-      toast.error("Password is required for new accounts");
+      toast.error(t('errorPasswordRequired'));
       return;
     }
 
@@ -351,7 +356,7 @@ export default function OwnerAccountsPage() {
           updateData.password = policePassword.trim();
         }
         await apiPoliceUpdateOfficer(updateData);
-        toast.success("Officer updated successfully");
+        toast.success(t('successOfficerUpdated'));
       } else {
         // Create new officer
         await apiPoliceCreateOfficer({
@@ -360,13 +365,13 @@ export default function OwnerAccountsPage() {
           name: policeName.trim(),
           policeRank,
         });
-        toast.success("Officer created successfully");
+        toast.success(t('successOfficerCreated'));
       }
       setPoliceDialogOpen(false);
       fetchPoliceOnly();
       if (currentUser?.role !== "POLICE") fetchAccounts();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save officer";
+      const msg = err instanceof Error ? err.message : t('errorSaveOfficer');
       toast.error(msg);
     } finally {
       setPoliceSaving(false);
@@ -383,13 +388,13 @@ export default function OwnerAccountsPage() {
     setDeleting(true);
     try {
       await apiPoliceDeleteOfficer(deleteTarget.id);
-      toast.success("Officer deleted successfully");
+      toast.success(t('successOfficerDeleted'));
       setDeleteOpen(false);
       setDeleteTarget(null);
       fetchPoliceOnly();
       if (currentUser?.role !== "POLICE") fetchAccounts();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete officer";
+      const msg = err instanceof Error ? err.message : t('errorDeleteOfficer');
       toast.error(msg);
     } finally {
       setDeleting(false);
@@ -452,11 +457,11 @@ export default function OwnerAccountsPage() {
                 <p className="font-semibold text-sm truncate">{police.name}</p>
                 {rank !== "OFFICER" && (
                   <Badge variant="outline" className={`text-[10px] px-1.5 ${POLICE_RANK_BADGE[rank] || ""}`}>
-                    {POLICE_RANK_LABEL[rank] || rank}
+                    {getRankLabel(rank)}
                   </Badge>
                 )}
                 {isSelf && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5">You</Badge>
+                  <Badge variant="secondary" className="text-[10px] px-1.5">{t('you')}</Badge>
                 )}
               </div>
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
@@ -474,7 +479,7 @@ export default function OwnerAccountsPage() {
               <>
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEditPolice(police)}>
                   <Pencil className="h-3.5 w-3.5" />
-                  Edit
+                  {t('edit')}
                 </Button>
                 <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => openDeleteConfirm(police)}>
                   <Trash2 className="h-3.5 w-3.5" />
@@ -483,7 +488,7 @@ export default function OwnerAccountsPage() {
             )}
             <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openPoliceReset(police)}>
               <KeyRound className="h-3.5 w-3.5" />
-              Reset
+              {t('reset')}
             </Button>
           </div>
         </div>
@@ -500,7 +505,7 @@ export default function OwnerAccountsPage() {
             </div>
             <span className="font-medium">{police.name}</span>
             {isSelf && (
-              <Badge variant="secondary" className="text-[10px] px-1.5">You</Badge>
+              <Badge variant="secondary" className="text-[10px] px-1.5">{t('you')}</Badge>
             )}
           </div>
         </td>
@@ -511,7 +516,7 @@ export default function OwnerAccountsPage() {
         </td>
         <td className="px-4 py-3">
           <Badge variant="outline" className={`text-xs ${POLICE_RANK_BADGE[rank] || "bg-rose-100 text-rose-700 border-rose-200"}`}>
-            {POLICE_RANK_LABEL[rank] || rank}
+            {getRankLabel(rank)}
           </Badge>
         </td>
         <td className="px-4 py-3 text-muted-foreground text-xs">
@@ -531,7 +536,7 @@ export default function OwnerAccountsPage() {
             )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openPoliceReset(police)}>
               <KeyRound className="h-3.5 w-3.5" />
-              Reset
+              {t('reset')}
             </Button>
           </div>
         </td>
@@ -545,17 +550,17 @@ export default function OwnerAccountsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
           {currentUser?.role === "POLICE"
-            ? "Manage Officers"
+            ? t('pageTitlePolice')
             : currentUser?.role === "SUPERUSER"
-              ? "Account Management"
-              : "Account Management"}
+              ? t('pageTitleAdmin')
+              : t('pageTitleAdmin')}
         </h1>
         <p className="text-sm text-muted-foreground">
           {currentUser?.role === "POLICE"
-            ? "Create and manage police officers. You can manage ranks below your current rank."
+            ? t('pageSubtitlePolice')
             : currentUser?.role === "SUPERUSER"
-              ? "Manage Police Admin accounts (create, edit, delete, reset credentials) and reset credentials for guesthouse owners. Suspend guesthouses from the Guesthouses page."
-              : "Manage owner accounts and police officers."}
+              ? t('pageSubtitleSuperuser')
+              : t('pageSubtitleFallback')}
         </p>
       </div>
 
@@ -563,9 +568,9 @@ export default function OwnerAccountsPage() {
       {currentUser?.role !== "POLICE" && (
         <div className="flex gap-1 rounded-lg border bg-muted/50 p-1 w-fit">
           {([
-            { key: "overview" as TabType, label: "Overview", icon: Users, count: totalProviders + totalPolice },
-            { key: "owners" as TabType, label: "Owners", icon: Building2, count: totalProviders },
-            { key: "police" as TabType, label: "Police", icon: Shield, count: totalPolice },
+            { key: "overview" as TabType, label: t('tabOverview'), icon: Users, count: totalProviders + totalPolice },
+            { key: "owners" as TabType, label: t('tabOwners'), icon: Building2, count: totalProviders },
+            { key: "police" as TabType, label: t('tabPolice'), icon: Shield, count: totalPolice },
           ]).map((tab) => (
             <button
               key={tab.key}
@@ -593,8 +598,8 @@ export default function OwnerAccountsPage() {
           <Input
             placeholder={
               activeTab === "police" || currentUser?.role === "POLICE"
-                ? "Search by name or username..."
-                : "Search by provider, owner, phone, or username..."
+                ? t('searchPolice')
+                : t('searchAll')
             }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -604,7 +609,7 @@ export default function OwnerAccountsPage() {
         {(activeTab === "police" || currentUser?.role === "POLICE") && canManagePolice && maxCreatableRank && (
           <Button onClick={openAddPolice} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Officer
+            {t('addOfficer')}
           </Button>
         )}
       </div>
@@ -613,12 +618,12 @@ export default function OwnerAccountsPage() {
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <UserCog className="mb-4 h-12 w-12 opacity-30" />
           <p className="font-medium text-lg">
-            {search ? "No matching accounts" : `No ${activeTab} accounts found`}
+            {search ? t('emptySearch') : t('emptyTab', { tab: activeTab })}
           </p>
           <p className="text-sm mt-1">
             {search
-              ? "Try adjusting your search terms."
-              : "Accounts will appear here when providers register or police accounts are created."}
+              ? t('emptySearchHint')
+              : t('emptyTabHint')}
           </p>
         </div>
       ) : activeTab === "overview" ? (
@@ -628,7 +633,7 @@ export default function OwnerAccountsPage() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="size-5 text-emerald-600" />
-              <h2 className="text-lg font-semibold">Provider Accounts</h2>
+              <h2 className="text-lg font-semibold">{t('providerAccounts')}</h2>
               <Badge variant="secondary">{filteredProviders.length}</Badge>
             </div>
             <div className="space-y-2">
@@ -657,7 +662,7 @@ export default function OwnerAccountsPage() {
                     </div>
                     <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
                       <KeyRound className="h-3.5 w-3.5" />
-                      Reset Credentials
+                      {t('resetCredentials')}
                     </Button>
                   </div>
                 );
@@ -669,12 +674,12 @@ export default function OwnerAccountsPage() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Shield className="size-5 text-rose-600" />
-              <h2 className="text-lg font-semibold">Police Accounts</h2>
+              <h2 className="text-lg font-semibold">{t('policeAccounts')}</h2>
               <Badge variant="secondary">{filteredPolice.length}</Badge>
               {canManagePolice && maxCreatableRank && (
                 <Button size="sm" className="ml-auto gap-1.5" onClick={openAddPolice}>
                   <Plus className="h-3.5 w-3.5" />
-                  Add Officer
+                  {t('addOfficer')}
                 </Button>
               )}
             </div>
@@ -691,7 +696,7 @@ export default function OwnerAccountsPage() {
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{police.name}</p>
                       <Badge variant="outline" className={`text-[10px] px-1.5 ${POLICE_RANK_BADGE[police.policeRank || ""] || "bg-rose-100 text-rose-700 border-rose-200"}`}>
-                        {POLICE_RANK_LABEL[police.policeRank || ""] || "Officer"}
+                        {getRankLabel(police.policeRank || "")}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -726,12 +731,12 @@ export default function OwnerAccountsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-semibold">Provider</th>
-                  <th className="px-4 py-3 text-left font-semibold">Owner</th>
-                  <th className="px-4 py-3 text-left font-semibold">Username</th>
-                  <th className="px-4 py-3 text-left font-semibold">Phone</th>
-                  <th className="px-4 py-3 text-left font-semibold">Status</th>
-                  <th className="px-4 py-3 text-right font-semibold">Action</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thProvider')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thOwner')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thUsername')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thPhone')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thStatus')}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t('thAction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -774,7 +779,7 @@ export default function OwnerAccountsPage() {
                           onClick={() => openOwnerReset(provider)}
                         >
                           <KeyRound className="h-3.5 w-3.5" />
-                          Reset Credentials
+                          {t('resetCredentials')}
                         </Button>
                       </td>
                     </tr>
@@ -810,13 +815,13 @@ export default function OwnerAccountsPage() {
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-xs text-muted-foreground">Username</p>
+                      <p className="text-xs text-muted-foreground">{t('thUsername')}</p>
                       <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                         {ownerUser?.username || "—"}
                       </code>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="text-xs text-muted-foreground">{t('thPhone')}</p>
                       <p className="text-sm">{provider.phone}</p>
                     </div>
                   </div>
@@ -828,7 +833,7 @@ export default function OwnerAccountsPage() {
                     onClick={() => openOwnerReset(provider)}
                   >
                     <KeyRound className="h-3.5 w-3.5" />
-                    Reset Credentials
+                    {t('resetCredentials')}
                   </Button>
                 </div>
               );
@@ -843,11 +848,11 @@ export default function OwnerAccountsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-semibold">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold">Username</th>
-                  <th className="px-4 py-3 text-left font-semibold">Rank</th>
-                  <th className="px-4 py-3 text-left font-semibold">Created</th>
-                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thName')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thUsername')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thRank')}</th>
+                  <th className="px-4 py-3 text-left font-semibold">{t('thCreated')}</th>
+                  <th className="px-4 py-3 text-right font-semibold">{t('thActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -869,11 +874,10 @@ export default function OwnerAccountsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-primary" />
-              Reset Credentials
+              {t('resetCredentials')}
             </DialogTitle>
             <DialogDescription>
-              Update login credentials for <strong>{resetLabel}</strong>{resetSublabel ? ` — ${resetSublabel}` : ""}.
-              Leave password blank to keep the current password unchanged.
+              {t('resetDialogDesc', { label: resetLabel, sublabel: resetSublabel })}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleReset} className="space-y-4">
@@ -881,7 +885,7 @@ export default function OwnerAccountsPage() {
               <Label>{t('lblusername', 'Username')} *</Label>
               <Input
                 id="reset-username"
-                placeholder="Enter new username"
+                placeholder={t('resetUsernamePlaceholder')}
                 value={resetUsername}
                 onChange={(e) => setResetUsername(e.target.value)}
                 autoFocus
@@ -893,7 +897,7 @@ export default function OwnerAccountsPage() {
                 <Input
                   id="reset-password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Leave blank to keep current password"
+                  placeholder={t('resetPasswordPlaceholder')}
                   value={resetPassword}
                   onChange={(e) => setResetPassword(e.target.value)}
                   className="pr-10"
@@ -907,23 +911,23 @@ export default function OwnerAccountsPage() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Only fill this in if a password reset is requested.
+                {t('resetPasswordHint')}
               </p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={saving} className="gap-2">
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
+                    {t('saving')}
                   </>
                 ) : (
                   <>
                     <KeyRound className="h-4 w-4" />
-                    Save Credentials
+                    {t('saveCredentials')}
                   </>
                 )}
               </Button>
@@ -938,16 +942,16 @@ export default function OwnerAccountsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-rose-600" />
-              {editMode ? "Edit Officer" : "Add New Officer"}
+              {editMode ? t('editOfficerTitle') : t('addOfficerTitle')}
             </DialogTitle>
             <DialogDescription>
               {editMode
                 ? currentUser?.role === "SUPERUSER"
-                  ? "Update the Police Admin's name or password. Rank stays as ADMIN."
-                  : "Update officer details. Change rank or name as needed."
+                  ? t('editDescSuperuser')
+                  : t('editDescPolice')
                 : currentUser?.role === "SUPERUSER"
-                  ? "Create a new Police Admin account. Only ADMIN-rank officers can be created by the Superuser; lower ranks are managed by the Police Admin."
-                  : `Create a new police officer with ${POLICE_RANK_LABEL[maxCreatableRank] || ""} rank or below.`}
+                  ? t('addDescSuperuser')
+                  : t('addDescPolice', { rank: getRankLabel(maxCreatableRank) })}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePoliceSubmit} className="space-y-4">
@@ -956,7 +960,7 @@ export default function OwnerAccountsPage() {
                 <Label>{t('lblusername', 'Username')} *</Label>
                 <Input
                   id="police-username"
-                  placeholder="e.g. officer-habtamu"
+                  placeholder={t('placeholderUsername')}
                   value={policeUsername}
                   onChange={(e) => setPoliceUsername(e.target.value)}
                   autoFocus
@@ -968,7 +972,7 @@ export default function OwnerAccountsPage() {
               <Label>{t('lblfullName', 'Full Name')} *</Label>
               <Input
                 id="police-name"
-                placeholder="e.g. Officer Habtamu"
+                placeholder={t('placeholderName')}
                 value={policeName}
                 onChange={(e) => setPoliceName(e.target.value)}
               />
@@ -978,13 +982,13 @@ export default function OwnerAccountsPage() {
               <Label>{t('lblrank', 'Rank')} *</Label>
               <Select value={policeRank} onValueChange={setPoliceRank}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select rank" />
+                  <SelectValue placeholder={t('selectRank')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableRanks.map((r) => (
                     <SelectItem key={r} value={r}>
                       <div className="flex items-center gap-2">
-                        <span>{POLICE_RANK_LABEL[r] || r}</span>
+                        <span>{getRankLabel(r)}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -992,20 +996,20 @@ export default function OwnerAccountsPage() {
               </Select>
               <p className="text-xs text-muted-foreground">
                 {currentUser?.role === "SUPERUSER"
-                  ? "Superuser can only create and manage ADMIN-rank police accounts. Lower ranks (DETECTIVE, OFFICER, VIEWER) are managed by the Police Admin."
-                  : POLICE_RANK_DESC[policeRank] || ""}
+                  ? t('rankHintSuperuser')
+                  : getRankDesc(policeRank)}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="police-password">
-                {editMode ? "New Password" : "Password *"}
+                {editMode ? t('newPassword') : t('passwordRequired')}
               </Label>
               <div className="relative">
                 <Input
                   id="police-password"
                   type={showPolicePassword ? "text" : "password"}
-                  placeholder={editMode ? "Leave blank to keep current" : "Enter password"}
+                  placeholder={editMode ? t('placeholderPasswordEdit') : t('placeholderPasswordCreate')}
                   value={policePassword}
                   onChange={(e) => setPolicePassword(e.target.value)}
                   className="pr-10"
@@ -1022,18 +1026,18 @@ export default function OwnerAccountsPage() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setPoliceDialogOpen(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={policeSaving} className="gap-2">
                 {policeSaving ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {editMode ? "Updating..." : "Creating..."}
+                    {editMode ? t('updating') : t('creating')}
                   </>
                 ) : (
                   <>
                     <Shield className="h-4 w-4" />
-                    {editMode ? "Update Officer" : "Create Officer"}
+                    {editMode ? t('updateOfficer') : t('createOfficer')}
                   </>
                 )}
               </Button>
@@ -1048,27 +1052,26 @@ export default function OwnerAccountsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
-              Delete Officer
+              {t('deleteOfficerTitle')}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong>{deleteTarget?.name}</strong> ({deleteTarget?.username})?
-              This action cannot be undone. They will lose all access to the system.
+              {t('deleteOfficerDesc', { name: deleteTarget?.name, username: deleteTarget?.username })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
+                  {t('deleting')}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4" />
-                  Delete Officer
+                  {t('deleteOfficer')}
                 </>
               )}
             </Button>

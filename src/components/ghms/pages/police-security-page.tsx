@@ -24,13 +24,39 @@ interface AuditLog { id: string; officerName: string; action: string; targetId: 
 interface Geofence { id: string; name: string; address: string; latitude: number; longitude: number; radius: number; severity: string; isActive: boolean; createdAt: string; }
 interface Officer { id: string; username: string; name: string; role: string; permissions: string; providerId: string | null; createdAt: string; }
 
-const ACTION_LABELS: Record<string, string> = {
-  VIEW_GUEST: "Viewed Guest", VIEW_MATCH: "Viewed Match", EXPORT_DATA: "Exported Data",
-  LOGIN: "Officer Login", SCAN_WATCHLIST: "Scanned Watchlist",
-};
-
 export default function PoliceSecurityPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("security");
+
+  const getTabLabel = (val: string) => {
+    const map: Record<string, string> = {
+      audit: t('tabsAudit'),
+      geofence: t('tabsGeofence'),
+      officers: t('tabsOfficers'),
+    };
+    return map[val] || val;
+  };
+
+  const getActionLabel = (val: string) => {
+    const map: Record<string, string> = {
+      VIEWED_GUEST: t('actionLabelsViewedGuest'),
+      VIEWED_MATCH: t('actionLabelsViewedMatch'),
+      EXPORTED_DATA: t('actionLabelsExportedData'),
+      OFFICER_LOGIN: t('actionLabelsOfficerLogin'),
+      SCANNED_WATCHLIST: t('actionLabelsScannedWatchlist'),
+    };
+    return map[val] || val;
+  };
+
+  const getRankLabel = (val: string) => {
+    const map: Record<string, string> = {
+      ADMIN: t('rankAdmin'),
+      DETECTIVE: t('rankDetective'),
+      OFFICER: t('rankOfficer'),
+      VIEWER: t('rankViewer'),
+    };
+    return map[val] || val;
+  };
+
   const { refreshKey } = useAppStore();
   const [activeTab, setActiveTab] = useState<"audit" | "geofence" | "officers">("audit");
 
@@ -51,7 +77,7 @@ export default function PoliceSecurityPage() {
       setAuditLogs(d.logs || []);
       setAuditTotal(d.total || 0);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to load audit logs";
+      const msg = e instanceof Error ? e.message : t('errorLoadAudit');
       toast.error(msg);
     }
     finally { setAuditLoading(false); }
@@ -75,61 +101,61 @@ export default function PoliceSecurityPage() {
 
   const fetchGeo = useCallback(async () => {
     try { setGeoLoading(true); const d = await apiPoliceGeofences(); setGeofences(Array.isArray(d) ? d : []); }
-    catch { toast.error("Failed to load geofences"); }
+    catch { toast.error(t('errorLoadGeofences')); }
     finally { setGeoLoading(false); }
   }, []);
 
   useEffect(() => { if (activeTab === "geofence") fetchGeo(); if (activeTab === "officers") fetchOfficers(); }, [activeTab, fetchGeo, refreshKey]);
 
   const createGeofence = async () => {
-    if (!geoForm.name) { toast.error("Name is required"); return; }
+    if (!geoForm.name) { toast.error(t('errorNameRequired')); return; }
     try {
       setGeoSaving(true);
       await apiPoliceCreateGeofence({ ...geoForm, latitude: parseFloat(geoForm.latitude), longitude: parseFloat(geoForm.longitude), radius: parseInt(geoForm.radius) });
-      toast.success("Geofence created");
+      toast.success(t('successGeofenceCreated'));
       setShowGeoForm(false);
       setGeoForm({ name: "", address: "", latitude: "", longitude: "", radius: "1000", severity: "HIGH" });
       fetchGeo();
-    } catch { toast.error("Failed to create geofence"); }
+    } catch { toast.error(t('errorCreateGeofence')); }
     finally { setGeoSaving(false); }
   };
 
   const deleteGeofence = async (id: string) => {
-    try { await apiPoliceDeleteGeofence(id); toast.success("Geofence deleted"); fetchGeo(); }
-    catch { toast.error("Failed to delete"); }
+    try { await apiPoliceDeleteGeofence(id); toast.success(t('successGeofenceDeleted')); fetchGeo(); }
+    catch { toast.error(t('errorDelete')); }
   };
 
   const fetchOfficers = useCallback(async () => {
     try { setOfficersLoading(true); const d = await apiPoliceOfficers(); setOfficers(Array.isArray(d) ? d : []); }
-    catch { toast.error("Failed to load officers"); }
+    catch { toast.error(t('errorLoadOfficers')); }
     finally { setOfficersLoading(false); }
   }, []);
 
   const createOfficer = async () => {
-    if (!officerForm.username || !officerForm.password || !officerForm.name) { toast.error("All fields are required"); return; }
+    if (!officerForm.username || !officerForm.password || !officerForm.name) { toast.error(t('errorAllFieldsRequired')); return; }
     try {
       setOfficerSaving(true);
       await apiPoliceCreateOfficer(officerForm);
-      toast.success("Officer created");
+      toast.success(t('successOfficerCreated'));
       setShowOfficerForm(false);
       setOfficerForm({ username: "", password: "", name: "", policeRank: "OFFICER" });
       fetchOfficers();
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed to create officer"); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('errorCreateOfficer')); }
     finally { setOfficerSaving(false); }
   };
 
   const updateOfficerRank = async (id: string, rank: string) => {
     try {
       await apiPoliceUpdateOfficer(id, { policeRank: rank });
-      toast.success("Rank updated");
+      toast.success(t('successRankUpdated'));
       fetchOfficers();
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed to update rank"); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('errorUpdateRank')); }
   };
 
   const deleteOfficer = async (id: string) => {
-    if (!confirm("Delete this officer?")) return;
-    try { await apiPoliceDeleteOfficer(id); toast.success("Officer deleted"); fetchOfficers(); }
-    catch { toast.error("Failed to delete officer"); }
+    if (!confirm(t('confirmDeleteOfficer'))) return;
+    try { await apiPoliceDeleteOfficer(id); toast.success(t('successOfficerDeleted')); fetchOfficers(); }
+    catch { toast.error(t('errorDeleteOfficer')); }
   };
 
   const tabs = [
@@ -142,8 +168,8 @@ export default function PoliceSecurityPage() {
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">Security & Configuration</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Audit trail, geofencing, and officer management</p>
+          <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -151,7 +177,7 @@ export default function PoliceSecurityPage() {
         {tabs.map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={"flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap " + (activeTab === tab.key ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-            <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+            <tab.icon className="h-3.5 w-3.5" /> {getTabLabel(tab.key)}
           </button>
         ))}
       </div>
@@ -161,14 +187,14 @@ export default function PoliceSecurityPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Select value={actionFilter} onValueChange={(v) => setActionFilter(v === "all" ? "" : v)}>
-              <SelectTrigger size="sm" className="h-8 w-[150px] text-xs"><SelectValue placeholder="Filter action" /></SelectTrigger>
+              <SelectTrigger size="sm" className="h-8 w-[150px] text-xs"><SelectValue placeholder={t('filterAction')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="VIEW_GUEST">Viewed Guest</SelectItem>
-                <SelectItem value="VIEW_MATCH">Viewed Match</SelectItem>
-                <SelectItem value="EXPORT_DATA">Exported Data</SelectItem>
-                <SelectItem value="SCAN_WATCHLIST">Scanned Watchlist</SelectItem>
-                <SelectItem value="LOGIN">Login</SelectItem>
+                <SelectItem value="all">{t('allActions')}</SelectItem>
+                <SelectItem value="VIEW_GUEST">{getActionLabel('VIEWED_GUEST')}</SelectItem>
+                <SelectItem value="VIEW_MATCH">{getActionLabel('VIEWED_MATCH')}</SelectItem>
+                <SelectItem value="EXPORT_DATA">{getActionLabel('EXPORTED_DATA')}</SelectItem>
+                <SelectItem value="SCAN_WATCHLIST">{getActionLabel('SCANNED_WATCHLIST')}</SelectItem>
+                <SelectItem value="LOGIN">{t('login')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -179,8 +205,8 @@ export default function PoliceSecurityPage() {
                   {pagAudit.map((a) => (
                     <div key={a.id} className="flex items-center justify-between px-3 sm:px-4 py-2.5">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant="secondary" className="text-[9px] shrink-0">{ACTION_LABELS[a.action] || a.action}</Badge>
-                        <p className="text-xs truncate">{a.officerName || "System"}</p>
+                        <Badge variant="secondary" className="text-[9px] shrink-0">{getActionLabel(a.action)}</Badge>
+                        <p className="text-xs truncate">{a.officerName || t('system')}</p>
                         {a.targetId && <span className="text-[10px] text-muted-foreground hidden sm:inline">{a.targetType}: {a.targetId.slice(0, 8)}...</span>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -202,15 +228,15 @@ export default function PoliceSecurityPage() {
         <div className="space-y-4">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setShowGeoForm(!showGeoForm)}>
-              <Plus className="mr-1 h-3.5 w-3.5" /> {showGeoForm ? "Cancel" : "Add Zone"}
+              <Plus className="mr-1 h-3.5 w-3.5" /> {showGeoForm ? t('cancel') : t('addZone')}
             </Button>
           </div>
 
           {showGeoForm && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">New Geofence Zone</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('newGeofenceTitle')}</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>{t('lblzoneName', 'Zone Name')} *</Label><Input value={geoForm.name} onChange={(e) => setGeoForm({ ...geoForm, name: e.target.value })} placeholder="e.g. Bole District" /></div>
+                <div className="space-y-1.5"><Label>{t('lblzoneName', 'Zone Name')} *</Label><Input value={geoForm.name} onChange={(e) => setGeoForm({ ...geoForm, name: e.target.value })} placeholder={t('placeholderZoneName')} /></div>
                 <div className="space-y-1.5"><Label>{t('lbladdress', 'Address')}</Label><Input value={geoForm.address} onChange={(e) => setGeoForm({ ...geoForm, address: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>{t('lbllatitude', 'Latitude')} *</Label><Input type="number" step="0.0001" value={geoForm.latitude} onChange={(e) => setGeoForm({ ...geoForm, latitude: e.target.value })} placeholder="9.0250" /></div>
                 <div className="space-y-1.5"><Label>{t('lbllongitude', 'Longitude')} *</Label><Input type="number" step="0.0001" value={geoForm.longitude} onChange={(e) => setGeoForm({ ...geoForm, longitude: e.target.value })} placeholder="38.7469" /></div>
@@ -220,15 +246,15 @@ export default function PoliceSecurityPage() {
                   <Select value={geoForm.severity} onValueChange={(v) => setGeoForm({ ...geoForm, severity: v })}>
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CRITICAL">Critical</SelectItem>
-                      <SelectItem value="HIGH">High</SelectItem>
-                      <SelectItem value="MEDIUM">Medium</SelectItem>
-                      <SelectItem value="LOW">Low</SelectItem>
+                      <SelectItem value="CRITICAL">{t('severityCritical')}</SelectItem>
+                      <SelectItem value="HIGH">{t('severityHigh')}</SelectItem>
+                      <SelectItem value="MEDIUM">{t('severityMedium')}</SelectItem>
+                      <SelectItem value="LOW">{t('severityLow')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="sm:col-span-2 flex justify-end">
-                  <Button size="sm" onClick={createGeofence} disabled={geoSaving}><RefreshCw className={"mr-1 h-3.5 w-3.5 " + (geoSaving ? "animate-spin" : "")} /> {geoSaving ? "Saving..." : "Create Zone"}</Button>
+                  <Button size="sm" onClick={createGeofence} disabled={geoSaving}><RefreshCw className={"mr-1 h-3.5 w-3.5 " + (geoSaving ? "animate-spin" : "")} /> {geoSaving ? t('saving') : t('createZone')}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -237,7 +263,7 @@ export default function PoliceSecurityPage() {
           <Card>
             <CardContent className="p-0">
               {geoLoading ? <Skeleton className="h-24 w-full" /> : geofences.length === 0 ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">No geofence zones. Add zones to get alerts when suspects check in nearby.</p>
+                <p className="py-8 text-center text-xs text-muted-foreground">{t('emptyGeofences')}</p>
               ) : (
                 <div className="divide-y">
                   {geofences.map((g) => (
@@ -248,7 +274,7 @@ export default function PoliceSecurityPage() {
                           <p className="text-sm font-medium truncate">{g.name}</p>
                           <div className="flex gap-2 text-[10px] text-muted-foreground">
                             <span>{g.latitude.toFixed(4)}, {g.longitude.toFixed(4)}</span>
-                            <span>Radius: {g.radius}m</span>
+                            <span>{t('radiusDisplay', { m: g.radius })}</span>
                           </div>
                         </div>
                       </div>
@@ -269,33 +295,33 @@ export default function PoliceSecurityPage() {
       {activeTab === "officers" && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">Manage police officer accounts and rank assignments. ADMIN rank required for changes.</p>
+            <p className="text-xs text-muted-foreground">{t('officersDescription')}</p>
             <Button size="sm" onClick={() => setShowOfficerForm(!showOfficerForm)}>
-              <UserPlus className="mr-1 h-3.5 w-3.5" /> {showOfficerForm ? "Cancel" : "Add Officer"}
+              <UserPlus className="mr-1 h-3.5 w-3.5" /> {showOfficerForm ? t('cancel') : t('addOfficer')}
             </Button>
           </div>
 
           {showOfficerForm && (
             <Card>
-              <CardHeader><CardTitle className="text-sm">New Police Officer</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('newOfficerTitle')}</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>{t('lblusername', 'Username')} *</Label><Input value={officerForm.username} onChange={(e) => setOfficerForm({ ...officerForm, username: e.target.value })} placeholder="officer.username" /></div>
-                <div className="space-y-1.5"><Label>{t('lblpassword', 'Password')} *</Label><Input type="password" value={officerForm.password} onChange={(e) => setOfficerForm({ ...officerForm, password: e.target.value })} placeholder="Secure password" /></div>
-                <div className="space-y-1.5"><Label>{t('lblfullName', 'Full Name')} *</Label><Input value={officerForm.name} onChange={(e) => setOfficerForm({ ...officerForm, name: e.target.value })} placeholder="Officer name" /></div>
+                <div className="space-y-1.5"><Label>{t('lblusername', 'Username')} *</Label><Input value={officerForm.username} onChange={(e) => setOfficerForm({ ...officerForm, username: e.target.value })} placeholder={t('placeholderUsername')} /></div>
+                <div className="space-y-1.5"><Label>{t('lblpassword', 'Password')} *</Label><Input type="password" value={officerForm.password} onChange={(e) => setOfficerForm({ ...officerForm, password: e.target.value })} placeholder={t('placeholderPassword')} /></div>
+                <div className="space-y-1.5"><Label>{t('lblfullName', 'Full Name')} *</Label><Input value={officerForm.name} onChange={(e) => setOfficerForm({ ...officerForm, name: e.target.value })} placeholder={t('placeholderOfficerName')} /></div>
                 <div className="space-y-1.5">
                   <Label>{t('lblrank', 'Rank')}</Label>
                   <Select value={officerForm.policeRank} onValueChange={(v) => setOfficerForm({ ...officerForm, policeRank: v })}>
                     <SelectTrigger size="sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN">Admin — Full Access</SelectItem>
-                      <SelectItem value="DETECTIVE">Detective — Investigate + Export</SelectItem>
-                      <SelectItem value="OFFICER">Officer — Standard Access</SelectItem>
-                      <SelectItem value="VIEWER">Viewer — Read Only</SelectItem>
+                      <SelectItem value="ADMIN">{t('rankAdminFull')}</SelectItem>
+                      <SelectItem value="DETECTIVE">{t('rankDetectiveDesc')}</SelectItem>
+                      <SelectItem value="OFFICER">{t('rankOfficerDesc')}</SelectItem>
+                      <SelectItem value="VIEWER">{t('rankViewerDesc')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="sm:col-span-2 flex justify-end">
-                  <Button size="sm" onClick={createOfficer} disabled={officerSaving}><RefreshCw className={"mr-1 h-3.5 w-3.5 " + (officerSaving ? "animate-spin" : "")} /> {officerSaving ? "Creating..." : "Create Officer"}</Button>
+                  <Button size="sm" onClick={createOfficer} disabled={officerSaving}><RefreshCw className={"mr-1 h-3.5 w-3.5 " + (officerSaving ? "animate-spin" : "")} /> {officerSaving ? t('creating') : t('createOfficer')}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -304,14 +330,13 @@ export default function PoliceSecurityPage() {
           <Card>
             <CardContent className="p-0">
               {officersLoading ? <Skeleton className="h-24 w-full" /> : officers.length === 0 ? (
-                <p className="py-8 text-center text-xs text-muted-foreground">No police officers found.</p>
+                <p className="py-8 text-center text-xs text-muted-foreground">{t('emptyOfficers')}</p>
               ) : (
                 <div className="divide-y">
                   {officers.map((o) => {
                     let rank = "OFFICER";
                     try { const perms = JSON.parse(o.permissions || "[]"); const rankPerm = perms.find((p: string) => p.startsWith("police_rank:")); if (rankPerm) rank = rankPerm.replace("police_rank:", ""); } catch {}
                     const rankColors: Record<string, string> = { ADMIN: "bg-amber-100 text-amber-800 border-amber-200", DETECTIVE: "bg-violet-100 text-violet-800 border-violet-200", OFFICER: "bg-sky-100 text-sky-800 border-sky-200", VIEWER: "bg-slate-100 text-slate-600 border-slate-200" };
-                    const rankLabels: Record<string, string> = { ADMIN: "Admin", DETECTIVE: "Detective", OFFICER: "Officer", VIEWER: "Viewer" };
                     return (
                       <div key={o.id} className="flex items-center justify-between p-3 sm:px-4">
                         <div className="flex items-center gap-3 min-w-0">
@@ -320,7 +345,7 @@ export default function PoliceSecurityPage() {
                             <p className="text-sm font-medium truncate">{o.name}</p>
                             <div className="flex gap-2 text-[10px] text-muted-foreground">
                               <span>@{o.username}</span>
-                              <span>Joined: {new Date(o.createdAt).toLocaleDateString()}</span>
+                              <span>{t('joined', { date: new Date(o.createdAt).toLocaleDateString() })}</span>
                             </div>
                           </div>
                         </div>
@@ -328,13 +353,13 @@ export default function PoliceSecurityPage() {
                           <Select defaultValue={rank} onValueChange={(v) => updateOfficerRank(o.id, v)}>
                             <SelectTrigger className="h-7 w-[110px] text-[10px]"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="ADMIN">Admin</SelectItem>
-                              <SelectItem value="DETECTIVE">Detective</SelectItem>
-                              <SelectItem value="OFFICER">Officer</SelectItem>
-                              <SelectItem value="VIEWER">Viewer</SelectItem>
+                              <SelectItem value="ADMIN">{getRankLabel('ADMIN')}</SelectItem>
+                              <SelectItem value="DETECTIVE">{getRankLabel('DETECTIVE')}</SelectItem>
+                              <SelectItem value="OFFICER">{getRankLabel('OFFICER')}</SelectItem>
+                              <SelectItem value="VIEWER">{getRankLabel('VIEWER')}</SelectItem>
                             </SelectContent>
                           </Select>
-                          <Badge variant="outline" className={`text-[9px] ${rankColors[rank] || ""}`}>{rankLabels[rank] || rank}</Badge>
+                          <Badge variant="outline" className={`text-[9px] ${rankColors[rank] || ""}`}>{getRankLabel(rank)}</Badge>
                           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600" onClick={() => deleteOfficer(o.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </div>
@@ -346,14 +371,14 @@ export default function PoliceSecurityPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-sm">Rank Permissions</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('rankPermissionsTitle')}</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {[
-                  { rank: "Admin", color: "bg-amber-100 text-amber-800", desc: "Full access to all police features + manage officers, security settings, and exports" },
-                  { rank: "Detective", color: "bg-violet-100 text-violet-800", desc: "View guests, suspect alerts, watchlist, intelligence, investigations, and scanner" },
-                  { rank: "Officer", color: "bg-sky-100 text-sky-800", desc: "View dashboard, providers, guests, suspect alerts, suspected persons, and scanner" },
-                  { rank: "Viewer", color: "bg-slate-100 text-slate-800", desc: "Read-only access to dashboard, providers, and guest search" },
+                  { rank: getRankLabel("ADMIN"), color: "bg-amber-100 text-amber-800", desc: t('rankAdminPermissions') },
+                  { rank: getRankLabel("DETECTIVE"), color: "bg-violet-100 text-violet-800", desc: t('rankDetectivePermissions') },
+                  { rank: getRankLabel("OFFICER"), color: "bg-sky-100 text-sky-800", desc: t('rankOfficerPermissions') },
+                  { rank: getRankLabel("VIEWER"), color: "bg-slate-100 text-slate-800", desc: t('rankViewerPermissions') },
                 ].map((r) => (
                   <div key={r.rank} className="flex items-start gap-2 rounded-lg border p-2.5">
                     <Badge variant="outline" className={`text-[9px] mt-0.5 shrink-0 ${r.color}`}>{r.rank}</Badge>

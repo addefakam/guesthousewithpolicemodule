@@ -185,8 +185,22 @@ const emptyForm = {
 };
 
 export default function SuspectedPersonsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("suspectedPersons");
   const { refreshKey } = useAppStore();
+
+  const getIdTypeLabel = (val: string) => {
+    const map: Record<string, string> = {
+      National_ID: t('idTypeNationalId'),
+      Passport: t('idTypePassport'),
+      Driver_License: t('idTypeDriverLicense'),
+      Military_ID: t('idTypeMilitaryId'),
+      Refugee_ID: t('idTypeRefugeeId'),
+      Voter_ID: t('idTypeVoterId'),
+      Other: t('idTypeOther'),
+    };
+    return map[val] || val;
+  };
+
   const [activeTab, setActiveTab] = useState<"watchlist" | "scanner">("watchlist");
   const [persons, setPersons] = useState<SuspectedPerson[]>([]);
   const [total, setTotal] = useState(0);
@@ -237,11 +251,11 @@ export default function SuspectedPersonsPage() {
 
   // Debounce search (300ms) and reset to page 1 on new search
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const fetchPersons = useCallback(async () => {
@@ -256,12 +270,12 @@ export default function SuspectedPersonsPage() {
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load suspected persons";
+      const message = err instanceof Error ? err.message : t('errorLoadFailed');
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, pageSize]);
+  }, [debouncedSearch, page, pageSize, t]);
 
   useEffect(() => { fetchPersons(); }, [fetchPersons, refreshKey]);
 
@@ -305,17 +319,17 @@ export default function SuspectedPersonsPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      toast.error("Name is required");
+      toast.error(t('errorNameRequired'));
       return;
     }
     // Validate at least one ID number is provided
     const validIds = (form.identifiers || []).filter((i: Identifier) => i.idNumber.trim());
     if (validIds.length === 0) {
-      toast.error("At least one ID number is required");
+      toast.error(t('errorIdRequired'));
       return;
     }
     if (form.phone && form.phone.trim() && !isValidPhone(form.phone)) {
-      toast.error("Invalid phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
+      toast.error(t('errorInvalidPhone'));
       return;
     }
     setFormLoading(true);
@@ -332,15 +346,15 @@ export default function SuspectedPersonsPage() {
         setPersons((prev) =>
           prev.map((p) => (p.id === editingId ? { ...p, ...updated } : p))
         );
-        toast.success("Suspected person updated");
+        toast.success(t('successUpdated'));
       } else {
         const created = await apiCreateSuspectedPerson(payload);
         setPersons((prev) => [created, ...prev]);
-        toast.success("Suspected person added");
+        toast.success(t('successAdded'));
       }
       setFormOpen(false);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Operation failed";
+      const message = err instanceof Error ? err.message : t('errorOperationFailed');
       toast.error(message);
     } finally {
       setFormLoading(false);
@@ -378,10 +392,10 @@ export default function SuspectedPersonsPage() {
     try {
       await apiDeleteSuspectedPerson(deleteId);
       setPersons((prev) => prev.filter((p) => p.id !== deleteId));
-      toast.success("Suspected person deleted");
+      toast.success(t('successDeleted'));
       setDeleteOpen(false);
     } catch (err: unknown) {
-      toast.error("Failed to delete");
+      toast.error(t('errorDeleteFailed'));
     } finally {
       setDeleteLoading(false);
     }
@@ -393,9 +407,9 @@ export default function SuspectedPersonsPage() {
       setPersons((prev) =>
         prev.map((p) => (p.id === person.id ? { ...p, is_active: updated.is_active } : p))
       );
-      toast.success(updated.is_active ? "Reactivated" : "Deactivated");
+      toast.success(t(updated.is_active ? 'successReactivated' : 'successDeactivated'));
     } catch {
-      toast.error("Failed to update status");
+      toast.error(t('errorStatusFailed'));
     }
   };
 
@@ -411,7 +425,7 @@ export default function SuspectedPersonsPage() {
       setScanGuests(d.guests || []);
       setScanMatches(d.suspectMatches || []);
     } catch {
-      toast.error("Search failed");
+      toast.error(t('errorSearchFailed'));
     } finally {
       setScanLoading(false);
     }
@@ -434,7 +448,7 @@ export default function SuspectedPersonsPage() {
             activeTab === "watchlist" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <UserX className="h-3.5 w-3.5" /> Watchlist
+          <UserX className="h-3.5 w-3.5" /> {t('watchlist')}
         </button>
         <button
           onClick={() => setActiveTab("scanner")}
@@ -442,7 +456,7 @@ export default function SuspectedPersonsPage() {
             activeTab === "scanner" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <ScanLine className="h-3.5 w-3.5" /> Scanner
+          <ScanLine className="h-3.5 w-3.5" /> {t('scanner')}
         </button>
       </div>
 
@@ -451,21 +465,21 @@ export default function SuspectedPersonsPage() {
         <div className="space-y-4">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold">Watchlist Scanner</h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">Scan guest ID or phone against suspected persons watchlist</p>
+              <h2 className="text-base sm:text-lg font-semibold">{t('scannerTitle')}</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('scannerSubtitle')}</p>
             </div>
             <div className="flex gap-1 rounded-lg border bg-muted/50 p-0.5">
               <button
                 onClick={() => setScannerMode("manual")}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${scannerMode === "manual" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
               >
-                <Search className="h-3.5 w-3.5 mr-1 inline" /> Manual
+                <Search className="h-3.5 w-3.5 mr-1 inline" /> {t('manual')}
               </button>
               <button
                 onClick={() => setScannerMode("scan")}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${scannerMode === "scan" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
               >
-                <ScanLine className="h-3.5 w-3.5 mr-1 inline" /> Scan
+                <ScanLine className="h-3.5 w-3.5 mr-1 inline" /> {t('scan')}
               </button>
             </div>
           </div>
@@ -478,19 +492,19 @@ export default function SuspectedPersonsPage() {
                   <div className="relative h-48 w-48 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50">
                     <div className="text-center">
                       <ScanLine className="mx-auto h-10 w-10 text-slate-400 mb-2" />
-                      <p className="text-xs text-slate-500">Camera Scanner</p>
-                      <p className="text-[10px] text-slate-400 mt-1">Point at guest ID card</p>
+                      <p className="text-xs text-slate-500">{t('cameraScanner')}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{t('cameraHint')}</p>
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Camera access requires HTTPS. Use manual entry as fallback.</p>
+                  <p className="text-[10px] text-muted-foreground">{t('cameraHttpsNote')}</p>
                   <Button variant="outline" size="sm" onClick={simulateScan}>
-                    <ScanLine className="mr-1 h-3.5 w-3.5" /> Demo Scan
+                    <ScanLine className="mr-1 h-3.5 w-3.5" /> {t('demoScan')}
                   </Button>
                 </div>
               ) : (
                 <div className="max-w-md mx-auto space-y-3">
                   <Input
-                    placeholder="Enter guest name, phone number, or ID..."
+                    placeholder={t('scanPlaceholder')}
                     value={scanQuery}
                     onChange={(e) => setScanQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && runScan(scanQuery)}
@@ -498,7 +512,7 @@ export default function SuspectedPersonsPage() {
                     autoFocus
                   />
                   <Button className="w-full" onClick={() => runScan(scanQuery)} disabled={scanLoading || !scanQuery.trim()}>
-                    <Search className="mr-1 h-3.5 w-3.5" /> {scanLoading ? "Scanning Watchlist..." : "Check Watchlist"}
+                    <Search className="mr-1 h-3.5 w-3.5" /> {scanLoading ? t('scanningWatchlist') : t('checkWatchlist')}
                   </Button>
                 </div>
               )}
@@ -515,7 +529,7 @@ export default function SuspectedPersonsPage() {
                 <Card className="border-red-200 bg-red-50">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm text-red-700">
-                      <ShieldAlert className="h-5 w-5" /> WATCHLIST MATCH FOUND — {scanMatches.length} alert{scanMatches.length !== 1 ? "s" : ""}
+                      <ShieldAlert className="h-5 w-5" /> {t('watchlistMatchFound', { count: scanMatches.length })}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -555,7 +569,7 @@ export default function SuspectedPersonsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4" /> Guest Information
+                      <User className="h-4 w-4" /> {t('guestInformation')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -578,7 +592,7 @@ export default function SuspectedPersonsPage() {
                           <p className="text-[10px] font-medium text-muted-foreground mb-1">Provider: <span className="text-foreground">{g.provider?.name || "Unknown"}</span></p>
                           {g.reservations.length > 0 && (
                             <div className="space-y-1">
-                              <p className="text-[10px] font-medium text-muted-foreground">Recent Stays:</p>
+                              <p className="text-[10px] font-medium text-muted-foreground">{t('recentStays')}</p>
                               {g.reservations.slice(0, 3).map((r) => (
                                 <div key={r.id} className="flex items-center gap-2 text-[10px] text-muted-foreground ml-2">
                                   <Building2 className="h-2.5 w-2.5" />
@@ -612,8 +626,8 @@ export default function SuspectedPersonsPage() {
               {scanGuests.length === 0 && scanMatches.length === 0 && (
                 <Card>
                   <CardContent className="py-8 text-center">
-                    <p className="text-sm text-emerald-600 font-medium">No watchlist match found</p>
-                    <p className="text-xs text-muted-foreground mt-1">This guest is not on the suspected persons list</p>
+                    <p className="text-sm text-emerald-600 font-medium">{t('noMatchFound')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('notOnList')}</p>
                   </CardContent>
                 </Card>
               )}
@@ -627,8 +641,8 @@ export default function SuspectedPersonsPage() {
                 <ScanLine className="h-4 w-4 text-amber-600" />
               </div>
               <div>
-                <p className="text-xs font-medium">Offline Capable</p>
-                <p className="text-[10px] text-muted-foreground">Suspected persons data is cached locally for offline scanning. Manual entry works without internet connection.</p>
+                <p className="text-xs font-medium">{t('offlineCapable')}</p>
+                <p className="text-[10px] text-muted-foreground">{t('offlineDesc')}</p>
               </div>
             </CardContent>
           </Card>
@@ -641,16 +655,16 @@ export default function SuspectedPersonsPage() {
           {/* Header */}
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold">Suspected Persons</h2>
+              <h2 className="text-base sm:text-lg font-semibold">{t('pageTitle')}</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Register and manage persons of interest
+                {t('pageSubtitle')}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search name, phone, ID..."
+                  placeholder={t('searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 h-9 sm:h-10"
@@ -658,7 +672,7 @@ export default function SuspectedPersonsPage() {
               </div>
               <Button onClick={openAdd} className="h-9 sm:h-10 shrink-0">
                 <Plus className="mr-1 h-4 w-4" />
-                <span className="hidden sm:inline">Add</span>
+                <span className="hidden sm:inline">{t('add')}</span>
               </Button>
             </div>
           </div>
@@ -666,7 +680,7 @@ export default function SuspectedPersonsPage() {
           {/* Count */}
           {!loading && persons.length > 0 && (
             <p className="text-xs text-muted-foreground px-1">
-              {persons.length} person{persons.length !== 1 ? "s" : ""} registered
+              {t('personsRegistered', { count: persons.length })}
             </p>
           )}
 
@@ -682,10 +696,10 @@ export default function SuspectedPersonsPage() {
               <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
                 <UserX className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {search ? "No matches found" : "No suspected persons registered yet"}
+                  {search ? t('noMatchesFound') : t('noneRegisteredYet')}
                 </p>
                 <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground/70">
-                  Add persons to monitor — system will alert when they make reservations
+                  {t('addPersonHint')}
                 </p>
               </div>
             ) : (
@@ -712,7 +726,7 @@ export default function SuspectedPersonsPage() {
                             </Badge>
                             {!person.is_active && (
                               <Badge variant="outline" className="shrink-0 text-[9px] bg-slate-50 text-slate-400 border-slate-200">
-                                Inactive
+                                {t('inactive')}
                               </Badge>
                             )}
                           </div>
@@ -723,7 +737,7 @@ export default function SuspectedPersonsPage() {
                             {person.identifiers && person.identifiers.length > 0
                               ? person.identifiers.slice(0, 2).map((id, i) => (
                                   <span key={i} className="text-[10px] text-muted-foreground">
-                                    {id.idType.replace(/_/g, ' ')}: {id.idNumber}
+                                    {getIdTypeLabel(id.idType)}: {id.idNumber}
                                   </span>
                                 ))
                               : person.idNumber && (
@@ -732,7 +746,7 @@ export default function SuspectedPersonsPage() {
                             }
                             <span className="flex items-center gap-1 text-[10px] text-red-600 font-medium">
                               <ShieldAlert className="h-2.5 w-2.5" />
-                              {person._count.matches} match{person._count.matches !== 1 ? "es" : ""}
+                              {person._count.matches} {t('matches')}
                             </span>
                           </div>
                         </div>
@@ -750,7 +764,7 @@ export default function SuspectedPersonsPage() {
                           className="h-7 text-xs px-2"
                           onClick={() => toggleActive(person)}
                         >
-                          {person.is_active ? "Deactivate" : "Activate"}
+                          {person.is_active ? t('deactivate') : t('activate')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -770,15 +784,15 @@ export default function SuspectedPersonsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t('thname', 'Name')}</TableHead>
-                        <TableHead>{t('thphone', 'Phone')}</TableHead>
+                        <TableHead>{t('common:thname')}</TableHead>
+                        <TableHead>{t('common:thphone')}</TableHead>
                         <TableHead>{t('thidentification', 'Identification')}</TableHead>
-                        <TableHead>{t('thnationality', 'Nationality')}</TableHead>
-                        <TableHead>{t('thseverity', 'Severity')}</TableHead>
+                        <TableHead>{t('common:thnationality')}</TableHead>
+                        <TableHead>{t('common:thseverity')}</TableHead>
                         <TableHead>{t('thmatches', 'Matches')}</TableHead>
-                        <TableHead>{t('thstatus', 'Status')}</TableHead>
+                        <TableHead>{t('common:thstatus')}</TableHead>
                         <TableHead>{t('thregistered', 'Registered')}</TableHead>
-                        <TableHead>{t('thactions', 'Actions')}</TableHead>
+                        <TableHead>{t('common:thactions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -791,7 +805,7 @@ export default function SuspectedPersonsPage() {
                               {person.identifiers && person.identifiers.length > 0
                                 ? person.identifiers.slice(0, 2).map((id, i) => (
                                     <p key={i} className="text-xs font-mono">
-                                      <span className="text-muted-foreground">{id.idType.replace(/_/g, ' ')}:</span> {id.idNumber}
+                                      <span className="text-muted-foreground">{getIdTypeLabel(id.idType)}:</span> {id.idNumber}
                                     </p>
                                   ))
                                 : <p className="font-mono text-sm">{person.idNumber || "—"}</p>
@@ -818,22 +832,22 @@ export default function SuspectedPersonsPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant={person.is_active ? "outline" : "secondary"} className={person.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ""}>
-                              {person.is_active ? "Active" : "Inactive"}
+                              {person.is_active ? t('statusActive') : t('statusInactive')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{formatDate(person.createdAt)}</TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openDetail(person)} title="View">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openDetail(person)} title={t('view')}>
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(person)} title="Edit">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(person)} title={t('edit')}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => toggleActive(person)} title={person.is_active ? "Deactivate" : "Activate"}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => toggleActive(person)} title={person.is_active ? t('deactivate') : t('activate')}>
                                 <AlertTriangle className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => confirmDelete(person.id)} title="Delete">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => confirmDelete(person.id)} title={t('delete')}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -867,9 +881,9 @@ export default function SuspectedPersonsPage() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit Suspected Person" : "Register Suspected Person"}</DialogTitle>
+            <DialogTitle>{editingId ? t('editDialogTitle') : t('addDialogTitle')}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Update suspect details" : "Add a new person to monitor across all service providers"}
+              {editingId ? t('editDialogDesc') : t('addDialogDesc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -877,7 +891,7 @@ export default function SuspectedPersonsPage() {
               <Label>{t('lblfullName', 'Full Name')} *</Label>
               <Input
                 id="sp-name"
-                placeholder="Full name of the suspected person"
+                placeholder={t('fullNamePlaceholder')}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 autoFocus
@@ -886,17 +900,17 @@ export default function SuspectedPersonsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label>{t('lblphone', 'Phone')}</Label>
+                <Label>{t('common:lblphone')}</Label>
                 <Input
                   id="sp-phone"
                   type="tel"
-                  placeholder="Phone number"
+                  placeholder={t('phonePlaceholder')}
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>{t('lblseverity', 'Severity')}</Label>
+                <Label>{t('common:lblseverity')}</Label>
                 <Select value={form.severity} onValueChange={(v) => setForm((f) => ({ ...f, severity: v }))}>
                   <SelectTrigger id="sp-severity">
                     <SelectValue />
@@ -913,7 +927,7 @@ export default function SuspectedPersonsPage() {
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>{t('lblidentificationDocuments', 'Identification Documents')}</Label>
+                <Label>{t('identificationDocuments')}</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -924,7 +938,7 @@ export default function SuspectedPersonsPage() {
                     identifiers: [...(f.identifiers || []), { idType: "National_ID", idNumber: "" }],
                   }))}
                 >
-                  <Plus className="mr-1 h-3 w-3" /> Add ID
+                  <Plus className="mr-1 h-3 w-3" /> {t('addId')}
                 </Button>
               </div>
               <div className="space-y-2">
@@ -943,12 +957,12 @@ export default function SuspectedPersonsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {ID_TYPE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value}>{getIdTypeLabel(opt.value)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Input
-                      placeholder="ID number"
+                      placeholder={t('idNumberPlaceholder')}
                       value={ident.idNumber}
                       onChange={(e) => {
                         const updated = [...(form.identifiers || [])];
@@ -974,7 +988,7 @@ export default function SuspectedPersonsPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground">Add all known IDs (national ID, passport, driver license, etc.) for better matching.</p>
+              <p className="text-[10px] text-muted-foreground">{t('idHint')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -982,7 +996,7 @@ export default function SuspectedPersonsPage() {
                 <Label>{t('lblnationality', 'Nationality')}</Label>
                 <Input
                   id="sp-nationality"
-                  placeholder="e.g. Ethiopian"
+                  placeholder={t('nationalityPlaceholder')}
                   value={form.nationality}
                   onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))}
                 />
@@ -991,7 +1005,7 @@ export default function SuspectedPersonsPage() {
                 <Label>{t('lbladdress', 'Address')}</Label>
                 <Input
                   id="sp-address"
-                  placeholder="Last known address"
+                  placeholder={t('addressPlaceholder')}
                   value={form.address}
                   onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                 />
@@ -1002,7 +1016,7 @@ export default function SuspectedPersonsPage() {
               <Label>{t('lbldescriptionReason', 'Description / Reason')}</Label>
               <Textarea
                 id="sp-description"
-                placeholder="Why is this person suspected? Include any relevant details for officers..."
+                placeholder={t('descriptionPlaceholder')}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={3}
@@ -1011,10 +1025,10 @@ export default function SuspectedPersonsPage() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={formLoading} className="bg-red-600 hover:bg-red-700 text-white">
-                {formLoading ? "Saving..." : editingId ? "Update" : "Register Suspect"}
+                {formLoading ? t('saving') : editingId ? t('update') : t('registerSuspect')}
               </Button>
             </div>
           </form>
@@ -1034,7 +1048,7 @@ export default function SuspectedPersonsPage() {
                 {detailPerson?.severity}
               </Badge>
               {!detailPerson?.is_active && (
-                <Badge variant="secondary">Inactive</Badge>
+                <Badge variant="secondary">{t('inactive')}</Badge>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1045,7 +1059,7 @@ export default function SuspectedPersonsPage() {
                   <div className="flex items-center gap-2.5">
                     <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground">Phone</p>
+                      <p className="text-[10px] text-muted-foreground">{t('detailPhone')}</p>
                       <p className="font-mono font-medium">{detailPerson.phone}</p>
                     </div>
                   </div>
@@ -1053,7 +1067,7 @@ export default function SuspectedPersonsPage() {
                 {/* Identification Documents */}
                 {(detailPerson.identifiers && detailPerson.identifiers.length > 0) || detailPerson.idNumber ? (
                   <div className="rounded-lg border bg-muted/30 p-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identification Documents</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('detailIdentificationDocuments')}</p>
                     <div className="space-y-1.5">
                       {(detailPerson.identifiers && detailPerson.identifiers.length > 0
                         ? detailPerson.identifiers
@@ -1061,7 +1075,7 @@ export default function SuspectedPersonsPage() {
                       ).map((id: Identifier, i: number) => (
                         <div key={i} className="flex items-center gap-2">
                           <CreditCard className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground min-w-[80px]">{id.idType.replace(/_/g, ' ')}</span>
+                          <span className="text-[10px] text-muted-foreground min-w-[80px]">{getIdTypeLabel(id.idType)}</span>
                           <span className="text-xs font-mono font-medium">{id.idNumber}</span>
                         </div>
                       ))}
@@ -1090,7 +1104,7 @@ export default function SuspectedPersonsPage() {
               {/* Match History */}
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Match History ({detailPerson._count?.matches || 0})
+                  {t('matchHistory', { count: detailPerson._count?.matches || 0 })}
                 </p>
                 {detailLoading ? (
                   <div className="space-y-2">
@@ -1099,7 +1113,7 @@ export default function SuspectedPersonsPage() {
                     ))}
                   </div>
                 ) : !detailPerson.matches || detailPerson.matches.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">No matches yet</p>
+                  <p className="text-xs text-muted-foreground text-center py-4">{t('noMatches')}</p>
                 ) : (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {detailPerson.matches.map((match) => (
@@ -1133,20 +1147,20 @@ export default function SuspectedPersonsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-700">
               <Trash2 className="h-5 w-5" />
-              Delete Suspected Person
+              {t('deleteTitle')}
             </DialogTitle>
             <DialogDescription>
-              This will permanently remove this person and all their match history. This action cannot be undone.
+              {t('deleteDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>{t('cancel')}</Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleteLoading}
             >
-              {deleteLoading ? "Deleting..." : "Delete Permanently"}
+              {deleteLoading ? t('deleting') : t('deletePermanently')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1156,14 +1170,14 @@ export default function SuspectedPersonsPage() {
       {!loading && total > 0 && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-2">
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Showing {rangeFrom}–{rangeTo} of {total}</span>
+            <span>{t('showing', { from: rangeFrom, to: rangeTo, total })}</span>
             <Select value={String(pageSize)} onValueChange={(v) => changePageSize(Number(v))}>
               <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10 / page</SelectItem>
-                <SelectItem value="20">20 / page</SelectItem>
-                <SelectItem value="50">50 / page</SelectItem>
-                <SelectItem value="100">100 / page</SelectItem>
+                <SelectItem value="10">{t('perPage', { count: 10 })}</SelectItem>
+                <SelectItem value="20">{t('perPage', { count: 20 })}</SelectItem>
+                <SelectItem value="50">{t('perPage', { count: 50 })}</SelectItem>
+                <SelectItem value="100">{t('perPage', { count: 100 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1171,7 +1185,7 @@ export default function SuspectedPersonsPage() {
             <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-xs px-2">Page {page} of {totalPages}</span>
+            <span className="text-xs px-2">{t('pageOf', { page, total: totalPages })}</span>
             <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
