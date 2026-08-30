@@ -32,7 +32,16 @@
     "Start Joint Session": "Kutaa Waloo Jalqabi",
     "My Profile": "Piroofaayilii Koo",
     "Sign Out": "Ba'i",
-    "Collapse": "Dachaasuu"
+    "Collapse": "Dachaasuu",
+    "roleSuperuser": "Superuser",
+    "roleOperator": "Operator",
+    "roleStaff": "Staff",
+    "rolePolice": "Police",
+    "rankAdmin": "Police Admin",
+    "rankDetective": "Detective",
+    "rankOfficer": "Officer",
+    "rankViewer": "Viewer",
+    "Language": "Language"
   },
   "common": {
     "URGENT": "ARIFATISAA",

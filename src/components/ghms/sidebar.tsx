@@ -47,7 +47,7 @@ import { useTranslation } from "react-i18next";
 import { useAppStore, type CurrentUser } from "@/lib/store";
 import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
+import { POLICE_RANK_PERMISSIONS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
 import { apiLogout, apiGetDisabledPages } from "@/lib/api";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
 
@@ -281,37 +281,14 @@ function getInitials(name: string | undefined | null): string {
     .slice(0, 2);
 }
 
-// ── Helper: get role display info ──
-function getRoleDisplay(role: string): {
-  label: string;
-  className: string;
-} {
+// ── Helper: get role badge className (no label — use t() for that) ──
+function getRoleBadgeClass(role: string): string {
   switch (role) {
-    case "SUPERUSER":
-      return {
-        label: "Superuser",
-        className: "bg-amber-100 text-amber-700 border-amber-200",
-      };
-    case "OPERATOR":
-      return {
-        label: "Operator",
-        className: "bg-emerald-100 text-emerald-700 border-emerald-200",
-      };
-    case "STAFF":
-      return {
-        label: "Staff",
-        className: "bg-sky-100 text-sky-700 border-sky-200",
-      };
-    case "POLICE":
-      return {
-        label: "Police",
-        className: "bg-rose-100 text-rose-700 border-rose-200",
-      };
-    default:
-      return {
-        label: role,
-        className: "bg-slate-100 text-slate-700 border-slate-200",
-      };
+    case "SUPERUSER": return "bg-amber-100 text-amber-700 border-amber-200";
+    case "OPERATOR": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "STAFF": return "bg-sky-100 text-sky-700 border-sky-200";
+    case "POLICE": return "bg-rose-100 text-rose-700 border-rose-200";
+    default: return "bg-slate-100 text-slate-700 border-slate-200";
   }
 }
 
@@ -477,7 +454,29 @@ function SidebarContent({
   const { t } = useTranslation("sidebar");
   const { jointSession, setJointLoginDialogOpen, subscription, disabledPages } = useAppStore();
   const navItems = getNavItems(user, disabledPages ?? []);
-  const roleDisplay = getRoleDisplay(user.role);
+  const roleBadgeClass = getRoleBadgeClass(user.role);
+
+  // Translated role label
+  const getRoleLabel = (role: string) => {
+    const map: Record<string, string> = {
+      SUPERUSER: t("roleSuperuser"),
+      OPERATOR: t("roleOperator"),
+      STAFF: t("roleStaff"),
+      POLICE: t("rolePolice"),
+    };
+    return map[role] || role;
+  };
+
+  // Translated rank label
+  const getRankLabel = (rank: string) => {
+    const map: Record<string, string> = {
+      ADMIN: t("rankAdmin"),
+      DETECTIVE: t("rankDetective"),
+      OFFICER: t("rankOfficer"),
+      VIEWER: t("rankViewer"),
+    };
+    return map[rank] || rank;
+  };
 
   // Determine if user can start a joint session (SUPERUSER or POLICE ADMIN)
   const canStartJoint =
@@ -518,7 +517,7 @@ function SidebarContent({
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
-                      <p className="truncate text-[11px] text-slate-400">{roleDisplay.label}{user.providerName ? ` · ${user.providerName}` : ""}</p>
+                      <p className="truncate text-[11px] text-slate-400">{getRoleLabel(user.role)}{user.providerName ? ` · ${user.providerName}` : ""}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -542,17 +541,17 @@ function SidebarContent({
               <div className="mt-0.5 flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleDisplay.className}`}
+                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleBadgeClass}`}
                 >
                   <Shield className="mr-1 size-2.5" />
-                  {roleDisplay.label}
+                  {getRoleLabel(user.role)}
                 </Badge>
                 {user.role === "POLICE" && user.policeRank && (
                   <Badge
                     variant="outline"
                     className={`text-[9px] font-semibold leading-none px-1.5 py-0.5 ${RANK_BADGE_CLASSES[(user.policeRank as PoliceRank)] || ""}`}
                   >
-                    {RANK_LABELS[(user.policeRank as PoliceRank)] || user.policeRank}
+                    {getRankLabel(user.policeRank as string) || user.policeRank}
                   </Badge>
                 )}
                 {user.providerName && (
@@ -641,7 +640,7 @@ function SidebarContent({
             <button
               onClick={() => setJointLoginDialogOpen(true)}
               className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 p-2 text-amber-600 hover:bg-amber-50 transition-colors outline-none"
-              title="Start Joint Session"
+              title={t("Start Joint Session")}
             >
               <ShieldCheck className="size-[18px]" />
             </button>
@@ -668,7 +667,7 @@ function SidebarContent({
         ) : (
           <div className="flex items-center gap-2 px-1">
             <LanguageSwitcher />
-            <span className="text-xs text-slate-400">Language</span>
+            <span className="text-xs text-slate-400">{t("Language")}</span>
           </div>
         )}
         {/* Desktop collapse toggle */}

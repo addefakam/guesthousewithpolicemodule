@@ -33,7 +33,16 @@
     "Start Joint Session": "Start Joint Session",
     "My Profile": "My Profile",
     "Sign Out": "Sign Out",
-    "Collapse": "Collapse"
+    "Collapse": "Collapse",
+    "roleSuperuser": "Superuser",
+    "roleOperator": "Operator",
+    "roleStaff": "Staff",
+    "rolePolice": "Police",
+    "rankAdmin": "Police Admin",
+    "rankDetective": "Detective",
+    "rankOfficer": "Officer",
+    "rankViewer": "Viewer",
+    "Language": "Language"
   },
   "common": {
     "URGENT": "URGENT",

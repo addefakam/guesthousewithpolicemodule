@@ -32,7 +32,16 @@
     "Start Joint Session": "የጋራ ክፍለ ጊዜ ጀምር",
     "My Profile": "የእኔ ገጽ",
     "Sign Out": "ውጣ",
-    "Collapse": "አሳንስ"
+    "Collapse": "አሳንስ",
+    "roleSuperuser": "Superuser",
+    "roleOperator": "Operator",
+    "roleStaff": "Staff",
+    "rolePolice": "Police",
+    "rankAdmin": "Police Admin",
+    "rankDetective": "Detective",
+    "rankOfficer": "Officer",
+    "rankViewer": "Viewer",
+    "Language": "Language"
   },
   "common": {
     "URGENT": "አስቸኳይ",
