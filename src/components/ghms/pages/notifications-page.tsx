@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetNotifications,
@@ -63,7 +64,6 @@ const PRIORITY_STYLE: Record<
   {
     icon: React.ElementType;
     badge: string;
-    badgeLabel: string;
     border: string;
     bg: string;
     iconColor: string;
@@ -72,7 +72,6 @@ const PRIORITY_STYLE: Record<
   URGENT: {
     icon: AlertOctagon,
     badge: "bg-red-100 text-red-700 border-red-300",
-    badgeLabel: "Urgent",
     border: "border-red-300 bg-red-50/60",
     bg: "bg-red-50/60",
     iconColor: "text-red-600",
@@ -80,7 +79,6 @@ const PRIORITY_STYLE: Record<
   "HIGH PRIORITY": {
     icon: AlertTriangle,
     badge: "bg-amber-100 text-amber-700 border-amber-300",
-    badgeLabel: "High Priority",
     border: "border-amber-300 bg-amber-50/60",
     bg: "bg-amber-50/60",
     iconColor: "text-amber-600",
@@ -88,7 +86,6 @@ const PRIORITY_STYLE: Record<
   NOTICE: {
     icon: Megaphone,
     badge: "bg-blue-100 text-blue-700 border-blue-300",
-    badgeLabel: "Police Notice",
     border: "border-blue-200 bg-blue-50/40",
     bg: "bg-blue-50/40",
     iconColor: "text-blue-600",
@@ -96,7 +93,6 @@ const PRIORITY_STYLE: Record<
   LOW: {
     icon: FileText,
     badge: "bg-slate-100 text-slate-600 border-slate-300",
-    badgeLabel: "Low Priority",
     border: "border-slate-200 bg-slate-50/40",
     bg: "bg-slate-50/40",
     iconColor: "text-slate-500",
@@ -135,32 +131,27 @@ const SUSPECT_SEVERITY_STYLE: Record<
 
 const TYPE_CONFIG: Record<
   string,
-  { icon: React.ElementType; badge: string; label: string }
+  { icon: React.ElementType; badge: string }
 > = {
   INFO: {
     icon: Info,
     badge: "bg-sky-100 text-sky-700 border-sky-200",
-    label: "Info",
   },
   WARNING: {
     icon: AlertTriangle,
     badge: "bg-amber-100 text-amber-700 border-amber-200",
-    label: "Warning",
   },
   SUCCESS: {
     icon: CheckCircle2,
     badge: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    label: "Success",
   },
   ERROR: {
     icon: XCircle,
     badge: "bg-red-100 text-red-700 border-red-200",
-    label: "Error",
   },
   CONCERN: {
     icon: MessageSquarePlus,
     badge: "bg-violet-100 text-violet-700 border-violet-200",
-    label: "Concern",
   },
 };
 
@@ -195,22 +186,8 @@ function parseSuspectMessage(message: string) {
   return { data, summaryLines };
 }
 
-function timeAgo(dateStr: string) {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = now - then;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
-}
-
 /** Render a suspect alert notification as a structured card */
-function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolean }) {
+function SuspectAlertCard({ message, isRead, t }: { message: string; isRead: boolean; t: TFunction }) {
   const { data, summaryLines } = useMemo(() => parseSuspectMessage(message), [message]);
   const textClass = isRead ? "text-muted-foreground" : "text-foreground/80";
 
@@ -228,7 +205,7 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
         <div className="flex items-center gap-2">
           <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <p className={`text-xs ${textClass}`}>
-            <span className="font-medium">Guest:</span> {data["Matched Guest"]}
+            <span className="font-medium">{t('guestLabel')}:</span> {data["Matched Guest"]}
           </p>
         </div>
       )}
@@ -238,7 +215,7 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
         <div className="flex items-center gap-2">
           <Fingerprint className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <p className={`text-xs ${textClass}`}>
-            <span className="font-medium">Matched By:</span> {data["Matched By"]}
+            <span className="font-medium">{t('matchedByLabel')}:</span> {data["Matched By"]}
           </p>
         </div>
       )}
@@ -248,7 +225,7 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
         <div className="flex items-center gap-2">
           <BedDouble className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <p className={`text-xs ${textClass}`}>
-            <span className="font-medium">Booking:</span> {data["Booking"]}
+            <span className="font-medium">{t('bookingLabel')}:</span> {data["Booking"]}
           </p>
         </div>
       )}
@@ -258,7 +235,7 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <p className={`text-xs ${textClass}`}>
-            <span className="font-medium">Type:</span> {data["Match Type"]}
+            <span className="font-medium">{t('typeLabel')}:</span> {data["Match Type"]}
           </p>
         </div>
       )}
@@ -268,7 +245,7 @@ function SuspectAlertCard({ message, isRead }: { message: string; isRead: boolea
         <div className="mt-1 rounded bg-red-100/70 border border-red-200 px-2.5 py-1.5">
           <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
             <MapPin className="h-3 w-3" />
-            GEOFENCE BREACH: {data["GEOFENCE BREACH"]}
+            {t('geofenceBreach')}: {data["GEOFENCE BREACH"]}
           </p>
         </div>
       )}
@@ -299,6 +276,40 @@ export default function NotificationsPage() {
   const [concernMessage, setConcernMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // i18n helper functions
+  const getPriorityBadgeLabel = (p: string) => {
+    const map: Record<string, string> = {
+      URGENT: t('priorityUrgent'),
+      'HIGH PRIORITY': t('priorityHigh'),
+      NOTICE: t('priorityNotice'),
+      LOW: t('priorityLow'),
+    };
+    return map[p] || p;
+  };
+  const getTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      INFO: t('typeInfo'),
+      WARNING: t('typeWarning'),
+      SUCCESS: t('typeSuccess'),
+      ERROR: t('typeError'),
+      CONCERN: t('typeConcern'),
+    };
+    return map[type] || type;
+  };
+  const timeAgo = (dateStr: string) => {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diff = now - then;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t('justNow');
+    if (mins < 60) return t('minsAgo', { count: mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t('hrsAgo', { count: hrs });
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return t('daysAgo', { count: days });
+    return new Date(dateStr).toLocaleDateString();
+  };
+
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
@@ -306,7 +317,7 @@ export default function NotificationsPage() {
       const list = Array.isArray(res) ? res : (res as Record<string, unknown>).notifications;
       setNotifications(Array.isArray(list) ? list : []);
     } catch {
-      toast.error("Failed to load notifications");
+      toast.error(t('failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -326,7 +337,7 @@ export default function NotificationsPage() {
     try {
       await apiMarkNotificationRead(id);
     } catch {
-      toast.error("Failed to mark as read");
+      toast.error(t('failedMarkRead'));
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, isRead: false } : n))
       );
@@ -340,7 +351,7 @@ export default function NotificationsPage() {
   const handleSubmitConcern = async (e: FormEvent) => {
     e.preventDefault();
     if (!concernTitle.trim() || !concernMessage.trim()) {
-      toast.error("Please fill in the subject and message");
+      toast.error(t('fillSubjectMessage'));
       return;
     }
     setSubmitting(true);
@@ -351,12 +362,12 @@ export default function NotificationsPage() {
         type: "CONCERN",
       });
       setNotifications((prev) => [created, ...prev]);
-      toast.success("Concern submitted successfully");
+      toast.success(t('concernSubmitted'));
       setConcernOpen(false);
       setConcernTitle("");
       setConcernMessage("");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to submit concern";
+      const msg = err instanceof Error ? err.message : t('failedSubmitConcern');
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -399,7 +410,7 @@ export default function NotificationsPage() {
         {canSubmitConcern && (
           <Button onClick={() => setConcernOpen(true)} className="gap-2 shrink-0">
             <MessageSquarePlus className="h-4 w-4" />
-            Submit Concern
+            {t('submitConcern')}
           </Button>
         )}
       </div>
@@ -450,11 +461,11 @@ export default function NotificationsPage() {
       {filteredNotifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <BellOff className="mb-4 h-12 w-12 opacity-30" />
-          <p className="font-medium text-lg">No notifications</p>
+          <p className="font-medium text-lg">{t('noNotifications')}</p>
           <p className="text-sm mt-1">
             {canSubmitConcern
-              ? "Submit a concern, or check back later for updates."
-              : "You&apos;re all caught up. New notifications will appear here."}
+              ? t('noNotificationsOperator')
+              : t('noNotificationsOther')}
           </p>
         </div>
       ) : (
@@ -535,22 +546,22 @@ export default function NotificationsPage() {
                     {isSuspect && suspectStyle ? (
                       <Badge variant="outline" className={`${suspectStyle.badge} gap-1`}>
                         <ShieldAlert className="h-3 w-3" />
-                        Suspect {suspectSeverity}
+                        {t('suspectLabel')} {suspectSeverity}
                       </Badge>
                     ) : isBroadcast && priorityStyle ? (
                       <Badge variant="outline" className={`${priorityStyle.badge} gap-1`}>
                         <Shield className="h-3 w-3" />
-                        {priorityStyle.badgeLabel}
+                        {getPriorityBadgeLabel(isBroadcast)}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className={cfg.badge}>
-                        {cfg.label}
+                        {getTypeLabel(n.type)}
                       </Badge>
                     )}
                   </div>
 
                   {isSuspect ? (
-                    <SuspectAlertCard message={n.message} isRead={n.isRead} />
+                    <SuspectAlertCard message={n.message} isRead={n.isRead} t={t} />
                   ) : (
                     <p
                       className={`text-sm leading-relaxed whitespace-pre-line ${
@@ -572,7 +583,7 @@ export default function NotificationsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      title="Mark as read"
+                      title={t('markAsRead')}
                       onClick={(e) => {
                         e.stopPropagation();
                         markRead(n.id);
@@ -585,7 +596,7 @@ export default function NotificationsPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    title="Remove"
+                    title={t('remove')}
                     onClick={(e) => {
                       e.stopPropagation();
                       removeNotification(n.id);
@@ -606,12 +617,12 @@ export default function NotificationsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquarePlus className="h-5 w-5 text-violet-500" />
-              Submit Concern
+              {t('submitConcern')}
             </DialogTitle>
             <DialogDescription>
               {isOperator
-                ? "Send a concern or password issue to the system admin. They will be notified and can take action."
-                : "Send a concern or request. It will be reviewed and actioned."}
+                ? t('concernDialogDescOperator')
+                : t('concernDialogDescSuperuser')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitConcern} className="space-y-4">
@@ -619,7 +630,7 @@ export default function NotificationsPage() {
               <Label>{t('lblsubject', 'Subject')} *</Label>
               <Input
                 id="concern-title"
-                placeholder="Brief subject of your concern"
+                placeholder={t('subjectPlaceholder')}
                 value={concernTitle}
                 onChange={(e) => setConcernTitle(e.target.value)}
                 autoFocus
@@ -629,7 +640,7 @@ export default function NotificationsPage() {
               <Label>{t('lblmessage', 'Message')} *</Label>
               <Textarea
                 id="concern-message"
-                placeholder="Describe your concern in detail..."
+                placeholder={t('messagePlaceholder')}
                 rows={4}
                 value={concernMessage}
                 onChange={(e) => setConcernMessage(e.target.value)}
@@ -641,10 +652,10 @@ export default function NotificationsPage() {
                 variant="outline"
                 onClick={() => setConcernOpen(false)}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={submitting} className="gap-2">
-                {submitting ? "Submitting..." : "Submit Concern"}
+                {submitting ? t('submitting') : t('submitConcern')}
               </Button>
             </DialogFooter>
           </form>

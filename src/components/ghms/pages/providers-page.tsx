@@ -66,6 +66,7 @@ import {
 } from "lucide-react";
 import InfoCard from "@/components/shared/info-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTranslation } from "react-i18next";
 
 interface Provider {
   id: string;
@@ -90,13 +91,6 @@ interface Provider {
   suspendedBy?: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  PENDING: { label: "Pending", variant: "secondary" },
-  APPROVED: { label: "Approved", variant: "default" },
-  REJECTED: { label: "Rejected", variant: "destructive" },
-  SUSPENDED: { label: "Suspended", variant: "outline" },
-};
-
 const STATUS_BADGE_CLASS: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200",
   APPROVED: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200",
@@ -104,23 +98,14 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
   SUSPENDED: "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200",
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] || { label: status, variant: "secondary" as const };
-  return (
-    <Badge variant={cfg.variant} className={STATUS_BADGE_CLASS[status] || ""}>
-      {cfg.label}
-    </Badge>
-  );
-}
-
 const GUESTHOUSE_TYPES = [
-  { value: "GUEST_HOUSE", label: "Guest House" },
-  { value: "HOTEL", label: "Hotel" },
-  { value: "LODGE", label: "Lodge" },
-  { value: "HOMESTAY", label: "Homestay" },
-  { value: "RESORT", label: "Resort" },
-  { value: "DHARAMSHALA", label: "Dharamshala" },
-  { value: "OTHER", label: "Other" },
+  { value: "GUEST_HOUSE" },
+  { value: "HOTEL" },
+  { value: "LODGE" },
+  { value: "HOMESTAY" },
+  { value: "RESORT" },
+  { value: "DHARAMSHALA" },
+  { value: "OTHER" },
 ];
 
 const SUB_CITY_WOREDAS: Record<string, string[]> = {
@@ -162,8 +147,42 @@ const emptyRegisterForm: RegisterForm = {
 };
 
 export default function ProvidersPage() {
+  const { t } = useTranslation('providers');
   const { refreshKey, triggerRefresh, currentUser } = useAppStore();
   const isSuperuser = currentUser?.role === "SUPERUSER";
+
+  const getStatusConfig = (status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
+    const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      PENDING: { label: t('statusPending'), variant: "secondary" },
+      APPROVED: { label: t('statusApproved'), variant: "default" },
+      REJECTED: { label: t('statusRejected'), variant: "destructive" },
+      SUSPENDED: { label: t('statusSuspended'), variant: "outline" },
+    };
+    return map[status] || { label: status, variant: "secondary" as const };
+  };
+
+  function StatusBadge({ status }: { status: string }) {
+    const cfg = getStatusConfig(status);
+    return (
+      <Badge variant={cfg.variant} className={STATUS_BADGE_CLASS[status] || ""}>
+        {cfg.label}
+      </Badge>
+    );
+  }
+
+  const getTypeLabel = (value: string): string => {
+    const map: Record<string, string> = {
+      GUEST_HOUSE: t('typeGuestHouse'),
+      HOTEL: t('typeHotel'),
+      LODGE: t('typeLodge'),
+      HOMESTAY: t('typeHomestay'),
+      RESORT: t('typeResort'),
+      DHARAMSHALA: t('typeDharamshala'),
+      OTHER: t('typeOther'),
+    };
+    return map[value] || value;
+  };
+
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
@@ -205,7 +224,7 @@ export default function ProvidersPage() {
       const data = await apiGetProviders();
       setProviders(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load providers";
+      const message = err instanceof Error ? err.message : t('failedToLoad');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -230,18 +249,18 @@ export default function ProvidersPage() {
 
   const handleReject = async () => {
     if (!rejectDialog || !rejectReason.trim()) {
-      toast.error("Rejection reason is required");
+      toast.error(t('rejectionReasonRequired'));
       return;
     }
     try {
       setActioning(true);
       await apiUpdateProvider(rejectDialog.id, { status: "REJECTED", rejectionReason: rejectReason.trim() });
-      toast.success("Provider rejected");
+      toast.success(t('providerRejected'));
       setRejectDialog(null);
       setRejectReason("");
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to reject provider";
+      const message = err instanceof Error ? err.message : t('failedToReject');
       toast.error(message);
     } finally {
       setActioning(false);
@@ -254,15 +273,15 @@ export default function ProvidersPage() {
       if (status === "REACTIVATE") {
         // Police reactivates: set back to APPROVED and clear suspension fields
         await apiUpdateProvider(provider.id, { status: "APPROVED" });
-        toast.success(`"${provider.name}" has been reactivated`);
+        toast.success(t('providerReactivated', { name: provider.name }));
       } else {
         await apiUpdateProvider(provider.id, { status });
-        toast.success(`Provider ${status.toLowerCase()}`);
+        toast.success(t('providerStatusUpdated', { status: status.toLowerCase() }));
       }
       setConfirmAction(null);
       triggerRefresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update provider";
+      const message = err instanceof Error ? err.message : t('failedToUpdate');
       toast.error(message);
     } finally {
       setActioning(false);
@@ -288,19 +307,19 @@ export default function ProvidersPage() {
       !registerForm.subCity ||
       !registerForm.woreda
     ) {
-      toast.error("Please fill in all required fields.");
+      toast.error(t('fillRequiredFields'));
       return;
     }
     if (registerForm.password.trim().length < 4) {
-      toast.error("Password must be at least 4 characters");
+      toast.error(t('passwordMinLength'));
       return;
     }
     if (!isValidPhone(registerForm.phone)) {
-      toast.error("Invalid phone number. Use format like +251 9XX XXX XXX (7-15 digits)");
+      toast.error(t('invalidPhone'));
       return;
     }
     if (!isValidEmail(registerForm.email)) {
-      toast.error("Invalid email address format");
+      toast.error(t('invalidEmail'));
       return;
     }
     try {
@@ -311,12 +330,12 @@ export default function ProvidersPage() {
         address,
         licenseFile: registerForm.licenseFileData || undefined,
       });
-      toast.success(`"${registerForm.name}" registered and approved successfully`);
+      toast.success(t('registeredAndApproved', { name: registerForm.name }));
       setRegisterOpen(false);
       setRegisterForm(emptyRegisterForm);
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to register guesthouse");
+      toast.error(err instanceof Error ? err.message : t('failedToRegister'));
     } finally {
       setRegistering(false);
     }
@@ -325,7 +344,7 @@ export default function ProvidersPage() {
   const handleSuspend = async () => {
     if (!suspendDialog) return;
     if (!suspensionReason.trim()) {
-      toast.error("Please provide a reason for suspension");
+      toast.error(t('suspensionReasonRequired'));
       return;
     }
     try {
@@ -335,13 +354,13 @@ export default function ProvidersPage() {
         suspensionReason: suspensionReason.trim(),
         providerMessage: providerMessage.trim() || undefined,
       });
-      toast.success(`"${suspendDialog.name}" has been suspended. Notification sent to provider.`);
+      toast.success(t('providerSuspendedNotified', { name: suspendDialog.name }));
       setSuspendDialog(null);
       setSuspensionReason("");
       setProviderMessage("");
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to suspend provider");
+      toast.error(err instanceof Error ? err.message : t('failedToSuspend'));
     } finally {
       setSuspending(false);
     }
@@ -359,7 +378,7 @@ export default function ProvidersPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Guesthouses");
       XLSX.writeFile(wb, "guesthouse_bulk_import_template.xlsx");
-      toast.success("Template downloaded");
+      toast.success(t('templateDownloaded'));
     });
   };
 
@@ -377,7 +396,7 @@ export default function ProvidersPage() {
       const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
 
       if (rows.length === 0) {
-        setBulkErrors(["The Excel file has no data rows."]);
+        setBulkErrors([t('bulkNoDataRows')]);
         return;
       }
 
@@ -386,7 +405,7 @@ export default function ProvidersPage() {
       const firstRowKeys = Object.keys(rows[0]);
       const missingCols = requiredCols.filter((c) => !firstRowKeys.includes(c));
       if (missingCols.length > 0) {
-        setBulkErrors([`Missing columns: ${missingCols.join(", ")}. Please download the template.`]);
+        setBulkErrors([t('bulkMissingCols', { cols: missingCols.join(', ') })]);
         return;
       }
 
@@ -409,42 +428,42 @@ export default function ProvidersPage() {
         const username = (row["Username"] || "").trim();
         const password = (row["Password"] || "").trim();
 
-        if (!fullName) errors.push(`Row ${rowNum}: Full Name is empty`);
-        if (!phone) errors.push(`Row ${rowNum}: Phone is empty`);
-        else if (!isValidPhone(phone)) errors.push(`Row ${rowNum}: Invalid phone format "${phone}"`);
-        if (!email) errors.push(`Row ${rowNum}: Email is empty`);
-        else if (!isValidEmail(email)) errors.push(`Row ${rowNum}: Invalid email format "${email}"`);
-        if (!ghName) errors.push(`Row ${rowNum}: Guesthouse Name is empty`);
-        if (!type) errors.push(`Row ${rowNum}: Type is empty`);
-        else if (!validTypes.includes(type) && !validTypeLabels.includes(type)) errors.push(`Row ${rowNum}: Invalid type "${type}". Use: ${validTypes.join(", ")}`);
-        if (!licenseNo) errors.push(`Row ${rowNum}: License No is empty`);
-        if (!subCity) errors.push(`Row ${rowNum}: Sub-City is empty`);
-        else if (!validSubCities.includes(subCity)) errors.push(`Row ${rowNum}: Invalid Sub-City "${subCity}". Use: ${validSubCities.join(", ")}`);
-        if (!woreda) errors.push(`Row ${rowNum}: Woreda is empty`);
-        else if (subCity && validSubCities.includes(subCity) && !SUB_CITY_WOREDAS[subCity]?.includes(woreda)) errors.push(`Row ${rowNum}: Woreda "${woreda}" is not valid for Sub-City "${subCity}"`);
-        if (!username) errors.push(`Row ${rowNum}: Username is empty`);
-        if (!password) errors.push(`Row ${rowNum}: Password is empty`);
-        else if (password.length < 4) errors.push(`Row ${rowNum}: Password must be at least 4 characters`);
+        if (!fullName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Full Name" }));
+        if (!phone) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Phone" }));
+        else if (!isValidPhone(phone)) errors.push(t('bulkRowInvalidPhone', { row: rowNum, value: phone }));
+        if (!email) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Email" }));
+        else if (!isValidEmail(email)) errors.push(t('bulkRowInvalidEmail', { row: rowNum, value: email }));
+        if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Guesthouse Name" }));
+        if (!type) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Type" }));
+        else if (!validTypes.includes(type) && !validTypeLabels.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
+        if (!licenseNo) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "License No" }));
+        if (!subCity) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Sub-City" }));
+        else if (!validSubCities.includes(subCity)) errors.push(t('bulkRowInvalidSubCity', { row: rowNum, value: subCity, valid: validSubCities.join(", ") }));
+        if (!woreda) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Woreda" }));
+        else if (subCity && validSubCities.includes(subCity) && !SUB_CITY_WOREDAS[subCity]?.includes(woreda)) errors.push(t('bulkRowInvalidWoreda', { row: rowNum, woreda, subCity }));
+        if (!username) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Username" }));
+        if (!password) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Password" }));
+        else if (password.length < 4) errors.push(t('bulkRowPasswordMinLength', { row: rowNum }));
       });
 
       if (errors.length > 0) {
         setBulkErrors(errors.slice(0, 20));
-        if (errors.length > 20) setBulkErrors((prev) => [...prev, `...and ${errors.length - 20} more errors`]);
+        if (errors.length > 20) setBulkErrors((prev) => [...prev, t('bulkMoreErrors', { count: errors.length - 20 })]);
       }
 
       setBulkPreview(rows);
     } catch {
-      setBulkErrors(["Failed to read the Excel file. Please make sure it's a valid .xlsx file."]);
+      setBulkErrors([t('bulkInvalidFile')]);
     }
   };
 
   const handleBulkImport = async () => {
     if (bulkPreview.length === 0) {
-      toast.error("No data to import");
+      toast.error(t('bulkNoDataToImport'));
       return;
     }
     if (bulkErrors.length > 0) {
-      toast.error("Please fix validation errors before importing");
+      toast.error(t('bulkFixErrorsBeforeImport'));
       return;
     }
     try {
@@ -471,7 +490,7 @@ export default function ProvidersPage() {
       });
       const result = await apiSuperBulkImportProviders(records);
       const data = result as { success: number; failed: number; errors: string[] };
-      toast.success(`Imported ${data.success} guesthouses successfully${data.failed > 0 ? `, ${data.failed} failed` : ""}`);
+      toast.success(t('bulkImportSuccess', { success: data.success, failed: data.failed, failedPart: data.failed > 0 ? t('bulkImportFailed', { count: data.failed }) : '' }));
       setBulkImportOpen(false);
       setBulkFile(null);
       setBulkPreview([]);
@@ -479,7 +498,7 @@ export default function ProvidersPage() {
       if (bulkFileInputRef.current) bulkFileInputRef.current.value = "";
       triggerRefresh();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Bulk import failed");
+      toast.error(err instanceof Error ? err.message : t('bulkImportFailed'));
     } finally {
       setBulkImporting(false);
     }
@@ -507,7 +526,7 @@ export default function ProvidersPage() {
               <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Total</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('cardTotal')}</p>
               <p className="text-lg sm:text-2xl font-bold">{providers.length}</p>
             </div>
           </div>
@@ -518,7 +537,7 @@ export default function ProvidersPage() {
               <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Approved</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('cardApproved')}</p>
               <p className="text-lg sm:text-2xl font-bold text-emerald-600">{approvedCount}</p>
             </div>
           </div>
@@ -529,7 +548,7 @@ export default function ProvidersPage() {
               <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground">Pending</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground">{t('cardPending')}</p>
               <p className="text-lg sm:text-2xl font-bold text-yellow-600">{pendingCount}</p>
             </div>
           </div>
@@ -538,22 +557,22 @@ export default function ProvidersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base sm:text-lg font-semibold">
-            {isSuperuser ? "Guesthouses" : "Provider Applications"}
+            {isSuperuser ? t('titleGuesthouses') : t('titleProviderApplications')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             {isSuperuser
-              ? "Register new guesthouses and manage existing ones."
-              : "Manage registrations and licensing"}
+              ? t('subtitleGuesthouses')
+              : t('subtitleProviderApplications')}
           </p>
         </div>
         <div className="flex gap-2">
           {isSuperuser && (
             <>
               <Button size="sm" className="gap-1.5" onClick={() => setRegisterOpen(true)}>
-                <UserPlus className="h-3.5 w-3.5" /> Register Guesthouse
+                <UserPlus className="h-3.5 w-3.5" /> {t('btnRegisterGuesthouse')}
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setBulkImportOpen(true)}>
-                <FileSpreadsheet className="h-3.5 w-3.5" /> Bulk Import
+                <FileSpreadsheet className="h-3.5 w-3.5" /> {t('btnBulkImport')}
               </Button>
             </>
           )}
@@ -571,7 +590,7 @@ export default function ProvidersPage() {
         ) : providers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
             <Building2 className="mb-3 h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/40" />
-            <p className="text-xs sm:text-sm text-muted-foreground">No providers registered yet</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('emptyState')}</p>
           </div>
         ) : (
           <>
@@ -595,33 +614,33 @@ export default function ProvidersPage() {
                         </div>
                       )}
                       <div className="mt-1 flex items-center gap-2 text-[10px]">
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{provider.type.replace(/_/g, " ")}</span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">{getTypeLabel(provider.type)}</span>
                       </div>
                     </button>
                   </div>
 
                   <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5 flex-wrap">
                     <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100" onClick={() => openDetail(provider)}>
-                      <Eye className="h-3.5 w-3.5" /> Details
+                      <Eye className="h-3.5 w-3.5" /> {t('btnDetails')}
                     </button>
                     {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t('btnApprove')}
                       </button>
                     )}
                     {provider.status === "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
-                        <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+                        <RotateCcw className="h-3.5 w-3.5" /> {t('btnReactivate')}
                       </button>
                     )}
                     {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
-                        <XCircle className="h-3.5 w-3.5" /> Reject
+                        <XCircle className="h-3.5 w-3.5" /> {t('btnReject')}
                       </button>
                     )}
                     {provider.status === "APPROVED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
-                        <Ban className="h-3.5 w-3.5" /> Suspend
+                        <Ban className="h-3.5 w-3.5" /> {t('btnSuspend')}
                       </button>
                     )}
                   </div>
@@ -634,12 +653,12 @@ export default function ProvidersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Provider Name</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t('thProviderName')}</TableHead>
+                    <TableHead>{t('thAddress')}</TableHead>
+                    <TableHead>{t('thOwner')}</TableHead>
+                    <TableHead>{t('thPhone')}</TableHead>
+                    <TableHead>{t('thStatus')}</TableHead>
+                    <TableHead className="text-right">{t('thActions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -654,22 +673,22 @@ export default function ProvidersPage() {
                         <div className="flex items-center justify-end gap-1">
                           {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
-                              <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+                              <CheckCircle2 className="mr-1 h-4 w-4" /> {t('btnApprove')}
                             </Button>
                           )}
                           {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
-                              <XCircle className="mr-1 h-4 w-4" /> Reject
+                              <XCircle className="mr-1 h-4 w-4" /> {t('btnReject')}
                             </Button>
                           )}
                           {provider.status === "APPROVED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
-                              <Ban className="mr-1 h-4 w-4" /> Suspend
+                              <Ban className="mr-1 h-4 w-4" /> {t('btnSuspend')}
                             </Button>
                           )}
                           {provider.status === "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
-                              <RotateCcw className="mr-1 h-4 w-4" /> Reactivate
+                              <RotateCcw className="mr-1 h-4 w-4" /> {t('btnReactivate')}
                             </Button>
                           )}
                         </div>
@@ -709,13 +728,13 @@ export default function ProvidersPage() {
                     {selectedProvider.name}
                   </DialogTitle>
                   <DialogDescription className="text-slate-300 text-xs mt-1">
-                    {selectedProvider.type.replace(/_/g, " ")} · Registered {formatDate(selectedProvider.createdAt)}
+                    {getTypeLabel(selectedProvider.type)} · {t('registered')} {formatDate(selectedProvider.createdAt)}
                   </DialogDescription>
                   <div className="flex items-center gap-2 mt-2.5">
                     <StatusBadge status={selectedProvider.status} />
                     {selectedProvider.approvedAt && (
                       <span className="text-[10px] text-slate-400">
-                        Approved {selectedProvider.approvedBy ? `by ${selectedProvider.approvedBy}` : ""} {formatDate(selectedProvider.approvedAt)}
+                        {t('approved')} {selectedProvider.approvedBy ? t('approvedBy', { name: selectedProvider.approvedBy }) : ""} {formatDate(selectedProvider.approvedAt)}
                       </span>
                     )}
                   </div>
@@ -727,7 +746,7 @@ export default function ProvidersPage() {
               {/* ── License Preview ── */}
               {selectedProvider.licenseFile && (
                 <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">License Document</p>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t('licenseDocument')}</p>
                   <div
                     className="relative cursor-pointer rounded-xl border border-slate-200 bg-slate-950 overflow-hidden group"
                     style={{ minHeight: "140px" }}
@@ -745,7 +764,7 @@ export default function ProvidersPage() {
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
                           <FileText className="h-7 w-7" />
                         </div>
-                        <span className="text-sm font-medium opacity-80">Click to open license document</span>
+                        <span className="text-sm font-medium opacity-80">{t('clickToOpenLicense')}</span>
                       </div>
                     )}
                   </div>
@@ -754,22 +773,22 @@ export default function ProvidersPage() {
 
               {/* ── Info Grid ── */}
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Provider Information</p>
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t('providerInformation')}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
-                  <InfoCard icon={<User className="h-4 w-4" />} label="Owner" value={selectedProvider.ownerName} />
-                  <InfoCard icon={<Phone className="h-4 w-4" />} label="Phone" value={selectedProvider.phone} />
+                  <InfoCard icon={<User className="h-4 w-4" />} label={t('labelOwner')} value={selectedProvider.ownerName} />
+                  <InfoCard icon={<Phone className="h-4 w-4" />} label={t('labelPhone')} value={selectedProvider.phone} />
                   {selectedProvider.email && (
-                    <InfoCard icon={<Mail className="h-4 w-4" />} label="Email" value={selectedProvider.email} />
+                    <InfoCard icon={<Mail className="h-4 w-4" />} label={t('labelEmail')} value={selectedProvider.email} />
                   )}
                   {selectedProvider.address && (
-                    <InfoCard icon={<MapPin className="h-4 w-4" />} label="Address" value={selectedProvider.address} />
+                    <InfoCard icon={<MapPin className="h-4 w-4" />} label={t('labelAddress')} value={selectedProvider.address} />
                   )}
                   {selectedProvider.licenseNo && (
-                    <InfoCard icon={<FileText className="h-4 w-4" />} label="License No" value={selectedProvider.licenseNo} mono />
+                    <InfoCard icon={<FileText className="h-4 w-4" />} label={t('labelLicenseNo')} value={selectedProvider.licenseNo} mono />
                   )}
-                  <InfoCard icon={<Calendar className="h-4 w-4" />} label="Registered" value={formatDate(selectedProvider.createdAt)} />
+                  <InfoCard icon={<Calendar className="h-4 w-4" />} label={t('labelRegistered')} value={formatDate(selectedProvider.createdAt)} />
                   {selectedProvider.approvedAt && (
-                    <InfoCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label={"Approved" + (selectedProvider.approvedBy ? ` by ${selectedProvider.approvedBy}` : "")} value={formatDate(selectedProvider.approvedAt)} />
+                    <InfoCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} label={selectedProvider.approvedBy ? t('labelApprovedBy', { name: selectedProvider.approvedBy }) : t('labelApproved')} value={formatDate(selectedProvider.approvedAt)} />
                   )}
                 </div>
               </div>
@@ -778,18 +797,18 @@ export default function ProvidersPage() {
               <div className="flex flex-wrap gap-2 pt-1">
                 {selectedProvider.status === "APPROVED" && (
                   <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => { setDetailOpen(false); openSuspend(selectedProvider); }}>
-                    <Ban className="h-3.5 w-3.5" /> Suspend
+                    <Ban className="h-3.5 w-3.5" /> {t('btnSuspend')}
                   </Button>
                 )}
                 {selectedProvider.status === "SUSPENDED" && (
                   <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => { setDetailOpen(false); setConfirmAction({ provider: selectedProvider, action: "REACTIVATE" }); }}>
-                    <RotateCcw className="h-3.5 w-3.5" /> Reactivate
+                    <RotateCcw className="h-3.5 w-3.5" /> {t('btnReactivate')}
                   </Button>
                 )}
                 {selectedProvider.licenseFile && (
                   <a href={selectedProvider.licenseFile} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors">
-                    <FileText className="h-4 w-4" /> View Full License
+                    <FileText className="h-4 w-4" /> {t('btnViewFullLicense')}
                   </a>
                 )}
               </div>
@@ -798,7 +817,7 @@ export default function ProvidersPage() {
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <XCircle className="h-4 w-4 text-red-500" />
-                    <Label className="text-red-700 text-xs font-semibold">Rejection Reason</Label>
+                    <Label className="text-red-700 text-xs font-semibold">{t('rejectionReason')}</Label>
                   </div>
                   <p className="text-sm text-red-800 leading-relaxed pl-6">{selectedProvider.rejectionReason}</p>
                 </div>
@@ -807,15 +826,15 @@ export default function ProvidersPage() {
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-orange-500" />
-                    <Label className="text-orange-700 text-xs font-semibold">Suspension Reason</Label>
+                    <Label className="text-orange-700 text-xs font-semibold">{t('suspensionReason')}</Label>
                   </div>
                   <p className="text-sm text-orange-800 leading-relaxed pl-6">{(selectedProvider as any).suspensionReason}</p>
                   <div className="pl-6 flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                     {(selectedProvider as any).suspendedBy && (
-                      <p className="text-[11px] text-slate-500">By: {(selectedProvider as any).suspendedBy}</p>
+                      <p className="text-[11px] text-slate-500">{t('byLabel')}: {(selectedProvider as any).suspendedBy}</p>
                     )}
                     {(selectedProvider as any).suspendedAt && (
-                      <p className="text-[11px] text-slate-500">On: {formatDate((selectedProvider as any).suspendedAt)}</p>
+                      <p className="text-[11px] text-slate-500">{t('onLabel')}: {formatDate((selectedProvider as any).suspendedAt)}</p>
                     )}
                   </div>
                 </div>
@@ -830,20 +849,20 @@ export default function ProvidersPage() {
         <DialogContent className="max-w-md mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg text-red-600">
-              <XCircle className="h-5 w-5" /> Reject Provider
+              <XCircle className="h-5 w-5" /> {t('rejectProviderTitle')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Rejecting <strong>{rejectDialog?.name}</strong>. Please provide a reason.
+              {t('rejectProviderDesc', { name: rejectDialog?.name || '' })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="reject-reason" className="text-xs sm:text-sm">Rejection Reason *</Label>
-            <Textarea id="reject-reason" placeholder="Enter the reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
+            <Label htmlFor="reject-reason" className="text-xs sm:text-sm">{t('rejectionReason')} *</Label>
+            <Textarea id="reject-reason" placeholder={t('enterRejectionReason')} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="text-sm" />
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectDialog(null)} disabled={actioning} className="w-full sm:w-auto">{t('btnCancel')}</Button>
             <Button variant="destructive" onClick={handleReject} disabled={actioning || !rejectReason.trim()} className="w-full sm:w-auto">
-              {actioning ? "Rejecting..." : "Confirm Rejection"}
+              {actioning ? t('rejecting') : t('confirmRejection')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -854,18 +873,18 @@ export default function ProvidersPage() {
         <AlertDialogContent className="mx-4 sm:mx-0 max-w-md w-[calc(100%-2rem)] sm:w-full">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base sm:text-lg">
-              {confirmAction?.action === "APPROVED" ? "Approve Provider" : confirmAction?.action === "REACTIVATE" ? "Reactivate Provider" : "Suspend Provider"}
+              {confirmAction?.action === "APPROVED" ? t('approveProviderTitle') : confirmAction?.action === "REACTIVATE" ? t('reactivateProviderTitle') : t('suspendProviderTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs sm:text-sm">
               {confirmAction?.action === "APPROVED"
-                ? `Are you sure you want to approve "${confirmAction?.provider.name}"?`
+                ? t('confirmApproveDesc', { name: confirmAction?.provider.name })
                 : confirmAction?.action === "REACTIVATE"
-                ? `Are you sure you want to reactivate "${confirmAction?.provider.name}"? The guesthouse will regain full access.`
-                : `Are you sure you want to suspend "${confirmAction?.provider.name}"?`}
+                ? t('confirmReactivateDesc', { name: confirmAction?.provider.name })
+                : t('confirmSuspendDesc', { name: confirmAction?.provider.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={actioning} className="w-full sm:w-auto">{t('btnCancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => confirmAction && handleStatusAction(confirmAction.provider, confirmAction.action)}
               disabled={actioning}
@@ -877,7 +896,7 @@ export default function ProvidersPage() {
                   : "w-full sm:w-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-600"
               }
             >
-              {actioning ? "Processing..." : confirmAction?.action === "APPROVED" ? "Approve" : confirmAction?.action === "REACTIVATE" ? "Reactivate" : "Suspend"}
+              {actioning ? t('processing') : confirmAction?.action === "APPROVED" ? t('btnApprove') : confirmAction?.action === "REACTIVATE" ? t('btnReactivate') : t('btnSuspend')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -888,10 +907,10 @@ export default function ProvidersPage() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <Building2 className="h-5 w-5" /> Register New Guesthouse
+              <Building2 className="h-5 w-5" /> {t('registerNewGuesthouse')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Add a new guesthouse. It will be automatically approved and an operator account will be created.
+              {t('registerNewGuesthouseDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -899,14 +918,14 @@ export default function ProvidersPage() {
             {/* Contact Information */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Contact Information
+                {t('contactInformation')}
               </p>
               <div className="grid gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="reg-name" className="text-sm">Full Name <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="reg-name" className="text-sm">{t('fullName')} <span className="text-rose-500">*</span></Label>
                   <Input
                     id="reg-name"
-                    placeholder="Owner full name"
+                    placeholder={t('placeholderOwnerName')}
                     value={registerForm.ownerName}
                     onChange={(e) => setRegisterForm((f) => ({ ...f, ownerName: e.target.value }))}
                     className="bg-white"
@@ -914,22 +933,22 @@ export default function ProvidersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-phone" className="text-sm">Phone <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-phone" className="text-sm">{t('labelPhone')} <span className="text-rose-500">*</span></Label>
                     <Input
                       id="reg-phone"
                       type="tel"
-                      placeholder="Phone number"
+                      placeholder={t('placeholderPhone')}
                       value={registerForm.phone}
                       onChange={(e) => setRegisterForm((f) => ({ ...f, phone: e.target.value }))}
                       className="bg-white"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-email" className="text-sm">Email <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-email" className="text-sm">{t('labelEmail')} <span className="text-rose-500">*</span></Label>
                     <Input
                       id="reg-email"
                       type="email"
-                      placeholder="Email address"
+                      placeholder={t('placeholderEmail')}
                       value={registerForm.email}
                       onChange={(e) => setRegisterForm((f) => ({ ...f, email: e.target.value }))}
                       className="bg-white"
@@ -942,14 +961,14 @@ export default function ProvidersPage() {
             {/* Guest House Details */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Guest House Details
+                {t('guestHouseDetails')}
               </p>
               <div className="grid gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="reg-gh-name" className="text-sm">Guest House Name <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="reg-gh-name" className="text-sm">{t('guestHouseName')} <span className="text-rose-500">*</span></Label>
                   <Input
                     id="reg-gh-name"
-                    placeholder="Name of the guest house"
+                    placeholder={t('placeholderGuestHouseName')}
                     value={registerForm.name}
                     onChange={(e) => setRegisterForm((f) => ({ ...f, name: e.target.value }))}
                     className="bg-white"
@@ -957,23 +976,23 @@ export default function ProvidersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-type" className="text-sm">Type <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-type" className="text-sm">{t('labelType')} <span className="text-rose-500">*</span></Label>
                     <Select value={registerForm.type} onValueChange={(v) => setRegisterForm((f) => ({ ...f, type: v }))}>
                       <SelectTrigger id="reg-type" className="w-full bg-white">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder={t('selectType')} />
                       </SelectTrigger>
                       <SelectContent>
-                        {GUESTHOUSE_TYPES.map((t) => (
-                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        {GUESTHOUSE_TYPES.map((gt) => (
+                          <SelectItem key={gt.value} value={gt.value}>{getTypeLabel(gt.value)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-license" className="text-sm">License No. <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-license" className="text-sm">{t('labelLicenseNo')} <span className="text-rose-500">*</span></Label>
                     <Input
                       id="reg-license"
-                      placeholder="License number"
+                      placeholder={t('placeholderLicenseNo')}
                       value={registerForm.licenseNo}
                       onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
                       className="bg-white"
@@ -981,7 +1000,7 @@ export default function ProvidersPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label className="text-sm">Upload License Document</Label>
+                  <Label className="text-sm">{t('uploadLicenseDocument')}</Label>
                   {!registerForm.licenseFileData ? (
                     <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
@@ -989,10 +1008,10 @@ export default function ProvidersPage() {
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <p className="truncate text-sm font-medium text-slate-700">
-                          Click to upload license document
+                          {t('clickToUploadLicense')}
                         </p>
                         <p className="text-xs text-slate-400">
-                          PDF, JPG, or PNG (max 5MB)
+                          {t('fileFormatHint')}
                         </p>
                       </div>
                       <input
@@ -1002,7 +1021,7 @@ export default function ProvidersPage() {
                         onChange={(e) => {
                           const file = e.target.files?.[0] ?? null;
                           if (file && file.size > 5 * 1024 * 1024) {
-                            toast.error("File size must be under 5MB.");
+                            toast.error(t('fileSizeExceeded'));
                             return;
                           }
                           if (file) {
@@ -1024,7 +1043,7 @@ export default function ProvidersPage() {
                       <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
-                        <p className="text-[11px] text-emerald-600">License uploaded</p>
+                        <p className="text-[11px] text-emerald-600">{t('licenseUploaded')}</p>
                       </div>
                       <button
                         type="button"
@@ -1042,19 +1061,19 @@ export default function ProvidersPage() {
             {/* Location */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Location
+                {t('location')}
               </p>
               <div className="grid gap-3">
                 <div className="grid gap-2">
-                  <Label className="text-sm">City</Label>
+                  <Label className="text-sm">{t('city')}</Label>
                   <Input value="Bishoftu" disabled className="bg-slate-100" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-subcity" className="text-sm">Sub-City <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-subcity" className="text-sm">{t('subCity')} <span className="text-rose-500">*</span></Label>
                     <Select value={registerForm.subCity} onValueChange={(v) => setRegisterForm((f) => ({ ...f, subCity: v, woreda: "" }))}>
                       <SelectTrigger id="reg-subcity" className="w-full bg-white">
-                        <SelectValue placeholder="Select sub-city" />
+                        <SelectValue placeholder={t('selectSubCity')} />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(SUB_CITY_WOREDAS).map((sc) => (
@@ -1064,10 +1083,10 @@ export default function ProvidersPage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-woreda" className="text-sm">Woreda <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-woreda" className="text-sm">{t('woreda')} <span className="text-rose-500">*</span></Label>
                     <Select value={registerForm.woreda} onValueChange={(v) => setRegisterForm((f) => ({ ...f, woreda: v }))} disabled={!registerForm.subCity}>
                       <SelectTrigger id="reg-woreda" className="w-full bg-white">
-                        <SelectValue placeholder={registerForm.subCity ? "Select woreda" : "Select sub-city first"} />
+                        <SelectValue placeholder={registerForm.subCity ? t('selectWoreda') : t('selectSubCityFirst')} />
                       </SelectTrigger>
                       <SelectContent>
                         {registerForm.subCity && SUB_CITY_WOREDAS[registerForm.subCity]?.map((w) => (
@@ -1083,14 +1102,14 @@ export default function ProvidersPage() {
             {/* Login Credentials */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Desired Login Credentials
+                {t('loginCredentials')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="reg-username" className="text-sm">Username <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="reg-username" className="text-sm">{t('username')} <span className="text-rose-500">*</span></Label>
                   <Input
                     id="reg-username"
-                    placeholder="Desired username"
+                    placeholder={t('placeholderUsername')}
                     value={registerForm.username}
                     onChange={(e) => setRegisterForm((f) => ({ ...f, username: e.target.value }))}
                     className="bg-white"
@@ -1098,11 +1117,11 @@ export default function ProvidersPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="reg-password" className="text-sm">Password <span className="text-rose-500">*</span></Label>
+                  <Label htmlFor="reg-password" className="text-sm">{t('password')} <span className="text-rose-500">*</span></Label>
                   <Input
                     id="reg-password"
                     type="password"
-                    placeholder="Min 4 characters"
+                    placeholder={t('placeholderPassword')}
                     value={registerForm.password}
                     onChange={(e) => setRegisterForm((f) => ({ ...f, password: e.target.value }))}
                     className="bg-white"
@@ -1117,7 +1136,7 @@ export default function ProvidersPage() {
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-emerald-800">
-                  This guesthouse will be <strong>automatically approved</strong> since you are registering it as System Admin. The operator can log in immediately after registration.
+                  {t('registerAutoApprovedInfo')}
                 </p>
               </div>
             </div>
@@ -1130,7 +1149,7 @@ export default function ProvidersPage() {
                 disabled={registering}
                 className="w-full sm:w-auto"
               >
-                Cancel
+                {t('btnCancel')}
               </Button>
               <Button
                 className="gap-1.5 w-full sm:w-auto"
@@ -1140,12 +1159,12 @@ export default function ProvidersPage() {
                 {registering ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Registering...
+                    {t('registering')}
                   </>
                 ) : (
                   <>
                     <UserPlus className="h-4 w-4" />
-                    Register & Approve
+                    {t('btnRegisterAndApprove')}
                   </>
                 )}
               </Button>
@@ -1160,10 +1179,10 @@ export default function ProvidersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-700">
               <Ban className="h-5 w-5" />
-              Suspend Guesthouse
+              {t('suspendGuesthouseTitle')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Suspend this provider and send them a notification with the reason.
+              {t('suspendGuesthouseDesc')}
             </DialogDescription>
           </DialogHeader>
           {suspendDialog && (
@@ -1187,12 +1206,12 @@ export default function ProvidersPage() {
               {/* Suspension Reason (required) */}
               <div>
                 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Reason for Suspension <span className="text-rose-500">*</span>
+                  {t('reasonForSuspension')} <span className="text-rose-500">*</span>
                 </Label>
                 <Textarea
                   value={suspensionReason}
                   onChange={(e) => setSuspensionReason(e.target.value)}
-                  placeholder="Write the detailed reason for suspending this guesthouse..."
+                  placeholder={t('placeholderSuspensionReason')}
                   className="min-h-[100px] resize-none"
                   maxLength={1000}
                 />
@@ -1202,18 +1221,18 @@ export default function ProvidersPage() {
               {/* Short Message to Provider */}
               <div>
                 <Label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                  Message to Provider <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('messageToProvider')} <span className="text-slate-400 font-normal">({t('optional')})</span>
                 </Label>
                 <Textarea
                   value={providerMessage}
                   onChange={(e) => setProviderMessage(e.target.value)}
-                  placeholder="Short message that will be sent to the provider about their suspension..."
+                  placeholder={t('placeholderProviderMessage')}
                   className="min-h-[80px] resize-none"
                   maxLength={500}
                 />
                 <p className="mt-1 text-[11px] text-slate-400 text-right">{providerMessage.length}/500</p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  If empty, a default notification with the suspension reason will be sent automatically.
+                  {t('defaultNotificationInfo')}
                 </p>
               </div>
 
@@ -1222,8 +1241,7 @@ export default function ProvidersPage() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-800">
-                    This action will immediately suspend the guesthouse. The provider will be notified via the notification system.
-                    Suspended providers will be removed from room availability monitoring. Only the Police module can reactivate a suspended guesthouse.
+                    {t('suspendWarningText')}
                   </p>
                 </div>
               </div>
@@ -1236,7 +1254,7 @@ export default function ProvidersPage() {
                   disabled={suspending}
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  {t('btnCancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -1247,12 +1265,12 @@ export default function ProvidersPage() {
                   {suspending ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Suspending...
+                      {t('suspending')}
                     </>
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Suspend &amp; Send Notification
+                      {t('btnSuspendAndNotify')}
                     </>
                   )}
                 </Button>
@@ -1267,10 +1285,10 @@ export default function ProvidersPage() {
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto mx-4 sm:mx-0 w-[calc(100%-2rem)] sm:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <FileSpreadsheet className="h-5 w-5" /> Bulk Import Guesthouses
+              <FileSpreadsheet className="h-5 w-5" /> {t('bulkImportTitle')}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Import multiple guesthouses at once from an Excel file. All entries will be automatically approved.
+              {t('bulkImportDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1280,10 +1298,10 @@ export default function ProvidersPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm">1</div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-blue-900">Download Template</p>
-                  <p className="text-xs text-blue-700 mt-0.5">Download the Excel template, fill in guesthouse data, then upload it below.</p>
+                  <p className="text-sm font-semibold text-blue-900">{t('step1Title')}</p>
+                  <p className="text-xs text-blue-700 mt-0.5">{t('step1Desc')}</p>
                   <Button size="sm" variant="outline" className="mt-2 gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100" onClick={handleDownloadTemplate}>
-                    <Download className="h-3.5 w-3.5" /> Download Template (.xlsx)
+                    <Download className="h-3.5 w-3.5" /> {t('btnDownloadTemplate')}
                   </Button>
                 </div>
               </div>
@@ -1294,8 +1312,8 @@ export default function ProvidersPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-700 font-bold text-sm">2</div>
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-900">Upload Filled Template</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Select the filled Excel file to preview and import.</p>
+                  <p className="text-sm font-semibold text-slate-900">{t('step2Title')}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t('step2Desc')}</p>
                   <div className="mt-3">
                     <input
                       ref={bulkFileInputRef}
@@ -1310,10 +1328,10 @@ export default function ProvidersPage() {
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <p className="truncate text-sm font-medium text-slate-700">
-                          {bulkFile ? bulkFile.name : "Click to select Excel file"}
+                          {bulkFile ? bulkFile.name : t('clickToSelectExcel')}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {bulkFile ? `${(bulkFile.size / 1024).toFixed(1)} KB` : ".xlsx files only"}
+                          {bulkFile ? `${(bulkFile.size / 1024).toFixed(1)} KB` : t('xlsxFilesOnly')}
                         </p>
                       </div>
                     </label>
@@ -1328,7 +1346,7 @@ export default function ProvidersPage() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-700">Validation Errors ({bulkErrors.length})</p>
+                    <p className="text-sm font-semibold text-red-700">{t('validationErrors')} ({bulkErrors.length})</p>
                     <ul className="mt-1.5 space-y-0.5 text-xs text-red-600 max-h-32 overflow-y-auto">
                       {bulkErrors.map((err, i) => (
                         <li key={i} className="flex items-start gap-1.5">
@@ -1347,8 +1365,8 @@ export default function ProvidersPage() {
                 <div className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm">3</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900">Preview Data</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Review the data before importing. {bulkPreview.length} guesthouse(s) found.</p>
+                    <p className="text-sm font-semibold text-slate-900">{t('step3Title')}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{t('step3Desc', { count: bulkPreview.length })}</p>
                   </div>
                 </div>
                 <div className="mt-3 overflow-x-auto rounded-lg border">
@@ -1356,12 +1374,12 @@ export default function ProvidersPage() {
                     <TableHeader>
                       <TableRow className="bg-slate-100">
                         <TableHead className="text-xs font-semibold h-9">#</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Full Name</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Phone</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Guesthouse</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Type</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Sub-City</TableHead>
-                        <TableHead className="text-xs font-semibold h-9">Woreda</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('bulkThFullName')}</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('bulkThPhone')}</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('bulkThGuesthouse')}</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('labelType')}</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('subCity')}</TableHead>
+                        <TableHead className="text-xs font-semibold h-9">{t('woreda')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1387,7 +1405,7 @@ export default function ProvidersPage() {
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-emerald-800">
-                  All imported guesthouses will be <strong>automatically approved</strong> and operator accounts will be created with the provided credentials.
+                  {t('bulkAutoApprovedInfo')}
                 </p>
               </div>
             </div>
@@ -1400,7 +1418,7 @@ export default function ProvidersPage() {
                 disabled={bulkImporting}
                 className="w-full sm:w-auto"
               >
-                Cancel
+                {t('btnCancel')}
               </Button>
               <Button
                 className="gap-1.5 w-full sm:w-auto"
@@ -1410,12 +1428,12 @@ export default function ProvidersPage() {
                 {bulkImporting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Importing {bulkPreview.length} guesthouses...
+                    {t('importingCount', { count: bulkPreview.length })}
                   </>
                 ) : (
                   <>
                     <Table2 className="h-4 w-4" />
-                    Import {bulkPreview.length > 0 ? `${bulkPreview.length} Guesthouses` : ""}
+                    {bulkPreview.length > 0 ? t('btnImportCount', { count: bulkPreview.length }) : ''}
                   </>
                 )}
               </Button>
