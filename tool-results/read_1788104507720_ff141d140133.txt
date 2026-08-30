@@ -47,7 +47,7 @@
     47→import { useAppStore, type CurrentUser } from "@/lib/store";
     48→import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
     49→import { useIsMobile } from "@/hooks/use-mobile";
-    50→import { POLICE_RANK_PERMISSIONS, RANK_LABELS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
+    50→import { POLICE_RANK_PERMISSIONS, RANK_BADGE_CLASSES, type PoliceRank } from "@/lib/police-permissions";
     51→import { apiLogout, apiGetDisabledPages } from "@/lib/api";
     52→import LanguageSwitcher from "@/components/ghms/language-switcher";
     53→
@@ -281,203 +281,203 @@
    281→    .slice(0, 2);
    282→}
    283→
-   284→// ── Helper: get role display info ──
-   285→function getRoleDisplay(role: string): {
-   286→  label: string;
-   287→  className: string;
-   288→} {
-   289→  switch (role) {
-   290→    case "SUPERUSER":
-   291→      return {
-   292→        label: "Superuser",
-   293→        className: "bg-amber-100 text-amber-700 border-amber-200",
-   294→      };
-   295→    case "OPERATOR":
-   296→      return {
-   297→        label: "Operator",
-   298→        className: "bg-emerald-100 text-emerald-700 border-emerald-200",
-   299→      };
-   300→    case "STAFF":
-   301→      return {
-   302→        label: "Staff",
-   303→        className: "bg-sky-100 text-sky-700 border-sky-200",
-   304→      };
-   305→    case "POLICE":
-   306→      return {
-   307→        label: "Police",
-   308→        className: "bg-rose-100 text-rose-700 border-rose-200",
-   309→      };
-   310→    default:
-   311→      return {
-   312→        label: role,
-   313→        className: "bg-slate-100 text-slate-700 border-slate-200",
-   314→      };
-   315→  }
-   316→}
-   317→
-   318→// ── Nav item button component ──
-   319→function NavItemButton({
-   320→  item,
-   321→  currentPage,
-   322→  onClick,
-   323→}: {
-   324→  item: NavItem;
-   325→  currentPage: string;
-   326→  onClick: () => void;
-   327→}) {
-   328→  const { t } = useTranslation("sidebar");
-   329→  const Icon = item.icon;
-   330→  const isActive = currentPage === item.page;
-   331→
-   332→  return (
-   333→    <button
-   334→      onClick={onClick}
-   335→      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
-   336→        isActive
-   337→          ? "bg-primary/10 text-primary"
-   338→          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-   339→      }`}
-   340→    >
-   341→      {isActive && (
-   342→        <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
-   343→      )}
-   344→      <Icon
-   345→        className={`size-[18px] shrink-0 transition-colors ${
-   346→          isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
-   347→        }`}
-   348→      />
-   349→      <span className="truncate">{t(item.label)}</span>
-   350→      {item.badge && (
-   351→        <Badge
-   352→          variant="secondary"
-   353→          className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
-   354→        >
-   355→          {item.badge}
-   356→        </Badge>
-   357→      )}
-   358→    </button>
-   359→  );
-   360→}
-   361→
-   362→// ── Sidebar content (shared between desktop & mobile) ──
-   363→// ── Subscription status widget for provider sidebar ──
-   364→function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
-   365→  const subscription = useAppStore((s) => s.subscription);
-   366→
-   367→  if (!subscription) return null;
-   368→
-   369→  const isActive = subscription.status === "ACTIVE";
-   370→  const isWarning = subscription.status === "WARNING";
-   371→  const isExpired = subscription.status === "EXPIRED";
-   372→  const isSuspended = subscription.status === "SUSPENDED";
-   373→
-   374→  // Collapsed mode — icon indicator
-   375→  if (collapsed) {
-   376→    const bgClass = isActive
-   377→      ? "bg-emerald-100"
-   378→      : isSuspended || isExpired
-   379→      ? "bg-rose-100"
-   380→      : "bg-amber-100";
-   381→    const iconClass = isActive
-   382→      ? "text-emerald-600"
-   383→      : isSuspended || isExpired
-   384→      ? "text-rose-600"
-   385→      : "text-amber-600";
-   386→    return (
-   387→      <div className="flex flex-col items-center gap-1 px-2 py-2">
-   388→        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bgClass} animate-pulse shadow-sm`}> 
-   389→          <Clock className={`size-4 ${iconClass}`} />
-   390→        </div>
-   391→      </div>
-   392→    );
-   393→  }
-   394→
-   395→  // Expanded card
-   396→  const containerClass = isActive
-   397→    ? "border-emerald-200 bg-emerald-50"
-   398→    : isSuspended || isExpired
-   399→    ? "border-rose-200 bg-rose-50"
-   400→    : "border-amber-200 bg-amber-50";
-   401→
-   402→  const iconColorClass = isActive
-   403→    ? "text-emerald-600"
-   404→    : isSuspended || isExpired
-   405→    ? "text-rose-600"
-   406→    : "text-amber-600";
-   407→
-   408→  const titleClass = isActive
-   409→    ? "text-emerald-800"
-   410→    : isSuspended || isExpired
-   411→    ? "text-rose-800"
-   412→    : "text-amber-800";
-   413→
-   414→  const subtextClass = isActive
-   415→    ? "text-emerald-700"
-   416→    : isSuspended || isExpired
-   417→    ? "text-rose-700"
-   418→    : "text-amber-700";
-   419→
-   420→  const badgeClass = isActive
-   421→    ? "bg-emerald-200/60 text-emerald-800"
-   422→    : isSuspended || isExpired
-   423→    ? "bg-rose-200/60 text-rose-800"
-   424→    : "bg-amber-200/60 text-amber-800";
-   425→
-   426→  const Icon = isSuspended || isExpired ? AlertTriangle : Clock;
-   427→
-   428→  return (
-   429→    <div className={`rounded-lg border p-3 ${containerClass} animate-subtle-pulse shadow-sm`}> 
-   430→      <div className="flex items-center gap-2">
-   431→        <Icon className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
-   432→        <p className={`text-xs font-semibold ${titleClass}`}>
-   433→          {isActive
-   434→            ? "Subscription Active"
-   435→            : isSuspended
-   436→            ? "Service Suspended"
-   437→            : isExpired
-   438→            ? "Subscription Expired"
-   439→            : "Expiring Soon"}
-   440→        </p>
-   441→      </div>
-   442→      <div className={`mt-1.5 flex items-center justify-between text-[11px] ${subtextClass}`}>
-   443→        <span>{formatDaysRemaining(subscription.daysRemaining)}</span>
-   444→        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold ${badgeClass}`}>
-   445→          <Clock className="h-3 w-3" />
-   446→          {Math.abs(subscription.daysRemaining)}d
-   447→        </span>
-   448→      </div>
-   449→      {subscription.price > 0 ? (
-   450→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
-   451→          Due: {subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
-   452→        </div>
-   453→      ) : (
-   454→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
-   455→          {formatCycle(subscription.cycle)} cycle — Free trial
-   456→        </div>
-   457→      )}
-   458→    </div>
-   459→  );
-   460→}
-   461→
-   462→function SidebarContent({
-   463→  user,
-   464→  currentPage,
-   465→  onNavigate,
-   466→  onLogout,
-   467→  collapsed,
-   468→  onToggleCollapse,
-   469→}: {
-   470→  user: CurrentUser;
-   471→  currentPage: string;
-   472→  onNavigate: (page: string) => void;
-   473→  onLogout: () => void;
-   474→  collapsed: boolean;
-   475→  onToggleCollapse: () => void;
-   476→}) {
-   477→  const { t } = useTranslation("sidebar");
-   478→  const { jointSession, setJointLoginDialogOpen, subscription, disabledPages } = useAppStore();
-   479→  const navItems = getNavItems(user, disabledPages ?? []);
-   480→  const roleDisplay = getRoleDisplay(user.role);
+   284→// ── Helper: get role badge className (no label — use t() for that) ──
+   285→function getRoleBadgeClass(role: string): string {
+   286→  switch (role) {
+   287→    case "SUPERUSER": return "bg-amber-100 text-amber-700 border-amber-200";
+   288→    case "OPERATOR": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+   289→    case "STAFF": return "bg-sky-100 text-sky-700 border-sky-200";
+   290→    case "POLICE": return "bg-rose-100 text-rose-700 border-rose-200";
+   291→    default: return "bg-slate-100 text-slate-700 border-slate-200";
+   292→  }
+   293→}
+   294→
+   295→// ── Nav item button component ──
+   296→function NavItemButton({
+   297→  item,
+   298→  currentPage,
+   299→  onClick,
+   300→}: {
+   301→  item: NavItem;
+   302→  currentPage: string;
+   303→  onClick: () => void;
+   304→}) {
+   305→  const { t } = useTranslation("sidebar");
+   306→  const Icon = item.icon;
+   307→  const isActive = currentPage === item.page;
+   308→
+   309→  return (
+   310→    <button
+   311→      onClick={onClick}
+   312→      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+   313→        isActive
+   314→          ? "bg-primary/10 text-primary"
+   315→          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+   316→      }`}
+   317→    >
+   318→      {isActive && (
+   319→        <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
+   320→      )}
+   321→      <Icon
+   322→        className={`size-[18px] shrink-0 transition-colors ${
+   323→          isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+   324→        }`}
+   325→      />
+   326→      <span className="truncate">{t(item.label)}</span>
+   327→      {item.badge && (
+   328→        <Badge
+   329→          variant="secondary"
+   330→          className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+   331→        >
+   332→          {t(item.badge)}
+   333→        </Badge>
+   334→      )}
+   335→    </button>
+   336→  );
+   337→}
+   338→
+   339→// ── Sidebar content (shared between desktop & mobile) ──
+   340→// ── Subscription status widget for provider sidebar ──
+   341→function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
+   342→  const { t } = useTranslation("sidebar");
+   343→  const subscription = useAppStore((s) => s.subscription);
+   344→
+   345→  if (!subscription) return null;
+   346→
+   347→  const isActive = subscription.status === "ACTIVE";
+   348→  const isWarning = subscription.status === "WARNING";
+   349→  const isExpired = subscription.status === "EXPIRED";
+   350→  const isSuspended = subscription.status === "SUSPENDED";
+   351→
+   352→  // Collapsed mode — icon indicator
+   353→  if (collapsed) {
+   354→    const bgClass = isActive
+   355→      ? "bg-emerald-100"
+   356→      : isSuspended || isExpired
+   357→      ? "bg-rose-100"
+   358→      : "bg-amber-100";
+   359→    const iconClass = isActive
+   360→      ? "text-emerald-600"
+   361→      : isSuspended || isExpired
+   362→      ? "text-rose-600"
+   363→      : "text-amber-600";
+   364→    return (
+   365→      <div className="flex flex-col items-center gap-1 px-2 py-2">
+   366→        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${bgClass} animate-pulse shadow-sm`}> 
+   367→          <Clock className={`size-4 ${iconClass}`} />
+   368→        </div>
+   369→      </div>
+   370→    );
+   371→  }
+   372→
+   373→  // Expanded card
+   374→  const containerClass = isActive
+   375→    ? "border-emerald-200 bg-emerald-50"
+   376→    : isSuspended || isExpired
+   377→    ? "border-rose-200 bg-rose-50"
+   378→    : "border-amber-200 bg-amber-50";
+   379→
+   380→  const iconColorClass = isActive
+   381→    ? "text-emerald-600"
+   382→    : isSuspended || isExpired
+   383→    ? "text-rose-600"
+   384→    : "text-amber-600";
+   385→
+   386→  const titleClass = isActive
+   387→    ? "text-emerald-800"
+   388→    : isSuspended || isExpired
+   389→    ? "text-rose-800"
+   390→    : "text-amber-800";
+   391→
+   392→  const subtextClass = isActive
+   393→    ? "text-emerald-700"
+   394→    : isSuspended || isExpired
+   395→    ? "text-rose-700"
+   396→    : "text-amber-700";
+   397→
+   398→  const badgeClass = isActive
+   399→    ? "bg-emerald-200/60 text-emerald-800"
+   400→    : isSuspended || isExpired
+   401→    ? "bg-rose-200/60 text-rose-800"
+   402→    : "bg-amber-200/60 text-amber-800";
+   403→
+   404→  const Icon = isSuspended || isExpired ? AlertTriangle : Clock;
+   405→
+   406→  return (
+   407→    <div className={`rounded-lg border p-3 ${containerClass} animate-subtle-pulse shadow-sm`}> 
+   408→      <div className="flex items-center gap-2">
+   409→        <Icon className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
+   410→        <p className={`text-xs font-semibold ${titleClass}`}>
+   411→          {isActive
+   412→            ? t("Subscription Active")
+   413→            : isSuspended
+   414→            ? t("Service Suspended")
+   415→            : isExpired
+   416→            ? t("Subscription Expired")
+   417→            : t("Expiring Soon")}
+   418→        </p>
+   419→      </div>
+   420→      <div className={`mt-1.5 flex items-center justify-between text-[11px] ${subtextClass}`}>
+   421→        <span>{formatDaysRemaining(subscription.daysRemaining)}</span>
+   422→        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold ${badgeClass}`}>
+   423→          <Clock className="h-3 w-3" />
+   424→          {Math.abs(subscription.daysRemaining)}d
+   425→        </span>
+   426→      </div>
+   427→      {subscription.price > 0 ? (
+   428→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   429→          {t("Due: ")}{subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
+   430→        </div>
+   431→      ) : (
+   432→        <div className={`mt-1 text-[11px] ${subtextClass}`}>
+   433→          {formatCycle(subscription.cycle)} {t("cycle — Free trial")}
+   434→        </div>
+   435→      )}
+   436→    </div>
+   437→  );
+   438→}
+   439→
+   440→function SidebarContent({
+   441→  user,
+   442→  currentPage,
+   443→  onNavigate,
+   444→  onLogout,
+   445→  collapsed,
+   446→  onToggleCollapse,
+   447→}: {
+   448→  user: CurrentUser;
+   449→  currentPage: string;
+   450→  onNavigate: (page: string) => void;
+   451→  onLogout: () => void;
+   452→  collapsed: boolean;
+   453→  onToggleCollapse: () => void;
+   454→}) {
+   455→  const { t } = useTranslation("sidebar");
+   456→  const { jointSession, setJointLoginDialogOpen, subscription, disabledPages } = useAppStore();
+   457→  const navItems = getNavItems(user, disabledPages ?? []);
+   458→  const roleBadgeClass = getRoleBadgeClass(user.role);
+   459→
+   460→  // Translated role label
+   461→  const getRoleLabel = (role: string) => {
+   462→    const map: Record<string, string> = {
+   463→      SUPERUSER: t("roleSuperuser"),
+   464→      OPERATOR: t("roleOperator"),
+   465→      STAFF: t("roleStaff"),
+   466→      POLICE: t("rolePolice"),
+   467→    };
+   468→    return map[role] || role;
+   469→  };
+   470→
+   471→  // Translated rank label
+   472→  const getRankLabel = (rank: string) => {
+   473→    const map: Record<string, string> = {
+   474→      ADMIN: t("rankAdmin"),
+   475→      DETECTIVE: t("rankDetective"),
+   476→      OFFICER: t("rankOfficer"),
+   477→      VIEWER: t("rankViewer"),
+   478→    };
+   479→    return map[rank] || rank;
+   480→  };
    481→
    482→  // Determine if user can start a joint session (SUPERUSER or POLICE ADMIN)
    483→  const canStartJoint =
@@ -518,7 +518,7 @@
    518→                    </Avatar>
    519→                    <div className="min-w-0 flex-1">
    520→                      <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
-   521→                      <p className="truncate text-[11px] text-slate-400">{roleDisplay.label}{user.providerName ? ` · ${user.providerName}` : ""}</p>
+   521→                      <p className="truncate text-[11px] text-slate-400">{getRoleLabel(user.role)}{user.providerName ? ` · ${user.providerName}` : ""}</p>
    522→                    </div>
    523→                  </div>
    524→                  <DropdownMenuSeparator />
@@ -542,17 +542,17 @@
    542→              <div className="mt-0.5 flex items-center gap-2">
    543→                <Badge
    544→                  variant="outline"
-   545→                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleDisplay.className}`}
+   545→                  className={`text-[10px] font-semibold leading-none px-1.5 py-0.5 ${roleBadgeClass}`}
    546→                >
    547→                  <Shield className="mr-1 size-2.5" />
-   548→                  {roleDisplay.label}
+   548→                  {getRoleLabel(user.role)}
    549→                </Badge>
    550→                {user.role === "POLICE" && user.policeRank && (
    551→                  <Badge
    552→                    variant="outline"
    553→                    className={`text-[9px] font-semibold leading-none px-1.5 py-0.5 ${RANK_BADGE_CLASSES[(user.policeRank as PoliceRank)] || ""}`}
    554→                  >
-   555→                    {RANK_LABELS[(user.policeRank as PoliceRank)] || user.policeRank}
+   555→                    {getRankLabel(user.policeRank as string) || user.policeRank}
    556→                  </Badge>
    557→                )}
    558→                {user.providerName && (
@@ -641,7 +641,7 @@
    641→            <button
    642→              onClick={() => setJointLoginDialogOpen(true)}
    643→              className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 p-2 text-amber-600 hover:bg-amber-50 transition-colors outline-none"
-   644→              title="Start Joint Session"
+   644→              title={t("Start Joint Session")}
    645→            >
    646→              <ShieldCheck className="size-[18px]" />
    647→            </button>
@@ -668,7 +668,7 @@
    668→        ) : (
    669→          <div className="flex items-center gap-2 px-1">
    670→            <LanguageSwitcher />
-   671→            <span className="text-xs text-slate-400">Language</span>
+   671→            <span className="text-xs text-slate-400">{t("Language")}</span>
    672→          </div>
    673→        )}
    674→        {/* Desktop collapse toggle */}
