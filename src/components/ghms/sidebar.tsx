@@ -329,7 +329,7 @@ function NavItemButton({
           variant="secondary"
           className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
         >
-          {item.badge}
+          {t(item.badge)}
         </Badge>
       )}
     </button>
@@ -339,6 +339,7 @@ function NavItemButton({
 // ── Sidebar content (shared between desktop & mobile) ──
 // ── Subscription status widget for provider sidebar ──
 function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
+  const { t } = useTranslation("sidebar");
   const subscription = useAppStore((s) => s.subscription);
 
   if (!subscription) return null;
@@ -408,12 +409,12 @@ function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
         <Icon className={`h-4 w-4 shrink-0 ${iconColorClass}`} />
         <p className={`text-xs font-semibold ${titleClass}`}>
           {isActive
-            ? "Subscription Active"
+            ? t("Subscription Active")
             : isSuspended
-            ? "Service Suspended"
+            ? t("Service Suspended")
             : isExpired
-            ? "Subscription Expired"
-            : "Expiring Soon"}
+            ? t("Subscription Expired")
+            : t("Expiring Soon")}
         </p>
       </div>
       <div className={`mt-1.5 flex items-center justify-between text-[11px] ${subtextClass}`}>
@@ -425,11 +426,11 @@ function SubscriptionStatusCard({ collapsed }: { collapsed: boolean }) {
       </div>
       {subscription.price > 0 ? (
         <div className={`mt-1 text-[11px] ${subtextClass}`}>
-          Due: {subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
+          {t("Due: ")}{subscription.price.toLocaleString()} ETB / {formatCycle(subscription.cycle)}
         </div>
       ) : (
         <div className={`mt-1 text-[11px] ${subtextClass}`}>
-          {formatCycle(subscription.cycle)} cycle — Free trial
+          {formatCycle(subscription.cycle)} {t("cycle — Free trial")}
         </div>
       )}
     </div>
@@ -569,7 +570,7 @@ function SidebarContent({
 
       {/* ── Navigation links ── */}
       <ScrollArea className="flex-1 min-h-0 px-3 py-3">
-        <nav className="flex flex-col gap-1" aria-label="Main navigation">
+        <nav className="flex flex-col gap-1" aria-label={t("Main navigation")}>
           {navItems.map((item) => (
             <NavItemButton
               key={item.page}
@@ -687,6 +688,7 @@ function SidebarContent({
 
 // ── Main Sidebar Component ──
 export default function Sidebar() {
+  const { t } = useTranslation("sidebar");
   const { currentUser, currentPage, setCurrentPage, setCurrentUser, sidebarOpen, setSidebarOpen, setDisabledPages } =
     useAppStore();
   const isMobile = useIsMobile();
@@ -733,7 +735,7 @@ export default function Sidebar() {
         <button
           onClick={() => setSidebarOpen(true)}
           className="fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50 active:bg-slate-100"
-          aria-label="Open navigation menu"
+          aria-label={t("Open navigation menu")}
         >
           <Menu className="size-5 text-slate-700" />
         </button>
@@ -788,7 +790,7 @@ export default function Sidebar() {
               GHMS
             </h1>
             <p className="truncate text-[11px] text-slate-400">
-              Guest House Management
+              {t("Guest House Management")}
             </p>
           </div>
         )}
@@ -797,7 +799,7 @@ export default function Sidebar() {
           <button
             onClick={() => setSidebarOpen(true)}
             className="absolute -right-3 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition-colors hover:bg-slate-50"
-            aria-label="Expand sidebar"
+            aria-label={t("Expand sidebar")}
           >
             <Menu className="size-3 text-slate-500" />
           </button>
