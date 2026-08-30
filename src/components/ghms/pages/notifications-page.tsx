@@ -546,7 +546,7 @@ export default function NotificationsPage() {
                     {isSuspect && suspectStyle ? (
                       <Badge variant="outline" className={`${suspectStyle.badge} gap-1`}>
                         <ShieldAlert className="h-3 w-3" />
-                        {t('suspectLabel')} {suspectSeverity}
+                        {t('suspectLabel')} {t('severity_' + suspectSeverity)}
                       </Badge>
                     ) : isBroadcast && priorityStyle ? (
                       <Badge variant="outline" className={`${priorityStyle.badge} gap-1`}>

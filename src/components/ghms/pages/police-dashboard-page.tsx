@@ -130,7 +130,7 @@ export default function PoliceDashboardPage() {
       };
       setDashboard(dashSafe);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load dashboard";
+      const message = err instanceof Error ? err.message : t("failedToLoad");
       toast.error(message);
     } finally {
       setLoading(false);

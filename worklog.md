@@ -145,3 +145,24 @@ Stage Summary:
 - All 12 police module pages now fully i18n'd
 - 98 new keys added across 10 namespaces in all 3 locale files
 - Remaining am/om values are English placeholders awaiting native speaker translation
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Complete i18n for police Admin pages (providers, notifications, police-dashboard)
+
+Work Log:
+- Verified all 15 police-admin accessible pages from sidebar: POLICE_NAV_ITEMS + JOINT_SESSION_POLICE_ITEMS + notifications + police-intelligence + joint-operations
+- providers-page.tsx: Previous subagent added t() calls but left 145 of 158 keys missing from locale files. Fixed by replacing entire providers namespace with correct 158 keys in en/am/om.json
+- providers-page.tsx: Fixed bug where GUESTHOUSE_TYPES.map((t) => t.label) referenced non-existent .label property (dead code from when labels existed on static arrays). Removed invalid label checks on lines 416 and 476
+- notifications-page.tsx: Fixed raw {suspectSeverity} string on line 549 → wrapped in t('severity_' + suspectSeverity)
+- notifications-page.tsx: Added 6 missing keys (lblsubject, lblmessage, severity_CRITICAL/HIGH/MEDIUM/LOW) to locale files
+- police-dashboard-page.tsx: Fixed hardcoded fallback string 'Failed to load dashboard' → t('failedToLoad'), added missing key to locale
+- All changes verified: next build passes cleanly, zero new TypeScript errors
+
+Stage Summary:
+- providers namespace: 158 keys (was 45 wrong keys, now 158 correct keys) across en/am/om
+- notifications namespace: 6 new keys added (52 total)
+- policeDashboard namespace: 1 new key added (28 total)
+- 3 code bugs fixed (providers .label, notifications severity, dashboard fallback)
+- All 15 police-admin accessible pages confirmed fully i18n'd

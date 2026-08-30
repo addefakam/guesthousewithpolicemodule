@@ -413,8 +413,6 @@ export default function ProvidersPage() {
       const errors: string[] = [];
       const validSubCities = Object.keys(SUB_CITY_WOREDAS);
       const validTypes = GUESTHOUSE_TYPES.map((t) => t.value);
-      const validTypeLabels = GUESTHOUSE_TYPES.map((t) => t.label);
-
       rows.forEach((row, idx) => {
         const rowNum = idx + 2; // Excel row number (1-based + header)
         const fullName = (row["Full Name"] || "").trim();
@@ -435,7 +433,7 @@ export default function ProvidersPage() {
         else if (!isValidEmail(email)) errors.push(t('bulkRowInvalidEmail', { row: rowNum, value: email }));
         if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Guesthouse Name" }));
         if (!type) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Type" }));
-        else if (!validTypes.includes(type) && !validTypeLabels.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
+        else if (!validTypes.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
         if (!licenseNo) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "License No" }));
         if (!subCity) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Sub-City" }));
         else if (!validSubCities.includes(subCity)) errors.push(t('bulkRowInvalidSubCity', { row: rowNum, value: subCity, valid: validSubCities.join(", ") }));
@@ -472,9 +470,7 @@ export default function ProvidersPage() {
         const subCity = (row["Sub-City"] || "").trim();
         const woreda = (row["Woreda"] || "").trim();
         let type = (row["Type"] || "").trim();
-        // Convert label to value if needed
-        const typeMatch = GUESTHOUSE_TYPES.find((t) => t.label === type);
-        if (typeMatch) type = typeMatch.value;
+        // type is already the enum value from the Excel
         const address = ["Bishoftu", subCity, woreda].filter(Boolean).join(", ");
         return {
           ownerName: (row["Full Name"] || "").trim(),
