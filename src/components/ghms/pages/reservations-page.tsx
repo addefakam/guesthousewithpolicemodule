@@ -1104,7 +1104,7 @@ export default function ReservationsPage() {
                       <SelectItem key={r.id} value={r.id}>
                         <span className="flex items-center gap-2">
                           <BedDouble className="h-3.5 w-3.5 text-gray-400" />
-                          {t("roomLabel", { number: r.number, type: r.type, price: formatCurrency(r.pricePerNight) })}
+                          {r.name ? t("roomOptionWithName", { number: r.number, name: r.name, type: r.type, price: formatCurrency(r.pricePerNight) }) : t("roomOption", { number: r.number, type: r.type, price: formatCurrency(r.pricePerNight) })}
                         </span>
                       </SelectItem>
                     ))}
@@ -1124,7 +1124,7 @@ export default function ReservationsPage() {
                   <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                     <div className="flex items-center gap-2 text-amber-800">
                       <BedDouble className="h-4 w-4" />
-                      <span className="text-xs font-semibold">{t("doubleRoomLabel")}</span>
+                      <span className="text-xs font-semibold">{t("doubleRoomSecondGuestReq")}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -1133,24 +1133,24 @@ export default function ReservationsPage() {
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="res-exception" checked={createForm.exceptionallyReserved} onChange={() => setCreateForm({ ...createForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-amber-600" />
-                        <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
+                        <span className="text-xs font-medium text-amber-700">{t("labelExceptionallyReserved")}</span>
                       </label>
                     </div>
                     {!createForm.exceptionallyReserved ? (
                       <div className="space-y-2">
-                        <p className="text-[10px] text-muted-foreground">{t("secondGuestDesc")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("descSecondGuestDetails")}</p>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label>{t("secondGuestName")} <span className="text-rose-500">*</span></Label>
-                            <Input placeholder={t("placeholderName")} value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
+                            <Label>{t("labelSecondGuestName")} <span className="text-rose-500">*</span></Label>
+                            <Input placeholder={t("placeholderSecondGuestName")} value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
                           </div>
                           <div className="space-y-1.5">
-                            <Label>{t("secondGuestPhone")} <span className="text-rose-500">*</span></Label>
+                            <Label>{t("labelSecondGuestPhone")} <span className="text-rose-500">*</span></Label>
                             <Input type="tel" placeholder={t("placeholderPhone")} value={createForm.secondGuestPhone} onChange={(e) => setCreateForm({ ...createForm, secondGuestPhone: e.target.value })} />
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label>{t("secondGuestId")}</Label>
+                          <Label>{t("labelSecondGuestIdNumber")}</Label>
                           <Input placeholder={t("placeholderId")} value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
                         </div>
                       </div>
@@ -1158,11 +1158,11 @@ export default function ReservationsPage() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-amber-700">
                           <AlertCircle className="h-3.5 w-3.5" />
-                          <p className="text-[10px] font-medium">{t("exceptionWarning")}</p>
+                          <p className="text-[10px] font-medium">{t("descSingleOccupancyException")}</p>
                         </div>
                         <div className="space-y-1.5">
-                          <Label>{t("exceptionReason")} <span className="text-rose-500">*</span></Label>
-                          <Textarea placeholder={t("placeholderReason")} rows={2} value={createForm.exceptionReason} onChange={(e) => setCreateForm({ ...createForm, exceptionReason: e.target.value })} />
+                          <Label>{t("labelExceptionReason")} <span className="text-rose-500">*</span></Label>
+                          <Textarea placeholder={t("placeholderExceptionReason")} rows={2} value={createForm.exceptionReason} onChange={(e) => setCreateForm({ ...createForm, exceptionReason: e.target.value })} />
                         </div>
                       </div>
                     )}
@@ -1204,7 +1204,7 @@ export default function ReservationsPage() {
               <>
                 <Button variant="outline" onClick={closeCreateDialog}>{t("btnCancel")}</Button>
                 <Button onClick={() => setWizardStep(2)} disabled={!step1Valid} className="gap-1.5">
-                  {t("btnNextBooking")}
+                  {t("btnNextBookingDetails")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </>
