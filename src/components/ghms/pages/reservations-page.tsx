@@ -58,7 +58,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1011,17 +1011,21 @@ export default function ReservationsPage() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command shouldFilter={true}>
                         <CommandInput placeholder={t("placeholderSearchGuest")} />
-                        <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
-                        <CommandGroup>
-                          {allGuests.map((g) => (
-                            <CommandItem key={g.id} value={g.name} onSelect={() => { setSelectedGuestId(g.id); setComboboxOpen(false); }}>
-                              {g.name} — {g.phone}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
+                        <CommandList>
+                          <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
+                          <CommandGroup>
+                            {allGuests.map((g) => (
+                              <CommandItem key={g.id} value={`${g.name} ${g.phone}`} onSelect={() => { setSelectedGuestId(g.id); setComboboxOpen(false); }}>
+                                <User className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className="flex-1 truncate">{g.name}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">{g.phone}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
                       </Command>
                     </PopoverContent>
                   </Popover>
