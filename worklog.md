@@ -165,4 +165,21 @@ Stage Summary:
 - notifications namespace: 6 new keys added (52 total)
 - policeDashboard namespace: 1 new key added (28 total)
 - 3 code bugs fixed (providers .label, notifications severity, dashboard fallback)
-- All 15 police-admin accessible pages confirmed fully i18n'd
+- All 15 police-admin accessible pages confirmed fully i18n'd---
+Task ID: 3
+Agent: main
+Task: Translate policeReports namespace (64 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 64 policeReports keys from en.json
+- Verified all 64 keys exist in am.json and om.json with English values
+- Wrote translate-police-reports.js script with Amharic and Oromo translations
+- Fixed unescaped quotes in Amharic occupancyProviderHint
+- Ran script: 63 keys updated in AM, 63 in OM (1 CSV key kept as universal)
+- Verified: 0 verbatim English keys remain in either locale
+- Committed and pushed (3487599)
+
+Stage Summary:
+- policeReports namespace fully translated to Amharic and Oromo
+- Only universal acronym "CSV" left untranslated (intentional)
+- Pushed to main
