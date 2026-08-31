@@ -833,7 +833,9 @@ export default function RoomsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 leading-tight">
-                          {t("roomLabel", { number: room.number })}
+                          {room.name
+                            ? t("roomLabelWithName", { number: room.number, name: room.name })
+                            : t("roomLabel", { number: room.number })}
                         </h3>
                         <p className="text-sm text-gray-500">{t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}</p>
                       </div>
@@ -1250,8 +1252,9 @@ export default function RoomsPage() {
                       {ROOM_TYPE_ICONS[infoRoom.type]}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span>{t("roomLabel", { number: infoRoom.number })}</span>
-                      {infoRoom.name && <span className="text-gray-400 font-normal">· {infoRoom.name}</span>}
+                      <span>{infoRoom.name
+                        ? t("roomLabelWithName", { number: infoRoom.number, name: infoRoom.name })
+                        : t("roomLabel", { number: infoRoom.number })}</span>
                       <Badge variant="outline" className={STATUS_STYLES[infoRoom.status]}>
                         <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[infoRoom.status]}`} />
                         {t("status" + infoRoom.status.charAt(0) + infoRoom.status.slice(1).toLowerCase())}
