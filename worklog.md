@@ -200,3 +200,19 @@ Stage Summary:
 - policeGuests namespace fully translated
 - VIP kept as universal acronym (intentional)
 - Pushed to main
+---
+Task ID: 5
+Agent: main
+Task: Translate suspectAlerts namespace (33 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 33 suspectAlerts keys from en.json
+- All 33 keys existed in am.json and om.json with English values
+- Wrote translate-suspect-alerts.js with Amharic and Oromo translations
+- Ran script: 31 keys updated in each locale (idPrefix/guestIdPrefix kept with ID: label)
+- Verified: 0 keys identical to EN in either locale
+- Committed and pushed (8ecd1d1)
+
+Stage Summary:
+- suspectAlerts namespace fully translated to Amharic and Oromo
+- Pushed to main
