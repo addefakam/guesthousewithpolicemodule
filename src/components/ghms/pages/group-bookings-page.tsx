@@ -727,7 +727,7 @@ export default function GroupBookingsPage() {
                           <span className="hidden sm:inline">{t("btnCheckoutAll")}</span>
                         </Button>
                       )}
-                      {group.reservations?.some((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED") && (
+                      {group.reservations?.some((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED" && r.status !== "DELETED") && (
                         <Button
                           variant="outline"
                           size="sm"

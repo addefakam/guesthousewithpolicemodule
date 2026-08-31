@@ -21,7 +21,7 @@ export async function POST(
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
-    if (reservation.status === "COMPLETED" || reservation.status === "CANCELLED") {
+    if (reservation.status === "COMPLETED" || reservation.status === "CANCELLED" || reservation.status === "DELETED") {
       return NextResponse.json(
         { error: `Cannot cancel a reservation with status '${reservation.status}'` },
         { status: 409 }
@@ -40,8 +40,11 @@ export async function POST(
       },
     });
 
-    // If room was RESERVED, set it back to AVAILABLE
-    if (reservation.room.status === "RESERVED") {
+    // Release room back to AVAILABLE if it was RESERVED or OCCUPIED
+    if (
+      reservation.room.status === "RESERVED" ||
+      reservation.room.status === "OCCUPIED"
+    ) {
       await db.room.update({
         where: { id: reservation.roomId },
         data: { status: "AVAILABLE" },

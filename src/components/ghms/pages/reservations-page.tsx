@@ -139,13 +139,14 @@ interface Reservation {
   exceptionReason?: string;
 }
 
-const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED"] as const;
+const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED", "DELETED"] as const;
 
 const STATUS_BADGE: Record<string, string> = {
   UPCOMING: "bg-sky-100 text-sky-800 border-sky-200",
   ACTIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
   COMPLETED: "bg-gray-100 text-gray-700 border-gray-200",
   CANCELLED: "bg-rose-100 text-rose-800 border-rose-200",
+  DELETED: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
 const PAYMENT_STATUS_BADGE: Record<string, string> = {
@@ -333,8 +334,8 @@ export default function ReservationsPage() {
           r.id.toLowerCase().includes(q)
       );
     }
-    // Move COMPLETED to bottom, active first
-    list = [...list.filter((r) => r.status !== "COMPLETED"), ...list.filter((r) => r.status === "COMPLETED")];
+    // Move COMPLETED and DELETED to bottom, active first
+    list = [...list.filter((r) => r.status !== "COMPLETED" && r.status !== "DELETED"), ...list.filter((r) => r.status === "COMPLETED" || r.status === "DELETED")];
     return list;
   }, [reservations, statusFilter, search]);
 
@@ -478,15 +479,15 @@ export default function ReservationsPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    if (deleteTarget.status === "COMPLETED" || deleteTarget.status === "CANCELLED") {
-      toast.error("Cannot delete a completed or cancelled reservation");
+    if (deleteTarget.status === "COMPLETED" || deleteTarget.status === "CANCELLED" || deleteTarget.status === "DELETED") {
+      toast.error("Cannot delete a completed, cancelled, or already deleted reservation");
       setDeleteTarget(null);
       return;
     }
     try {
       setDeleting(true);
       await apiDeleteReservation(deleteTarget.id);
-      toast.success("Reservation deleted");
+      toast.success("Reservation deleted and room released");
       setDeleteTarget(null);
       triggerRefresh();
     } catch (err: unknown) {
@@ -500,8 +501,8 @@ export default function ReservationsPage() {
   const handleAction = async () => {
     if (!confirmAction) return;
     const { type, reservation } = confirmAction;
-    if (type === "cancel" && (reservation.status === "COMPLETED" || reservation.status === "CANCELLED")) {
-      toast.error("Cannot cancel a completed or cancelled reservation");
+    if (type === "cancel" && (reservation.status === "COMPLETED" || reservation.status === "CANCELLED" || reservation.status === "DELETED")) {
+      toast.error("Cannot cancel a completed, cancelled, or deleted reservation");
       setConfirmAction(null);
       return;
     }
@@ -788,7 +789,7 @@ export default function ReservationsPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {res.status !== "COMPLETED" && res.status !== "CANCELLED" && (
+                          {res.status !== "COMPLETED" && res.status !== "CANCELLED" && res.status !== "DELETED" && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -898,7 +899,7 @@ export default function ReservationsPage() {
                         <XCircle className="mr-2 h-4 w-4" /> Cancel
                       </DropdownMenuItem>
                     )}
-                    {res.status !== "COMPLETED" && res.status !== "CANCELLED" && (
+                    {res.status !== "COMPLETED" && res.status !== "CANCELLED" && res.status !== "DELETED" && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

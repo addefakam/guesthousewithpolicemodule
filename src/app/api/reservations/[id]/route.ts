@@ -91,22 +91,43 @@ export async function DELETE(
     const { id } = await params;
     const { providerId } = getProviderFilter(auth);
 
-    const existing = await db.reservation.findFirst({ where: { id, providerId } });
+    const existing = await db.reservation.findFirst({
+      where: { id, providerId },
+      include: { room: { select: { id: true, status: true } } },
+    });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
-    // If room was RESERVED, set it back to AVAILABLE
-    if (existing.status === "UPCOMING") {
+    if (existing.status === "COMPLETED" || existing.status === "CANCELLED" || existing.status === "DELETED") {
+      return NextResponse.json(
+        { error: `Cannot delete a reservation with status '${existing.status}'` },
+        { status: 409 }
+      );
+    }
+
+    // Soft-delete: update status to DELETED instead of removing the record
+    const updated = await db.reservation.update({
+      where: { id },
+      data: { status: "DELETED" },
+      include: {
+        guest: { select: { id: true, name: true, phone: true } },
+        room: { select: { id: true, number: true, name: true, type: true } },
+      },
+    });
+
+    // Release room back to AVAILABLE if it was RESERVED or OCCUPIED
+    if (
+      existing.room.status === "RESERVED" ||
+      existing.room.status === "OCCUPIED"
+    ) {
       await db.room.update({
         where: { id: existing.roomId },
         data: { status: "AVAILABLE" },
       });
     }
 
-    await db.reservation.delete({ where: { id } });
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json(updated);
   } catch (error: unknown) {
         if (error instanceof AuthError) {
           return NextResponse.json({ error: error.message }, { status: error.statusCode });
