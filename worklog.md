@@ -296,3 +296,19 @@ Work Log:
 Stage Summary:
 - anomalies namespace fully translated to Amharic and Oromo
 - Pushed to main
+---
+Task ID: 11
+Agent: main
+Task: Translate policeIntelligence namespace (103 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 103 policeIntelligence keys from en.json
+- 88 keys had English values in both locales
+- Wrote translate-intelligence.js with Amharic and Oromo translations
+- Ran script: 98 keys updated in each locale (chart labels and interpolation keys unchanged)
+- Verified: 0 keys identical to EN in either locale
+- Committed and pushed (7a5770a)
+
+Stage Summary:
+- policeIntelligence namespace fully translated to Amharic and Oromo
+- Pushed to main
