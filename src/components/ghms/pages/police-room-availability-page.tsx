@@ -178,17 +178,41 @@ export default function PoliceRoomAvailabilityPage() {
   const [sortBy, setSortBy] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Click a stat card → sort providers by that metric
+  // Click a stat card → show inline detail panel immediately below KPI cards
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
+  const [kpiSortDir, setKpiSortDir] = useState<"asc" | "desc">("desc");
+
   const handleStatCardClick = (metric: string) => {
-    if (sortBy === metric) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    if (activeKpi === metric) {
+      setActiveKpi(null); // toggle off
     } else {
-      setSortBy(metric);
-      setSortDir("desc"); // default: highest first
+      setActiveKpi(metric);
+      setKpiSortDir("desc");
     }
-    // Scroll to the provider table smoothly
-    document.getElementById("provider-table-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // Inline sorted providers for the active KPI detail panel
+  const kpiMetricConfig: Record<string, { key: keyof ProviderStats; label: string; color: string; bgColor: string; format: (v: number) => string }> = {
+    providers:  { key: 'total',          label: '',                      color: 'text-slate-700',   bgColor: 'bg-slate-100',   format: (v) => String(v) },
+    rooms:      { key: 'total',          label: '',                      color: 'text-slate-900',   bgColor: 'bg-slate-100',   format: (v) => String(v) },
+    available:  { key: 'available',      label: '',                      color: 'text-emerald-700', bgColor: 'bg-emerald-50',  format: (v) => String(v) },
+    occupied:   { key: 'occupied',       label: '',                      color: 'text-blue-700',    bgColor: 'bg-blue-50',    format: (v) => String(v) },
+    reserved:   { key: 'reserved',       label: '',                      color: 'text-amber-700',   bgColor: 'bg-amber-50',   format: (v) => String(v) },
+    maintenance:{ key: 'maintenance',    label: '',                      color: 'text-slate-600',   bgColor: 'bg-slate-100',   format: (v) => String(v) },
+    capacity:   { key: 'totalCapacity',  label: '',                      color: 'text-blue-700',    bgColor: 'bg-blue-50',    format: (v) => String(v) },
+    utilization:{ key: 'utilizationRate',label: '',                      color: 'text-violet-700',  bgColor: 'bg-violet-50',  format: (v) => v + '%' },
+  };
+
+  const kpiSortedProviders = useMemo(() => {
+    if (!activeKpi || !data?.providers?.length) return [];
+    const cfg = kpiMetricConfig[activeKpi];
+    if (!cfg) return [];
+    return [...data.providers].sort((a, b) => {
+      const va = (a[cfg.key] as number) || 0;
+      const vb = (b[cfg.key] as number) || 0;
+      return kpiSortDir === "desc" ? vb - va : va - vb;
+    });
+  }, [activeKpi, kpiSortDir, data?.providers, kpiMetricConfig]);
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [detailProvider, setDetailProvider] = useState<ProviderStats | null>(null);
   const [showSuspiciousOnly, setShowSuspiciousOnly] = useState(false);
@@ -343,21 +367,27 @@ export default function PoliceRoomAvailabilityPage() {
         </div>
       </div>
 
-      {/* ── City Summary Cards (clickable to sort providers) ── */}
+      {/* ── City Summary Cards (clickable to show inline detail) ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        {/* Providers — info only, not sortable */}
-        <Card>
+        {/* Providers — clickable to show all providers inline */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${activeKpi === 'providers' ? 'ring-2 ring-primary shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('providers')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">{t('statProviders')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] text-slate-500">{t('statProviders')}</p>
+              </div>
+              {activeKpi === 'providers' && <span className="text-[9px] text-primary font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalProviders}</p>
           </CardContent>
         </Card>
         {/* Total Rooms */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${sortBy === 'rooms' ? 'ring-2 ring-primary shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md ${activeKpi === 'rooms' ? 'ring-2 ring-primary shadow-md' : ''}`}
           onClick={() => handleStatCardClick('rooms')}
         >
           <CardContent className="p-3">
@@ -366,14 +396,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <BedDouble className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-[10px] text-slate-500">{t('statTotalRooms')}</p>
               </div>
-              {sortBy === 'rooms' && <span className="text-[9px] text-primary font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'rooms' && <span className="text-[9px] text-primary font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalRooms}</p>
           </CardContent>
         </Card>
         {/* Available */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-emerald-200 ${sortBy === 'available' ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-emerald-200 ${activeKpi === 'available' ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('available')}
         >
           <CardContent className="p-3">
@@ -382,14 +412,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <Bed className="h-3.5 w-3.5 text-emerald-500" />
                 <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
               </div>
-              {sortBy === 'available' && <span className="text-[9px] text-emerald-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'available' && <span className="text-[9px] text-emerald-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-emerald-700">{s.availableRooms}</p>
           </CardContent>
         </Card>
         {/* Occupied */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${sortBy === 'occupied' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${activeKpi === 'occupied' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('occupied')}
         >
           <CardContent className="p-3">
@@ -398,14 +428,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <Users className="h-3.5 w-3.5 text-blue-500" />
                 <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
               </div>
-              {sortBy === 'occupied' && <span className="text-[9px] text-blue-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'occupied' && <span className="text-[9px] text-blue-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.occupiedRooms}</p>
           </CardContent>
         </Card>
         {/* Reserved */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-amber-200 ${sortBy === 'reserved' ? 'ring-2 ring-amber-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-amber-200 ${activeKpi === 'reserved' ? 'ring-2 ring-amber-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('reserved')}
         >
           <CardContent className="p-3">
@@ -414,14 +444,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
                 <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
               </div>
-              {sortBy === 'reserved' && <span className="text-[9px] text-amber-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'reserved' && <span className="text-[9px] text-amber-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-amber-700">{s.reservedRooms}</p>
           </CardContent>
         </Card>
         {/* Maintenance */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-slate-300 ${sortBy === 'maintenance' ? 'ring-2 ring-slate-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-slate-300 ${activeKpi === 'maintenance' ? 'ring-2 ring-slate-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('maintenance')}
         >
           <CardContent className="p-3">
@@ -430,14 +460,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <Wrench className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-[10px] text-slate-500">{t('statMaintenance')}</p>
               </div>
-              {sortBy === 'maintenance' && <span className="text-[9px] text-slate-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'maintenance' && <span className="text-[9px] text-slate-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-slate-600">{s.maintenanceRooms}</p>
           </CardContent>
         </Card>
         {/* Capacity */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${sortBy === 'capacity' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${activeKpi === 'capacity' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('capacity')}
         >
           <CardContent className="p-3">
@@ -446,14 +476,14 @@ export default function PoliceRoomAvailabilityPage() {
                 <Users className="h-3.5 w-3.5 text-blue-500" />
                 <p className="text-[10px] text-blue-600">{t('statCapacity')}</p>
               </div>
-              {sortBy === 'capacity' && <span className="text-[9px] text-blue-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'capacity' && <span className="text-[9px] text-blue-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.totalCapacity}</p>
           </CardContent>
         </Card>
         {/* Utilization */}
         <Card
-          className={`cursor-pointer transition-all hover:shadow-md border-violet-200 ${sortBy === 'utilization' ? 'ring-2 ring-violet-500 shadow-md' : ''}`}
+          className={`cursor-pointer transition-all hover:shadow-md border-violet-200 ${activeKpi === 'utilization' ? 'ring-2 ring-violet-500 shadow-md' : ''}`}
           onClick={() => handleStatCardClick('utilization')}
         >
           <CardContent className="p-3">
@@ -462,7 +492,7 @@ export default function PoliceRoomAvailabilityPage() {
                 <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
                 <p className="text-[10px] text-violet-600">{t('statUtilization')}</p>
               </div>
-              {sortBy === 'utilization' && <span className="text-[9px] text-violet-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
+              {activeKpi === 'utilization' && <span className="text-[9px] text-violet-600 font-bold">{kpiSortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className={`mt-1 text-xl font-bold ${getUtilizationColor(s.utilizationRate)}`}>
               {s.utilizationRate}%
@@ -470,6 +500,93 @@ export default function PoliceRoomAvailabilityPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Inline KPI Detail Panel (shows immediately below KPI cards) ── */}
+      {activeKpi && (() => {
+        const cfg = kpiMetricConfig[activeKpi];
+        if (!cfg) return null;
+        const kpiTitle = {
+          providers: t('statProviders'),
+          rooms: t('statTotalRooms'),
+          available: t('statAvailable'),
+          occupied: t('statOccupied'),
+          reserved: t('statReserved'),
+          maintenance: t('statMaintenance'),
+          capacity: t('statCapacity'),
+          utilization: t('statUtilization'),
+        }[activeKpi] || activeKpi;
+        return (
+          <Card className={`border-l-4 ${activeKpi === 'available' ? 'border-l-emerald-500' : activeKpi === 'occupied' ? 'border-l-blue-500' : activeKpi === 'reserved' ? 'border-l-amber-500' : activeKpi === 'utilization' ? 'border-l-violet-500' : activeKpi === 'maintenance' ? 'border-l-slate-400' : 'border-l-primary'}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold ${cfg.bgColor} ${cfg.color}`}>
+                    {kpiTitle}
+                    <span className="text-[10px] font-normal opacity-70">
+                      ({kpiSortedProviders.length} {t('thGuesthouse').toLowerCase()})
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setKpiSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                    title={kpiSortDir === 'desc' ? t('sortDesc') : t('sortAsc')}
+                  >
+                    {kpiSortDir === 'desc' ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                    onClick={() => setActiveKpi(null)}
+                    title={t('close') || 'Close'}
+                  >
+                    <span className="text-sm leading-none">&times;</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {kpiSortedProviders.map((p, idx) => {
+                  const val = (p[cfg.key] as number) || 0;
+                  const suspicionFlags = suspicionMap.get(p.id);
+                  const hasSuspicion = suspicionFlags && suspicionFlags.length > 0;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer hover:bg-slate-50 ${hasSuspicion ? 'bg-rose-50/60 hover:bg-rose-50' : ''}`}
+                      onClick={() => { setDetailProvider(p); }}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">
+                          {idx + 1}
+                        </span>
+                        <span className="truncate font-medium text-slate-800 text-xs sm:text-sm">{p.name}</span>
+                        {hasSuspicion && (
+                          <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-xs font-mono ${activeKpi === 'utilization' ? getUtilizationColor(val) : cfg.color}`}>
+                          {cfg.format(val)}
+                        </span>
+                        {activeKpi === 'utilization' && (
+                          <div className="hidden sm:flex w-16 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div className={`h-full rounded-full ${getUtilizationBarColor(val)}`} style={{ width: `${Math.min(val, 100)}%` }} />
+                          </div>
+                        )}
+                        <Eye className="h-3.5 w-3.5 text-slate-400" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* ── Suspicious Activity Alert Banner ── */}
       {suspiciousCount > 0 && (
