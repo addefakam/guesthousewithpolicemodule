@@ -80,6 +80,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Users,
   BedDouble,
   Clock,
   DollarSign,
@@ -204,6 +205,7 @@ export default function ReservationsPage() {
     secondGuestIdNumber: "",
     exceptionallyReserved: false,
     exceptionReason: "",
+    hasSecondGuest: false,
   });
   const [creating, setCreating] = useState(false);
 
@@ -405,9 +407,22 @@ export default function ReservationsPage() {
     }
     const selRoom = allRooms.find((r) => r.id === createForm.roomId);
     const isDoubleRoom = selRoom && (selRoom.type === "DOUBLE" || selRoom.type === "TWIN");
+    const isSingleRoom = selRoom && selRoom.type === "SINGLE";
+    // Double/TWIN: second guest required unless exceptionally reserved
     if (isDoubleRoom && !createForm.exceptionallyReserved) {
       if (!createForm.secondGuestName.trim() || !createForm.secondGuestPhone.trim()) {
         toast.error("Second guest name and phone are required for double/twin rooms");
+        return;
+      }
+      if (!isValidPhone(createForm.secondGuestPhone)) {
+        toast.error("Invalid second guest phone number format (7-15 digits)");
+        return;
+      }
+    }
+    // SINGLE: second guest required only if hasSecondGuest is toggled on
+    if (isSingleRoom && createForm.hasSecondGuest) {
+      if (!createForm.secondGuestName.trim() || !createForm.secondGuestPhone.trim()) {
+        toast.error("Second guest name and phone are required");
         return;
       }
       if (!isValidPhone(createForm.secondGuestPhone)) {
@@ -474,7 +489,7 @@ export default function ReservationsPage() {
     setGuestMode("existing");
     setSelectedGuestId("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
-    setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "" });
+    setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
   };
 
   const handleDelete = async () => {
@@ -1145,11 +1160,56 @@ export default function ReservationsPage() {
                 </Select>
               </div>
 
-              {/* ── Double/TWIN Room: Second Guest + Exception ── */}
+              {/* Second Guest Section */}
               {(() => {
                 const selRoom = allRooms.find((r) => r.id === createForm.roomId);
-                const isDouble = selRoom && (selRoom.type === "DOUBLE" || selRoom.type === "TWIN");
-                if (!isDouble) return null;
+                if (!selRoom) return null;
+                const isDouble = selRoom.type === "DOUBLE" || selRoom.type === "TWIN";
+                const isSingle = selRoom.type === "SINGLE";
+                if (!isDouble && !isSingle) return null;
+
+                // For SINGLE rooms: show toggle to add second guest
+                if (isSingle) {
+                  return (
+                    <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-3 space-y-3">
+                      <div className="flex items-center gap-2 text-sky-800">
+                        <Users className="h-4 w-4" />
+                        <span className="text-xs font-semibold">{t("additionalOccupant")}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="single-guest-count" checked={!createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: false, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
+                          <span className="text-xs font-medium">{t("oneGuestOnly")}</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="single-guest-count" checked={createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: true })} className="h-3.5 w-3.5 accent-sky-600" />
+                          <span className="text-xs font-medium text-sky-700">{t("twoGuests")}</span>
+                        </label>
+                      </div>
+                      {createForm.hasSecondGuest && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] text-muted-foreground">{t("descSecondGuestSingleRoom")}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label>{t("labelSecondGuestName")} <span className="text-rose-500">*</span></Label>
+                              <Input placeholder={t("placeholderSecondGuestName")} value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label>{t("labelSecondGuestPhone")} <span className="text-rose-500">*</span></Label>
+                              <Input type="tel" placeholder={t("placeholderPhone")} value={createForm.secondGuestPhone} onChange={(e) => setCreateForm({ ...createForm, secondGuestPhone: e.target.value })} />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>{t("labelSecondGuestIdNumber")}</Label>
+                            <Input placeholder={t("placeholderId")} value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // For DOUBLE/TWIN rooms: existing behavior with exception option
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                     <div className="flex items-center gap-2 text-amber-800">
