@@ -478,6 +478,11 @@ export default function ReservationsPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    if (deleteTarget.status === "COMPLETED" || deleteTarget.status === "CANCELLED") {
+      toast.error("Cannot delete a completed or cancelled reservation");
+      setDeleteTarget(null);
+      return;
+    }
     try {
       setDeleting(true);
       await apiDeleteReservation(deleteTarget.id);
@@ -495,6 +500,11 @@ export default function ReservationsPage() {
   const handleAction = async () => {
     if (!confirmAction) return;
     const { type, reservation } = confirmAction;
+    if (type === "cancel" && (reservation.status === "COMPLETED" || reservation.status === "CANCELLED")) {
+      toast.error("Cannot cancel a completed or cancelled reservation");
+      setConfirmAction(null);
+      return;
+    }
     try {
       setActionLoading(true);
       if (type === "checkin") {
@@ -887,6 +897,17 @@ export default function ReservationsPage() {
                       <DropdownMenuItem className="text-rose-600" onClick={() => setConfirmAction({ type: "cancel", reservation: res })}>
                         <XCircle className="mr-2 h-4 w-4" /> Cancel
                       </DropdownMenuItem>
+                    )}
+                    {res.status !== "COMPLETED" && res.status !== "CANCELLED" && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-rose-600 focus:text-rose-600"
+                          onClick={() => setDeleteTarget(res)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
