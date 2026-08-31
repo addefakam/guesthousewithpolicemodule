@@ -183,3 +183,20 @@ Stage Summary:
 - policeReports namespace fully translated to Amharic and Oromo
 - Only universal acronym "CSV" left untranslated (intentional)
 - Pushed to main
+---
+Task ID: 4
+Agent: main
+Task: Translate policeGuests namespace (30 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 35 policeGuests keys from en.json
+- 5 keys are interpolation templates (kept as-is), 30 keys had English values
+- Wrote translate-police-guests.js with Amharic and Oromo translations
+- Ran script: 29 keys updated in AM, 29 in OM (vip kept universal)
+- Verified: 0 keys identical to EN in either locale
+- Committed and pushed (1537b9e)
+
+Stage Summary:
+- policeGuests namespace fully translated
+- VIP kept as universal acronym (intentional)
+- Pushed to main
