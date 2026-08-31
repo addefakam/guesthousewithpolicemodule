@@ -2940,7 +2940,8 @@
     "status_AVAILABLE": "Available",
     "status_OCCUPIED": "Occupied",
     "status_RESERVED": "Reserved",
-    "status_MAINTENANCE": "Maintenance"
+    "status_MAINTENANCE": "Maintenance",
+    "sortReserved": "Reserved"
   },
   "jointOps": {
     "pageTitle": "Joint Operations",

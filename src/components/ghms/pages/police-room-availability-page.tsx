@@ -177,6 +177,18 @@ export default function PoliceRoomAvailabilityPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // Click a stat card → sort providers by that metric
+  const handleStatCardClick = (metric: string) => {
+    if (sortBy === metric) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(metric);
+      setSortDir("desc"); // default: highest first
+    }
+    // Scroll to the provider table smoothly
+    document.getElementById("provider-table-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [detailProvider, setDetailProvider] = useState<ProviderStats | null>(null);
   const [showSuspiciousOnly, setShowSuspiciousOnly] = useState(false);
@@ -264,6 +276,7 @@ export default function PoliceRoomAvailabilityPage() {
           case "rooms": cmp = a.total - b.total; break;
           case "available": cmp = a.available - b.available; break;
           case "occupied": cmp = a.occupied - b.occupied; break;
+          case "reserved": cmp = a.reserved - b.reserved; break;
           case "utilization": cmp = a.utilizationRate - b.utilizationRate; break;
           case "capacity": cmp = a.totalCapacity - b.totalCapacity; break;
           case "maintenance": cmp = a.maintenance - b.maintenance; break;
@@ -330,8 +343,9 @@ export default function PoliceRoomAvailabilityPage() {
         </div>
       </div>
 
-      {/* ── City Summary Cards ── */}
+      {/* ── City Summary Cards (clickable to sort providers) ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        {/* Providers — info only, not sortable */}
         <Card>
           <CardContent className="p-3">
             <div className="flex items-center gap-1.5">
@@ -341,65 +355,114 @@ export default function PoliceRoomAvailabilityPage() {
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalProviders}</p>
           </CardContent>
         </Card>
-        <Card>
+        {/* Total Rooms */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${sortBy === 'rooms' ? 'ring-2 ring-primary shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('rooms')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <BedDouble className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">{t('statTotalRooms')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <BedDouble className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] text-slate-500">{t('statTotalRooms')}</p>
+              </div>
+              {sortBy === 'rooms' && <span className="text-[9px] text-primary font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-slate-900">{s.totalRooms}</p>
           </CardContent>
         </Card>
-        <Card className="border-emerald-200">
+        {/* Available */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-emerald-200 ${sortBy === 'available' ? 'ring-2 ring-emerald-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('available')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <Bed className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <Bed className="h-3.5 w-3.5 text-emerald-500" />
+                <p className="text-[10px] text-emerald-600">{t('statAvailable')}</p>
+              </div>
+              {sortBy === 'available' && <span className="text-[9px] text-emerald-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-emerald-700">{s.availableRooms}</p>
           </CardContent>
         </Card>
-        <Card className="border-blue-200">
+        {/* Occupied */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${sortBy === 'occupied' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('occupied')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-blue-500" />
-              <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-blue-500" />
+                <p className="text-[10px] text-blue-600">{t('statOccupied')}</p>
+              </div>
+              {sortBy === 'occupied' && <span className="text-[9px] text-blue-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.occupiedRooms}</p>
           </CardContent>
         </Card>
-        <Card className="border-amber-200">
+        {/* Reserved */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-amber-200 ${sortBy === 'reserved' ? 'ring-2 ring-amber-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('reserved')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
-              <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5 text-amber-500" />
+                <p className="text-[10px] text-amber-600">{t('statReserved')}</p>
+              </div>
+              {sortBy === 'reserved' && <span className="text-[9px] text-amber-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-amber-700">{s.reservedRooms}</p>
           </CardContent>
         </Card>
-        <Card className="border-slate-300">
+        {/* Maintenance */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-slate-300 ${sortBy === 'maintenance' ? 'ring-2 ring-slate-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('maintenance')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <Wrench className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[10px] text-slate-500">{t('statMaintenance')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <Wrench className="h-3.5 w-3.5 text-slate-400" />
+                <p className="text-[10px] text-slate-500">{t('statMaintenance')}</p>
+              </div>
+              {sortBy === 'maintenance' && <span className="text-[9px] text-slate-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-slate-600">{s.maintenanceRooms}</p>
           </CardContent>
         </Card>
-        <Card className="border-blue-200">
+        {/* Capacity */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-blue-200 ${sortBy === 'capacity' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('capacity')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-blue-500" />
-              <p className="text-[10px] text-blue-600">{t('statCapacity')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-blue-500" />
+                <p className="text-[10px] text-blue-600">{t('statCapacity')}</p>
+              </div>
+              {sortBy === 'capacity' && <span className="text-[9px] text-blue-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className="mt-1 text-xl font-bold text-blue-700">{s.totalCapacity}</p>
           </CardContent>
         </Card>
-        <Card className="border-violet-200">
+        {/* Utilization */}
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md border-violet-200 ${sortBy === 'utilization' ? 'ring-2 ring-violet-500 shadow-md' : ''}`}
+          onClick={() => handleStatCardClick('utilization')}
+        >
           <CardContent className="p-3">
-            <div className="flex items-center gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
-              <p className="text-[10px] text-violet-600">{t('statUtilization')}</p>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
+                <p className="text-[10px] text-violet-600">{t('statUtilization')}</p>
+              </div>
+              {sortBy === 'utilization' && <span className="text-[9px] text-violet-600 font-bold">{sortDir === 'desc' ? '↓' : '↑'}</span>}
             </div>
             <p className={`mt-1 text-xl font-bold ${getUtilizationColor(s.utilizationRate)}`}>
               {s.utilizationRate}%
@@ -496,7 +559,7 @@ export default function PoliceRoomAvailabilityPage() {
       </Card>
 
       {/* ── Provider List ── */}
-      <Card>
+      <Card id="provider-table-section">
         <CardHeader className="pb-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -525,6 +588,7 @@ export default function PoliceRoomAvailabilityPage() {
                   <SelectItem value="rooms">{t('sortTotalRooms')}</SelectItem>
                   <SelectItem value="available">{t('sortAvailable')}</SelectItem>
                   <SelectItem value="occupied">{t('sortOccupied')}</SelectItem>
+                  <SelectItem value="reserved">{t('sortReserved')}</SelectItem>
                   <SelectItem value="maintenance">{t('sortMaintenance')}</SelectItem>
                   <SelectItem value="utilization">{t('sortUtilization')}</SelectItem>
                   <SelectItem value="capacity">{t('sortCapacity')}</SelectItem>

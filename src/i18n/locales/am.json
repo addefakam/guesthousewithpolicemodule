@@ -2939,7 +2939,8 @@
     "status_AVAILABLE": "የሚገኝ",
     "status_OCCUPIED": "የተያዘ",
     "status_RESERVED": "የተያዘ",
-    "status_MAINTENANCE": "ጥገና"
+    "status_MAINTENANCE": "ጥገና",
+    "sortReserved": "የተሰየለ"
   },
   "jointOps": {
     "pageTitle": "Joint Operations",

@@ -2939,7 +2939,8 @@
     "status_AVAILABLE": "Qabamnee",
     "status_OCCUPIED": "Qabame",
     "status_RESERVED": "Qabame",
-    "status_MAINTENANCE": "Qorannoo"
+    "status_MAINTENANCE": "Qorannoo",
+    "sortReserved": "Qabameera"
   },
   "jointOps": {
     "pageTitle": "Joint Operations",
