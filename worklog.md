@@ -248,3 +248,19 @@ Work Log:
 Stage Summary:
 - notificationDispatch namespace fully translated
 - Pushed to main
+---
+Task ID: 8
+Agent: main
+Task: Translate investigation namespace (94 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 94 investigation keys from en.json
+- 85 keys had English values in both locales
+- Wrote translate-investigation.js with Amharic and Oromo translations
+- Ran script: 92 keys updated in each locale
+- Verified: 0 keys identical to EN in either locale
+- Committed and pushed (07dd981)
+
+Stage Summary:
+- investigation namespace fully translated to Amharic and Oromo
+- Pushed to main
