@@ -216,3 +216,19 @@ Work Log:
 Stage Summary:
 - suspectAlerts namespace fully translated to Amharic and Oromo
 - Pushed to main
+---
+Task ID: 6
+Agent: main
+Task: Translate suspectedPersons namespace (104 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 104 suspectedPersons keys from en.json
+- 91 keys had English values in both am.json and om.json
+- Wrote translate-suspected-persons.js with Amharic and Oromo translations
+- Ran script: 99 keys updated in AM, 98 in OM (idLabel "ID" kept universal)
+- Verified: 0 keys identical to EN in AM, 1 universal (ID) in OM
+- Committed and pushed (7d0b6fc)
+
+Stage Summary:
+- suspectedPersons namespace fully translated to Amharic and Oromo
+- Pushed to main
