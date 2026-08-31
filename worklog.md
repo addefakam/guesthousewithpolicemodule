@@ -280,3 +280,19 @@ Work Log:
 Stage Summary:
 - security namespace fully translated to Amharic and Oromo
 - Pushed to main
+---
+Task ID: 10
+Agent: main
+Task: Translate anomalies namespace (59 keys) to Amharic and Oromo
+
+Work Log:
+- Extracted all 59 anomalies keys from en.json
+- 50 keys had English values in both locales
+- Wrote translate-anomalies.js with Amharic and Oromo translations
+- Ran script: 58 keys updated in each locale
+- Verified: 0 keys identical to EN in either locale
+- Committed and pushed (4056119)
+
+Stage Summary:
+- anomalies namespace fully translated to Amharic and Oromo
+- Pushed to main
