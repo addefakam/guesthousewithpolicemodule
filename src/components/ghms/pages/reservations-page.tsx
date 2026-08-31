@@ -778,14 +778,18 @@ export default function ReservationsPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-rose-600 focus:text-rose-600"
-                            onClick={() => setDeleteTarget(res)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
+                          {res.status !== "COMPLETED" && res.status !== "CANCELLED" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-rose-600 focus:text-rose-600"
+                                onClick={() => setDeleteTarget(res)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
