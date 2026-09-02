@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#047857"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- House body -->
+  <path d="M256 120 L400 248 L400 400 C400 412 390 420 380 420 L132 420 C122 420 112 412 112 400 L112 248 Z" fill="white" opacity="0.95"/>
+  <!-- Roof -->
+  <path d="M256 80 L432 240 L392 240 L256 108 L120 240 L80 240 Z" fill="white"/>
+  <!-- Door -->
+  <rect x="220" y="310" width="72" height="110" rx="6" fill="#059669" opacity="0.85"/>
+  <!-- Door knob -->
+  <circle cx="276" cy="368" r="6" fill="white" opacity="0.9"/>
+  <!-- Windows -->
+  <rect x="148" y="240" width="52" height="48" rx="6" fill="#059669" opacity="0.4"/>
+  <rect x="312" y="240" width="52" height="48" rx="6" fill="#059669" opacity="0.4"/>
+  <!-- Window cross lines -->
+  <line x1="174" y1="240" x2="174" y2="288" stroke="#059669" stroke-width="2" opacity="0.3"/>
+  <line x1="148" y1="264" x2="200" y2="264" stroke="#059669" stroke-width="2" opacity="0.3"/>
+  <line x1="338" y1="240" x2="338" y2="288" stroke="#059669" stroke-width="2" opacity="0.3"/>
+  <line x1="312" y1="264" x2="364" y2="264" stroke="#059669" stroke-width="2" opacity="0.3"/>
+  <!-- Bed icon inside house (subtle) -->
+  <rect x="148" y="340" width="50" height="28" rx="4" fill="#059669" opacity="0.25"/>
+  <rect x="314" y="340" width="50" height="28" rx="4" fill="#059669" opacity="0.25"/>
+</svg>
