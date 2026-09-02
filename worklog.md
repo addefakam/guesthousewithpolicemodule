@@ -312,3 +312,27 @@ Work Log:
 Stage Summary:
 - policeIntelligence namespace fully translated to Amharic and Oromo
 - Pushed to main
+---
+Task ID: 2
+Agent: main
+Task: Build mobile operator app at /m with rooms, reservations, guests, and language switcher
+
+Work Log:
+- Created /src/app/m/layout.tsx with mobile viewport meta, PWA config
+- Created /src/app/m/page.tsx with auth guard (operator/staff only), Amharic default
+- Created /src/components/mobile/mobile-app.tsx — full mobile app with:
+  - Dark header with stats (available/reserved/occupied/total)
+  - Rooms tab: 2-col grid, floor/status filters, reservation tooltips, reserve buttons
+  - Reservations tab: UPCOMING/ACTIVE filter, check-in/checkout, extend stay, early checkout
+  - Guests tab: search by name/phone/ID, active reservation display
+  - Full System tab: link back to main GHMS
+  - Bottom tab navigation (native app feel)
+  - New reservation dialog: guest search, room select, date picker, cost calc, second guest for double rooms
+  - Room detail sheet: current reservation, amenities, reservation history
+- Added i18n keys (mobile namespace) to en.json, am.json, om.json
+
+Stage Summary:
+- Mobile app is live at /m route with native app feel
+- Auth shared via Zustand store (same GHMS login)
+- Amharic default, English/Amharic switcher in header
+- All 5 planned features implemented
