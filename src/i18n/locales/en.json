@@ -3147,6 +3147,18 @@
     "nationalityEthiopian": "Ethiopian",
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to sign out?",
-    "lblOr": "or"
+    "lblOr": "or",
+    "addRoomTitle": "Add Room",
+    "addRoomDesc": "Add a new room to your guesthouse",
+    "addRoomBtn": "Add Room",
+    "addRoomNumber": "Room Number",
+    "addRoomType": "Room Type",
+    "addRoomPrice": "Price / Night (ETB)",
+    "addRoomFloor": "Floor",
+    "addRoomCapacity": "Capacity (Guests)",
+    "phRoomNumber": "e.g. 101, 201, A1",
+    "phAmenities": "WiFi, TV, AC, Mini Bar, Hot Water, Parking",
+    "toastRoomCreated": "Room created successfully",
+    "toastFailedCreateRoom": "Failed to create room"
   }
 }

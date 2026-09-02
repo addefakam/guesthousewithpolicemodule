@@ -3146,6 +3146,18 @@
     "nationalityEthiopian": "ኢትዮጵያዊ",
     "logout": "ውጣ",
     "logoutConfirm": "መውጣትን ይፈልጋሉ?",
-    "lblOr": "ወይም"
+    "lblOr": "ወይም",
+    "addRoomTitle": "ክፍል ያስገቡ",
+    "addRoomDesc": "ለእንክብካቤ ቤትዎ አዲስ ክፍል ያስገቡ",
+    "addRoomBtn": "ክፍል ያስገቡ",
+    "addRoomNumber": "የክፍል ቁጥር",
+    "addRoomType": "የክፍል አይነት",
+    "addRoomPrice": "ዋጋ / ሌሊት (ብር)",
+    "addRoomFloor": "ፎትታ",
+    "addRoomCapacity": "አቅም (እእትዮዎች)",
+    "phRoomNumber": "ለምሳሌ 101, 201, A1",
+    "phAmenities": "WiFi, TV, AC, Mini Bar, ሞቅ ያለ ውሃ, ፓርኪንግ",
+    "toastRoomCreated": "ክፍሉ በተሳካ ሁኔታ ተፈጥሯል",
+    "toastFailedCreateRoom": "ክፍል መፍጠር አልተሳካም"
   }
 }

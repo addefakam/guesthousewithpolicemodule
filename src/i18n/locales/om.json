@@ -3146,6 +3146,18 @@
     "nationalityEthiopian": "Itoophiyaan",
     "logout": "Ba'i",
     "logoutConfirm": "Ba'uu barbaaddaa?",
-    "lblOr": "ykn"
+    "lblOr": "ykn",
+    "addRoomTitle": "Kabana Galchi",
+    "addRoomDesc": "Gosa qabannee keessatti kabana haaraa galchi",
+    "addRoomBtn": "Kabana Galchi",
+    "addRoomNumber": "Lakkoofsa Kabanaa",
+    "addRoomType": "Gosa Kabanaa",
+    "addRoomPrice": "Qiyyaa / Halkan (ETB)",
+    "addRoomFloor": "Bilcha",
+    "addRoomCapacity": "Qabxii (Qamaalee)",
+    "phRoomNumber": "fkn 101, 201, A1",
+    "phAmenities": "WiFi, TV, AC, Mini Bar, Bishaan Qonnaa, Paarkingii",
+    "toastRoomCreated": "Kabanan uumameera",
+    "toastFailedCreateRoom": "Kabana uumuu hin milkaa'ne"
   }
 }

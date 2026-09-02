@@ -6,6 +6,7 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
 import {
   apiGetRooms,
+  apiCreateRoom,
   apiGetReservations,
   apiGetGuests,
   apiCreateReservation,
@@ -86,6 +87,7 @@ import {
   AlertCircle,
   DollarSign,
   Power,
+  Plus,
 } from "lucide-react";
 
 // ── Types ──
@@ -142,6 +144,10 @@ const RES_STATUS: Record<string, { color: string; label: string }> = {
 };
 
 const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
+
+const ROOM_FORM_DEFAULTS = {
+  number: "", type: "SINGLE", pricePerNight: "", floor: "1", capacity: "1", amenities: "",
+};
 
 const RES_FORM_DEFAULTS = {
   guestId: "", roomId: "", checkIn: todayStr(), checkOut: addDays(todayStr(), 1),
@@ -201,6 +207,11 @@ export default function MobileApp() {
   const [activeTab, setActiveTab] = useState<Tab>("rooms");
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Add room
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [roomForm, setRoomForm] = useState(ROOM_FORM_DEFAULTS);
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   // Data
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -496,6 +507,31 @@ export default function MobileApp() {
     setCurrentUser(null);
   };
 
+  const handleCreateRoom = async () => {
+    if (!roomForm.number.trim() || !roomForm.type || !roomForm.pricePerNight || !roomForm.floor || !roomForm.capacity) {
+      toast.error(t("toastFillRequired")); return;
+    }
+    try {
+      setCreatingRoom(true);
+      await apiCreateRoom({
+        number: roomForm.number.trim(),
+        type: roomForm.type,
+        pricePerNight: Number(roomForm.pricePerNight),
+        floor: Number(roomForm.floor),
+        capacity: Number(roomForm.capacity),
+        amenities: roomForm.amenities || "[]",
+      });
+      toast.success(t("toastRoomCreated"));
+      setShowAddRoom(false);
+      setRoomForm(ROOM_FORM_DEFAULTS);
+      triggerRefresh();
+      await fetchData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("toastFailedCreateRoom");
+      toast.error(msg);
+    } finally { setCreatingRoom(false); }
+  };
+
   // ── Render: Loading ──
   if (loading) {
     return (
@@ -564,6 +600,7 @@ export default function MobileApp() {
             floorFilter={floorFilter} setFloorFilter={setFloorFilter}
             statusFilter={statusFilter} setStatusFilter={setStatusFilter}
             onRoomTap={openRoomDetail} onReserve={handleReserveFromRoom}
+            onAddRoom={() => setShowAddRoom(true)}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency} parseAmenities={parseAmenities}
           />
         )}
@@ -706,6 +743,21 @@ export default function MobileApp() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Add Room Dialog */}
+      <Dialog open={showAddRoom} onOpenChange={(open) => { if (!open) { setShowAddRoom(false); setRoomForm(ROOM_FORM_DEFAULTS); } }}>
+        <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5" /> {t("addRoomTitle")}</DialogTitle>
+            <DialogDescription>{t("addRoomDesc")}</DialogDescription>
+          </DialogHeader>
+          <AddRoomForm
+            form={roomForm} onUpdate={(patch) => setRoomForm((f) => ({ ...f, ...patch }))}
+            creating={creatingRoom} onSubmit={handleCreateRoom} onCancel={() => { setShowAddRoom(false); setRoomForm(ROOM_FORM_DEFAULTS); }}
+            t={t} formatCurrency={formatCurrency}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
         <div className="grid grid-cols-4 h-16">
@@ -740,17 +792,28 @@ export default function MobileApp() {
 
 // ── Sub-components ──
 
-function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, statusFilter, setStatusFilter, onRoomTap, onReserve, t, formatDate, formatCurrency, parseAmenities }: {
+function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, statusFilter, setStatusFilter, onRoomTap, onReserve, onAddRoom, t, formatDate, formatCurrency, parseAmenities }: {
   rooms: Room[]; roomResMap: Record<string, Reservation>; floors: number[];
   floorFilter: number | null; setFloorFilter: (f: number | null) => void;
   statusFilter: string | null; setStatusFilter: (s: string | null) => void;
-  onRoomTap: (r: Room) => void; onReserve: (r: Room) => void;
+  onRoomTap: (r: Room) => void; onReserve: (r: Room) => void; onAddRoom: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
   parseAmenities: (a: string | null | undefined) => string[];
 }) {
   return (
     <div className="px-4 pt-4 space-y-3">
+      {/* Header with Add button */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold text-slate-800">{t("tabRooms")} ({rooms.length})</h2>
+        <button
+          onClick={onAddRoom}
+          className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white active:bg-emerald-700 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" /> {t("addRoomBtn")}
+        </button>
+      </div>
+
       {/* Floor & Status Filters */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
@@ -1334,6 +1397,65 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
         <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
         <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>
           {creating ? t("processing") : t("btnCreateReservation")}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCurrency }: {
+  form: typeof ROOM_FORM_DEFAULTS; onUpdate: (patch: Partial<typeof ROOM_FORM_DEFAULTS>) => void;
+  creating: boolean; onSubmit: () => void; onCancel: () => void;
+  t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
+}) {
+  const canSubmit = form.number.trim() && form.type && form.pricePerNight && form.floor && form.capacity;
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs font-semibold">{t("addRoomNumber")} *</Label>
+        <Input value={form.number} onChange={(e) => onUpdate({ number: e.target.value })} placeholder={t("phRoomNumber")} className="mt-1.5 h-11 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs font-semibold">{t("addRoomType")} *</Label>
+          <Select value={form.type} onValueChange={(v) => {
+            const cap = (v === "DOUBLE" || v === "TWIN") ? "2" : "1";
+            onUpdate({ type: v, capacity: cap });
+          }}>
+            <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="SINGLE">{t("roomTypeSINGLE")}</SelectItem>
+              <SelectItem value="DOUBLE">{t("roomTypeDOUBLE")}</SelectItem>
+              <SelectItem value="TWIN">{t("roomTypeTWIN")}</SelectItem>
+              <SelectItem value="SUITE">{t("roomTypeSUITE")}</SelectItem>
+              <SelectItem value="DELUXE">{t("roomTypeDELUXE")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">{t("addRoomPrice")} *</Label>
+          <Input type="number" value={form.pricePerNight} onChange={(e) => onUpdate({ pricePerNight: e.target.value })} placeholder="0" className="mt-1.5 h-11 rounded-xl" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs font-semibold">{t("addRoomFloor")} *</Label>
+          <Input type="number" value={form.floor} onChange={(e) => onUpdate({ floor: e.target.value })} placeholder="1" className="mt-1.5 h-11 rounded-xl" />
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">{t("addRoomCapacity")} *</Label>
+          <Input type="number" value={form.capacity} onChange={(e) => onUpdate({ capacity: e.target.value })} placeholder="1" className="mt-1.5 h-11 rounded-xl" />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs font-semibold">{t("amenities")}</Label>
+        <Input value={form.amenities} onChange={(e) => onUpdate({ amenities: e.target.value })} placeholder={t("phAmenities")} className="mt-1.5 h-11 rounded-xl" />
+        <p className="mt-1 text-[10px] text-gray-400">WiFi, TV, AC, Mini Bar, Hot Water, Parking</p>
+      </div>
+      <DialogFooter className="gap-2 sm:gap-2">
+        <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
+        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>
+          {creating ? t("processing") : t("addRoomBtn")}
         </Button>
       </DialogFooter>
     </div>
