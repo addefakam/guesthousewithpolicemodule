@@ -1,0 +1,1213 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+     4→import { useTranslation } from "react-i18next";
+     5→import { useAppStore } from "@/lib/store";
+     6→import { toast } from "sonner";
+     7→import {
+     8→  apiGetRooms,
+     9→  apiGetReservations,
+    10→  apiGetGuests,
+    11→  apiCreateReservation,
+    12→  apiCheckin,
+    13→  apiCheckout,
+    14→  apiUpdateReservation,
+    15→  apiUpdateRoomStatus,
+    16→} from "@/lib/api";
+    17→import { isValidPhone } from "@/lib/utils";
+    18→import { Button } from "@/components/ui/button";
+    19→import { Badge } from "@/components/ui/badge";
+    20→import { Input } from "@/components/ui/input";
+    21→import { Label } from "@/components/ui/label";
+    22→import { Textarea } from "@/components/ui/textarea";
+    23→import { Skeleton } from "@/components/ui/skeleton";
+    24→import { Separator } from "@/components/ui/separator";
+    25→import {
+    26→  Dialog,
+    27→  DialogContent,
+    28→  DialogHeader,
+    29→  DialogTitle,
+    30→  DialogDescription,
+    31→  DialogFooter,
+    32→} from "@/components/ui/dialog";
+    33→import {
+    34→  AlertDialog,
+    35→  AlertDialogContent,
+    36→  AlertDialogHeader,
+    37→  AlertDialogTitle,
+    38→  AlertDialogDescription,
+    39→  AlertDialogFooter,
+    40→  AlertDialogAction,
+    41→  AlertDialogCancel,
+    42→} from "@/components/ui/alert-dialog";
+    43→import {
+    44→  Select,
+    45→  SelectContent,
+    46→  SelectItem,
+    47→  SelectTrigger,
+    48→  SelectValue,
+    49→} from "@/components/ui/select";
+    50→import {
+    51→  Tooltip,
+    52→  TooltipTrigger,
+    53→  TooltipContent,
+    54→} from "@/components/ui/tooltip";
+    55→import {
+    56→  BedSingle,
+    57→  BedDouble,
+    58→  Hotel,
+    59→  Crown,
+    60→  Star,
+    61→  Search,
+    62→  CalendarPlus,
+    63→  LogIn,
+    64→  LogOut,
+    65→  Users,
+    66→  X,
+    67→  ChevronRight,
+    68→  ArrowLeft,
+    69→  ArrowUpDown,
+    70→  Clock,
+    71→  AlertTriangle,
+    72→  UserPlus,
+    73→  Building2,
+    74→  ExternalLink,
+    75→  Wifi,
+    76→  Tv,
+    77→  Wind,
+    78→  Coffee,
+    79→  ShowerHead,
+    80→  Car,
+    81→  Layers,
+    82→  CheckCircle2,
+    83→  AlertCircle,
+    84→  DollarSign,
+    85→} from "lucide-react";
+    86→
+    87→// ── Types ──
+    88→interface Room {
+    89→  id: string; number: string; name: string; type: string; status: string;
+    90→  pricePerNight: number; floor: number; capacity: number; amenities: string;
+    91→}
+    92→
+    93→interface Guest {
+    94→  id: string; name: string; phone: string; idNumber: string; idType: string;
+    95→  nationality: string; email: string; vip: boolean;
+    96→}
+    97→
+    98→interface Reservation {
+    99→  id: string; status: string; checkIn: string; checkOut: string; nights: number;
+   100→  totalCost: number; paidAmount: number; balance: number; paymentStatus: string;
+   101→  guest: { id: string; name: string; phone: string } | null;
+   102→  room: { id: string; number: string; name: string; type: string; pricePerNight: number } | null;
+   103→  roomId?: string;
+   104→  secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
+   105→  exceptionallyReserved?: boolean; exceptionReason?: string;
+   106→}
+   107→
+   108→// ── Constants ──
+   109→type Tab = "rooms" | "reservations" | "guests" | "main";
+   110→
+   111→const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
+   112→  SINGLE: <BedSingle className="h-4 w-4" />,
+   113→  DOUBLE: <BedDouble className="h-4 w-4" />,
+   114→  TWIN: <Hotel className="h-4 w-4" />,
+   115→  SUITE: <Crown className="h-4 w-4" />,
+   116→  DELUXE: <Star className="h-4 w-4" />,
+   117→};
+   118→
+   119→const STATUS_STYLES: Record<string, string> = {
+   120→  AVAILABLE: "bg-emerald-100 text-emerald-800 border-emerald-200",
+   121→  OCCUPIED: "bg-rose-100 text-rose-800 border-rose-200",
+   122→  MAINTENANCE: "bg-amber-100 text-amber-800 border-amber-200",
+   123→  RESERVED: "bg-sky-100 text-sky-800 border-sky-200",
+   124→};
+   125→
+   126→const STATUS_DOT: Record<string, string> = {
+   127→  AVAILABLE: "bg-emerald-500",
+   128→  OCCUPIED: "bg-rose-500",
+   129→  MAINTENANCE: "bg-amber-500",
+   130→  RESERVED: "bg-sky-500",
+   131→};
+   132→
+   133→const RES_STATUS: Record<string, { color: string; label: string }> = {
+   134→  UPCOMING: { color: "bg-blue-100 text-blue-800", label: "Upcoming" },
+   135→  ACTIVE: { color: "bg-emerald-100 text-emerald-800", label: "Checked In" },
+   136→  COMPLETED: { color: "bg-slate-100 text-slate-700", label: "Completed" },
+   137→  CANCELLED: { color: "bg-red-100 text-red-800", label: "Cancelled" },
+   138→};
+   139→
+   140→const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
+   141→
+   142→const RES_FORM_DEFAULTS = {
+   143→  guestId: "", roomId: "", checkIn: todayStr(), checkOut: addDays(todayStr(), 1),
+   144→  notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "",
+   145→  exceptionallyReserved: false, exceptionReason: "",
+   146→};
+   147→
+   148→const AMENITY_ICONS: Record<string, React.ReactNode> = {
+   149→  WiFi: <Wifi className="h-3 w-3" />,
+   150→  TV: <Tv className="h-3 w-3" />,
+   151→  AC: <Wind className="h-3 w-3" />,
+   152→  "Mini Bar": <Coffee className="h-3 w-3" />,
+   153→  "Hot Water": <ShowerHead className="h-3 w-3" />,
+   154→  Parking: <Car className="h-3 w-3" />,
+   155→};
+   156→
+   157→// ── Helpers ──
+   158→function formatDate(d: string) {
+   159→  if (!d) return "—";
+   160→  try { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); } catch { return d; }
+   161→}
+   162→
+   163→function formatCurrency(v: number) {
+   164→  return new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(v);
+   165→}
+   166→
+   167→function todayStr() { return new Date().toISOString().split("T")[0]; }
+   168→
+   169→function addDays(d: string, n: number) {
+   170→  const dt = new Date(d + "T00:00:00");
+   171→  dt.setDate(dt.getDate() + n);
+   172→  return dt.toISOString().split("T")[0];
+   173→}
+   174→
+   175→function getFloorFromNumber(num: string): number | null {
+   176→  const match = num.match(/^\d/);
+   177→  return match ? parseInt(match[0], 10) : null;
+   178→}
+   179→
+   180→function parseAmenities(amenitiesStr: string | null | undefined): string[] {
+   181→  if (!amenitiesStr) return [];
+   182→  try {
+   183→    const parsed = JSON.parse(amenitiesStr);
+   184→    return Array.isArray(parsed) ? parsed : [];
+   185→  } catch {
+   186→    return amenitiesStr.split(",").map((s) => s.trim()).filter(Boolean);
+   187→  }
+   188→}
+   189→
+   190→// ── Component ──
+   191→export default function MobileApp() {
+   192→  const { t, i18n } = useTranslation("mobile");
+   193→  const { currentUser, triggerRefresh } = useAppStore();
+   194→  const [activeTab, setActiveTab] = useState<Tab>("rooms");
+   195→  const [loading, setLoading] = useState(true);
+   196→
+   197→  // Data
+   198→  const [rooms, setRooms] = useState<Room[]>([]);
+   199→  const [reservations, setReservations] = useState<Reservation[]>([]);
+   200→  const [guests, setGuests] = useState<Guest[]>([]);
+   201→  const [roomResMap, setRoomResMap] = useState<Record<string, Reservation>>({});
+   202→
+   203→  // Guest search
+   204→  const [guestSearch, setGuestSearch] = useState("");
+   205→
+   206→  // Room detail sheet
+   207→  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+   208→  const [roomReservations, setRoomReservations] = useState<Reservation[]>([]);
+   209→  const [roomResLoading, setRoomResLoading] = useState(false);
+   210→
+   211→  // New reservation
+   212→  const [showNewRes, setShowNewRes] = useState(false);
+   213→  const [resForm, setResForm] = useState(RES_FORM_DEFAULTS);
+   214→  const [resGuestSearch, setResGuestSearch] = useState("");
+   215→  const [creatingRes, setCreatingRes] = useState(false);
+   216→
+   217→  // Check-in / Check-out confirm
+   218→  const [confirmAction, setConfirmAction] = useState<{
+   219→    type: "checkin" | "checkout"; res: Reservation;
+   220→  } | null>(null);
+   221→  const [actionLoading, setActionLoading] = useState(false);
+   222→
+   223→  // Extend stay
+   224→  const [showExtend, setShowExtend] = useState(false);
+   225→  const [extendRes, setExtendRes] = useState<Reservation | null>(null);
+   226→  const [extendDate, setExtendDate] = useState("");
+   227→  const [extending, setExtending] = useState(false);
+   228→
+   229→  // Early checkout
+   230→  const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
+   231→  const [earlyCheckoutRes, setEarlyCheckoutRes] = useState<Reservation | null>(null);
+   232→  const [earlyCheckingOut, setEarlyCheckingOut] = useState(false);
+   233→
+   234→  // Floor filter
+   235→  const [floorFilter, setFloorFilter] = useState<number | null>(null);
+   236→  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+   237→
+   238→  // ── Fetch all data ──
+   239→  const fetchData = useCallback(async () => {
+   240→    try {
+   241→      setLoading(true);
+   242→      const [rmRaw, upRes, acRes, gRaw] = await Promise.all([
+   243→        apiGetRooms(),
+   244→        apiGetReservations("status=UPCOMING&limit=100").catch(() => []),
+   245→        apiGetReservations("status=ACTIVE&limit=100").catch(() => []),
+   246→        apiGetGuests(),
+   247→      ]);
+   248→
+   249→      const rmList = Array.isArray(rmRaw.rooms) ? rmRaw.rooms : Array.isArray(rmRaw) ? rmRaw : [];
+   250→      const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
+   251→      rmList.sort((a: Room, b: Room) => {
+   252→        const oa = statusOrder[a.status] ?? 9;
+   253→        const ob = statusOrder[b.status] ?? 9;
+   254→        if (oa !== ob) return oa - ob;
+   255→        const fa = getFloorFromNumber(a.number) ?? a.floor ?? 0;
+   256→        const fb = getFloorFromNumber(b.number) ?? b.floor ?? 0;
+   257→        return fa - fb;
+   258→      });
+   259→      setRooms(rmList);
+   260→
+   261→      const allRes: Reservation[] = [
+   262→        ...(Array.isArray(upRes?.data) ? upRes.data : Array.isArray(upRes) ? upRes : []),
+   263→        ...(Array.isArray(acRes?.data) ? acRes.data : Array.isArray(acRes) ? acRes : []),
+   264→      ];
+   265→      setReservations(allRes);
+   266→      const map: Record<string, Reservation> = {};
+   267→      for (const r of allRes) {
+   268→        if (r.roomId && !map[r.roomId]) map[r.roomId] = r;
+   269→      }
+   270→      setRoomResMap(map);
+   271→
+   272→      setGuests(Array.isArray(gRaw) ? gRaw : []);
+   273→    } catch {
+   274→      toast.error(t("toastFailedLoad"));
+   275→    } finally {
+   276→      setLoading(false);
+   277→    }
+   278→  }, [t]);
+   279→
+   280→  useEffect(() => { fetchData(); }, [fetchData]);
+   281→
+   282→  // Room detail reservations
+   283→  const fetchRoomReservations = useCallback(async (roomId: string) => {
+   284→    try {
+   285→      setRoomResLoading(true);
+   286→      const data = await apiGetReservations(`roomId=${roomId}`);
+   287→      setRoomReservations(Array.isArray(data) ? data : []);
+   288→    } catch { setRoomReservations([]); }
+   289→    finally { setRoomResLoading(false); }
+   290→  }, []);
+   291→
+   292→  // Open room detail
+   293→  const openRoomDetail = useCallback((room: Room) => {
+   294→    setSelectedRoom(room);
+   295→    fetchRoomReservations(room.id);
+   296→  }, [fetchRoomReservations]);
+   297→
+   298→  // ── Computed ──
+   299→  const floors = useMemo(() => {
+   300→    const set = new Set<number>();
+   301→    rooms.forEach((r) => { const f = getFloorFromNumber(r.number); if (f !== null) set.add(f); });
+   302→    return Array.from(set).sort((a, b) => a - b);
+   303→  }, [rooms]);
+   304→
+   305→  const filteredRooms = useMemo(() => {
+   306→    return rooms.filter((room) => {
+   307→      if (statusFilter && room.status !== statusFilter) return false;
+   308→      if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
+   309→      return true;
+   310→    });
+   311→  }, [rooms, statusFilter, floorFilter]);
+   312→
+   313→  const filteredGuests = useMemo(() => {
+   314→    if (!guestSearch || guestSearch.length < 1) return guests.slice(0, 20);
+   315→    const q = guestSearch.toLowerCase();
+   316→    return guests.filter((g) =>
+   317→      g.name.toLowerCase().includes(q) || g.phone.includes(q) || g.idNumber.toLowerCase().includes(q)
+   318→    ).slice(0, 20);
+   319→  }, [guestSearch, guests]);
+   320→
+   321→  const guestResMap = useMemo(() => {
+   322→    const map = new Map<string, Reservation>();
+   323→    for (const r of reservations) {
+   324→      if (r.guest?.id && !map.has(r.guest.id)) map.set(r.guest.id, r);
+   325→    }
+   326→    return map;
+   327→  }, [reservations]);
+   328→
+   329→  const resGuestResults = useMemo(() => {
+   330→    if (!resGuestSearch || resGuestSearch.length < 2) return guests.slice(0, 10);
+   331→    const q = resGuestSearch.toLowerCase();
+   332→    return guests.filter((g) =>
+   333→      g.name.toLowerCase().includes(q) || g.phone.includes(q) || g.idNumber.toLowerCase().includes(q)
+   334→    ).slice(0, 10);
+   335→  }, [resGuestSearch, guests]);
+   336→
+   337→  const availableRooms = useMemo(() => rooms.filter((r) => r.status === "AVAILABLE"), [rooms]);
+   338→
+   339→  const selectedRoomIsDouble = useMemo(() => {
+   340→    const rm = rooms.find((r) => r.id === resForm.roomId);
+   341→    return rm ? DOUBLE_ROOM_TYPES.includes(rm.type) : false;
+   342→  }, [resForm.roomId, rooms]);
+   343→
+   344→  const resNights = useMemo(() => {
+   345→    if (!resForm.checkIn || !resForm.checkOut) return 0;
+   346→    return Math.max(1, Math.ceil((new Date(resForm.checkOut).getTime() - new Date(resForm.checkIn).getTime()) / 86400000));
+   347→  }, [resForm.checkIn, resForm.checkOut]);
+   348→
+   349→  const resRate = useMemo(() => {
+   350→    const rm = rooms.find((r) => r.id === resForm.roomId);
+   351→    return rm ? rm.pricePerNight : 0;
+   352→  }, [resForm.roomId, rooms]);
+   353→
+   354→  const stats = useMemo(() => ({
+   355→    total: rooms.length,
+   356→    available: rooms.filter((r) => r.status === "AVAILABLE").length,
+   357→    occupied: rooms.filter((r) => r.status === "OCCUPIED").length,
+   358→    reserved: rooms.filter((r) => r.status === "RESERVED").length,
+   359→    upcoming: reservations.filter((r) => r.status === "UPCOMING").length,
+   360→    checkedIn: reservations.filter((r) => r.status === "ACTIVE").length,
+   361→  }), [rooms, reservations]);
+   362→
+   363→  // ── Handlers ──
+   364→  const handleCreateRes = async () => {
+   365→    if (!resForm.guestId || !resForm.roomId || !resForm.checkIn || !resForm.checkOut) {
+   366→      toast.error(t("toastFillRequired")); return;
+   367→    }
+   368→    if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
+   369→      if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
+   370→        toast.error(t("toastSecondGuestRequired")); return;
+   371→      }
+   372→      if (!isValidPhone(resForm.secondGuestPhone)) {
+   373→        toast.error(t("toastInvalidPhone")); return;
+   374→      }
+   375→    }
+   376→    try {
+   377→      setCreatingRes(true);
+   378→      await apiCreateReservation({
+   379→        guestId: resForm.guestId, roomId: resForm.roomId,
+   380→        checkIn: resForm.checkIn, checkOut: resForm.checkOut, notes: resForm.notes,
+   381→        secondGuestName: resForm.secondGuestName, secondGuestPhone: resForm.secondGuestPhone,
+   382→        secondGuestIdNumber: resForm.secondGuestIdNumber,
+   383→        exceptionallyReserved: resForm.exceptionallyReserved, exceptionReason: resForm.exceptionReason,
+   384→      });
+   385→      toast.success(t("toastResCreated"));
+   386→      setShowNewRes(false);
+   387→      setResForm(RES_FORM_DEFAULTS);
+   388→      setResGuestSearch("");
+   389→      triggerRefresh();
+   390→      await fetchData();
+   391→    } catch (err: unknown) {
+   392→      const msg = err instanceof Error ? err.message : t("toastFailedCreateRes");
+   393→      toast.error(msg);
+   394→    } finally { setCreatingRes(false); }
+   395→  };
+   396→
+   397→  const handleAction = async () => {
+   398→    if (!confirmAction) return;
+   399→    const { type, res } = confirmAction;
+   400→    try {
+   401→      setActionLoading(true);
+   402→      if (type === "checkin") {
+   403→        await apiCheckin(res.id); toast.success(t("toastCheckedIn"));
+   404→      } else {
+   405→        await apiCheckout(res.id); toast.success(t("toastCheckedOut"));
+   406→      }
+   407→      setConfirmAction(null);
+   408→      triggerRefresh();
+   409→      await fetchData();
+   410→      if (selectedRoom) fetchRoomReservations(selectedRoom.id);
+   411→    } catch (err: unknown) {
+   412→      toast.error(err instanceof Error ? err.message : t("toastFailedAction"));
+   413→    } finally { setActionLoading(false); }
+   414→  };
+   415→
+   416→  const handleExtendStay = async () => {
+   417→    if (!extendRes || !extendDate || extendDate <= extendRes.checkOut) {
+   418→      toast.error(t("toastInvalidDate")); return;
+   419→    }
+   420→    try {
+   421→      setExtending(true);
+   422→      await apiUpdateReservation(extendRes.id, { checkOut: extendDate });
+   423→      toast.success(t("toastExtended"));
+   424→      setShowExtend(false); setExtendRes(null); setExtendDate("");
+   425→      triggerRefresh(); await fetchData();
+   426→      if (selectedRoom) fetchRoomReservations(selectedRoom.id);
+   427→    } catch (err: unknown) {
+   428→      toast.error(err instanceof Error ? err.message : t("toastFailedExtend"));
+   429→    } finally { setExtending(false); }
+   430→  };
+   431→
+   432→  const handleEarlyCheckout = async () => {
+   433→    if (!earlyCheckoutRes) return;
+   434→    try {
+   435→      setEarlyCheckingOut(true);
+   436→      await apiCheckout(earlyCheckoutRes.id);
+   437→      toast.success(t("toastCheckedOut"));
+   438→      setShowEarlyCheckout(false); setEarlyCheckoutRes(null); setSelectedRoom(null);
+   439→      triggerRefresh(); await fetchData();
+   440→    } catch (err: unknown) {
+   441→      toast.error(err instanceof Error ? err.message : t("toastFailedAction"));
+   442→    } finally { setEarlyCheckingOut(false); }
+   443→  };
+   444→
+   445→  const handleReserveFromRoom = (room: Room) => {
+   446→    setResForm((f) => ({ ...f, roomId: room.id }));
+   447→    setShowNewRes(true);
+   448→  };
+   449→
+   450→  const toggleLang = () => {
+   451→    const next = i18n.language === "am" ? "en" : "am";
+   452→    i18n.changeLanguage(next);
+   453→  };
+   454→
+   455→  // ── Render: Loading ──
+   456→  if (loading) {
+   457→    return (
+   458→      <div className="pb-20 px-4 pt-4 space-y-3">
+   459→        <div className="flex items-center justify-between">
+   460→          <Skeleton className="h-6 w-32" />
+   461→          <Skeleton className="h-6 w-16" />
+   462→        </div>
+   463→        <div className="grid grid-cols-4 gap-2">
+   464→          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+   465→        </div>
+   466→        <div className="space-y-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+   467→      </div>
+   468→    );
+   469→  }
+   470→
+   471→  // ── Render ──
+   472→  return (
+   473→    <div className="min-h-dvh flex flex-col bg-gray-50">
+   474→      {/* Header */}
+   475→      <header className="sticky top-0 z-30 bg-slate-900 text-white px-4 pt-[env(safe-area-inset-top)] pb-3">
+   476→        <div className="flex items-center justify-between">
+   477→          <div>
+   478→            <h1 className="text-lg font-bold leading-tight">GHMS</h1>
+   479→            <p className="text-[11px] text-slate-400">{currentUser?.name} &middot; {currentUser?.providerName || ""}</p>
+   480→          </div>
+   481→          <div className="flex items-center gap-2">
+   482→            <button
+   483→              onClick={toggleLang}
+   484→              className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors"
+   485→            >
+   486→              {i18n.language === "am" ? "EN" : "አማ"}
+   487→            </button>
+   488→          </div>
+   489→        </div>
+   490→
+   491→        {/* Stats row */}
+   492→        <div className="mt-3 grid grid-cols-4 gap-2">
+   493→          {[
+   494→            { label: t("statAvailable"), value: stats.available, color: "bg-emerald-500" },
+   495→            { label: t("statReserved"), value: stats.reserved, color: "bg-sky-500" },
+   496→            { label: t("statOccupied"), value: stats.occupied, color: "bg-rose-500" },
+   497→            { label: t("statTotal"), value: stats.total, color: "bg-slate-500" },
+   498→          ].map((s) => (
+   499→            <div key={s.label} className="rounded-lg bg-slate-800 p-2 text-center">
+   500→              <div className={`mx-auto mb-1 h-1.5 w-1.5 rounded-full ${s.color}`} />
+   501→              <p className="text-lg font-bold leading-tight">{s.value}</p>
+   502→              <p className="text-[9px] text-slate-400">{s.label}</p>
+   503→            </div>
+   504→          ))}
+   505→        </div>
+   506→      </header>
+   507→
+   508→      {/* Content */}
+   509→      <main className="flex-1 pb-24 overflow-y-auto">
+   510→        {activeTab === "rooms" && (
+   511→          <RoomsTab
+   512→            rooms={filteredRooms} roomResMap={roomResMap} floors={floors}
+   513→            floorFilter={floorFilter} setFloorFilter={setFloorFilter}
+   514→            statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+   515→            onRoomTap={openRoomDetail} onReserve={handleReserveFromRoom}
+   516→            t={t} formatDate={formatDate} formatCurrency={formatCurrency} parseAmenities={parseAmenities}
+   517→          />
+   518→        )}
+   519→        {activeTab === "reservations" && (
+   520→          <ReservationsTab
+   521→            reservations={reservations} onCheckin={(r) => setConfirmAction({ type: "checkin", res: r })}
+   522→            onCheckout={(r) => setConfirmAction({ type: "checkout", res: r })}
+   523→            onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
+   524→            onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
+   525→            t={t} formatDate={formatDate} formatCurrency={formatCurrency}
+   526→          />
+   527→        )}
+   528→        {activeTab === "guests" && (
+   529→          <GuestsTab
+   530→            guests={filteredGuests} search={guestSearch} setSearch={setGuestSearch}
+   531→            guestResMap={guestResMap} onReserve={handleReserveFromRoom}
+   532→            t={t} formatDate={formatDate} formatCurrency={formatCurrency}
+   533→          />
+   534→        )}
+   535→        {activeTab === "main" && (
+   536→          <MainSystemTab t={t} />
+   537→        )}
+   538→      </main>
+   539→
+   540→      {/* Room Detail Sheet */}
+   541→      <Dialog open={!!selectedRoom} onOpenChange={(open) => { if (!open) setSelectedRoom(null); }}>
+   542→        <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[85vh] overflow-y-auto">
+   543→          {selectedRoom && (
+   544→            <RoomDetailSheet
+   545→              room={selectedRoom} reservation={roomResMap[selectedRoom.id] || null}
+   546→              reservations={roomReservations} resLoading={roomResLoading}
+   547→              onReserve={() => handleReserveFromRoom(selectedRoom)}
+   548→              onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
+   549→              onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
+   550→              onClose={() => setSelectedRoom(null)}
+   551→              t={t} formatDate={formatDate} formatCurrency={formatCurrency} parseAmenities={parseAmenities}
+   552→            />
+   553→          )}
+   554→        </DialogContent>
+   555→      </Dialog>
+   556→
+   557→      {/* New Reservation Dialog */}
+   558→      <Dialog open={showNewRes} onOpenChange={(open) => {
+   559→        if (!open) { setShowNewRes(false); setResGuestSearch(""); }
+   560→      }}>
+   561→        <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+   562→          <DialogHeader>
+   563→            <DialogTitle className="flex items-center gap-2"><CalendarPlus className="h-5 w-5" /> {t("newResTitle")}</DialogTitle>
+   564→            <DialogDescription>{t("newResDesc")}</DialogDescription>
+   565→          </DialogHeader>
+   566→          <NewReservationForm
+   567→            form={resForm} onUpdate={(patch) => setResForm((f) => ({ ...f, ...patch }))}
+   568→            guests={guests} guestSearch={resGuestSearch} setGuestSearch={setResGuestSearch}
+   569→            guestResults={resGuestResults} availableRooms={availableRooms}
+   570→            isDouble={selectedRoomIsDouble}
+   571→            nights={resNights} rate={resRate}
+   572→            creating={creatingRes} onSubmit={handleCreateRes} onCancel={() => { setShowNewRes(false); setResGuestSearch(""); }}
+   573→            t={t} formatCurrency={formatCurrency}
+   574→          />
+   575→        </DialogContent>
+   576→      </Dialog>
+   577→
+   578→      {/* Check-in / Check-out Confirm */}
+   579→      {confirmAction && (
+   580→        <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+   581→          <AlertDialogContent>
+   582→            <AlertDialogHeader>
+   583→              <AlertDialogTitle className="flex items-center gap-2">
+   584→                {confirmAction.type === "checkin" ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
+   585→                {confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut")}
+   586→              </AlertDialogTitle>
+   587→              <AlertDialogDescription>
+   588→                {confirmAction.type === "checkin"
+   589→                  ? t("confirmCheckInDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" })
+   590→                  : t("confirmCheckOutDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" })
+   591→                }
+   592→              </AlertDialogDescription>
+   593→            </AlertDialogHeader>
+   594→            <AlertDialogFooter>
+   595→              <AlertDialogCancel disabled={actionLoading}>{t("cancel")}</AlertDialogCancel>
+   596→              <AlertDialogAction
+   597→                className={confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700"}
+   598→                onClick={handleAction} disabled={actionLoading}
+   599→              >{actionLoading ? t("processing") : (confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut"))}</AlertDialogAction>
+   600→            </AlertDialogFooter>
+   601→          </AlertDialogContent>
+   602→        </AlertDialog>
+   603→      )}
+   604→
+   605→      {/* Extend Stay Dialog */}
+   606→      <Dialog open={showExtend} onOpenChange={(open) => { if (!open) { setShowExtend(false); setExtendRes(null); } }}>
+   607→        <DialogContent className="max-w-sm mx-4 w-[calc(100%-2rem)]">
+   608→          <DialogHeader>
+   609→            <DialogTitle>{t("extendTitle")}</DialogTitle>
+   610→            <DialogDescription>{t("extendDesc", { current: formatDate(extendRes?.checkOut || "") })}</DialogDescription>
+   611→          </DialogHeader>
+   612→          <div>
+   613→            <Label>{t("newCheckoutDate")}</Label>
+   614→            <Input type="date" value={extendDate} min={extendRes?.checkOut || todayStr()} onChange={(e) => setExtendDate(e.target.value)} className="mt-1" />
+   615→            {extendDate && extendRes && (
+   616→              <p className="mt-2 text-xs text-muted-foreground">
+   617→                {t("extendNights", { nights: Math.max(1, Math.ceil((new Date(extendDate).getTime() - new Date(extendRes.checkOut).getTime()) / 86400000)), rate: formatCurrency(extendRes.room?.pricePerNight || 0) })}
+   618→              </p>
+   619→            )}
+   620→          </div>
+   621→          <DialogFooter>
+   622→            <Button variant="outline" size="sm" onClick={() => { setShowExtend(false); setExtendRes(null); }}>{t("cancel")}</Button>
+   623→            <Button size="sm" onClick={handleExtendStay} disabled={extending || !extendDate}>{extending ? t("processing") : t("btnExtend")}</Button>
+   624→          </DialogFooter>
+   625→        </DialogContent>
+   626→      </Dialog>
+   627→
+   628→      {/* Early Checkout Dialog */}
+   629→      <AlertDialog open={showEarlyCheckout} onOpenChange={(open) => { if (!open) { setShowEarlyCheckout(false); setEarlyCheckoutRes(null); } }}>
+   630→        <AlertDialogContent>
+   631→          <AlertDialogHeader>
+   632→            <AlertDialogTitle>{t("earlyCheckoutTitle")}</AlertDialogTitle>
+   633→            <AlertDialogDescription>{t("earlyCheckoutDesc", { guest: earlyCheckoutRes?.guest?.name || "" })}</AlertDialogDescription>
+   634→          </AlertDialogHeader>
+   635→          <AlertDialogFooter>
+   636→            <AlertDialogCancel disabled={earlyCheckingOut}>{t("cancel")}</AlertDialogCancel>
+   637→            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleEarlyCheckout} disabled={earlyCheckingOut}>
+   638→              {earlyCheckingOut ? t("processing") : t("btnEarlyCheckout")}
+   639→            </AlertDialogAction>
+   640→          </AlertDialogFooter>
+   641→        </AlertDialogContent>
+   642→      </AlertDialog>
+   643→
+   644→      {/* Bottom Tab Bar */}
+   645→      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
+   646→        <div className="grid grid-cols-4 h-16">
+   647→          {([
+   648→            { key: "rooms" as Tab, icon: <BedSingle className="h-5 w-5" />, label: t("tabRooms") },
+   649→            { key: "reservations" as Tab, icon: <CalendarPlus className="h-5 w-5" />, label: t("tabReservations") },
+   650→            { key: "guests" as Tab, icon: <Users className="h-5 w-5" />, label: t("tabGuests") },
+   651→            { key: "main" as Tab, icon: <ExternalLink className="h-5 w-5" />, label: t("tabMainSystem") },
+   652→          ]).map((tab) => (
+   653→            <button
+   654→              key={tab.key}
+   655→              onClick={() => {
+   656→                if (tab.key === "main") {
+   657→                  if (typeof window !== "undefined") window.location.href = "/";
+   658→                  return;
+   659→                }
+   660→                setActiveTab(tab.key);
+   661→              }}
+   662→              className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
+   663→                activeTab === tab.key ? "text-slate-900" : "text-gray-400 active:text-gray-600"
+   664→              }`}
+   665→            >
+   666→              <div className={activeTab === tab.key ? "p-1 rounded-lg bg-slate-100" : ""}>{tab.icon}</div>
+   667→              <span className="text-[10px] font-medium">{tab.label}</span>
+   668→            </button>
+   669→          ))}
+   670→        </div>
+   671→      </nav>
+   672→    </div>
+   673→  );
+   674→}
+   675→
+   676→// ── Sub-components ──
+   677→
+   678→function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, statusFilter, setStatusFilter, onRoomTap, onReserve, t, formatDate, formatCurrency, parseAmenities }: {
+   679→  rooms: Room[]; roomResMap: Record<string, Reservation>; floors: number[];
+   680→  floorFilter: number | null; setFloorFilter: (f: number | null) => void;
+   681→  statusFilter: string | null; setStatusFilter: (s: string | null) => void;
+   682→  onRoomTap: (r: Room) => void; onReserve: (r: Room) => void;
+   683→  t: (k: string, opts?: Record<string, unknown>) => string;
+   684→  formatDate: (d: string) => string; formatCurrency: (v: number) => string;
+   685→  parseAmenities: (a: string | null | undefined) => string[];
+   686→}) {
+   687→  return (
+   688→    <div className="px-4 pt-4 space-y-3">
+   689→      {/* Floor & Status Filters */}
+   690→      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+   691→        <button
+   692→          onClick={() => { setFloorFilter(null); setStatusFilter(null); }}
+   693→          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+   694→            !floorFilter && !statusFilter ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
+   695→          }`}
+   696→        >{t("filterAll")}</button>
+   697→        {floors.slice(0, 4).map((f) => (
+   698→          <button
+   699→            key={f} onClick={() => setFloorFilter(floorFilter === f ? null : f)}
+   700→            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+   701→              floorFilter === f ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
+   702→            }`}
+   703→          >{t("filterFloor", { floor: f })}</button>
+   704→        ))}
+   705→        <button
+   706→          onClick={() => setStatusFilter(statusFilter === "AVAILABLE" ? null : "AVAILABLE")}
+   707→          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+   708→            statusFilter === "AVAILABLE" ? "bg-emerald-600 text-white" : "bg-white text-emerald-700 border border-emerald-200"
+   709→          }`}
+   710→        >{t("statusAvailable")}</button>
+   711→        <button
+   712→          onClick={() => setStatusFilter(statusFilter === "RESERVED" ? null : "RESERVED")}
+   713→          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+   714→            statusFilter === "RESERVED" ? "bg-sky-600 text-white" : "bg-white text-sky-700 border border-sky-200"
+   715→          }`}
+   716→        >{t("statusReserved")}</button>
+   717→      </div>
+   718→
+   719→      {/* Room Grid */}
+   720→      {rooms.length === 0 ? (
+   721→        <div className="flex flex-col items-center py-16 text-center">
+   722→          <BedSingle className="h-10 w-10 text-gray-300 mb-2" />
+   723→          <p className="text-sm text-gray-500">{t("noRooms")}</p>
+   724→        </div>
+   725→      ) : (
+   726→        <div className="grid grid-cols-2 gap-3">
+   727→          {rooms.map((room) => {
+   728→            const amenities = parseAmenities(room.amenities);
+   729→            const res = roomResMap[room.id];
+   730→            return (
+   731→              <div
+   732→                key={room.id}
+   733→                className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+   734→              >
+   735→                {/* Status dot bar */}
+   736→                <div className={`h-1.5 ${STATUS_DOT[room.status]}`} />
+   737→
+   738→                <div className="p-3 space-y-2" onClick={() => onRoomTap(room)}>
+   739→                  {/* Room header */}
+   740→                  <div className="flex items-center justify-between">
+   741→                    <div className="flex items-center gap-2">
+   742→                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
+   743→                        {ROOM_TYPE_ICONS[room.type] || <BedSingle className="h-4 w-4" />}
+   744→                      </div>
+   745→                      <div>
+   746→                        <p className="text-sm font-bold leading-tight">{room.number}</p>
+   747→                        <p className="text-[10px] text-gray-400">{room.type}</p>
+   748→                      </div>
+   749→                    </div>
+   750→                  </div>
+   751→
+   752→                  {/* Status badge with tooltip for reserved/occupied */}
+   753→                  {(room.status === "RESERVED" || room.status === "OCCUPIED") && res ? (
+   754→                    <Tooltip>
+   755→                      <TooltipTrigger asChild>
+   756→                        <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[room.status]} cursor-help`}>
+   757→                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
+   758→                          {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+   759→                        </div>
+   760→                      </TooltipTrigger>
+   761→                      <TooltipContent side="bottom" className="bg-gray-900 text-white border-0">
+   762→                        <div className="text-[11px] space-y-0.5">
+   763→                          {res.guest && <p className="font-semibold">{res.guest.name}</p>}
+   764→                          <p>{t("tooltipFrom")} {formatDate(res.checkIn)}</p>
+   765→                          <p>{t("tooltipTo")} {formatDate(res.checkOut)}</p>
+   766→                        </div>
+   767→                      </TooltipContent>
+   768→                    </Tooltip>
+   769→                  ) : (
+   770→                    <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[room.status]}`}>
+   771→                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
+   772→                      {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+   773→                    </div>
+   774→                  )}
+   775→
+   776→                  {/* Price */}
+   777→                  <p className="text-xs text-gray-500">{formatCurrency(room.pricePerNight)}<span className="text-gray-400"> /{t("night")}</span></p>
+   778→
+   779→                  {/* Guest name for occupied/reserved */}
+   780→                  {res?.guest && (room.status === "OCCUPIED" || room.status === "RESERVED") && (
+   781→                    <p className="text-[11px] text-gray-500 truncate">{res.guest.name}</p>
+   782→                  )}
+   783→                </div>
+   784→
+   785→                {/* Action button */}
+   786→                <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
+   787→                  {room.status === "AVAILABLE" ? (
+   788→                    <button
+   789→                      onClick={() => onReserve(room)}
+   790→                      className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
+   791→                    >{t("btnReserve")}</button>
+   792→                  ) : room.status === "RESERVED" ? (
+   793→                    <button
+   794→                      onClick={() => onRoomTap(room)}
+   795→                      className="w-full rounded-xl bg-sky-600 text-white py-2.5 text-xs font-semibold active:bg-sky-700 transition-colors"
+   796→                    >{t("btnManage")}</button>
+   797→                  ) : (
+   798→                    <button
+   799→                      onClick={() => {
+   800→                        if (res) {
+   801→                          toast.warning(t("toastRoomOccupied", { number: room.number, from: formatDate(res.checkIn), to: formatDate(res.checkOut), guest: res.guest?.name || "" }));
+   802→                        }
+   803→                      }}
+   804→                      className="w-full rounded-xl bg-gray-100 text-gray-500 py-2.5 text-xs font-semibold active:bg-gray-200 transition-colors"
+   805→                    >{t("btnViewDetail")}</button>
+   806→                  )}
+   807→                </div>
+   808→              </div>
+   809→            );
+   810→          })}
+   811→        </div>
+   812→      )}
+   813→    </div>
+   814→  );
+   815→}
+   816→
+   817→function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, t, formatDate, formatCurrency }: {
+   818→  reservations: Reservation[];
+   819→  onCheckin: (r: Reservation) => void; onCheckout: (r: Reservation) => void;
+   820→  onExtend: (r: Reservation) => void; onEarlyCheckout: (r: Reservation) => void;
+   821→  t: (k: string, opts?: Record<string, unknown>) => string;
+   822→  formatDate: (d: string) => string; formatCurrency: (v: number) => string;
+   823→}) {
+   824→  const [filter, setFilter] = useState<string>("ALL");
+   825→  const filtered = filter === "ALL" ? reservations : reservations.filter((r) => r.status === filter);
+   826→
+   827→  return (
+   828→    <div className="px-4 pt-4 space-y-3">
+   829→      {/* Filter pills */}
+   830→      <div className="flex gap-2 overflow-x-auto pb-1">
+   831→        {["ALL", "UPCOMING", "ACTIVE"].map((s) => (
+   832→          <button
+   833→            key={s} onClick={() => setFilter(s)}
+   834→            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+   835→              filter === s ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
+   836→            }`}
+   837→          >{s === "ALL" ? t("filterAll") : s === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}</button>
+   838→        ))}
+   839→      </div>
+   840→
+   841→      {filtered.length === 0 ? (
+   842→        <div className="flex flex-col items-center py-16 text-center">
+   843→          <CalendarPlus className="h-10 w-10 text-gray-300 mb-2" />
+   844→          <p className="text-sm text-gray-500">{t("noReservations")}</p>
+   845→        </div>
+   846→      ) : (
+   847→        <div className="space-y-2">
+   848→          {filtered.map((res) => (
+   849→            <div key={res.id} className="rounded-2xl bg-white border border-gray-100 p-3 shadow-sm">
+   850→              <div className="flex items-start justify-between mb-2">
+   851→                <div className="flex items-center gap-2.5 min-w-0">
+   852→                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+   853→                    res.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+   854→                  }`}>
+   855→                    {(res.guest?.name || "?").charAt(0).toUpperCase()}
+   856→                  </div>
+   857→                  <div className="min-w-0">
+   858→                    <p className="text-sm font-semibold truncate">{res.guest?.name || "—"}</p>
+   859→                    <p className="text-[11px] text-gray-400">{res.guest?.phone || ""}</p>
+   860→                  </div>
+   861→                </div>
+   862→                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[res.status]?.color || ""}`}>
+   863→                  {res.status === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}
+   864→                </span>
+   865→              </div>
+   866→
+   867→              <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-2 pl-[50px]">
+   868→                <BedSingle className="h-3 w-3" />
+   869→                <span>{res.room?.number || "—"}</span>
+   870→                <span>&middot;</span>
+   871→                <span>{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</span>
+   872→              </div>
+   873→
+   874→              <div className="flex items-center gap-2 pl-[50px]">
+   875→                {res.status === "UPCOMING" && (
+   876→                  <button
+   877→                    onClick={() => onCheckin(res)}
+   878→                    className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors"
+   879→                  >{t("btnCheckIn")}</button>
+   880→                )}
+   881→                {res.status === "ACTIVE" && (
+   882→                  <>
+   883→                    <button
+   884→                      onClick={() => onEarlyCheckout(res)}
+   885→                      className="flex-1 rounded-xl bg-rose-100 text-rose-700 py-2 text-xs font-semibold active:bg-rose-200 transition-colors"
+   886→                    >{t("btnEarlyCheckout")}</button>
+   887→                    <button
+   888→                      onClick={() => onExtend(res)}
+   889→                      className="flex-1 rounded-xl bg-sky-100 text-sky-700 py-2 text-xs font-semibold active:bg-sky-200 transition-colors"
+   890→                    >{t("btnExtend")}</button>
+   891→                  </>
+   892→                )}
+   893→              </div>
+   894→            </div>
+   895→          ))}
+   896→        </div>
+   897→      )}
+   898→    </div>
+   899→  );
+   900→}
+   901→
+   902→function GuestsTab({ guests, search, setSearch, guestResMap, onReserve, t, formatDate, formatCurrency }: {
+   903→  guests: Guest[]; search: string; setSearch: (s: string) => void;
+   904→  guestResMap: Map<string, Reservation>; onReserve: (r: Room) => void;
+   905→  t: (k: string, opts?: Record<string, unknown>) => string;
+   906→  formatDate: (d: string) => string; formatCurrency: (v: number) => string;
+   907→}) {
+   908→  return (
+   909→    <div className="px-4 pt-4 space-y-3">
+   910→      {/* Search */}
+   911→      <div className="relative">
+   912→        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+   913→        <Input
+   914→          value={search} onChange={(e) => setSearch(e.target.value)}
+   915→          placeholder={t("searchGuests")}
+   916→          className="pl-9 h-11 rounded-xl bg-white border-gray-200 text-sm"
+   917→        />
+   918→      </div>
+   919→
+   920→      {guests.length === 0 ? (
+   921→        <div className="flex flex-col items-center py-16 text-center">
+   922→          <Users className="h-10 w-10 text-gray-300 mb-2" />
+   923→          <p className="text-sm text-gray-500">{t("noGuests")}</p>
+   924→        </div>
+   925→      ) : (
+   926→        <div className="space-y-2">
+   927→          {guests.map((g) => {
+   928→            const res = guestResMap.get(g.id);
+   929→            return (
+   930→              <div key={g.id} className="rounded-2xl bg-white border border-gray-100 p-3 shadow-sm">
+   931→                <div className="flex items-center gap-3">
+   932→                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+   933→                    res?.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
+   934→                    : res?.status === "UPCOMING" ? "bg-blue-100 text-blue-700"
+   935→                    : "bg-gray-100 text-gray-500"
+   936→                  }`}>
+   937→                    {g.name.charAt(0).toUpperCase()}
+   938→                  </div>
+   939→                  <div className="flex-1 min-w-0">
+   940→                    <p className="text-sm font-semibold truncate">{g.name}</p>
+   941→                    <p className="text-[11px] text-gray-400">{g.phone}{g.idNumber ? ` · ${g.idNumber}` : ""}</p>
+   942→                  </div>
+   943→                  {res && (
+   944→                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[res.status]?.color || ""}`}>
+   945→                      {res.status === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}
+   946→                    </span>
+   947→                  )}
+   948→                </div>
+   949→                {res && res.room && (
+   950→                  <div className="mt-2 pl-14 text-[11px] text-gray-500 flex items-center gap-1.5">
+   951→                    <BedSingle className="h-3 w-3" />
+   952→                    <span>{res.room.number}</span>
+   953→                    <span>&middot;</span>
+   954→                    <span>{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</span>
+   955→                  </div>
+   956→                )}
+   957→              </div>
+   958→            );
+   959→          })}
+   960→        </div>
+   961→      )}
+   962→    </div>
+   963→  );
+   964→}
+   965→
+   966→function MainSystemTab({ t }: { t: (k: string) => string }) {
+   967→  return (
+   968→    <div className="px-4 pt-12 flex flex-col items-center justify-center min-h-[60vh] text-center">
+   969→      <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+   970→        <ExternalLink className="h-8 w-8 text-slate-400" />
+   971→      </div>
+   972→      <h2 className="text-lg font-bold mb-2">{t("mainSystemTitle")}</h2>
+   973→      <p className="text-sm text-gray-500 mb-6 max-w-xs">{t("mainSystemDesc")}</p>
+   974→      <button
+   975→        onClick={() => { if (typeof window !== "undefined") window.location.href = "/"; }}
+   976→        className="rounded-xl bg-slate-900 text-white px-6 py-3 text-sm font-semibold active:bg-slate-800 transition-colors"
+   977→      >{t("btnOpenMain")}</button>
+   978→    </div>
+   979→  );
+   980→}
+   981→
+   982→function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onExtend, onEarlyCheckout, onClose, t, formatDate, formatCurrency, parseAmenities }: {
+   983→  room: Room; reservation: Reservation | null; reservations: Reservation[];
+   984→  resLoading: boolean; onReserve: () => void; onExtend: (r: Reservation) => void;
+   985→  onEarlyCheckout: (r: Reservation) => void; onClose: () => void;
+   986→  t: (k: string, opts?: Record<string, unknown>) => string;
+   987→  formatDate: (d: string) => string; formatCurrency: (v: number) => string;
+   988→  parseAmenities: (a: string | null | undefined) => string[];
+   989→}) {
+   990→  const amenities = parseAmenities(room.amenities);
+   991→  const activeRes = reservations.find((r) => r.status === "ACTIVE" || r.status === "UPCOMING");
+   992→
+   993→  return (
+   994→    <div className="space-y-4">
+   995→      <DialogHeader>
+   996→        <DialogTitle className="flex items-center gap-2">
+   997→          {ROOM_TYPE_ICONS[room.type] || <BedSingle className="h-5 w-5" />}
+   998→          {room.name ? `${room.number} — ${room.name}` : room.number}
+   999→        </DialogTitle>
+  1000→        <DialogDescription>{t("roomType" + room.type.charAt(0) + room.type.slice(1).toLowerCase())} &middot; {t("floorLabel", { floor: getFloorFromNumber(room.number) ?? room.floor })}</DialogDescription>
+  1001→      </DialogHeader>
+  1002→
+  1003→      <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[room.status]}`}>
+  1004→        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[room.status]}`} />
+  1005→        {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+  1006→      </div>
+  1007→
+  1008→      {/* Current reservation info */}
+  1009→      {activeRes && (
+  1010→        <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 space-y-2">
+  1011→          <p className="text-xs font-semibold text-blue-800">{t("currentReservation")}</p>
+  1012→          <div className="flex items-center gap-2">
+  1013→            <Users className="h-4 w-4 text-blue-600" />
+  1014→            <span className="text-sm font-medium">{activeRes.guest?.name || "—"}</span>
+  1015→          </div>
+  1016→          <div className="flex items-center gap-2 text-xs text-blue-700">
+  1017→            <Clock className="h-3.5 w-3.5" />
+  1018→            <span>{formatDate(activeRes.checkIn)} → {formatDate(activeRes.checkOut)}</span>
+  1019→          </div>
+  1020→          <div className="flex items-center gap-2 text-xs text-blue-700">
+  1021→            <DollarSign className="h-3.5 w-3.5" />
+  1022→            <span>{formatCurrency(activeRes.totalCost)}</span>
+  1023→          </div>
+  1024→          <div className="flex gap-2 pt-1">
+  1025→            {activeRes.status === "UPCOMING" && (
+  1026→              <button
+  1027→                onClick={() => { onClose(); /* trigger checkin from parent */ }}
+  1028→                className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-xs font-semibold"
+  1029→              >{t("btnCheckIn")}</button>
+  1030→            )}
+  1031→            {activeRes.status === "ACTIVE" && (
+  1032→              <>
+  1033→                <button onClick={() => onEarlyCheckout(activeRes)} className="flex-1 rounded-lg bg-rose-100 text-rose-700 py-2 text-xs font-semibold">{t("btnEarlyCheckout")}</button>
+  1034→                <button onClick={() => onExtend(activeRes)} className="flex-1 rounded-lg bg-sky-100 text-sky-700 py-2 text-xs font-semibold">{t("btnExtend")}</button>
+  1035→              </>
+  1036→            )}
+  1037→          </div>
+  1038→        </div>
+  1039→      )}
+  1040→
+  1041→      {/* Details grid */}
+  1042→      <div className="grid grid-cols-2 gap-3">
+  1043→        <div className="rounded-lg bg-gray-50 p-2.5">
+  1044→          <p className="text-[10px] text-gray-400 mb-0.5">{t("pricePerNight")}</p>
+  1045→          <p className="text-sm font-bold">{formatCurrency(room.pricePerNight)}</p>
+  1046→        </div>
+  1047→        <div className="rounded-lg bg-gray-50 p-2.5">
+  1048→          <p className="text-[10px] text-gray-400 mb-0.5">{t("capacity")}</p>
+  1049→          <p className="text-sm font-bold">{t("guest", { count: room.capacity })}</p>
+  1050→        </div>
+  1051→      </div>
+  1052→
+  1053→      {/* Amenities */}
+  1054→      {amenities.length > 0 && (
+  1055→        <div>
+  1056→          <p className="text-xs font-medium text-gray-500 mb-2">{t("amenities")}</p>
+  1057→          <div className="flex flex-wrap gap-1.5">
+  1058→            {amenities.slice(0, 6).map((a) => (
+  1059→              <span key={a} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-600">
+  1060→                {AMENITY_ICONS[a] || <Layers className="h-3 w-3" />}{a}
+  1061→              </span>
+  1062→            ))}
+  1063→          </div>
+  1064→        </div>
+  1065→      )}
+  1066→
+  1067→      {/* Reservation history */}
+  1068→      {!resLoading && reservations.length > 1 && (
+  1069→        <div>
+  1070→          <p className="text-xs font-medium text-gray-500 mb-2">{t("reservationHistory")}</p>
+  1071→          <div className="space-y-1.5">
+  1072→            {reservations.slice(0, 5).map((r) => (
+  1073→              <div key={r.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs">
+  1074→                <div>
+  1075→                  <p className="font-medium">{r.guest?.name || "—"}</p>
+  1076→                  <p className="text-gray-400">{formatDate(r.checkIn)} → {formatDate(r.checkOut)}</p>
+  1077→                </div>
+  1078→                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[r.status]?.color || ""}`}>
+  1079→                  {r.status}
+  1080→                </span>
+  1081→              </div>
+  1082→            ))}
+  1083→          </div>
+  1084→        </div>
+  1085→      )}
+  1086→
+  1087→      {/* Reserve button for available rooms */}
+  1088→      {room.status === "AVAILABLE" && (
+  1089→        <Button onClick={onReserve} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-sm font-semibold rounded-xl">
+  1090→          <CalendarPlus className="mr-2 h-4 w-4" />{t("btnReserve")}
+  1091→        </Button>
+  1092→      )}
+  1093→    </div>
+  1094→  );
+  1095→}
+  1096→
+  1097→function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearch, guestResults, availableRooms, isDouble, nights, rate, creating, onSubmit, onCancel, t, formatCurrency }: {
+  1098→  form: typeof RES_FORM_DEFAULTS; onUpdate: (patch: Partial<typeof RES_FORM_DEFAULTS>) => void;
+  1099→  guests: Guest[]; guestSearch: string; setGuestSearch: (s: string) => void;
+  1100→  guestResults: Guest[]; availableRooms: Room[]; isDouble: boolean;
+  1101→  nights: number; rate: number; creating: boolean; onSubmit: () => void; onCancel: () => void;
+  1102→  t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
+  1103→}) {
+  1104→  return (
+  1105→    <div className="space-y-4">
+  1106→      {/* Guest Select */}
+  1107→      <div>
+  1108→        <Label className="text-xs font-semibold">{t("lblGuest")} *</Label>
+  1109→        {form.guestId ? (
+  1110→          <div className="mt-1.5 flex items-center justify-between rounded-xl border bg-gray-50 p-3">
+  1111→            <span className="text-sm font-medium">{guests.find((g) => g.id === form.guestId)?.name || ""}</span>
+  1112→            <button onClick={() => { onUpdate({ guestId: "" }); setGuestSearch(""); }} className="text-xs text-rose-500">{t("change")}</button>
+  1113→          </div>
+  1114→        ) : (
+  1115→          <>
+  1116→            <div className="relative mt-1.5">
+  1117→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+  1118→              <Input value={guestSearch} onChange={(e) => setGuestSearch(e.target.value)} placeholder={t("searchGuestPlaceholder")} className="pl-9 h-11 rounded-xl" />
+  1119→            </div>
+  1120→            {guestResults.length > 0 && !form.guestId && (
+  1121→              <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border bg-white">
+  1122→                {guestResults.map((g) => (
+  1123→                  <button key={g.id} className="w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 border-b last:border-b-0 flex justify-between items-center"
+  1124→                    onClick={() => { onUpdate({ guestId: g.id }); setGuestSearch(g.name); }}>
+  1125→                    <span className="font-medium">{g.name}</span>
+  1126→                    <span className="text-gray-400">{g.phone}</span>
+  1127→                  </button>
+  1128→                ))}
+  1129→              </div>
+  1130→            )}
+  1131→          </>
+  1132→        )}
+  1133→      </div>
+  1134→      {/* Room Select */}
+  1135→      <div>
+  1136→        <Label className="text-xs font-semibold">{t("lblRoom")} *</Label>
+  1137→        <Select value={form.roomId} onValueChange={(v) => onUpdate({ roomId: v })}>
+  1138→          <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue placeholder={t("selectRoomPlaceholder")} /></SelectTrigger>
+  1139→          <SelectContent>
+  1140→            {availableRooms.map((r) => (
+  1141→              <SelectItem key={r.id} value={r.id}>{r.number} — {r.type} — {formatCurrency(r.pricePerNight)}/{t("night")}</SelectItem>
+  1142→            ))}
+  1143→          </SelectContent>
+  1144→        </Select>
+  1145→      </div>
+  1146→      {/* Dates */}
+  1147→      <div className="grid grid-cols-2 gap-3">
+  1148→        <div>
+  1149→          <Label className="text-xs font-semibold">{t("lblCheckIn")} *</Label>
+  1150→          <Input type="date" value={form.checkIn} min={todayStr()}
+  1151→            onChange={(e) => onUpdate({ checkIn: e.target.value, checkOut: form.checkOut < e.target.value ? addDays(e.target.value, 1) : form.checkOut })}
+  1152→            className="mt-1.5 h-11 rounded-xl" />
+  1153→        </div>
+  1154→        <div>
+  1155→          <Label className="text-xs font-semibold">{t("lblCheckOut")} *</Label>
+  1156→          <Input type="date" value={form.checkOut} min={form.checkIn || todayStr()}
+  1157→            onChange={(e) => onUpdate({ checkOut: e.target.value })}
+  1158→            className="mt-1.5 h-11 rounded-xl" />
+  1159→        </div>
+  1160→      </div>
+  1161→      {/* Cost preview */}
+  1162→      {nights > 0 && rate > 0 && (
+  1163→        <div className="rounded-xl bg-gray-50 p-3 flex justify-between items-center">
+  1164→          <span className="text-xs text-gray-500">{nights} {t("nights")} × {formatCurrency(rate)}</span>
+  1165→          <span className="text-sm font-bold">{formatCurrency(nights * rate)}</span>
+  1166→        </div>
+  1167→      )}
+  1168→      {/* Second guest for double rooms */}
+  1169→      {isDouble && (
+  1170→        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-3">
+  1171→          <div className="flex items-center gap-2 text-amber-800">
+  1172→            <BedDouble className="h-4 w-4" />
+  1173→            <span className="text-xs font-semibold">{t("doubleRoomSecondGuest")}</span>
+  1174→          </div>
+  1175→          <div className="flex items-center gap-3">
+  1176→            <label className="flex items-center gap-2 cursor-pointer">
+  1177→              <input type="radio" name="mob-exception" checked={!form.exceptionallyReserved}
+  1178→                onChange={() => onUpdate({ exceptionallyReserved: false, exceptionReason: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
+  1179→              <span className="text-xs font-medium">{t("twoGuests")}</span>
+  1180→            </label>
+  1181→            <label className="flex items-center gap-2 cursor-pointer">
+  1182→              <input type="radio" name="mob-exception" checked={form.exceptionallyReserved}
+  1183→                onChange={() => onUpdate({ exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-amber-600" />
+  1184→              <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
+  1185→            </label>
+  1186→          </div>
+  1187→          {!form.exceptionallyReserved ? (
+  1188→            <div className="space-y-2">
+  1189→              <Input value={form.secondGuestName} onChange={(e) => onUpdate({ secondGuestName: e.target.value })} placeholder={t("phSecondGuestName")} className="h-10 rounded-lg text-sm" />
+  1190→              <Input type="tel" value={form.secondGuestPhone} onChange={(e) => onUpdate({ secondGuestPhone: e.target.value })} placeholder={t("phSecondGuestPhone")} className="h-10 rounded-lg text-sm" />
+  1191→              <Input value={form.secondGuestIdNumber} onChange={(e) => onUpdate({ secondGuestIdNumber: e.target.value })} placeholder={t("phSecondGuestId")} className="h-10 rounded-lg text-sm" />
+  1192→            </div>
+  1193→          ) : (
+  1194→            <Textarea value={form.exceptionReason} onChange={(e) => onUpdate({ exceptionReason: e.target.value })} placeholder={t("phExceptionReason")} className="min-h-[60px] text-sm rounded-lg" />
+  1195→          )}
+  1196→        </div>
+  1197→      )}
+  1198→      {/* Notes */}
+  1199→      <div>
+  1200→        <Label className="text-xs font-semibold">{t("lblNotes")}</Label>
+  1201→        <Input value={form.notes} onChange={(e) => onUpdate({ notes: e.target.value })} placeholder={t("phNotes")} className="mt-1.5 h-11 rounded-xl" />
+  1202→      </div>
+  1203→      {/* Actions */}
+  1204→      <DialogFooter className="gap-2 sm:gap-2">
+  1205→        <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
+  1206→        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !form.guestId || !form.roomId}>
+  1207→          {creating ? t("processing") : t("btnCreateReservation")}
+  1208→        </Button>
+  1209→      </DialogFooter>
+  1210→    </div>
+  1211→  );
+  1212→}
+  1213→
