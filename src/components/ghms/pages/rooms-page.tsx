@@ -95,6 +95,7 @@ import {
   AlertCircle,
   ClipboardList,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface Room {
   id: string;
@@ -128,6 +129,7 @@ interface RoomReservation {
   balance: number;
   paymentStatus: string;
   guest: { id: string; name: string; phone: string } | null;
+  roomId?: string;
 }
 
 const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
@@ -258,6 +260,9 @@ export default function RoomsPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Active reservations map (roomId → reservation) for tooltip/occupancy info
+  const [roomResMap, setRoomResMap] = useState<Record<string, RoomReservation>>({});
+
   // single-room dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -297,7 +302,11 @@ export default function RoomsPage() {
   const fetchRooms = useCallback(async () => {
     try {
       setLoading(true);
-      const raw = await apiGetRooms(search);
+      const [raw, upcomingRes, activeRes] = await Promise.all([
+        apiGetRooms(search),
+        apiGetReservations("status=UPCOMING&limit=100").catch(() => []),
+        apiGetReservations("status=ACTIVE&limit=100").catch(() => []),
+      ]);
       const list = Array.isArray(raw.rooms) ? raw.rooms : Array.isArray(raw) ? raw : [];
       // Sort: AVAILABLE first, then RESERVED, then others; within each group by floor
       const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
@@ -310,13 +319,25 @@ export default function RoomsPage() {
         return fa - fb;
       });
       setRooms(list);
+      // Build roomId → active reservation map from both UPCOMING and ACTIVE
+      const allRes = [
+        ...(Array.isArray(upcomingRes?.data) ? upcomingRes.data : Array.isArray(upcomingRes) ? upcomingRes : []),
+        ...(Array.isArray(activeRes?.data) ? activeRes.data : Array.isArray(activeRes) ? activeRes : []),
+      ];
+      const map: Record<string, RoomReservation> = {};
+      for (const r of allRes) {
+        if (r.roomId && !map[r.roomId]) {
+          map[r.roomId] = r;
+        }
+      }
+      setRoomResMap(map);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("toastFailedLoadRooms");
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, t]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchRooms(), 300);
@@ -893,10 +914,30 @@ export default function RoomsPage() {
                     <Badge variant="outline" className={ROOM_TYPE_COLORS[room.type]}>
                       {t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}
                     </Badge>
-                    <Badge variant="outline" className={STATUS_STYLES[room.status]}>
-                      <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                      {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
-                    </Badge>
+                    {(room.status === "RESERVED" || room.status === "OCCUPIED") && roomResMap[room.id] ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className={`${STATUS_STYLES[room.status]} cursor-help`}>
+                            <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
+                            {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="bg-gray-900 text-white border-0">
+                          <div className="text-xs space-y-1">
+                            {roomResMap[room.id].guest && (
+                              <p className="font-semibold">{roomResMap[room.id].guest!.name}</p>
+                            )}
+                            <p>{t("tooltipReservedFrom")} {formatDate(roomResMap[room.id].checkIn)}</p>
+                            <p>{t("tooltipReservedTo")} {formatDate(roomResMap[room.id].checkOut)}</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Badge variant="outline" className={STATUS_STYLES[room.status]}>
+                        <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
+                        {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Details */}
@@ -972,8 +1013,21 @@ export default function RoomsPage() {
                     ) : (
                       <Button
                         size="sm"
-                        className="flex-1 gap-1.5 text-xs"
-                        disabled
+                        variant="outline"
+                        className="flex-1 gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                        onClick={() => {
+                          const res = roomResMap[room.id];
+                          if (res) {
+                            toast.warning(t("toastRoomOccupied", {
+                              number: room.name ? `${room.number} (${room.name})` : room.number,
+                              from: formatDate(res.checkIn),
+                              to: formatDate(res.checkOut),
+                              guest: res.guest?.name || "",
+                            }));
+                          } else {
+                            toast.warning(t("toastRoomNotAvailable", { number: room.name ? `${room.number} (${room.name})` : room.number }));
+                          }
+                        }}
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
                         {t("btnReserve")}

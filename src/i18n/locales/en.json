@@ -698,7 +698,11 @@
     "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
     "resStatusLabel": "{{status}}",
     "inDaysShort": "in {{days}}d",
-    "perNightShort": "/night"
+    "perNightShort": "/night",
+    "tooltipReservedFrom": "From:",
+    "tooltipReservedTo": "To:",
+    "toastRoomOccupied": "Room {{number}} is occupied by {{guest}} from {{from}} to {{to}}",
+    "toastRoomNotAvailable": "Room {{number}} is not available for reservation"
   },
   "guests": {
     "pageTitle": "Guest Directory",

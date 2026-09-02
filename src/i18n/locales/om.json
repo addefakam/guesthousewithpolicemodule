@@ -697,7 +697,11 @@
     "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
     "resStatusLabel": "{{status}}",
     "inDaysShort": "guyyaa {{days}} keessatti",
-    "perNightShort": "/halkan"
+    "perNightShort": "/halkan",
+    "tooltipReservedFrom": "Kan:",
+    "tooltipReservedTo": "Hanga:",
+    "toastRoomOccupied": "Kunoo {{number}} {{guest}} irraa {{from}} hanga {{to}}tti qabameera",
+    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",

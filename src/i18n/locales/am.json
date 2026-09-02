@@ -697,7 +697,11 @@
     "importColumns": "number · type · pricePerNight · floor · capacity · amenities · description",
     "resStatusLabel": "{{status}}",
     "inDaysShort": "በ{{days}} ቀናት ውስጥ",
-    "perNightShort": "/ሌሊት"
+    "perNightShort": "/ሌሊት",
+    "tooltipReservedFrom": "ከ:",
+    "tooltipReservedTo": "እስከ:",
+    "toastRoomOccupied": "ክፍል {{number}} በ{{guest}} ከ{{from}} እስከ {{to}} ድረስ ተይዟል",
+    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
