@@ -9,6 +9,9 @@ import {
   apiGetReservations,
   apiGetGuests,
   apiCreateReservation,
+  apiCreateGuest,
+  apiAuth,
+  apiLogout,
   apiCheckin,
   apiCheckout,
   apiUpdateReservation,
@@ -82,6 +85,7 @@ import {
   CheckCircle2,
   AlertCircle,
   DollarSign,
+  Power,
 } from "lucide-react";
 
 // ── Types ──
@@ -143,6 +147,9 @@ const RES_FORM_DEFAULTS = {
   guestId: "", roomId: "", checkIn: todayStr(), checkOut: addDays(todayStr(), 1),
   notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "",
   exceptionallyReserved: false, exceptionReason: "",
+  // Direct guest fields
+  guestMode: "registered" as "registered" | "direct",
+  directName: "", directPhone: "", directIdNumber: "", directIdType: "NATIONAL", directNationality: "Ethiopian",
 };
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -190,9 +197,10 @@ function parseAmenities(amenitiesStr: string | null | undefined): string[] {
 // ── Component ──
 export default function MobileApp() {
   const { t, i18n } = useTranslation("mobile");
-  const { currentUser, triggerRefresh } = useAppStore();
+  const { currentUser, setCurrentUser, triggerRefresh } = useAppStore();
   const [activeTab, setActiveTab] = useState<Tab>("rooms");
   const [loading, setLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Data
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -362,7 +370,19 @@ export default function MobileApp() {
 
   // ── Handlers ──
   const handleCreateRes = async () => {
-    if (!resForm.guestId || !resForm.roomId || !resForm.checkIn || !resForm.checkOut) {
+    if (resForm.guestMode === "direct") {
+      if (!resForm.directName.trim() || !resForm.directPhone.trim()) {
+        toast.error(t("toastFillRequired")); return;
+      }
+      if (!isValidPhone(resForm.directPhone)) {
+        toast.error(t("toastInvalidPhone")); return;
+      }
+    } else {
+      if (!resForm.guestId) {
+        toast.error(t("toastFillRequired")); return;
+      }
+    }
+    if (!resForm.roomId || !resForm.checkIn || !resForm.checkOut) {
       toast.error(t("toastFillRequired")); return;
     }
     if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
@@ -375,14 +395,32 @@ export default function MobileApp() {
     }
     try {
       setCreatingRes(true);
+      let guestId = resForm.guestId;
+
+      // Direct guest: create guest first
+      if (resForm.guestMode === "direct") {
+        const newGuest = await apiCreateGuest({
+          name: resForm.directName.trim(),
+          phone: resForm.directPhone.trim(),
+          idNumber: resForm.directIdNumber.trim() || undefined,
+          idType: resForm.directIdType,
+          nationality: resForm.directNationality.trim() || undefined,
+        });
+        guestId = newGuest?.id || newGuest?.guest?.id;
+        if (!guestId) {
+          toast.error(t("toastFailedCreateGuest")); return;
+        }
+      }
+
       await apiCreateReservation({
-        guestId: resForm.guestId, roomId: resForm.roomId,
+        guestId,
+        roomId: resForm.roomId,
         checkIn: resForm.checkIn, checkOut: resForm.checkOut, notes: resForm.notes,
         secondGuestName: resForm.secondGuestName, secondGuestPhone: resForm.secondGuestPhone,
         secondGuestIdNumber: resForm.secondGuestIdNumber,
         exceptionallyReserved: resForm.exceptionallyReserved, exceptionReason: resForm.exceptionReason,
       });
-      toast.success(t("toastResCreated"));
+      toast.success(resForm.guestMode === "direct" ? t("toastGuestCreated") : t("toastResCreated"));
       setShowNewRes(false);
       setResForm(RES_FORM_DEFAULTS);
       setResGuestSearch("");
@@ -452,6 +490,12 @@ export default function MobileApp() {
     i18n.changeLanguage(next);
   };
 
+  const handleLogout = async () => {
+    setShowLogoutConfirm(false);
+    await apiLogout();
+    setCurrentUser(null);
+  };
+
   // ── Render: Loading ──
   if (loading) {
     return (
@@ -479,6 +523,13 @@ export default function MobileApp() {
             <p className="text-[11px] text-slate-400">{currentUser?.name} &middot; {currentUser?.providerName || ""}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="rounded-full bg-slate-800 p-2 text-slate-400 active:bg-slate-700 transition-colors"
+              title={t("logout")}
+            >
+              <Power className="h-4 w-4" />
+            </button>
             <button
               onClick={toggleLang}
               className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors"
@@ -637,6 +688,20 @@ export default function MobileApp() {
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleEarlyCheckout} disabled={earlyCheckingOut}>
               {earlyCheckingOut ? t("processing") : t("btnEarlyCheckout")}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout Confirm Dialog */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={(open) => { if (!open) setShowLogoutConfirm(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("logout")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("logoutConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleLogout}>{t("logout")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1101,36 +1166,100 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
   nights: number; rate: number; creating: boolean; onSubmit: () => void; onCancel: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
 }) {
+  const isDirect = form.guestMode === "direct";
+  const canSubmit = isDirect
+    ? (form.directName.trim() && form.directPhone.trim() && form.roomId)
+    : (form.guestId && form.roomId);
+
   return (
     <div className="space-y-4">
-      {/* Guest Select */}
-      <div>
-        <Label className="text-xs font-semibold">{t("lblGuest")} *</Label>
-        {form.guestId ? (
-          <div className="mt-1.5 flex items-center justify-between rounded-xl border bg-gray-50 p-3">
-            <span className="text-sm font-medium">{guests.find((g) => g.id === form.guestId)?.name || ""}</span>
-            <button onClick={() => { onUpdate({ guestId: "" }); setGuestSearch(""); }} className="text-xs text-rose-500">{t("change")}</button>
-          </div>
-        ) : (
-          <>
-            <div className="relative mt-1.5">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input value={guestSearch} onChange={(e) => setGuestSearch(e.target.value)} placeholder={t("searchGuestPlaceholder")} className="pl-9 h-11 rounded-xl" />
-            </div>
-            {guestResults.length > 0 && !form.guestId && (
-              <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border bg-white">
-                {guestResults.map((g) => (
-                  <button key={g.id} className="w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 border-b last:border-b-0 flex justify-between items-center"
-                    onClick={() => { onUpdate({ guestId: g.id }); setGuestSearch(g.name); }}>
-                    <span className="font-medium">{g.name}</span>
-                    <span className="text-gray-400">{g.phone}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+      {/* Guest Mode Toggle */}
+      <div className="flex rounded-xl bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => onUpdate({ guestMode: "registered" })}
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
+            !isDirect ? "bg-white text-slate-900 shadow-sm" : "text-gray-500"
+          }`}
+        >{t("toggleRegistered")}</button>
+        <button
+          type="button"
+          onClick={() => onUpdate({ guestMode: "direct" })}
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
+            isDirect ? "bg-white text-slate-900 shadow-sm" : "text-gray-500"
+          }`}
+        >{t("toggleNewGuest")}</button>
       </div>
+
+      {/* Guest Section */}
+      {isDirect ? (
+        /* Direct guest entry */
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-emerald-700">
+            <UserPlus className="h-4 w-4" />
+            <span className="text-xs font-semibold">{t("directResTitle")}</span>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">{t("lblGuestName")} *</Label>
+            <Input value={form.directName} onChange={(e) => onUpdate({ directName: e.target.value })} placeholder={t("phGuestName")} className="mt-1.5 h-11 rounded-xl" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">{t("lblGuestPhone")} *</Label>
+            <Input type="tel" value={form.directPhone} onChange={(e) => onUpdate({ directPhone: e.target.value })} placeholder={t("phGuestPhone")} className="mt-1.5 h-11 rounded-xl" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold">{t("lblGuestIdType")}</Label>
+              <Select value={form.directIdType} onValueChange={(v) => onUpdate({ directIdType: v })}>
+                <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NATIONAL">{t("idTypeNational")}</SelectItem>
+                  <SelectItem value="PASSPORT">{t("idTypePassport")}</SelectItem>
+                  <SelectItem value="DRIVER">{t("idTypeDriver")}</SelectItem>
+                  <SelectItem value="OTHER">{t("idTypeOther")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs font-semibold">{t("lblGuestIdNumber")}</Label>
+              <Input value={form.directIdNumber} onChange={(e) => onUpdate({ directIdNumber: e.target.value })} placeholder={t("phGuestIdNumber")} className="mt-1.5 h-11 rounded-xl" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold">{t("lblGuestNationality")}</Label>
+            <Input value={form.directNationality} onChange={(e) => onUpdate({ directNationality: e.target.value })} placeholder={t("phGuestNationality")} className="mt-1.5 h-11 rounded-xl" />
+          </div>
+        </div>
+      ) : (
+        /* Registered guest search */
+        <div>
+          <Label className="text-xs font-semibold">{t("lblGuest")}</Label>
+          {form.guestId ? (
+            <div className="mt-1.5 flex items-center justify-between rounded-xl border bg-gray-50 p-3">
+              <span className="text-sm font-medium">{guests.find((g) => g.id === form.guestId)?.name || ""}</span>
+              <button onClick={() => { onUpdate({ guestId: "" }); setGuestSearch(""); }} className="text-xs text-rose-500">{t("change")}</button>
+            </div>
+          ) : (
+            <>
+              <div className="relative mt-1.5">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input value={guestSearch} onChange={(e) => setGuestSearch(e.target.value)} placeholder={t("searchGuestPlaceholder")} className="pl-9 h-11 rounded-xl" />
+              </div>
+              {guestResults.length > 0 && !form.guestId && (
+                <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border bg-white">
+                  {guestResults.map((g) => (
+                    <button key={g.id} className="w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 border-b last:border-b-0 flex justify-between items-center"
+                      onClick={() => { onUpdate({ guestId: g.id }); setGuestSearch(g.name); }}>
+                      <span className="font-medium">{g.name}</span>
+                      <span className="text-gray-400">{g.phone}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {/* Room Select */}
       <div>
         <Label className="text-xs font-semibold">{t("lblRoom")} *</Label>
@@ -1203,7 +1332,7 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
       {/* Actions */}
       <DialogFooter className="gap-2 sm:gap-2">
         <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
-        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !form.guestId || !form.roomId}>
+        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>
           {creating ? t("processing") : t("btnCreateReservation")}
         </Button>
       </DialogFooter>
