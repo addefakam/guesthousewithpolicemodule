@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import {
   DropdownMenu,
@@ -1260,16 +1261,14 @@ export default function ReservationsPage() {
                 );
               })()}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="check-in">{t("labelCheckIn")} <span className="text-rose-500">*</span></Label>
-                  <Input id="check-in" type="date" value={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkIn: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="check-out">{t("labelCheckOut")} <span className="text-rose-500">*</span></Label>
-                  <Input id="check-out" type="date" value={createForm.checkOut} min={createForm.checkIn} onChange={(e) => setCreateForm({ ...createForm, checkOut: e.target.value })} />
-                </div>
-              </div>
+              {/* Availability calendar — occupied days are disabled (not clickable);
+                  a checkout day stays open as the next arrival */}
+              <RoomAvailabilityCalendar
+                roomId={createForm.roomId || undefined}
+                checkIn={createForm.checkIn}
+                checkOut={createForm.checkOut}
+                onChange={(v) => setCreateForm((f) => ({ ...f, ...v }))}
+              />
 
               {/* Price summary */}
               {(createNights > 0 || createForm.roomId) && (

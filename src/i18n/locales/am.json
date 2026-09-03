@@ -837,7 +837,15 @@
     "labelBalanceUpper": "ቀሪ ሂሳብ",
     "afterPaymentRemaining": "ከክፍያ በኋላ: {{amount}} ይቀራል",
     "conflictNote": "እባክዎ ሌላ ክፍል ይምረጡ ወይም ቀኖችን ያስተካክሉ። አቅራቢው ለዘገዩ እንግዶች ማንኛውንም ያለ ክፍል የመስጠት ሙሉ መብት አለው።",
-    "btnChooseAnotherRoom": "ሌላ ክፍል ይምረጡ"
+    "btnChooseAnotherRoom": "ሌላ ክፍል ይምረጡ",
+    "calendarArrival": "መግቢያ",
+    "calendarDeparture": "መውጫ",
+    "calendarSelectArrival": "የመግቢያ ቀን ይምረጡ",
+    "calendarSelectDeparture": "የመውጫ ቀን ይምረጡ",
+    "calendarPickRoom": "ክፍል ይምረጡ።",
+    "calendarNoBookings": "ለዚህ ክፍል የመጡ ቀጠሮዎች የሉም — ሙሉ በሙሉ ክፍት ነው።",
+    "calendarLegendOccupied": "የተያዘ ሌሊት (ማጫን አይቻልም)",
+    "calendarLegendTurnover": "የመውጫ ቀን — ለአዲስ መግቢያ ክፍት ነው"
   },
   "reports": {
     "pageTitle": "ሪፖርቶች እና ትንታኔዎች",
@@ -3158,6 +3166,13 @@
     "phRoomNumber": "ለምሳሌ 101, 201, A1",
     "phAmenities": "WiFi, TV, AC, Mini Bar, ሞቅ ያለ ውሃ, ፓርኪንግ",
     "toastRoomCreated": "ክፍሉ በተሳካ ሁኔታ ተፈጥሯል",
-    "toastFailedCreateRoom": "ክፍል መፍጠር አልተሳካም"
+    "toastFailedCreateRoom": "ክፍል መፍጠር አልተሳካም",
+    "loadingAvailability": "ክፍት መሆኑን በመፈተሽ ላይ…",
+    "occupiedDates": "የተያዙ ቀናት",
+    "noOccupiedDates": "የተያዙ ቀናት የሉም — ክፍሉ ክፍት ነው",
+    "checkoutDayHint": "የመውጫ ቀን ለቀጣይ መግቢያ ክፍት ሆኖ ይቆያል።",
+    "overlapError": "የመረጡት ቀናት ከነባር ቀጠሮ ጋር ይተሳሰራሉ ({{from}} → {{to}})። እባክዎ ሌሎች ቀናት ይምረጡ።",
+    "blockedByOverlap": "ቀናት ይጋጭናሉ",
+    "extendConflict": "ማራዘም አይቻልም — ክፍሉ ለእነዚህ ቀናት ቀጠሮ አለው"
   }
 }

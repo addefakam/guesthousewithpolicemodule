@@ -17,6 +17,7 @@ import {
   apiCheckout,
   apiUpdateReservation,
   apiUpdateRoomStatus,
+  apiGetRoomAvailability,
 } from "@/lib/api";
 import { isValidPhone } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,11 @@ interface Reservation {
   roomId?: string;
   secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
   exceptionallyReserved?: boolean; exceptionReason?: string;
+}
+
+interface BookedRange {
+  id: string; checkIn: string; checkOut: string; status: string;
+  guestName: string; guestPhone: string;
 }
 
 // ── Constants ──
@@ -474,7 +480,8 @@ export default function MobileApp() {
       triggerRefresh(); await fetchData();
       if (selectedRoom) fetchRoomReservations(selectedRoom.id);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("toastFailedExtend"));
+      const raw = err instanceof Error ? err.message : t("toastFailedExtend");
+      toast.error(raw === "ROOM_CONFLICT" ? t("extendConflict") : raw);
     } finally { setExtending(false); }
   };
 
@@ -1234,6 +1241,32 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
     ? (form.directName.trim() && form.directPhone.trim() && form.roomId)
     : (form.guestId && form.roomId);
 
+  // ── Availability for the selected room ──
+  const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
+  const [availLoading, setAvailLoading] = useState(false);
+
+  useEffect(() => {
+    if (!form.roomId) { setBookedRanges([]); return; }
+    let cancelled = false;
+    setAvailLoading(true);
+    apiGetRoomAvailability(form.roomId)
+      .then((d: { bookedRanges?: BookedRange[] }) => {
+        if (!cancelled) setBookedRanges(Array.isArray(d?.bookedRanges) ? d.bookedRanges : []);
+      })
+      .catch(() => { if (!cancelled) setBookedRanges([]); })
+      .finally(() => { if (!cancelled) setAvailLoading(false); });
+    return () => { cancelled = true; };
+  }, [form.roomId]);
+
+  // True per-day overlap: [checkIn, checkOut) vs [r.checkIn, r.checkOut)
+  // (checkout day itself is bookable as the next arrival).
+  const overlapRange = useMemo(() => {
+    if (!form.checkIn || !form.checkOut) return null;
+    return bookedRanges.find(
+      (r) => r.checkIn < form.checkOut && r.checkOut > form.checkIn
+    ) || null;
+  }, [bookedRanges, form.checkIn, form.checkOut]);
+
   return (
     <div className="space-y-4">
       {/* Guest Mode Toggle */}
@@ -1350,6 +1383,37 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
             className="mt-1.5 h-11 rounded-xl" />
         </div>
       </div>
+      {/* Occupied ranges for the selected room */}
+      <div>
+        {availLoading ? (
+          <p className="flex items-center gap-1.5 text-[10px] text-gray-400">
+            <Clock className="h-3 w-3 animate-pulse" /> {t("loadingAvailability")}
+          </p>
+        ) : bookedRanges.length === 0 ? (
+          <p className="text-[10px] text-gray-400">{t("noOccupiedDates")}</p>
+        ) : (
+          <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-2.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-700">
+              <AlertTriangle className="h-3 w-3" /> {t("occupiedDates")}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {bookedRanges.map((r) => (
+                <span key={r.id} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-medium text-rose-700">
+                  {formatDate(r.checkIn)} → {formatDate(r.checkOut)}{r.guestName ? ` · ${r.guestName}` : ""}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1 text-[9px] text-gray-400">{t("checkoutDayHint")}</p>
+          </div>
+        )}
+      </div>
+      {/* Overlap blocker */}
+      {overlapRange && (
+        <div className="flex items-start gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{t("overlapError", { from: formatDate(overlapRange.checkIn), to: formatDate(overlapRange.checkOut) })}</span>
+        </div>
+      )}
       {/* Cost preview */}
       {nights > 0 && rate > 0 && (
         <div className="rounded-xl bg-gray-50 p-3 flex justify-between items-center">
@@ -1395,8 +1459,8 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
       {/* Actions */}
       <DialogFooter className="gap-2 sm:gap-2">
         <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
-        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>
-          {creating ? t("processing") : t("btnCreateReservation")}
+        <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit || !!overlapRange}>
+          {creating ? t("processing") : overlapRange ? t("blockedByOverlap") : t("btnCreateReservation")}
         </Button>
       </DialogFooter>
     </div>

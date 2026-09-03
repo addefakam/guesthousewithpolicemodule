@@ -838,7 +838,15 @@
     "labelBalanceUpper": "Balance",
     "afterPaymentRemaining": "After payment: {{amount}} remaining",
     "conflictNote": "Please choose a different room or adjust your dates. The service provider has full right to make adjustments for the late comer and allocate to any available room.",
-    "btnChooseAnotherRoom": "Choose Another Room"
+    "btnChooseAnotherRoom": "Choose Another Room",
+    "calendarArrival": "Arrival",
+    "calendarDeparture": "Departure",
+    "calendarSelectArrival": "Select arrival",
+    "calendarSelectDeparture": "Select departure",
+    "calendarPickRoom": "Select a room to see its availability",
+    "calendarNoBookings": "No upcoming bookings for this room — fully open.",
+    "calendarLegendOccupied": "Occupied night (not clickable)",
+    "calendarLegendTurnover": "Checkout day — open for a new arrival"
   },
   "reports": {
     "pageTitle": "Reports & Analytics",
@@ -3159,6 +3167,13 @@
     "phRoomNumber": "e.g. 101, 201, A1",
     "phAmenities": "WiFi, TV, AC, Mini Bar, Hot Water, Parking",
     "toastRoomCreated": "Room created successfully",
-    "toastFailedCreateRoom": "Failed to create room"
+    "toastFailedCreateRoom": "Failed to create room",
+    "loadingAvailability": "Checking availability…",
+    "occupiedDates": "Occupied dates",
+    "noOccupiedDates": "No occupied dates — room is open",
+    "checkoutDayHint": "A checkout day stays open as the next arrival.",
+    "overlapError": "Those dates overlap an existing booking ({{from}} → {{to}}). Pick different dates.",
+    "blockedByOverlap": "Dates conflict",
+    "extendConflict": "Cannot extend — the room already has a booking for those dates"
   }
 }

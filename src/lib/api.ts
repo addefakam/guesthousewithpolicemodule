@@ -93,6 +93,8 @@ export const apiUpdateRoomStatus = (id: string, status: string) =>
   req(`/api/rooms/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) });
 export const apiImportRooms = (rooms: Record<string, unknown>[]) =>
   req("/api/rooms", { method: "POST", body: JSON.stringify({ bulk: rooms }) });
+export const apiGetRoomAvailability = (roomId: string) =>
+  req(`/api/rooms/${roomId}/availability`);
 
 // Guests
 export const apiGetGuests = async (q?: string) => {

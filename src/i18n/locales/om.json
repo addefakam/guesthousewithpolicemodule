@@ -837,7 +837,15 @@
     "labelBalanceUpper": "Haftee",
     "afterPaymentRemaining": "Kaffaltii booda: {{amount}} hafe",
     "conflictNote": "Maaloo kutaa biraa filadhu ykn guyyoota sirreessi. Dhiheessaan keessummaa turaniif kutaa argame kamiyyuu kennuuf mirga guutuu qaba.",
-    "btnChooseAnotherRoom": "Kutaa Biraa Filadhu"
+    "btnChooseAnotherRoom": "Kutaa Biraa Filadhu",
+    "calendarArrival": "Seenuu",
+    "calendarDeparture": "Ba'ii",
+    "calendarSelectArrival": "Guyyaa seenuu filadhaa",
+    "calendarSelectDeparture": "Guyyaa ba'ii filadhaa",
+    "calendarPickRoom": "Kutaa filadhu",
+    "calendarNoBookings": "Qabdameewwan gargatteera kan kutaa kanaa hin jiru — guutummaatti ni bana.",
+    "calendarLegendOccupied": "Halkan qabame (cuqaasuu hin danda'amu)",
+    "calendarLegendTurnover": "Guyyaa ba'ii — seenuu haaraaaf ni bana"
   },
   "reports": {
     "pageTitle": "Gabaasaa fi Qorannoo",
@@ -3158,6 +3166,13 @@
     "phRoomNumber": "fkn 101, 201, A1",
     "phAmenities": "WiFi, TV, AC, Mini Bar, Bishaan Qonnaa, Paarkingii",
     "toastRoomCreated": "Kabanan uumameera",
-    "toastFailedCreateRoom": "Kabana uumuu hin milkaa'ne"
+    "toastFailedCreateRoom": "Kabana uumuu hin milkaa'ne",
+    "loadingAvailability": "Banaa ta'uu isaa sakatta'amaa jira…",
+    "occupiedDates": "Guyyaa qabame",
+    "noOccupiedDates": "Guyyaan qabame hin jiru — kutaan ni bana",
+    "checkoutDayHint": "Guyyaan ba'ii seenuu itti-aanaaaf ni bana.",
+    "overlapError": "Guyyaawwan filataman qabamee jiru waliin wal-dabalu ({{from}} → {{to}}). Maaloo guyyaa biraa filadhaa.",
+    "blockedByOverlap": "Guyyaawwan wal-dabalu",
+    "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira"
   }
 }

@@ -4,11 +4,21 @@ import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } fr
 import { checkSuspectMatch } from "@/lib/suspect-check";
 import { runAnomalyDetection } from "@/lib/anomaly-engine";
 import { isValidPhone } from "@/lib/utils";
+import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     const { isPolice, providerId } = getProviderFilter(auth);
+
+    // Lazy maintenance: cancel past-checkout reservations, release their rooms
+    // and create overdue check-in reminders so list data is never stale.
+    // Throttled in the lib — repeated reads are cheap no-ops.
+    try {
+      await runReservationMaintenance(isPolice ? {} : { providerId });
+    } catch {
+      // Never block reads on maintenance failures.
+    }
 
     const { searchParams } = req.nextUrl;
     const status = searchParams.get("status") || "";
@@ -79,6 +89,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "guestId, roomId, checkIn, and checkOut are required" }, { status: 400 });
     }
 
+    // Normalize to YYYY-MM-DD (dates are stored as plain date strings)
+    const checkInDay = String(checkIn).slice(0, 10);
+    const checkOutDay = String(checkOut).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(checkInDay) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOutDay)) {
+      return NextResponse.json({ error: "checkIn and checkOut must be valid dates (YYYY-MM-DD)" }, { status: 400 });
+    }
+    if (checkOutDay <= checkInDay) {
+      return NextResponse.json({ error: "Check-out date must be after the check-in date" }, { status: 400 });
+    }
+
     // Get room to check type
     const room = await db.room.findUnique({ where: { id: roomId } });
     if (!room) {
@@ -100,8 +120,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate nights
-    const startDate = new Date(checkIn);
-    const endDate = new Date(checkOut);
+    const startDate = new Date(checkInDay);
+    const endDate = new Date(checkOutDay);
     const diffMs = endDate.getTime() - startDate.getTime();
     const nights = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
@@ -118,13 +138,17 @@ export async function POST(req: NextRequest) {
     const paidAmount = 0;
     const balance = totalCost - paidAmount;
 
-    // Check for overlapping reservations on this room (double-booking prevention)
+    // Check for overlapping reservations on this room (double-booking prevention).
+    // True per-day overlap on half-open intervals [checkIn, checkOut):
+    //   overlap ⇔ existing.checkIn < new.checkOut && existing.checkOut > new.checkIn
+    // A previous guest's checkout day itself stays bookable as a new arrival
+    // (existing.checkOut === new.checkIn does NOT overlap).
     const overlapping = await db.reservation.findFirst({
       where: {
         roomId,
         status: { in: ["UPCOMING", "ACTIVE"] },
-        checkIn: { lte: checkOut },
-        checkOut: { gte: checkIn },
+        checkIn: { lt: checkOutDay },
+        checkOut: { gt: checkInDay },
       },
       include: {
         guest: { select: { name: true, phone: true } },
@@ -133,7 +157,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (overlapping) {
-      const roomLabel = overlapping.room.number + (overlapping.room.name ? ` (${overlapping.room.name})` : "");
       return NextResponse.json({
         error: "ROOM_CONFLICT",
         code: "ROOM_CONFLICT",
@@ -145,8 +168,8 @@ export async function POST(req: NextRequest) {
       data: {
         guestId,
         roomId,
-        checkIn,
-        checkOut,
+        checkIn: checkInDay,
+        checkOut: checkOutDay,
         nights,
         roomRate: rate,
         totalCost,
@@ -184,8 +207,8 @@ export async function POST(req: NextRequest) {
       providerId,
       reservationId: reservation.id,
       extraDetails: {
-        checkIn,
-        checkOut,
+        checkIn: checkInDay,
+        checkOut: checkOutDay,
         nights,
         roomNumber: reservation.room?.number ?? "",
         roomName: reservation.room?.name ?? "",

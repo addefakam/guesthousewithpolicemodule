@@ -3,7 +3,17 @@
   "framework": "nextjs",
   "installCommand": "npm install --force",
   "buildCommand": "npx prisma generate && node scripts/fix-prisma-sql.js && next build",
+  "crons": [
+    {
+      "path": "/api/cron/reservation-maintenance",
+      "schedule": "0 * * * *"
+    }
+  ],
   "functions": {
+    "src/app/api/cron/**/*.ts": {
+      "maxDuration": 60,
+      "memory": 512
+    },
     "src/app/api/**/*.ts": {
       "maxDuration": 30,
       "memory": 1024

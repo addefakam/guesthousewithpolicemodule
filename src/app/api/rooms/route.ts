@@ -6,11 +6,20 @@ import {
   checkWritePermission,
   AuthError,
 } from "@/lib/tenant";
+import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     const filter = getProviderFilter(auth);
+
+    // Lazy maintenance (throttled) so room statuses reflect past-checkout
+    // auto-releases even between cron runs. Never blocks the read.
+    try {
+      await runReservationMaintenance(filter.isPolice ? {} : { providerId: filter.providerId });
+    } catch {
+      // Ignore — maintenance must not break room reads.
+    }
 
     const where: Record<string, unknown> = filter.isPolice
       ? {}

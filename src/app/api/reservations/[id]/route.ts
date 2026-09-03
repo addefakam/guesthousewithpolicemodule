@@ -23,13 +23,57 @@ export async function PUT(
 
     const { guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount, paymentMethod, notes, status, groupBookingId } = body;
 
+    const newCheckIn = checkIn || existing.checkIn;
+    const newCheckOut = checkOut || existing.checkOut;
+
+    // ── Overlap guard (true per-day overlap on [checkIn, checkOut)) ──
+    // Runs when dates or room change — e.g. extending a stay into another
+    // booking must be rejected. The checkout day of another reservation stays
+    // bookable as an arrival, so equal dates on either boundary are allowed.
+    if (checkIn || checkOut || roomId !== undefined) {
+      const inDay = String(newCheckIn).slice(0, 10);
+      const outDay = String(newCheckOut).slice(0, 10);
+      if (outDay <= inDay) {
+        return NextResponse.json(
+          { error: "Check-out date must be after the check-in date" },
+          { status: 400 }
+        );
+      }
+      const targetRoomId = roomId || existing.roomId;
+      const overlapping = await db.reservation.findFirst({
+        where: {
+          id: { not: id },
+          roomId: targetRoomId,
+          status: { in: ["UPCOMING", "ACTIVE"] },
+          checkIn: { lt: outDay },
+          checkOut: { gt: inDay },
+        },
+        include: { room: { select: { number: true, name: true } } },
+      });
+      if (overlapping) {
+        return NextResponse.json(
+          {
+            error: "ROOM_CONFLICT",
+            code: "ROOM_CONFLICT",
+            message: `Room ${overlapping.room?.number ?? ""} already has a reservation from ${overlapping.checkIn} to ${overlapping.checkOut}`,
+            conflict: {
+              roomId: targetRoomId,
+              checkIn: overlapping.checkIn,
+              checkOut: overlapping.checkOut,
+              roomNumber: overlapping.room?.number ?? "",
+              roomName: overlapping.room?.name ?? "",
+            },
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // Recalculate if dates or rates changed
     let nights = existing.nights;
     let totalCost = existing.totalCost;
     let balance = existing.balance;
 
-    const newCheckIn = checkIn || existing.checkIn;
-    const newCheckOut = checkOut || existing.checkOut;
     const newRate = roomRate !== undefined ? roomRate : existing.roomRate;
     const newTax = taxAmount !== undefined ? taxAmount : existing.taxAmount;
     const newDiscount = discountAmount !== undefined ? discountAmount : existing.discountAmount;
