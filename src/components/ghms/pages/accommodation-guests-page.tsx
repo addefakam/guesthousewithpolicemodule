@@ -150,7 +150,8 @@ export default function AccommodationGuestsPage() {
       setGuests(Array.isArray(gData) ? gData : []);
       const rArr = Array.isArray(rData?.data) ? rData.data : Array.isArray(rData) ? rData : [];
       setReservations(rArr);
-      const raw = Array.isArray(rmData?.rooms) ? rmData.rooms : [];
+      // apiGetRooms already unwraps { rooms: [...] } to a plain array
+      const raw = Array.isArray(rmData) ? rmData : Array.isArray(rmData?.rooms) ? rmData.rooms : [];
       setRooms(raw);
     } catch {
       toast.error(t("toastFailedLoadGuests"));
