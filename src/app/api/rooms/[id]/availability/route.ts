@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, AuthError } from "@/lib/tenant";
-import { todayStr } from "@/lib/reservation-maintenance";
+import { runReservationMaintenance, todayStr } from "@/lib/reservation-maintenance";
 
 /**
  * Per-room availability — returns the booked date ranges that block new
@@ -24,6 +24,14 @@ export async function GET(
     const { isPolice, providerId } = getProviderFilter(auth);
 
     const { id } = await params;
+
+    // Lazy maintenance (throttled) so stale reservations / stuck room flags
+    // are healed before their date ranges are computed. Never blocks the read.
+    try {
+      await runReservationMaintenance(isPolice ? {} : { providerId });
+    } catch {
+      // Ignore — maintenance must not break availability reads.
+    }
 
     const room = await db.room.findUnique({
       where: { id },

@@ -9,9 +9,15 @@ import { db } from "@/lib/db";
  *     (checkOut < today) the reservation is marked CANCELLED and the room
  *     is returned to AVAILABLE (if no other active reservation holds it).
  *
+ * (c) Room reconciliation: a room flagged OCCUPIED/RESERVED while NO guest is
+ *     physically checked in (no ACTIVE reservation) is stale — it is flipped
+ *     back to AVAILABLE. Date-level availability is driven by reservations,
+ *     so the room flag must never permanently block new bookings.
+ *
  * Triggered from:
  *   - the Vercel cron endpoint /api/cron/reservation-maintenance
- *   - lazily on GET /api/reservations and GET /api/rooms reads
+ *   - lazily on GET /api/reservations, GET /api/rooms and
+ *     GET /api/rooms/[id]/availability reads
  *
  * All operations are idempotent: notifications are deduped by link key and
  * status transitions are guarded inside the UPDATE itself, so running this
@@ -171,17 +177,17 @@ async function performMaintenance(
     });
     releasedReservations = cancelled.count;
 
-    // Release each affected room that has no remaining active reservation.
+    // Release each affected room that no checked-in guest holds.
+    // IMPORTANT: only an ACTIVE reservation (guest physically in the room)
+    // keeps a room flagged OCCUPIED/RESERVED. Future UPCOMING reservations
+    // hold their date ranges only — they must never keep a released room
+    // stuck in a non-bookable flag (the Room 102 bug).
     const roomIds = Array.from(new Set(stale.map((r) => r.roomId)));
     for (const roomId of roomIds) {
-      const remaining = await db.reservation.count({
-        where: {
-          roomId,
-          id: { notIn: ids },
-          status: { in: ["UPCOMING", "ACTIVE"] },
-        },
+      const holding = await db.reservation.count({
+        where: { roomId, status: "ACTIVE" },
       });
-      if (remaining === 0) {
+      if (holding === 0) {
         const upd = await db.room.updateMany({
           where: { id: roomId, status: { in: ["OCCUPIED", "RESERVED"] } },
           data: { status: "AVAILABLE" },
@@ -203,6 +209,40 @@ async function performMaintenance(
           `The room is available again.`,
       }))
     );
+  }
+
+  // ── (c) Reconcile stale room flags ──────────────────────────────────────
+  // Heal any room still flagged OCCUPIED/RESERVED with no ACTIVE (checked-in)
+  // reservation. This covers rooms left behind by manually cancelled
+  // reservations, data imports, or any missed transition — whatever the case,
+  // a room without an in-house guest must be bookable again.
+  const stuckRooms = await db.room.findMany({
+    where: { ...scopeWhere, status: { in: ["OCCUPIED", "RESERVED"] } },
+    select: { id: true },
+    take: 500,
+  });
+  if (stuckRooms.length > 0) {
+    const activeRoomIds = new Set(
+      (
+        await db.reservation.findMany({
+          where: {
+            roomId: { in: stuckRooms.map((r) => r.id) },
+            status: "ACTIVE",
+          },
+          select: { roomId: true },
+        })
+      ).map((r) => r.roomId)
+    );
+    const toRelease = stuckRooms
+      .map((r) => r.id)
+      .filter((id) => !activeRoomIds.has(id));
+    if (toRelease.length > 0) {
+      const upd = await db.room.updateMany({
+        where: { id: { in: toRelease } },
+        data: { status: "AVAILABLE" },
+      });
+      roomsReleased += upd.count;
+    }
   }
 
   return {

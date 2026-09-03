@@ -291,9 +291,13 @@ export default function ReservationsPage() {
     setPreselectedRoom(null);
   };
 
-  // Available rooms for new reservation (AVAILABLE, or null/undefined status treated as available)
+  // Rooms offered for new reservations: every bookable room. Availability is
+  // date-driven — occupied days are disabled in the calendar and the server
+  // rejects overlapping stays — so a room flagged OCCUPIED/RESERVED (stale or
+  // in-house guest) must still be selectable for future free dates.
+  // Only MAINTENANCE rooms are excluded from booking.
   const availableRooms = useMemo(
-    () => allRooms.filter((r) => !r.status || r.status === "AVAILABLE"),
+    () => allRooms.filter((r) => r.status !== "MAINTENANCE"),
     [allRooms]
   );
 

@@ -359,7 +359,10 @@ export default function MobileApp() {
     ).slice(0, 10);
   }, [resGuestSearch, guests]);
 
-  const availableRooms = useMemo(() => rooms.filter((r) => r.status === "AVAILABLE"), [rooms]);
+  // Rooms offered for new reservations: every bookable room — availability is
+  // date-driven (occupied ranges block overlapping selections; the server
+  // rejects overlaps). Only MAINTENANCE rooms are excluded.
+  const availableRooms = useMemo(() => rooms.filter((r) => r.status !== "MAINTENANCE"), [rooms]);
 
   const selectedRoomIsDouble = useMemo(() => {
     const rm = rooms.find((r) => r.id === resForm.roomId);

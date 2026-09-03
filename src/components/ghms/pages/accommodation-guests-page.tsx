@@ -213,8 +213,11 @@ export default function AccommodationGuestsPage() {
   useEffect(() => { pagination.setTotalItems(filtered.length); }, [filtered.length, pagination]);
   const paginated = useMemo(() => pagination.paginate(filtered), [filtered, pagination]);
 
-  // Available rooms for reservation
-  const availableRooms = useMemo(() => rooms.filter((r) => r.status === "AVAILABLE"), [rooms]);
+  // Rooms offered for new reservations: every bookable room — availability is
+  // date-driven (calendar disables occupied days; server rejects overlaps).
+  // Only MAINTENANCE rooms are excluded. A room flagged OCCUPIED/RESERVED
+  // stays selectable for future free dates.
+  const availableRooms = useMemo(() => rooms.filter((r) => r.status !== "MAINTENANCE"), [rooms]);
 
   // Guest search for reservation dialog
   const resGuestResults = useMemo(() => {
