@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone } from "@/lib/utils";
+import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -679,10 +680,14 @@ export default function AccommodationGuestsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{t('lblcheckin', 'Check-in')} *</Label><Input type="date" value={resForm.checkIn} min={todayStr()} onChange={(e) => setResForm({ ...resForm, checkIn: e.target.value, checkOut: resForm.checkOut || addDays(e.target.value, 1) })} className="h-9 text-sm" /></div>
-              <div><Label>{t('lblcheckout', 'Check-out')} *</Label><Input type="date" value={resForm.checkOut} min={resForm.checkIn || todayStr()} onChange={(e) => setResForm({ ...resForm, checkOut: e.target.value })} className="h-9 text-sm" /></div>
-            </div>
+            {/* Availability calendar — occupied days are disabled (not clickable);
+                a checkout day stays open as the next arrival */}
+            <RoomAvailabilityCalendar
+              roomId={resForm.roomId || undefined}
+              checkIn={resForm.checkIn}
+              checkOut={resForm.checkOut}
+              onChange={(v) => setResForm((f) => ({ ...f, ...v }))}
+            />
             {resNights > 0 && resRate > 0 && (
               <div className="rounded-md bg-muted/50 p-2 flex justify-between text-xs">
                 <span>{t("nightsTimes", { nights: resNights, rate: formatCurrency(resRate) })}</span>
