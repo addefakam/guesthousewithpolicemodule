@@ -64,42 +64,48 @@ function fmtShort(s: string): string {
  */
 export function RoomAvailabilityCalendar({ roomId, checkIn, checkOut, onChange, className }: Props) {
   const { t } = useTranslation("reservations");
-  const [ranges, setRanges] = useState<BookedRange[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // Availability keyed by roomId: while roomId has changed but the fetch for
+  // the new room has not landed yet, derived values fall back to the
+  // "loading / empty" state without sync setState inside the effect.
+  const [availState, setAvailState] = useState<{
+    roomId: string; ranges: BookedRange[]; loading: boolean; error: string | null;
+  }>({ roomId: "", ranges: [], loading: false, error: null });
   const [phase, setPhase] = useState<"arrival" | "departure">("arrival");
   const [month, setMonth] = useState<Date>(sdate(todayLocal()));
   const fetchSeq = useRef(0);
 
   const today = todayLocal();
 
+  const stale = availState.roomId !== roomId;
+  const ranges = stale ? [] : availState.ranges;
+  const loading = stale ? !!roomId : availState.loading;
+  const loadError = stale ? null : availState.error;
+
   // Load booked ranges for the selected room
   useEffect(() => {
+    if (!roomId) return;
     const seq = ++fetchSeq.current;
-    if (!roomId) {
-      setRanges([]);
-      setLoadError(null);
-      setPhase("arrival");
-      return;
-    }
-    setLoading(true);
-    setLoadError(null);
     apiGetRoomAvailability(roomId)
       .then((data: { bookedRanges?: BookedRange[] }) => {
         if (seq !== fetchSeq.current) return;
-        setRanges(Array.isArray(data?.bookedRanges) ? data.bookedRanges : []);
+        setAvailState({
+          roomId,
+          ranges: Array.isArray(data?.bookedRanges) ? data.bookedRanges : [],
+          loading: false,
+          error: null,
+        });
         setMonth(sdate(checkIn || todayLocal()));
         setPhase(checkIn && !checkOut ? "departure" : "arrival");
       })
       .catch((err: unknown) => {
         if (seq !== fetchSeq.current) return;
-        setRanges([]);
-        setLoadError(err instanceof Error ? err.message : "Failed to load availability");
-      })
-      .finally(() => {
-        if (seq === fetchSeq.current) setLoading(false);
+        setAvailState({
+          roomId,
+          ranges: [],
+          loading: false,
+          error: err instanceof Error ? err.message : "Failed to load availability",
+        });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
   // Occupied NIGHTS: [checkIn, checkOut) of every booked range.

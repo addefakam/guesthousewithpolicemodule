@@ -1241,20 +1241,23 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
     ? (form.directName.trim() && form.directPhone.trim() && form.roomId)
     : (form.guestId && form.roomId);
 
-  // ── Availability for the selected room ──
-  const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
-  const [availLoading, setAvailLoading] = useState(false);
+  // ── Availability for the selected room (keyed by roomId so stale data
+  //    resolves to empty without sync setState in the effect) ──
+  const [availState, setAvailState] = useState<{ roomId: string; ranges: BookedRange[]; loading: boolean }>({
+    roomId: "", ranges: [], loading: false,
+  });
+  const bookedRanges = availState.roomId === form.roomId ? availState.ranges : [];
+  const availLoading = availState.roomId === form.roomId ? availState.loading : true;
 
   useEffect(() => {
-    if (!form.roomId) { setBookedRanges([]); return; }
+    const roomId = form.roomId;
+    if (!roomId) return;
     let cancelled = false;
-    setAvailLoading(true);
-    apiGetRoomAvailability(form.roomId)
+    apiGetRoomAvailability(roomId)
       .then((d: { bookedRanges?: BookedRange[] }) => {
-        if (!cancelled) setBookedRanges(Array.isArray(d?.bookedRanges) ? d.bookedRanges : []);
+        if (!cancelled) setAvailState({ roomId, ranges: Array.isArray(d?.bookedRanges) ? d.bookedRanges : [], loading: false });
       })
-      .catch(() => { if (!cancelled) setBookedRanges([]); })
-      .finally(() => { if (!cancelled) setAvailLoading(false); });
+      .catch(() => { if (!cancelled) setAvailState({ roomId, ranges: [], loading: false }); });
     return () => { cancelled = true; };
   }, [form.roomId]);
 
@@ -1384,29 +1387,31 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
         </div>
       </div>
       {/* Occupied ranges for the selected room */}
-      <div>
-        {availLoading ? (
-          <p className="flex items-center gap-1.5 text-[10px] text-gray-400">
-            <Clock className="h-3 w-3 animate-pulse" /> {t("loadingAvailability")}
-          </p>
-        ) : bookedRanges.length === 0 ? (
-          <p className="text-[10px] text-gray-400">{t("noOccupiedDates")}</p>
-        ) : (
-          <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-2.5">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-700">
-              <AlertTriangle className="h-3 w-3" /> {t("occupiedDates")}
+      {form.roomId && (
+        <div>
+          {availLoading ? (
+            <p className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <Clock className="h-3 w-3 animate-pulse" /> {t("loadingAvailability")}
             </p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {bookedRanges.map((r) => (
-                <span key={r.id} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-medium text-rose-700">
-                  {formatDate(r.checkIn)} → {formatDate(r.checkOut)}{r.guestName ? ` · ${r.guestName}` : ""}
-                </span>
-              ))}
+          ) : bookedRanges.length === 0 ? (
+            <p className="text-[10px] text-gray-400">{t("noOccupiedDates")}</p>
+          ) : (
+            <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-2.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-700">
+                <AlertTriangle className="h-3 w-3" /> {t("occupiedDates")}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {bookedRanges.map((r) => (
+                  <span key={r.id} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-medium text-rose-700">
+                    {formatDate(r.checkIn)} → {formatDate(r.checkOut)}{r.guestName ? ` · ${r.guestName}` : ""}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-1 text-[9px] text-gray-400">{t("checkoutDayHint")}</p>
             </div>
-            <p className="mt-1 text-[9px] text-gray-400">{t("checkoutDayHint")}</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       {/* Overlap blocker */}
       {overlapRange && (
         <div className="flex items-start gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">
