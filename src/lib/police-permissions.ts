@@ -72,7 +72,10 @@ export function requirePoliceRank(_auth: {
   role: string;
   permissions: string[];
 }): void {
-  if (_auth.role !== "POLICE") throw new Error("Police access required");
+  // POLICE accounts and the system admin (SUPERUSER) may both pass.
+  if (_auth.role !== "POLICE" && _auth.role !== "SUPERUSER") {
+    throw new Error("Police access required");
+  }
   // ADMIN has access to everything
   // If no specific rank required, any police user passes
 }
@@ -81,6 +84,8 @@ export function requirePoliceMinRank(
   auth: { role: string; policeRank?: string },
   minRank: PoliceRank,
 ): void {
+  // System admin outranks every police rank.
+  if (auth.role === "SUPERUSER") return;
   if (auth.role !== "POLICE") throw new Error("Police access required");
   const rank = (auth.policeRank || "OFFICER") as PoliceRank;
   const hierarchy: Record<PoliceRank, number> = {

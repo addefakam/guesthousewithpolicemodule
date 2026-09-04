@@ -61,7 +61,11 @@ export function getProviderFilter(auth: AuthContext) {
 }
 
 export function requirePolice(auth: AuthContext): void {
-  if (auth.role !== "POLICE") throw new Error("Police access required");
+  // POLICE accounts and the system admin (SUPERUSER — the police
+  // department's admin, no provider) may both use the police app.
+  if (auth.role !== "POLICE" && auth.role !== "SUPERUSER") {
+    throw new Error("Police access required");
+  }
 }
 
 export function blockPoliceWrites(auth: AuthContext): void {

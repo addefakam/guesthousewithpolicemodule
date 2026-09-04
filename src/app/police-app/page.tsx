@@ -57,8 +57,8 @@ function PoliceAppGate() {
     return <PoliceLogin />;
   }
 
-  // This standalone app is strictly for police accounts
-  if (currentUser.role !== "POLICE") {
+  // This standalone app is for police accounts and the system admin
+  if (currentUser.role !== "POLICE" && currentUser.role !== "SUPERUSER") {
     return <PoliceRoleError />;
   }
 

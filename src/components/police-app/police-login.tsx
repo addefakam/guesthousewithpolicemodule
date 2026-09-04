@@ -1,7 +1,8 @@
 "use client";
 
 // ── Standalone Police App login — Aurora light design system ──
-// Reuses the shared /api/auth cookie session; rejects non-POLICE accounts.
+// Reuses the shared /api/auth cookie session; accepts POLICE accounts
+// and the system admin (SUPERUSER). Other roles are rejected.
 // Soft light canvas with aurora washes, one white glass card, a single
 // indigo→violet gradient action. No artwork, no dark theme.
 
@@ -50,7 +51,7 @@ export function PoliceLogin() {
         setError(t("login.error"));
         return;
       }
-      if (user.role !== "POLICE") {
+      if (user.role !== "POLICE" && user.role !== "SUPERUSER") {
         // A non-police account just set the shared session cookie — clear it.
         await apiLogout();
         setCurrentUser(null);
@@ -188,7 +189,7 @@ export function PoliceLogin() {
   );
 }
 
-/** Shown when a non-police account (operator/staff/superuser) opens this app. */
+/** Shown when a non-police account (operator/staff) opens this app. */
 export function PoliceRoleError() {
   const { t } = useTranslation("policeApp");
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);

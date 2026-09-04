@@ -34,7 +34,8 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
   const [tab, setTab] = useState<Tab>("rooms"); // flagship screen first
 
-  const rank = (user.policeRank || "OFFICER") as PoliceRank;
+  // SUPERUSER (system admin) has no police rank — show the ADMIN badge for them
+  const rank = (user.role === "SUPERUSER" ? "ADMIN" : user.policeRank || "OFFICER") as PoliceRank;
 
   function cycleLanguage() {
     const idx = LANG_CYCLE.indexOf(i18n.language);
