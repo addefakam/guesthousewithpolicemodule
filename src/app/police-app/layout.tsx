@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 export default function PoliceAppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[#081426] text-slate-100 antialiased">
+    <div className="min-h-dvh bg-gray-50 text-gray-900 antialiased">
       {children}
     </div>
   );

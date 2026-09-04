@@ -1,50 +1,65 @@
 // ── Room status presentation helpers for the standalone Police App ──
+// Aligned with the /m operator app: same four statuses, same pastel-badge
+// language (bg-*-100 / text-*-800), same solid dots (bg-*-500), and the same
+// solid-color active filter chips (bg-*-600).
 
 export type RoomStatus = "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
 
 export const ROOM_STATUSES: RoomStatus[] = ["AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE"];
 
 interface StatusStyle {
-  /** solid dot color */
+  /** solid dot color (bg-*-500 family) */
   dot: string;
-  /** chip / room tile background */
+  /** pastel badge background (bg-*-100) */
   chipBg: string;
-  /** chip / room tile text */
+  /** pastel badge text (text-*-800) */
   chipText: string;
-  /** chip border */
+  /** pastel badge border (border-*-200) */
   chipBorder: string;
-  /** status filter chip when active */
+  /** active filter chip — solid color + white text, like /m */
   chipActive: string;
+  /** inactive filter chip — white bg + tinted text/border, like /m */
+  chipIdle: string;
+  /** top strip on cards (h-1.5 status bar), like /m room cards */
+  strip: string;
 }
 
 export const ROOM_STATUS_STYLES: Record<RoomStatus, StatusStyle> = {
   AVAILABLE: {
-    dot: "bg-emerald-400",
-    chipBg: "bg-emerald-500/15",
-    chipText: "text-emerald-300",
-    chipBorder: "border-emerald-500/30",
-    chipActive: "bg-emerald-500 text-white border-emerald-400",
+    dot: "bg-emerald-500",
+    chipBg: "bg-emerald-100",
+    chipText: "text-emerald-800",
+    chipBorder: "border-emerald-200",
+    chipActive: "bg-emerald-600 text-white border-emerald-600",
+    chipIdle: "bg-white text-emerald-700 border-emerald-200",
+    strip: "bg-emerald-500",
   },
   OCCUPIED: {
-    dot: "bg-rose-400",
-    chipBg: "bg-rose-500/15",
-    chipText: "text-rose-300",
-    chipBorder: "border-rose-500/30",
-    chipActive: "bg-rose-500 text-white border-rose-400",
+    dot: "bg-rose-500",
+    chipBg: "bg-rose-100",
+    chipText: "text-rose-800",
+    chipBorder: "border-rose-200",
+    chipActive: "bg-rose-600 text-white border-rose-600",
+    chipIdle: "bg-white text-rose-700 border-rose-200",
+    strip: "bg-rose-500",
   },
   RESERVED: {
-    dot: "bg-amber-400",
-    chipBg: "bg-amber-500/15",
-    chipText: "text-amber-300",
-    chipBorder: "border-amber-500/30",
-    chipActive: "bg-amber-500 text-white border-amber-400",
+    dot: "bg-sky-500",
+    chipBg: "bg-sky-100",
+    chipText: "text-sky-800",
+    chipBorder: "border-sky-200",
+    chipActive: "bg-sky-600 text-white border-sky-600",
+    chipIdle: "bg-white text-sky-700 border-sky-200",
+    strip: "bg-sky-500",
   },
   MAINTENANCE: {
-    dot: "bg-slate-400",
-    chipBg: "bg-slate-500/15",
-    chipText: "text-slate-300",
-    chipBorder: "border-slate-500/30",
-    chipActive: "bg-slate-500 text-white border-slate-400",
+    dot: "bg-amber-500",
+    chipBg: "bg-amber-100",
+    chipText: "text-amber-800",
+    chipBorder: "border-amber-200",
+    chipActive: "bg-amber-600 text-white border-amber-600",
+    chipIdle: "bg-white text-amber-700 border-amber-200",
+    strip: "bg-amber-500",
   },
 };
 

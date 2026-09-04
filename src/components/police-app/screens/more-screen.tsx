@@ -1,9 +1,10 @@
 "use client";
 
 // ── More — officer profile, language, about, sign out ──
+// Light cards on gray-50, matching the /m operator app.
 
 import { useTranslation } from "react-i18next";
-import { Globe, Info, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronRight, Globe, Info, LogOut, ShieldCheck } from "lucide-react";
 import { apiLogout } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import {
@@ -42,26 +43,26 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
   if (!user) return null;
 
   return (
-    <div className="space-y-4 px-4 pb-6 pt-3">
+    <div className="space-y-3 px-4 pt-4">
       <header className="flex items-center gap-2 px-1">
-        <ShieldCheck className="h-5 w-5 text-amber-400" />
-        <h1 className="text-lg font-bold leading-tight text-white">{t("more.title")}</h1>
+        <ShieldCheck className="h-5 w-5 text-amber-500" />
+        <h1 className="text-lg font-bold leading-tight text-gray-900">{t("more.title")}</h1>
       </header>
 
       {/* Officer card */}
-      <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-lg shadow-black/20">
+      <section className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-lg font-black text-[#0B1D3A] shadow-lg shadow-amber-500/25">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0B1D3A] text-lg font-black text-amber-400 shadow-sm">
               {initials}
             </div>
-            <PoliceBadgeMark className="absolute -bottom-1.5 -right-1.5 h-6 w-6 text-amber-300 drop-shadow" />
+            <PoliceBadgeMark className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-white p-0.5 text-amber-500 shadow-sm" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-bold text-white">{user.name}</h2>
-            <p className="truncate text-xs text-slate-400">@{user.username}</p>
+            <h2 className="truncate text-base font-bold text-gray-900">{user.name}</h2>
+            <p className="truncate text-xs text-gray-500">@{user.username}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-300">
+              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700">
                 {t("more.rolePolice")}
               </span>
               <span
@@ -71,12 +72,13 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
               </span>
             </div>
           </div>
+          <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-gray-300" />
         </div>
       </section>
 
       {/* Language */}
-      <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-lg shadow-black/20">
-        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <section className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm">
+        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
           <Globe className="h-4 w-4" />
           {t("more.language")}
         </h3>
@@ -91,8 +93,8 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
                 aria-pressed={active}
                 className={`flex h-14 flex-col items-center justify-center rounded-xl border text-xs font-bold transition active:scale-95 ${
                   active
-                    ? "border-amber-400 bg-amber-400/15 text-amber-300"
-                    : "border-white/10 bg-white/[0.04] text-slate-300"
+                    ? "border-amber-500 bg-amber-50 text-amber-700"
+                    : "border-gray-200 bg-white text-gray-600"
                 }`}
               >
                 <span>{l.native}</span>
@@ -106,13 +108,13 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
       </section>
 
       {/* About */}
-      <section className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-lg shadow-black/20">
-        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <section className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm">
+        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
           <Info className="h-4 w-4" />
           {t("more.about")}
         </h3>
-        <p className="mt-2.5 text-xs leading-relaxed text-slate-400">{t("more.aboutText")}</p>
-        <p className="mt-2 text-[10px] font-medium text-slate-600">
+        <p className="mt-2.5 text-xs leading-relaxed text-gray-500">{t("more.aboutText")}</p>
+        <p className="mt-2 text-[10px] font-medium text-gray-400">
           {t("appName")} · v1.0.0 · /police-app
         </p>
       </section>
@@ -121,7 +123,7 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
       <button
         type="button"
         onClick={handleLogout}
-        className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-500/15 py-3.5 text-sm font-bold text-rose-300 transition hover:bg-rose-500/25 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white py-3 text-sm font-semibold text-rose-600 transition active:bg-rose-50 active:scale-[0.98]"
       >
         <LogOut className="h-4 w-4" />
         {t("more.logout")}

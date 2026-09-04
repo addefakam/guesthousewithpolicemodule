@@ -40,7 +40,7 @@ function PoliceAppGate() {
 
   if (!mounted) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#081426]">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#0B1D3A]">
         <div className="relative flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/20" />
           <svg viewBox="0 0 24 24" className="h-10 w-10 text-amber-400" fill="currentColor" aria-hidden="true">
@@ -48,7 +48,7 @@ function PoliceAppGate() {
             <path d="m12 5.5 5.2 1.9v3.8c0 3.2-2.2 5.8-5.2 6.8-3-1-5.2-3.6-5.2-6.8V7.4L12 5.5Z" />
           </svg>
         </div>
-        <div className="h-1 w-28 overflow-hidden rounded-full bg-white/10">
+        <div className="h-1 w-28 overflow-hidden rounded-full bg-slate-800">
           <div className="h-full w-1/2 animate-pulse rounded-full bg-amber-400" />
         </div>
       </div>

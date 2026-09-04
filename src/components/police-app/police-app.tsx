@@ -1,8 +1,9 @@
 "use client";
 
 // ── Standalone Police App shell ──
-// Navy police theme, sticky header, bottom tab bar with the Rooms tab
-// elevated as the flagship (Room Availability) destination.
+// Same look & feel as the /m operator app: gray-50 body, solid dark sticky
+// header, and a flat white bottom tab bar. Police identity stays in the
+// navy header (#0B1D3A), the badge mark, and the amber accents.
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,48 +42,47 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
     i18n.changeLanguage(next);
   }
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode; elevated?: boolean }[] = [
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" /> },
-    { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-6 w-6" />, elevated: true },
+    { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" /> },
     { key: "guests", label: t("nav.guests"), icon: <Users className="h-5 w-5" /> },
     { key: "more", label: t("nav.more"), icon: <MoreHorizontal className="h-5 w-5" /> },
   ];
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-[#0B1D3A] to-[#081426]">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0B1D3A]/85 backdrop-blur-md">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <PoliceBadgeMark className="h-8 w-8 shrink-0 text-amber-400" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-bold leading-tight text-white">{t("appName")}</h1>
-            <p className="truncate text-[10px] font-medium uppercase tracking-widest text-amber-300/80">
-              {t("appTagline")}
-            </p>
+    <div className="flex min-h-dvh flex-col bg-gray-50">
+      {/* ── Header (same pattern as /m: solid dark bar) ── */}
+      <header className="sticky top-0 z-30 bg-[#0B1D3A] text-white px-4 pt-[env(safe-area-inset-top)] pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <PoliceBadgeMark className="h-8 w-8 shrink-0 text-amber-400" />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight">{t("appName")}</h1>
+              <p className="truncate text-[11px] text-slate-400">
+                {user.name} &middot; <span className="uppercase tracking-wider">{t("appTagline")}</span>
+              </p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={cycleLanguage}
-            aria-label={t("more.language")}
-            className="flex h-9 min-w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] px-2.5 text-[11px] font-bold text-slate-200 transition active:scale-95"
-          >
-            {LANG_LABELS[i18n.language] || "EN"}
-          </button>
-          <div className="flex flex-col items-end leading-none">
-            <span className="max-w-24 truncate text-[11px] font-semibold text-slate-200">
-              {user.name}
-            </span>
+          <div className="flex shrink-0 items-center gap-2">
             <span
-              className={`mt-1 rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${RANK_BADGE_CLASSES[rank] || RANK_BADGE_CLASSES.OFFICER}`}
+              className={`hidden rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider sm:inline-flex ${RANK_BADGE_CLASSES[rank] || RANK_BADGE_CLASSES.OFFICER}`}
             >
               {t(`rank.${rank}`)}
             </span>
+            <button
+              type="button"
+              onClick={cycleLanguage}
+              aria-label={t("more.language")}
+              className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors"
+            >
+              {LANG_LABELS[i18n.language] || "EN"}
+            </button>
           </div>
         </div>
       </header>
 
       {/* ── Screens ── */}
-      <main className="flex-1 pb-28">
+      <main className="flex-1 pb-24">
         {tab === "home" && <HomeScreen onNavigate={setTab} />}
         {tab === "rooms" && <RoomsScreen />}
         {tab === "guests" && <GuestsScreen />}
@@ -96,53 +96,26 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
         )}
       </main>
 
-      {/* ── Bottom tab bar ── */}
+      {/* ── Bottom tab bar (same pattern as /m: flat white bar) ── */}
       <nav
         aria-label={t("appName")}
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#0B1D3A]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+        className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]"
       >
-        <ul className="mx-auto grid max-w-lg grid-cols-4">
+        <ul className="mx-auto grid max-w-lg grid-cols-4 h-16">
           {tabs.map((item) => {
             const active = tab === item.key;
-            if (item.elevated) {
-              return (
-                <li key={item.key} className="relative flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setTab(item.key)}
-                    aria-current={active ? "page" : undefined}
-                    className="group -mt-6 flex flex-col items-center"
-                  >
-                    <span
-                      className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg transition active:scale-95 ${
-                        active
-                          ? "bg-gradient-to-br from-amber-400 to-amber-600 text-[#0B1D3A] shadow-amber-500/40"
-                          : "bg-[#16305A] text-amber-300 shadow-black/40 ring-1 ring-white/15"
-                      }`}
-                    >
-                      {item.icon}
-                    </span>
-                    <span
-                      className={`mt-1 text-[10px] font-bold ${active ? "text-amber-300" : "text-slate-400"}`}
-                    >
-                      {item.label}
-                    </span>
-                  </button>
-                </li>
-              );
-            }
             return (
               <li key={item.key}>
                 <button
                   type="button"
                   onClick={() => setTab(item.key)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex h-16 w-full flex-col items-center justify-center gap-1 transition active:scale-95 ${
-                    active ? "text-amber-300" : "text-slate-400 hover:text-slate-200"
+                  className={`flex h-16 w-full flex-col items-center justify-center gap-0.5 transition-colors ${
+                    active ? "text-slate-900" : "text-gray-400 active:text-gray-600"
                   }`}
                 >
-                  {item.icon}
-                  <span className="text-[10px] font-semibold">{item.label}</span>
+                  <div className={active ? "p-1 rounded-lg bg-slate-100" : ""}>{item.icon}</div>
+                  <span className="text-[10px] font-medium">{item.label}</span>
                 </button>
               </li>
             );
