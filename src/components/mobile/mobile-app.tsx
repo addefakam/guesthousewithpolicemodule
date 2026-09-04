@@ -424,14 +424,34 @@ export default function MobileApp() {
     return rm ? rm.pricePerNight : 0;
   }, [resForm.roomId, rooms]);
 
-  const stats = useMemo(() => ({
-    total: rooms.length,
-    available: rooms.filter((r) => r.status === "AVAILABLE").length,
-    occupied: rooms.filter((r) => r.status === "OCCUPIED").length,
-    reserved: rooms.filter((r) => r.status === "RESERVED").length,
-    upcoming: reservations.filter((r) => r.status === "UPCOMING").length,
-    checkedIn: reservations.filter((r) => r.status === "ACTIVE").length,
-  }), [rooms, reservations]);
+  const stats = useMemo(() => {
+    // Counted from the same date-aware display status the filter chips use,
+    // so tapping a card always yields a list matching the number shown.
+    let available = 0, reserved = 0, occupied = 0, maintenance = 0;
+    rooms.forEach((r) => {
+      const st = displayStatus(r);
+      if (st === "AVAILABLE") available += 1;
+      else if (st === "RESERVED") reserved += 1;
+      else if (st === "OCCUPIED") occupied += 1;
+      else if (st === "MAINTENANCE") maintenance += 1;
+    });
+    return {
+      total: rooms.length,
+      available,
+      reserved,
+      occupied,
+      maintenance,
+      upcoming: reservations.filter((r) => r.status === "UPCOMING").length,
+      checkedIn: reservations.filter((r) => r.status === "ACTIVE").length,
+    };
+  }, [rooms, reservations, displayStatus]);
+
+  // Stat cards act as shortcuts: tap to jump to the Rooms tab pre-filtered.
+  const handleStatTap = (key: string) => {
+    setActiveTab("rooms");
+    if (key === "TOTAL") { setStatusFilter(null); return; }
+    setStatusFilter(statusFilter === key ? null : key);
+  };
 
   // ── Handlers ──
   const handleCreateRes = async () => {
@@ -630,20 +650,29 @@ export default function MobileApp() {
           </div>
         </div>
 
-        {/* Stats row */}
+        {/* Stats row — tap a card to open the Rooms tab pre-filtered */}
         <div className="mt-3 grid grid-cols-4 gap-2">
           {[
-            { label: t("statAvailable"), value: stats.available, color: "bg-emerald-500" },
-            { label: t("statReserved"), value: stats.reserved, color: "bg-sky-500" },
-            { label: t("statOccupied"), value: stats.occupied, color: "bg-rose-500" },
-            { label: t("statTotal"), value: stats.total, color: "bg-slate-500" },
-          ].map((s) => (
-            <div key={s.label} className="rounded-lg bg-slate-800 p-2 text-center">
-              <div className={`mx-auto mb-1 h-1.5 w-1.5 rounded-full ${s.color}`} />
-              <p className="text-lg font-bold leading-tight">{s.value}</p>
-              <p className="text-[9px] text-slate-400">{s.label}</p>
-            </div>
-          ))}
+            { key: "AVAILABLE", label: t("statAvailable"), value: stats.available, color: "bg-emerald-500" },
+            { key: "RESERVED", label: t("statReserved"), value: stats.reserved, color: "bg-sky-500" },
+            { key: "OCCUPIED", label: t("statOccupied"), value: stats.occupied, color: "bg-rose-500" },
+            { key: "TOTAL", label: t("statTotal"), value: stats.total, color: "bg-slate-500" },
+          ].map((s) => {
+            const active = activeTab === "rooms" && (s.key === "TOTAL" ? statusFilter === null : statusFilter === s.key);
+            return (
+              <button
+                key={s.key}
+                onClick={() => handleStatTap(s.key)}
+                className={`rounded-lg p-2 text-center transition-all active:scale-95 ${
+                  active ? "bg-slate-600 ring-1 ring-white/40" : "bg-slate-800"
+                }`}
+              >
+                <div className={`mx-auto mb-1 h-1.5 w-1.5 rounded-full ${s.color}`} />
+                <p className="text-lg font-bold leading-tight">{s.value}</p>
+                <p className="text-[9px] text-slate-400">{s.label}</p>
+              </button>
+            );
+          })}
         </div>
       </header>
 
