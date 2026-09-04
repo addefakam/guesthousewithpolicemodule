@@ -59,6 +59,12 @@
     "new": "Haaraa"
   },
   "common": {
+      "install": {
+        "title": "GHMS destoopii irratti dhaabadhu",
+        "desc": "GHMS appii ta'eettin tokkoon tuqamaan irraa banaa — app store barbaachisa miti.",
+        "action": "App dhaabi",
+        "later": "Ammaa miti"
+      },
     "URGENT": "ARIFATISAA",
     "Click to view": "Ilaaluuf tuqi →",
     "lblguest": "Keessummaa",

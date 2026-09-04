@@ -8,6 +8,7 @@ import LoginPage from "@/components/ghms/login-page";
 import Sidebar from "@/components/ghms/sidebar";
 import PageRenderer from "@/components/ghms/page-renderer";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
+import PwaInstallPrompt from "@/components/pwa-install-prompt";
 import { apiGetNotifications, apiMarkNotificationRead } from "@/lib/api";
 import { useTranslation, I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/config";
@@ -22,6 +23,7 @@ interface UrgentNotif {
 export default function Home() {
   return (
     <I18nextProvider i18n={i18n}>
+      <PwaInstallPrompt />
       <HomeContent />
     </I18nextProvider>
   );

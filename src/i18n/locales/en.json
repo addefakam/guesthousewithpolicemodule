@@ -60,6 +60,12 @@
     "new": "new"
   },
   "common": {
+      "install": {
+        "title": "Install GHMS on your desktop",
+        "desc": "Add GHMS as an app for one-click access from your dock or start menu — no app store needed.",
+        "action": "Install app",
+        "later": "Not now"
+      },
     "URGENT": "URGENT",
     "Click to view": "Click to view →",
     "lblguest": "Guest",
