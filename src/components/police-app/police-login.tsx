@@ -43,15 +43,21 @@ export function PoliceLogin() {
     setSubmitting(true);
     setError(null);
     try {
-      const user = await apiAuth({ username: username.trim(), password });
-      if (user?.role !== "POLICE") {
+      // /api/auth resolves to { user, providerName } — unwrap before the role check
+      const res = await apiAuth({ username: username.trim(), password });
+      const user = res?.user;
+      if (!user) {
+        setError(t("login.error"));
+        return;
+      }
+      if (user.role !== "POLICE") {
         // A non-police account just set the shared session cookie — clear it.
         await apiLogout();
         setCurrentUser(null);
         setError(t("login.notPolice"));
         return;
       }
-      setCurrentUser(user);
+      setCurrentUser({ ...user, providerName: res.providerName ?? user.providerName ?? null });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("login.error"));
     } finally {
