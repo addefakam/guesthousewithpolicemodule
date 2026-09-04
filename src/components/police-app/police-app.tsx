@@ -2,8 +2,8 @@
 
 // ── Standalone Police App shell ──
 // Same look & feel as the /m operator app: gray-50 body, solid dark sticky
-// header, and a flat white bottom tab bar. Police identity stays in the
-// navy header (#0B1D3A), the badge mark, and the amber accents.
+// header (text-only, no icons), and a flat white bottom tab bar. Police
+// identity stays in the navy header (#0B1D3A) and the amber accents.
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,6 @@ import {
   RANK_BADGE_CLASSES,
   type PoliceRank,
 } from "@/lib/police-permissions";
-import { PoliceBadgeMark } from "@/components/police-app/visuals";
 import HomeScreen from "@/components/police-app/screens/home-screen";
 import RoomsScreen from "@/components/police-app/screens/rooms-screen";
 import GuestsScreen from "@/components/police-app/screens/guests-screen";
@@ -54,14 +53,11 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
       {/* ── Header (same pattern as /m: solid dark bar) ── */}
       <header className="sticky top-0 z-30 bg-[#0B1D3A] text-white px-4 pt-[env(safe-area-inset-top)] pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <PoliceBadgeMark className="h-8 w-8 shrink-0 text-amber-400" />
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-bold leading-tight">{t("appName")}</h1>
-              <p className="truncate text-[11px] text-slate-400">
-                {user.name} &middot; <span className="uppercase tracking-wider">{t("appTagline")}</span>
-              </p>
-            </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold leading-tight">{t("appName")}</h1>
+            <p className="truncate text-[11px] text-slate-400">
+              {user.name} &middot; <span className="uppercase tracking-wider">{t("appTagline")}</span>
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span

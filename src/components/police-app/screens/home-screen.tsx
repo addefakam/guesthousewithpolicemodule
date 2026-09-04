@@ -9,7 +9,6 @@ import {
   ArrowRight,
   BedDouble,
   Building2,
-  LayoutDashboard,
   Users,
   UserRound,
   Wallet,
@@ -131,12 +130,9 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => v
 
   return (
     <div className="space-y-3 px-4 pt-4">
-      <header className="flex items-center gap-2 px-1">
-        <LayoutDashboard className="h-5 w-5 text-amber-500" />
-        <div>
-          <h1 className="text-lg font-bold leading-tight text-gray-900">{t("home.title")}</h1>
-          <p className="text-xs text-gray-500">{t("home.subtitle")}</p>
-        </div>
+      <header className="px-1">
+        <h1 className="text-lg font-bold leading-tight text-gray-900">{t("home.title")}</h1>
+        <p className="text-xs text-gray-500">{t("home.subtitle")}</p>
       </header>
 
       {/* KPI grid */}

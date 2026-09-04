@@ -4,7 +4,7 @@
 // Light cards on gray-50, matching the /m operator app.
 
 import { useTranslation } from "react-i18next";
-import { ChevronRight, Globe, Info, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronRight, Globe, Info, LogOut } from "lucide-react";
 import { apiLogout } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import {
@@ -44,8 +44,7 @@ export default function MoreScreen({ onSignedOut }: { onSignedOut: () => void })
 
   return (
     <div className="space-y-3 px-4 pt-4">
-      <header className="flex items-center gap-2 px-1">
-        <ShieldCheck className="h-5 w-5 text-amber-500" />
+      <header className="px-1">
         <h1 className="text-lg font-bold leading-tight text-gray-900">{t("more.title")}</h1>
       </header>
 

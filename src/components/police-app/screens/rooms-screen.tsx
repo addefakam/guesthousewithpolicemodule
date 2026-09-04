@@ -169,8 +169,7 @@ export default function RoomsScreen() {
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#081426] via-[#081426]/75 to-transparent px-4 pb-3.5 pt-12">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-lg font-bold leading-tight text-white">
-                <BedDouble className="h-5 w-5 shrink-0 text-amber-400" />
+              <h1 className="text-lg font-bold leading-tight text-white">
                 {t("rooms.title")}
               </h1>
               <p className="mt-0.5 truncate text-xs text-slate-300">{t("rooms.subtitle")}</p>
