@@ -3277,7 +3277,8 @@
       "home": "Home",
       "rooms": "Rooms",
       "guests": "Guests",
-      "more": "More"
+      "more": "More",
+      "system": "Full System"
     },
     "home": {
       "title": "Dashboard",

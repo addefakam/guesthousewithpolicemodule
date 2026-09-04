@@ -11,10 +11,12 @@ import { useTranslation } from "react-i18next";
 import {
   BedDouble,
   LayoutDashboard,
-  MoreHorizontal,
+  LogOut,
+  Monitor,
   Users,
 } from "lucide-react";
 import { useAppStore, type CurrentUser } from "@/lib/store";
+import { apiLogout } from "@/lib/api";
 import {
   RANK_BADGE_CLASSES,
   type PoliceRank,
@@ -22,9 +24,8 @@ import {
 import HomeScreen from "@/components/police-app/screens/home-screen";
 import RoomsScreen from "@/components/police-app/screens/rooms-screen";
 import GuestsScreen from "@/components/police-app/screens/guests-screen";
-import MoreScreen from "@/components/police-app/screens/more-screen";
 
-type Tab = "home" | "rooms" | "guests" | "more";
+type Tab = "home" | "rooms" | "guests" | "system";
 
 const LANG_CYCLE = ["en", "am", "om"];
 const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" };
@@ -32,6 +33,7 @@ const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" }
 export default function PoliceApp({ user }: { user: CurrentUser }) {
   const { t, i18n } = useTranslation("policeApp");
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
+  const setCurrentUser = useAppStore((s) => s.setCurrentUser);
   const [tab, setTab] = useState<Tab>("rooms"); // flagship screen first
 
   // SUPERUSER (system admin) has no police rank — show the ADMIN badge for them
@@ -43,11 +45,30 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
     i18n.changeLanguage(next);
   }
 
+  // ── Full System Access — switch to the main GHMS app with NO re-authentication.
+  // The JWT cookie and persisted store are shared between both apps, so the main
+  // system renders the role's landing page straight from the session.
+  function openFullSystem() {
+    const page =
+      user.role === "POLICE"
+        ? "police-dashboard"
+        : user.role === "SUPERUSER" && !user.providerId
+          ? "super-admin-dashboard"
+          : "dashboard";
+    setCurrentPage(page);
+    window.location.assign("/");
+  }
+
+  async function handleLogout() {
+    await apiLogout();
+    setCurrentUser(null); // gate renders the PoliceLogin screen
+  }
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" /> },
     { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" /> },
     { key: "guests", label: t("nav.guests"), icon: <Users className="h-5 w-5" /> },
-    { key: "more", label: t("nav.more"), icon: <MoreHorizontal className="h-5 w-5" /> },
+    { key: "system", label: t("nav.system"), icon: <Monitor className="h-5 w-5" /> },
   ];
 
   return (
@@ -82,6 +103,15 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
             >
               {LANG_LABELS[i18n.language] || "EN"}
             </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label={t("more.logout")}
+              title={t("more.logout")}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition-colors active:bg-rose-50 active:text-rose-600"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </header>
@@ -97,14 +127,6 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
           {tab === "home" && <HomeScreen onNavigate={setTab} />}
           {tab === "rooms" && <RoomsScreen />}
           {tab === "guests" && <GuestsScreen />}
-          {tab === "more" && (
-            <MoreScreen
-              onSignedOut={() => {
-                // Back to the main GHMS app entry point after sign-out
-                setCurrentPage("dashboard");
-              }}
-            />
-          )}
         </div>
       </main>
 
@@ -120,8 +142,8 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
               <li key={item.key}>
                 <button
                   type="button"
-                  onClick={() => setTab(item.key)}
-                  aria-current={active ? "page" : undefined}
+                  onClick={() => (item.key === "system" ? openFullSystem() : setTab(item.key))}
+                  aria-current={!active ? undefined : "page"}
                   className={`relative flex h-16 w-full flex-col items-center justify-center gap-0.5 transition-colors ${
                     active ? "text-indigo-600" : "text-slate-400 active:text-slate-600"
                   }`}

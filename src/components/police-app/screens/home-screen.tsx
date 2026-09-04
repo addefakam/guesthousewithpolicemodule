@@ -72,7 +72,7 @@ interface BreakdownData {
   providers: BreakdownProvider[];
 }
 
-type Tab = "home" | "rooms" | "guests" | "more";
+type Tab = "home" | "rooms" | "guests" | "system";
 
 export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { t } = useTranslation("policeApp");
