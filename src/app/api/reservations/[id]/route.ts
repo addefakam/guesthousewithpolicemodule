@@ -17,12 +17,33 @@ export async function PUT(
 
     const existing = await db.reservation.findFirst({
       where: { id, providerId },
+      include: { room: { select: { id: true, status: true, number: true } } },
     });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
     }
 
-    const { guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount, paymentMethod, notes, status, groupBookingId } = body;
+    const { guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount, paymentMethod, notes, groupBookingId } = body;
+
+    // ── Status guard ──
+    // Booking details of PENDING (UPCOMING) and ACTIVE stays may be edited.
+    // COMPLETED / CANCELLED / DELETED records are history (police reports,
+    // revenue) and must stay immutable. Exception: unlinking a reservation
+    // from a group booking (groupBookingId-only payload) is metadata-only and
+    // stays available for every status.
+    const onlyUnlink =
+      groupBookingId !== undefined &&
+      Object.keys(body).every((k) => k === "groupBookingId");
+    if (!onlyUnlink && existing.status !== "UPCOMING" && existing.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: `Only upcoming or active reservations can be edited (current status: '${existing.status}')` },
+        { status: 409 }
+      );
+    }
+    // NOTE: `status` is intentionally NOT an accepted field here — status
+    // transitions must go through the dedicated checkin / checkout / cancel
+    // / delete endpoints so room state and side effects stay consistent
+    // (writing an invalid enum value here once caused SQLSTATE 22P02).
 
     const newCheckIn = checkIn || existing.checkIn;
     const newCheckOut = checkOut || existing.checkOut;
@@ -105,7 +126,6 @@ export async function PUT(
         ...(discountAmount !== undefined && { discountAmount }),
         ...(paymentMethod !== undefined && { paymentMethod: paymentMethod || null }),
         ...(notes !== undefined && { notes }),
-        ...(status !== undefined && { status }),
         ...(groupBookingId !== undefined && { groupBookingId: groupBookingId || null }),
       },
       include: {
@@ -113,6 +133,44 @@ export async function PUT(
         room: { select: { id: true, number: true, name: true, type: true } },
       },
     });
+
+    // ── Room-change side effects ──
+    // Keep room.status consistent when a reservation moves rooms, mirroring
+    // the cancel (release) and check-in (occupy) semantics:
+    //   • old room → AVAILABLE once no other UPCOMING/ACTIVE booking holds it
+    //   • new room → OCCUPIED when an ACTIVE (checked-in) guest moves in
+    const roomChanged =
+      roomId !== undefined && roomId !== null && roomId !== existing.roomId;
+    if (roomChanged) {
+      const othersOnOldRoom = await db.reservation.count({
+        where: {
+          roomId: existing.roomId,
+          id: { not: id },
+          status: { in: ["UPCOMING", "ACTIVE"] },
+        },
+      });
+      if (
+        othersOnOldRoom === 0 &&
+        (existing.room.status === "OCCUPIED" || existing.room.status === "RESERVED")
+      ) {
+        await db.room.update({
+          where: { id: existing.roomId },
+          data: { status: "AVAILABLE" },
+        });
+      }
+      if (existing.status === "ACTIVE") {
+        const newRoom = await db.room.findUnique({
+          where: { id: roomId },
+          select: { status: true },
+        });
+        if (newRoom && (newRoom.status === "AVAILABLE" || newRoom.status === "RESERVED")) {
+          await db.room.update({
+            where: { id: roomId },
+            data: { status: "OCCUPIED" },
+          });
+        }
+      }
+    }
 
     return NextResponse.json(reservation);
   } catch (error: unknown) {

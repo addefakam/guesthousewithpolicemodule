@@ -6,6 +6,7 @@ import { useAppStore } from "@/lib/store";
 import {
   apiGetReservations,
   apiCreateReservation,
+  apiUpdateReservation,
   apiDeleteReservation,
   apiCheckin,
   apiCheckout,
@@ -93,6 +94,7 @@ import {
   UserCheck,
   ChevronsUpDown,
   CalendarPlus,
+  Pencil,
 } from "lucide-react";
 import AddressFields from "@/components/shared/address-fields";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
@@ -101,6 +103,20 @@ interface GuestOption {
   id: string;
   name: string;
   phone: string;
+}
+
+/** Shape of the JSON error body surfaced by the API client (thrown as message). */
+interface ParsedApiError {
+  error?: string;
+  message?: string;
+  code?: string;
+  conflict?: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    roomNumber: string;
+    roomName?: string;
+  };
 }
 
 interface RoomOption {
@@ -223,6 +239,22 @@ export default function ReservationsPage() {
     notes: "",
   });
   const [paying, setPaying] = useState(false);
+
+  // Edit dialog (pending / active reservations only — enforced by API too)
+  const [editTarget, setEditTarget] = useState<Reservation | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    guestId: "",
+    roomId: "",
+    checkIn: "",
+    checkOut: "",
+    roomRate: "",
+    taxAmount: "",
+    discountAmount: "",
+    paymentMethod: "CASH",
+    notes: "",
+  });
+  const [editGuestOpen, setEditGuestOpen] = useState(false);
 
   // Action confirmations
   const [confirmAction, setConfirmAction] = useState<{
@@ -474,7 +506,7 @@ export default function ReservationsPage() {
       triggerRefresh();
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : "Failed to create reservation";
-      let parsed = null;
+      let parsed: ParsedApiError | null = null;
       try { parsed = JSON.parse(raw); } catch {}
       if (parsed?.code === "ROOM_CONFLICT" && parsed.conflict) {
         setCreateOpen(false);
@@ -545,6 +577,79 @@ export default function ReservationsPage() {
       toast.error(message);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const openEdit = (res: Reservation) => {
+    setEditForm({
+      guestId: res.guestId,
+      roomId: res.roomId,
+      checkIn: String(res.checkIn || "").slice(0, 10),
+      checkOut: String(res.checkOut || "").slice(0, 10),
+      roomRate: String(res.roomRate ?? 0),
+      taxAmount: String(res.taxAmount ?? 0),
+      discountAmount: String(res.discountAmount ?? 0),
+      paymentMethod: res.paymentMethod || "CASH",
+      notes: res.notes || "",
+    });
+    setEditTarget(res);
+  };
+
+  // Live price preview while editing — mirrors the server-side recompute
+  const editPreview = useMemo(() => {
+    const inDay = editForm.checkIn;
+    const outDay = editForm.checkOut;
+    let nights = 0;
+    if (inDay && outDay && outDay > inDay) {
+      nights = Math.max(1, Math.ceil((new Date(outDay).getTime() - new Date(inDay).getTime()) / 86400000));
+    }
+    const rate = Number(editForm.roomRate) || 0;
+    const tax = Number(editForm.taxAmount) || 0;
+    const discount = Number(editForm.discountAmount) || 0;
+    const subtotal = rate * nights;
+    const total = nights > 0 ? subtotal + tax - discount : 0;
+    const paid = editTarget?.paidAmount ?? 0;
+    return { nights, subtotal, total, paid, balance: total - paid, valid: nights > 0 };
+  }, [editForm.checkIn, editForm.checkOut, editForm.roomRate, editForm.taxAmount, editForm.discountAmount, editTarget]);
+
+  const handleEditSave = async () => {
+    if (!editTarget) return;
+    if (!editForm.guestId || !editForm.roomId || !editForm.checkIn || !editForm.checkOut) {
+      toast.error(t("editMissingFields"));
+      return;
+    }
+    if (editForm.checkOut <= editForm.checkIn) {
+      toast.error(t("editDateOrder"));
+      return;
+    }
+    try {
+      setEditSaving(true);
+      await apiUpdateReservation(editTarget.id, {
+        guestId: editForm.guestId,
+        roomId: editForm.roomId,
+        checkIn: editForm.checkIn,
+        checkOut: editForm.checkOut,
+        roomRate: Number(editForm.roomRate) || 0,
+        taxAmount: Number(editForm.taxAmount) || 0,
+        discountAmount: Number(editForm.discountAmount) || 0,
+        paymentMethod: editForm.paymentMethod || null,
+        notes: editForm.notes,
+      });
+      toast.success(t("reservationUpdated"));
+      setEditTarget(null);
+      triggerRefresh();
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : "Failed to update reservation";
+      let parsed: ParsedApiError | null = null;
+      try { parsed = JSON.parse(raw); } catch {}
+      if (parsed?.code === "ROOM_CONFLICT" && parsed.conflict) {
+        setEditTarget(null);
+        setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
+        return;
+      }
+      toast.error(parsed?.error || raw || t("editFailed"));
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -798,6 +903,15 @@ export default function ReservationsPage() {
                             </DropdownMenuItem>
                           )}
                           {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                            <DropdownMenuItem
+                              onClick={() => openEdit(res)}
+                              className="text-violet-700 focus:text-violet-700"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              {t("edit")}
+                            </DropdownMenuItem>
+                          )}
+                          {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -912,6 +1026,11 @@ export default function ReservationsPage() {
                     {res.balance > 0 && (res.status === "UPCOMING" || res.status === "ACTIVE") && (
                       <DropdownMenuItem onClick={() => { setPaymentDialog(res); setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" }); }}>
                         <CreditCard className="mr-2 h-4 w-4" /> Record Payment
+                      </DropdownMenuItem>
+                    )}
+                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                      <DropdownMenuItem className="text-violet-700" onClick={() => openEdit(res)}>
+                        <Pencil className="mr-2 h-4 w-4" /> {t("edit")}
                       </DropdownMenuItem>
                     )}
                     {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
@@ -1496,6 +1615,154 @@ export default function ReservationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Edit Reservation Dialog (pending / active only) */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-violet-500" />
+              {t("dialogEditResTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("dialogEditResDesc")}</DialogDescription>
+          </DialogHeader>
+
+          {editTarget && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Active-stay hint */}
+              {editTarget.status === "ACTIVE" && (
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-emerald-600" />
+                  <p className="text-xs text-emerald-800">{t("editActiveHint")}</p>
+                </div>
+              )}
+
+              {/* Guest combobox */}
+              <div className="space-y-1.5">
+                <Label>{t("labelGuest")} <span className="text-rose-500">*</span></Label>
+                <Popover open={editGuestOpen} onOpenChange={setEditGuestOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={editGuestOpen} className="w-full justify-between font-normal">
+                      {editForm.guestId ? allGuests.find((g) => g.id === editForm.guestId)?.name : t("placeholderSelectGuest")}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command shouldFilter={true}>
+                      <CommandInput placeholder={t("placeholderSearchGuest")} />
+                      <CommandList>
+                        <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
+                        <CommandGroup>
+                          {allGuests.map((g) => (
+                            <CommandItem key={g.id} value={`${g.name} ${g.phone}`} onSelect={() => { setEditForm({ ...editForm, guestId: g.id }); setEditGuestOpen(false); }}>
+                              <User className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="flex-1 truncate">{g.name}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">{g.phone}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Room */}
+              <div className="space-y-1.5">
+                <Label>{t("labelRoom")} <span className="text-rose-500">*</span></Label>
+                <Select value={editForm.roomId} onValueChange={(v) => setEditForm({ ...editForm, roomId: v })}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder={t("placeholderSelectRoom")} /></SelectTrigger>
+                  <SelectContent>
+                    {allRooms.filter((r) => r.status !== "MAINTENANCE" || r.id === editForm.roomId).map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name ? t("roomOptionWithName", { number: r.number, name: r.name, type: r.type, price: r.pricePerNight }) : t("roomOption", { number: r.number, type: r.type, price: r.pricePerNight })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("labelCheckIn")} <span className="text-rose-500">*</span></Label>
+                  <Input type="date" value={editForm.checkIn} onChange={(e) => setEditForm({ ...editForm, checkIn: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("labelCheckOut")} <span className="text-rose-500">*</span></Label>
+                  <Input type="date" value={editForm.checkOut} min={editForm.checkIn || undefined} onChange={(e) => setEditForm({ ...editForm, checkOut: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Rate / tax / discount */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("roomRate")}</Label>
+                  <Input type="number" min={0} step="0.01" value={editForm.roomRate} onChange={(e) => setEditForm({ ...editForm, roomRate: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("labelTax")}</Label>
+                  <Input type="number" min={0} step="0.01" value={editForm.taxAmount} onChange={(e) => setEditForm({ ...editForm, taxAmount: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("labelDiscount")}</Label>
+                  <Input type="number" min={0} step="0.01" value={editForm.discountAmount} onChange={(e) => setEditForm({ ...editForm, discountAmount: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Payment method */}
+              <div className="space-y-1.5">
+                <Label>{t("labelPaymentMethod")}</Label>
+                <Select value={editForm.paymentMethod} onValueChange={(v) => setEditForm({ ...editForm, paymentMethod: v })}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <Label>{t("labelNotes")}</Label>
+                <Textarea rows={2} placeholder={t("placeholderNotes")} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+              </div>
+
+              {/* Live price summary */}
+              {editPreview.valid && (
+                <div className="rounded-lg bg-violet-50 border border-violet-100 px-3 py-2 text-xs space-y-1">
+                  <div className="flex justify-between text-violet-900">
+                    <span>{t("roomRate")} × {t("nights")}</span>
+                    <span className="font-medium">{editPreview.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-violet-900">
+                    <span>{t("labelTotalUpper")}</span>
+                    <span className="font-semibold">{editPreview.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-violet-900">
+                    <span>{t("labelPaidUpper")}</span>
+                    <span>{editPreview.paid.toFixed(2)}</span>
+                  </div>
+                  <Separator className="bg-violet-200" />
+                  <div className="flex justify-between text-violet-900 font-semibold">
+                    <span>{t("labelBalanceUpper")}</span>
+                    <span>{editPreview.balance.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)} disabled={editSaving}>
+              {t("btnCancel")}
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving || !editPreview.valid} className="bg-violet-600 hover:bg-violet-700">
+              {editSaving ? t("btnSavingChanges") : t("btnSaveChanges")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Room Conflict Dialog */}
       <Dialog open={!!conflictInfo} onOpenChange={(open) => { if (!open) setConflictInfo(null); }}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
