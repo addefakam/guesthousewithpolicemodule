@@ -4,7 +4,6 @@ import React, { useSyncExternalStore, useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Bed,
-  BedDouble,
   Users,
   CalendarCheck,
   Sun,
@@ -101,11 +100,6 @@ const POLICE_NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
   },
   { page: "providers", label: "Providers", icon: Building2 },
-  {
-    page: "police-room-availability",
-    label: "Room Availability",
-    icon: BedDouble,
-  },
   {
     page: "police-reports",
     label: "Reports",
