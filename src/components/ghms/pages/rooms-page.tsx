@@ -262,6 +262,10 @@ export default function RoomsPage() {
 
   // Active reservations map (roomId → reservation) for tooltip/occupancy info
   const [roomResMap, setRoomResMap] = useState<Record<string, RoomReservation>>({});
+  // Separate buckets powering the date-aware status buttons:
+  // ACTIVE = guest checked in right now; UPCOMING = booked, guest not yet in
+  const [activeResMap, setActiveResMap] = useState<Record<string, RoomReservation>>({});
+  const [upcomingResMap, setUpcomingResMap] = useState<Record<string, RoomReservation>>({});
 
   // single-room dialog
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -308,27 +312,25 @@ export default function RoomsPage() {
         apiGetReservations("status=ACTIVE&limit=100").catch(() => []),
       ]);
       const list = Array.isArray(raw.rooms) ? raw.rooms : Array.isArray(raw) ? raw : [];
-      // Sort: AVAILABLE first, then RESERVED, then others; within each group by floor
-      const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
-      list.sort((a, b) => {
-        const oa = statusOrder[a.status] ?? 9;
-        const ob = statusOrder[b.status] ?? 9;
-        if (oa !== ob) return oa - ob;
-        const fa = getFloorFromNumber(a.number) ?? a.floor ?? 0;
-        const fb = getFloorFromNumber(b.number) ?? b.floor ?? 0;
-        return fa - fb;
-      });
       setRooms(list);
-      // Build roomId → active reservation map from both UPCOMING and ACTIVE
-      const allRes = [
-        ...(Array.isArray(upcomingRes?.data) ? upcomingRes.data : Array.isArray(upcomingRes) ? upcomingRes : []),
-        ...(Array.isArray(activeRes?.data) ? activeRes.data : Array.isArray(activeRes) ? activeRes : []),
-      ];
+      const upList: RoomReservation[] = Array.isArray(upcomingRes?.data) ? upcomingRes.data : Array.isArray(upcomingRes) ? upcomingRes : [];
+      const acList: RoomReservation[] = Array.isArray(activeRes?.data) ? activeRes.data : Array.isArray(activeRes) ? activeRes : [];
+      // Earliest-arriving UPCOMING booking per room
+      const upMap: Record<string, RoomReservation> = {};
+      for (const r of [...upList].sort((a, b) => a.checkIn.localeCompare(b.checkIn))) {
+        if (r.roomId && !upMap[r.roomId]) upMap[r.roomId] = r;
+      }
+      // Checked-in (ACTIVE) reservation per room
+      const acMap: Record<string, RoomReservation> = {};
+      for (const r of acList) {
+        if (r.roomId && !acMap[r.roomId]) acMap[r.roomId] = r;
+      }
+      setUpcomingResMap(upMap);
+      setActiveResMap(acMap);
+      // Tooltip map: prefer the in-house (ACTIVE) reservation, else the next booking
       const map: Record<string, RoomReservation> = {};
-      for (const r of allRes) {
-        if (r.roomId && !map[r.roomId]) {
-          map[r.roomId] = r;
-        }
+      for (const roomId of new Set([...Object.keys(upMap), ...Object.keys(acMap)])) {
+        map[roomId] = acMap[roomId] ?? upMap[roomId];
       }
       setRoomResMap(map);
     } catch (err: unknown) {
@@ -614,6 +616,25 @@ export default function RoomsPage() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rooms]);
 
+  // Local calendar date (YYYY-MM-DD) for date-aware room status.
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  // Date-aware display status per room (what the filter buttons mean):
+  // - OCCUPIED: a guest is checked in right now (ACTIVE reservation)
+  // - MAINTENANCE: room taken out of service
+  // - RESERVED: booked for today or upcoming days — guest has not checked in yet
+  // - AVAILABLE: free for today — nothing blocks today's date
+  const displayStatus = useCallback((room: Room): string => {
+    if (activeResMap[room.id]) return "OCCUPIED";
+    if (room.status === "MAINTENANCE") return "MAINTENANCE";
+    const up = upcomingResMap[room.id];
+    if (up && up.checkOut > todayKey) return "RESERVED";
+    return "AVAILABLE";
+  }, [activeResMap, upcomingResMap, todayKey]);
+
   // Status priority for the list: bookable rooms first, occupied always last.
   const STATUS_ORDER: Record<string, number> = {
     AVAILABLE: 0,
@@ -627,7 +648,8 @@ export default function RoomsPage() {
   const filteredRooms = useMemo(() => {
     return rooms
       .filter((room) => {
-        if (statusFilter && room.status !== statusFilter) return false;
+        const st = displayStatus(room);
+        if (statusFilter && st !== statusFilter) return false;
         if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
         if (!search) return true;
         const q = search.toLowerCase();
@@ -638,24 +660,25 @@ export default function RoomsPage() {
         );
       })
       .sort((a, b) => {
-        const so = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+        const so = (STATUS_ORDER[displayStatus(a)] ?? 9) - (STATUS_ORDER[displayStatus(b)] ?? 9);
         if (so !== 0) return so;
         const fa = getFloorFromNumber(a.number) ?? a.floor;
         const fb = getFloorFromNumber(b.number) ?? b.floor;
         if (fa !== fb) return fa - fb;
         return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
       });
-  }, [rooms, statusFilter, floorFilter, search]);
+  }, [rooms, statusFilter, floorFilter, search, displayStatus]);
 
   // Per-status counts for the filter chips (respect the floor filter, ignore search).
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { AVAILABLE: 0, RESERVED: 0, OCCUPIED: 0, MAINTENANCE: 0 };
     rooms.forEach((r) => {
       if (floorFilter !== null && getFloorFromNumber(r.number) !== floorFilter) return;
-      if (counts[r.status] !== undefined) counts[r.status] += 1;
+      const st = displayStatus(r);
+      if (counts[st] !== undefined) counts[st] += 1;
     });
     return counts;
-  }, [rooms, floorFilter]);
+  }, [rooms, floorFilter, displayStatus]);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
@@ -872,10 +895,11 @@ export default function RoomsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredRooms.map((room) => {
             const amenities = parseAmenities(room.amenities);
+            const st = displayStatus(room);
             return (
               <Card key={room.id} className="gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md cursor-pointer" onClick={() => setInfoRoom(room)}>
                 {/* Status Bar */}
-                <div className={`h-1.5 w-full ${STATUS_DOT[room.status]}`} />
+                <div className={`h-1.5 w-full ${STATUS_DOT[st]}`} />
 
                 <CardContent className="p-4">
                   {/* Room Header */}
@@ -946,12 +970,12 @@ export default function RoomsPage() {
                     <Badge variant="outline" className={ROOM_TYPE_COLORS[room.type]}>
                       {t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}
                     </Badge>
-                    {(room.status === "RESERVED" || room.status === "OCCUPIED") && roomResMap[room.id] ? (
+                    {(st === "RESERVED" || st === "OCCUPIED") && roomResMap[room.id] ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className={`${STATUS_STYLES[room.status]} cursor-help`}>
-                            <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                            {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                          <Badge variant="outline" className={`${STATUS_STYLES[st]} cursor-help`}>
+                            <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[st]}`} />
+                            {t("status" + st.charAt(0) + st.slice(1).toLowerCase())}
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="bg-gray-900 text-white border-0">
@@ -965,9 +989,9 @@ export default function RoomsPage() {
                         </TooltipContent>
                       </Tooltip>
                     ) : (
-                      <Badge variant="outline" className={STATUS_STYLES[room.status]}>
-                        <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                        {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                      <Badge variant="outline" className={STATUS_STYLES[st]}>
+                        <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[st]}`} />
+                        {t("status" + st.charAt(0) + st.slice(1).toLowerCase())}
                       </Badge>
                     )}
                   </div>
@@ -1024,7 +1048,7 @@ export default function RoomsPage() {
                       <Info className="h-3.5 w-3.5" />
                       {t("btnInfo")}
                     </Button>
-                    {room.status === "AVAILABLE" ? (
+                    {st === "AVAILABLE" ? (
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700"
@@ -1033,7 +1057,7 @@ export default function RoomsPage() {
                         <CalendarPlus className="h-3.5 w-3.5" />
                         {t("btnReserve")}
                       </Button>
-                    ) : room.status === "RESERVED" ? (
+                    ) : st === "RESERVED" ? (
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"

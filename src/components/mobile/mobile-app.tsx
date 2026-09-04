@@ -272,20 +272,12 @@ export default function MobileApp() {
       ]);
 
       const rmList = Array.isArray(rmRaw.rooms) ? rmRaw.rooms : Array.isArray(rmRaw) ? rmRaw : [];
-      const statusOrder: Record<string, number> = { AVAILABLE: 0, RESERVED: 1, OCCUPIED: 2, MAINTENANCE: 3 };
-      rmList.sort((a: Room, b: Room) => {
-        const oa = statusOrder[a.status] ?? 9;
-        const ob = statusOrder[b.status] ?? 9;
-        if (oa !== ob) return oa - ob;
-        const fa = getFloorFromNumber(a.number) ?? a.floor ?? 0;
-        const fb = getFloorFromNumber(b.number) ?? b.floor ?? 0;
-        return fa - fb;
-      });
       setRooms(rmList);
 
+      // ACTIVE first so the per-room tooltip map prefers the in-house guest
       const allRes: Reservation[] = [
-        ...(Array.isArray(upRes?.data) ? upRes.data : Array.isArray(upRes) ? upRes : []),
         ...(Array.isArray(acRes?.data) ? acRes.data : Array.isArray(acRes) ? acRes : []),
+        ...(Array.isArray(upRes?.data) ? upRes.data : Array.isArray(upRes) ? upRes : []),
       ];
       setReservations(allRes);
       const map: Record<string, Reservation> = {};
@@ -327,6 +319,40 @@ export default function MobileApp() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rooms]);
 
+  // Local calendar date (YYYY-MM-DD) for date-aware room status.
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  // Checked-in (ACTIVE) reservation per room
+  const activeResMap = useMemo(() => {
+    const m: Record<string, Reservation> = {};
+    reservations.forEach((r) => { if (r.status === "ACTIVE" && r.roomId && !m[r.roomId]) m[r.roomId] = r; });
+    return m;
+  }, [reservations]);
+
+  // Earliest-arriving UPCOMING booking per room
+  const upcomingResMap = useMemo(() => {
+    const m: Record<string, Reservation> = {};
+    [...reservations].filter((r) => r.status === "UPCOMING").sort((a, b) => a.checkIn.localeCompare(b.checkIn))
+      .forEach((r) => { if (r.roomId && !m[r.roomId]) m[r.roomId] = r; });
+    return m;
+  }, [reservations]);
+
+  // Date-aware display status per room (what the filter chips mean):
+  // - OCCUPIED: guest checked in right now (ACTIVE)
+  // - MAINTENANCE: room out of service
+  // - RESERVED: booked for today or upcoming days, guest not yet in
+  // - AVAILABLE: free for today
+  const displayStatus = useCallback((room: Room): string => {
+    if (activeResMap[room.id]) return "OCCUPIED";
+    if (room.status === "MAINTENANCE") return "MAINTENANCE";
+    const up = upcomingResMap[room.id];
+    if (up && up.checkOut > todayKey) return "RESERVED";
+    return "AVAILABLE";
+  }, [activeResMap, upcomingResMap, todayKey]);
+
   // Status priority for the list: bookable rooms first, occupied always last.
   const STATUS_ORDER: Record<string, number> = {
     AVAILABLE: 0,
@@ -339,19 +365,20 @@ export default function MobileApp() {
   const filteredRooms = useMemo(() => {
     return rooms
       .filter((room) => {
-        if (statusFilter && room.status !== statusFilter) return false;
+        const st = displayStatus(room);
+        if (statusFilter && st !== statusFilter) return false;
         if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
         return true;
       })
       .sort((a, b) => {
-        const so = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+        const so = (STATUS_ORDER[displayStatus(a)] ?? 9) - (STATUS_ORDER[displayStatus(b)] ?? 9);
         if (so !== 0) return so;
         const fa = getFloorFromNumber(a.number) ?? a.floor;
         const fb = getFloorFromNumber(b.number) ?? b.floor;
         if (fa !== fb) return fa - fb;
         return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
       });
-  }, [rooms, statusFilter, floorFilter]);
+  }, [rooms, statusFilter, floorFilter, displayStatus]);
 
   const filteredGuests = useMemo(() => {
     if (!guestSearch || guestSearch.length < 1) return guests.slice(0, 20);
@@ -900,13 +927,14 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
           {filteredRooms.map((room) => {
             const amenities = parseAmenities(room.amenities);
             const res = roomResMap[room.id];
+            const st = displayStatus(room);
             return (
               <div
                 key={room.id}
                 className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
               >
                 {/* Status dot bar */}
-                <div className={`h-1.5 ${STATUS_DOT[room.status]}`} />
+                <div className={`h-1.5 ${STATUS_DOT[st]}`} />
 
                 <div className="p-3 space-y-2" onClick={() => onRoomTap(room)}>
                   {/* Room header */}
@@ -923,12 +951,12 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
                   </div>
 
                   {/* Status badge with tooltip for reserved/occupied */}
-                  {(room.status === "RESERVED" || room.status === "OCCUPIED") && res ? (
+                  {(st === "RESERVED" || st === "OCCUPIED") && res ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[room.status]} cursor-help`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                          {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                        <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[st]} cursor-help`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[st]}`} />
+                          {t("status" + st.charAt(0) + st.slice(1).toLowerCase())}
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="bg-gray-900 text-white border-0">
@@ -940,9 +968,9 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[room.status]}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[room.status]}`} />
-                      {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
+                    <div className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[st]}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[st]}`} />
+                      {t("status" + st.charAt(0) + st.slice(1).toLowerCase())}
                     </div>
                   )}
 
@@ -950,19 +978,19 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
                   <p className="text-xs text-gray-500">{formatCurrency(room.pricePerNight)}<span className="text-gray-400"> /{t("night")}</span></p>
 
                   {/* Guest name for occupied/reserved */}
-                  {res?.guest && (room.status === "OCCUPIED" || room.status === "RESERVED") && (
+                  {res?.guest && (st === "OCCUPIED" || st === "RESERVED") && (
                     <p className="text-[11px] text-gray-500 truncate">{res.guest.name}</p>
                   )}
                 </div>
 
                 {/* Action button */}
                 <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
-                  {room.status === "AVAILABLE" ? (
+                  {st === "AVAILABLE" ? (
                     <button
                       onClick={() => onReserve(room)}
                       className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
                     >{t("btnReserve")}</button>
-                  ) : room.status === "RESERVED" ? (
+                  ) : st === "RESERVED" ? (
                     <button
                       onClick={() => onRoomTap(room)}
                       className="w-full rounded-xl bg-sky-600 text-white py-2.5 text-xs font-semibold active:bg-sky-700 transition-colors"
