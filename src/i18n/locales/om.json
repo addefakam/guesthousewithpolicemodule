@@ -345,6 +345,16 @@
     "activityEmpty": "Gochaaleen dhihoo hin jiran"
   },
   "policeDashboard": {
+    "breakdown": {
+      "title": "Tarreessa kutaawwan dhiyeessitootaa",
+      "hint": "Dhiyeessitaa tokkoon tokkoo kutaawwan duwwaa, qabameeraa, dursee qabameeraa fi suphaa irra jiran — kutaawwan ilaaluuf dhiyeessitaa tuqi.",
+      "availableCount": "{{count}} duwwaa",
+      "roomNum": "Kutaa {{room}}",
+      "floor": "Darbii {{floor}}",
+      "perNight": "halkanii",
+      "roomsWord": "kutaawwan",
+      "noRooms": "Dhiyeessitaa kanaaf kutaawwan galmeefaman hin jiru."
+    },
     "pageTitle": "Daashboordii Poolisii",
     "pageSubtitle": "Mana keessummaa galmaa'an hunda ilaalcha",
     "smartDetection": "Argannoo Cimaa",

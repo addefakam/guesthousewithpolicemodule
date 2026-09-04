@@ -346,6 +346,16 @@
     "activityEmpty": "No recent activity"
   },
   "policeDashboard": {
+    "breakdown": {
+      "title": "Provider Room Breakdown",
+      "hint": "Every guesthouse with its available, occupied, reserved and maintenance rooms — click a guesthouse to view its rooms.",
+      "availableCount": "{{count}} available",
+      "roomNum": "Room {{room}}",
+      "floor": "Floor {{floor}}",
+      "perNight": "/ night",
+      "roomsWord": "rooms",
+      "noRooms": "No rooms registered for this guesthouse."
+    },
     "pageTitle": "Police Dashboard",
     "pageSubtitle": "Overview of all registered guesthouses",
     "smartDetection": "Smart Detection",

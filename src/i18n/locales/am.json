@@ -345,6 +345,16 @@
     "activityEmpty": "ምንም የቅርብ ጊዜ እንቅስቃሴ የለም"
   },
   "policeDashboard": {
+    "breakdown": {
+      "title": "የአቅራቢዎች ክፍሎች ዝርዝር",
+      "hint": "የእያንዳንዱ አቅራቢ ክፍት፣ የተያዘ፣ ቀድሞ የተያዘ እና በጥገና ላይ ያሉ ክፍሎች — ክፍሎቹን ለማየት አቅራቢውን ይንኩ።",
+      "availableCount": "{{count}} ክፍት",
+      "roomNum": "ክፍል {{room}}",
+      "floor": "ፎት {{floor}}",
+      "perNight": "በሌሊት",
+      "roomsWord": "ክፍሎች",
+      "noRooms": "ለዚህ አቅራቢ የተመዘገቡ ክፍሎች የሉም።"
+    },
     "pageTitle": "የፖሊስ ዳሽቦርድ",
     "pageSubtitle": "የተመዘገቡ የእንግዳ ማረፊያዎች አጠቃላይ እይታ",
     "smartDetection": "ዘመናዊ ክትትል",

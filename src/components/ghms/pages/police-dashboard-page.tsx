@@ -5,7 +5,15 @@ import { useTranslation } from "react-i18next";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { useAppStore } from "@/lib/store";
-import { apiPoliceDashboard } from "@/lib/api";
+import { apiPoliceDashboard, apiPoliceRoomAvailability } from "@/lib/api";
+import {
+  BRAND,
+  ROOM_STATUSES,
+  ROOM_STATUS_STYLES,
+  PROVIDER_COUNT_KEY,
+  asRoomStatus,
+  type RoomStatus,
+} from "@/lib/police-app-status";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +40,9 @@ import {
   Banknote,
   TrendingUp,
   AlertCircle,
+  ChevronDown,
+  MapPin,
+  Phone,
 
   ToggleLeft,
   ToggleRight,
@@ -65,6 +76,37 @@ interface Provider {
   createdAt: string;
 }
 
+// ── Provider Room Breakdown payload (/api/police-room-availability) ──
+interface BreakdownRoom {
+  id: string;
+  number: string;
+  type: string;
+  status: string;
+  floor: number;
+  pricePerNight: number;
+}
+
+interface BreakdownProvider {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  total: number;
+  available: number;
+  occupied: number;
+  reserved: number;
+  maintenance: number;
+  utilizationRate: number;
+  rooms: BreakdownRoom[];
+}
+
+interface BreakdownData {
+  summary: {
+    availableRooms: number;
+  } | null;
+  providers: BreakdownProvider[];
+}
+
 const STATUS_BADGE_CLASS: Record<string, string> = {
   APPROVED: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200",
   PENDING: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200",
@@ -86,11 +128,25 @@ function formatDate(dateStr: string) {
   });
 }
 
+function formatRoomType(type: string): string {
+  return type.charAt(0) + type.slice(1).toLowerCase().replace("_", "-");
+}
+
+// Room status label keys (policeDashboard namespace) per normalized status.
+const BREAKDOWN_STATUS_LABEL: Record<RoomStatus, string> = {
+  AVAILABLE: "detail.colAvailable",
+  OCCUPIED: "detail.colOccupied",
+  RESERVED: "detail.colReserved",
+  MAINTENANCE: "detail.colMaintenance",
+};
+
 export default function PoliceDashboardPage() {
   const { t } = useTranslation("policeDashboard");
   const { refreshKey, currentUser } = useAppStore();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
   const [detailKind, setDetailKind] = useState<KpiDetailKind | null>(null);
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [anomalyEnabled, setAnomalyEnabled] = useState(false);
@@ -126,7 +182,12 @@ export default function PoliceDashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const dashData = await apiPoliceDashboard();
+      // Availability is a companion payload — if it fails the dashboard
+      // still renders, only the Provider Room Breakdown section hides.
+      const [dashData, availability] = await Promise.all([
+        apiPoliceDashboard(),
+        apiPoliceRoomAvailability().catch(() => null),
+      ]);
 
       const dash = dashData && typeof dashData === "object" ? dashData : null;
       const dashSafe = {
@@ -134,6 +195,11 @@ export default function PoliceDashboardPage() {
         providers: Array.isArray(dash?.providers) ? dash.providers : [],
       };
       setDashboard(dashSafe);
+      setBreakdown(
+        availability && Array.isArray(availability.providers)
+          ? { summary: availability.summary ?? null, providers: availability.providers }
+          : null
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("failedToLoad");
       toast.error(message);
@@ -411,6 +477,160 @@ export default function PoliceDashboardPage() {
           goToPage={providerPagination.goToPage}
           setPageSize={providerPagination.setPageSize}
         />
+      )}
+
+      {/* ── Provider Room Breakdown — every guesthouse with its available /
+          occupied / reserved / maintenance rooms and tappable room chips
+          (same design language as the police app main page) ── */}
+      {!loading && breakdown && breakdown.providers.length > 0 && (
+        <Card className="shadow-sm" aria-label={t("breakdown.title")}>
+          <CardHeader className="px-4 pb-2 sm:px-6 sm:pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <DoorOpen className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                {t("breakdown.title")}
+              </CardTitle>
+              {breakdown.summary && (
+                <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                  {t("breakdown.availableCount", { count: breakdown.summary.availableRooms })}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("breakdown.hint")}</p>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 sm:px-6">
+            <ul className="space-y-3">
+              {breakdown.providers.map((p) => {
+                const expanded = expandedProvider === p.id;
+                const busy = p.utilizationRate >= 80;
+                return (
+                  <li
+                    key={p.id}
+                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                  >
+                    {/* Provider header (toggle) */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedProvider(expanded ? null : p.id)}
+                      aria-expanded={expanded}
+                      className="w-full p-3.5 text-left transition-colors hover:bg-slate-50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-bold text-slate-900">{p.name}</h3>
+                          {p.address && (
+                            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-slate-500">
+                              <MapPin className="h-3 w-3 shrink-0 text-rose-400" />
+                              {p.address}
+                            </p>
+                          )}
+                          {p.phone && (
+                            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+                              <Phone className="h-3 w-3 shrink-0 text-blue-500" />
+                              {p.phone}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                              busy
+                                ? "border-rose-200 bg-rose-50 text-rose-700"
+                                : "border-indigo-200 bg-indigo-50 text-indigo-700"
+                            }`}
+                          >
+                            {p.utilizationRate}%
+                          </span>
+                          <ChevronDown
+                            className={`h-4 w-4 text-slate-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+                          />
+                        </div>
+                      </div>
+                      {/* mini status counts — the available / occupied / etc. list */}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        {ROOM_STATUSES.map((status) => (
+                          <span
+                            key={status}
+                            className="flex items-center gap-1 text-[11px] font-semibold text-slate-600"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`inline-block h-2 w-2 rounded-full ${ROOM_STATUS_STYLES[status].dot}`}
+                            />
+                            {p[PROVIDER_COUNT_KEY[status]]}{" "}
+                            <span className="font-medium text-slate-500">
+                              {t(BREAKDOWN_STATUS_LABEL[status])}
+                            </span>
+                          </span>
+                        ))}
+                        <span className="ml-auto text-[11px] text-slate-400">
+                          {p.total} {t("breakdown.roomsWord")}
+                        </span>
+                      </div>
+                      {/* utilization bar — brand gradient flow (rose when busy) */}
+                      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${busy ? "bg-rose-400" : BRAND.gradientBar}`}
+                          style={{ width: `${Math.min(p.utilizationRate, 100)}%` }}
+                        />
+                      </div>
+                    </button>
+
+                    {/* Expanded room chips */}
+                    {expanded && (
+                      <div className="border-t border-slate-200 bg-slate-50/70 p-3">
+                        {p.rooms.length === 0 ? (
+                          <p className="rounded-lg border border-slate-200 bg-white px-3 py-4 text-center text-xs text-muted-foreground">
+                            {t("breakdown.noRooms")}
+                          </p>
+                        ) : (
+                          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                            {p.rooms.map((r) => {
+                              const st = asRoomStatus(r.status);
+                              const s = ROOM_STATUS_STYLES[st];
+                              return (
+                                <li
+                                  key={r.id}
+                                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                                >
+                                  <div className={`h-1 ${s.strip}`} />
+                                  <div className="p-2.5">
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-sm font-bold tracking-tight text-slate-900">
+                                        {t("breakdown.roomNum", { room: r.number })}
+                                      </span>
+                                      <span
+                                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.chipBg} ${s.chipText} ${s.chipBorder}`}
+                                      >
+                                        {t(BREAKDOWN_STATUS_LABEL[st])}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 truncate text-[10px] text-slate-500">
+                                      {[
+                                        formatRoomType(r.type),
+                                        r.floor != null ? t("breakdown.floor", { floor: r.floor }) : null,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-slate-600">
+                                      {r.pricePerNight.toLocaleString()}{" "}
+                                      <span className="text-slate-400">{t("breakdown.perNight")}</span>
+                                    </p>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {/* KPI drill-down dialog */}
