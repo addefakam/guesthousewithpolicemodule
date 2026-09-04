@@ -508,10 +508,19 @@ export default function ReservationsPage() {
       const raw = err instanceof Error ? err.message : "Failed to create reservation";
       let parsed: ParsedApiError | null = null;
       try { parsed = JSON.parse(raw); } catch {}
-      if (parsed?.code === "ROOM_CONFLICT" && parsed.conflict) {
+      // req() throws only the `error` field — a 409 surfaces as the bare
+      // string "ROOM_CONFLICT", so fall back to the chosen form values for
+      // the conflict dialog details.
+      if (raw === "ROOM_CONFLICT" || (parsed?.code === "ROOM_CONFLICT" && parsed.conflict)) {
+        const chosen = allRooms.find((x) => x.id === createForm.roomId);
         setCreateOpen(false);
         setWizardStep(1);
-        setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
+        setConflictInfo({
+          roomNumber: parsed?.conflict?.roomNumber || chosen?.number || "",
+          roomName: parsed?.conflict?.roomName || chosen?.name || "",
+          checkIn: parsed?.conflict?.checkIn || createForm.checkIn,
+          checkOut: parsed?.conflict?.checkOut || createForm.checkOut,
+        });
         return;
       }
       toast.error(parsed?.error || raw || "Failed to create reservation");
@@ -642,9 +651,18 @@ export default function ReservationsPage() {
       const raw = err instanceof Error ? err.message : "Failed to update reservation";
       let parsed: ParsedApiError | null = null;
       try { parsed = JSON.parse(raw); } catch {}
-      if (parsed?.code === "ROOM_CONFLICT" && parsed.conflict) {
+      // req() throws only the `error` field — a 409 surfaces as the bare
+      // string "ROOM_CONFLICT", so fall back to the edited form values for
+      // the conflict dialog details.
+      if (raw === "ROOM_CONFLICT" || (parsed?.code === "ROOM_CONFLICT" && parsed.conflict)) {
+        const chosen = allRooms.find((x) => x.id === editForm.roomId);
         setEditTarget(null);
-        setConflictInfo({ roomNumber: parsed.conflict.roomNumber, roomName: parsed.conflict.roomName || "", checkIn: parsed.conflict.checkIn, checkOut: parsed.conflict.checkOut });
+        setConflictInfo({
+          roomNumber: parsed?.conflict?.roomNumber || chosen?.number || "",
+          roomName: parsed?.conflict?.roomName || chosen?.name || "",
+          checkIn: parsed?.conflict?.checkIn || editForm.checkIn,
+          checkOut: parsed?.conflict?.checkOut || editForm.checkOut,
+        });
         return;
       }
       toast.error(parsed?.error || raw || t("editFailed"));

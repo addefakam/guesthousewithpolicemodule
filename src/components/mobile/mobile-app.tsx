@@ -89,6 +89,7 @@ import {
   DollarSign,
   Power,
   Plus,
+  Pencil,
 } from "lucide-react";
 
 // ── Types ──
@@ -105,6 +106,9 @@ interface Guest {
 interface Reservation {
   id: string; status: string; checkIn: string; checkOut: string; nights: number;
   totalCost: number; paidAmount: number; balance: number; paymentStatus: string;
+  guestId?: string;
+  roomRate?: number; taxAmount?: number; discountAmount?: number;
+  paymentMethod?: string | null; notes?: string;
   guest: { id: string; name: string; phone: string } | null;
   room: { id: string; number: string; name: string; type: string; pricePerNight: number } | null;
   roomId?: string;
@@ -148,6 +152,8 @@ const RES_STATUS: Record<string, { color: string; label: string }> = {
   COMPLETED: { color: "bg-slate-100 text-slate-700", label: "Completed" },
   CANCELLED: { color: "bg-red-100 text-red-800", label: "Cancelled" },
 };
+
+const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
 const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
 
@@ -254,6 +260,16 @@ export default function MobileApp() {
   // Early checkout
   const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
   const [earlyCheckoutRes, setEarlyCheckoutRes] = useState<Reservation | null>(null);
+
+  // Edit reservation (pending / active only — enforced by the API too)
+  const [editRes, setEditRes] = useState<Reservation | null>(null);
+  const [showEditRes, setShowEditRes] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editResForm, setEditResForm] = useState({
+    guestId: "", roomId: "", checkIn: "", checkOut: "",
+    roomRate: "", taxAmount: "", discountAmount: "", paymentMethod: "CASH", notes: "",
+  });
+  const [editGuestSearch, setEditGuestSearch] = useState("");
   const [earlyCheckingOut, setEarlyCheckingOut] = useState(false);
 
   // Floor filter
@@ -404,6 +420,14 @@ export default function MobileApp() {
     ).slice(0, 10);
   }, [resGuestSearch, guests]);
 
+  const editGuestResults = useMemo(() => {
+    if (!editGuestSearch || editGuestSearch.length < 2) return guests.slice(0, 10);
+    const q = editGuestSearch.toLowerCase();
+    return guests.filter((g) =>
+      g.name.toLowerCase().includes(q) || g.phone.includes(q) || g.idNumber.toLowerCase().includes(q)
+    ).slice(0, 10);
+  }, [editGuestSearch, guests]);
+
   // Rooms offered for new reservations: every bookable room — availability is
   // date-driven (occupied ranges block overlapping selections; the server
   // rejects overlaps). Only MAINTENANCE rooms are excluded.
@@ -553,6 +577,69 @@ export default function MobileApp() {
     } finally { setExtending(false); }
   };
 
+  const openEditRes = (r: Reservation) => {
+    setEditResForm({
+      guestId: r.guestId || r.guest?.id || "",
+      roomId: r.roomId || r.room?.id || "",
+      checkIn: String(r.checkIn || "").slice(0, 10),
+      checkOut: String(r.checkOut || "").slice(0, 10),
+      roomRate: String(r.roomRate ?? 0),
+      taxAmount: String(r.taxAmount ?? 0),
+      discountAmount: String(r.discountAmount ?? 0),
+      paymentMethod: r.paymentMethod || "CASH",
+      notes: r.notes || "",
+    });
+    setEditGuestSearch(r.guest?.name || "");
+    setEditRes(r);
+    setShowEditRes(true);
+  };
+
+  // Live totals while editing — mirrors the server-side recompute
+  const editNights =
+    editResForm.checkIn && editResForm.checkOut && editResForm.checkOut > editResForm.checkIn
+      ? Math.max(1, Math.ceil((new Date(editResForm.checkOut).getTime() - new Date(editResForm.checkIn).getTime()) / 86400000))
+      : 0;
+  const editTotal =
+    editNights > 0
+      ? (Number(editResForm.roomRate) || 0) * editNights + (Number(editResForm.taxAmount) || 0) - (Number(editResForm.discountAmount) || 0)
+      : 0;
+
+  const handleEditResSave = async () => {
+    if (!editRes) return;
+    if (!editResForm.guestId || !editResForm.roomId || !editResForm.checkIn || !editResForm.checkOut) {
+      toast.error(t("editMissingFields")); return;
+    }
+    if (editResForm.checkOut <= editResForm.checkIn) {
+      toast.error(t("editDateOrder")); return;
+    }
+    try {
+      setSavingEdit(true);
+      await apiUpdateReservation(editRes.id, {
+        guestId: editResForm.guestId,
+        roomId: editResForm.roomId,
+        checkIn: editResForm.checkIn,
+        checkOut: editResForm.checkOut,
+        roomRate: Number(editResForm.roomRate) || 0,
+        taxAmount: Number(editResForm.taxAmount) || 0,
+        discountAmount: Number(editResForm.discountAmount) || 0,
+        paymentMethod: editResForm.paymentMethod || null,
+        notes: editResForm.notes,
+      });
+      toast.success(t("toastResUpdated"));
+      setShowEditRes(false); setEditRes(null);
+      triggerRefresh(); await fetchData();
+      if (selectedRoom) fetchRoomReservations(selectedRoom.id);
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : t("editFailed");
+      let parsed: { error?: string; code?: string } | null = null;
+      try { parsed = JSON.parse(raw); } catch {}
+      // req() throws only the `error` field — a 409 surfaces as the bare
+      // string "ROOM_CONFLICT".
+      const conflict = raw === "ROOM_CONFLICT" || parsed?.code === "ROOM_CONFLICT";
+      toast.error(conflict ? t("editRoomConflict") : (parsed?.error || raw || t("editFailed")));
+    } finally { setSavingEdit(false); }
+  };
+
   const handleEarlyCheckout = async () => {
     if (!earlyCheckoutRes) return;
     try {
@@ -695,6 +782,7 @@ export default function MobileApp() {
             onCheckout={(r) => setConfirmAction({ type: "checkout", res: r })}
             onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
             onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
+            onEdit={openEditRes}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency}
           />
         )}
@@ -794,6 +882,115 @@ export default function MobileApp() {
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setShowExtend(false); setExtendRes(null); }}>{t("cancel")}</Button>
             <Button size="sm" onClick={handleExtendStay} disabled={extending || !extendDate}>{extending ? t("processing") : t("btnExtend")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Reservation Dialog (pending / active only) */}
+      <Dialog open={showEditRes} onOpenChange={(open) => { if (!open) { setShowEditRes(false); setEditRes(null); } }}>
+        <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5" /> {t("editResTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {editRes?.guest?.name || ""}{editRes?.room?.number ? ` · ${t("lblRoom")} ${editRes.room.number}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Guest */}
+            <div>
+              <Label className="text-xs font-semibold">{t("lblGuest")} *</Label>
+              {editResForm.guestId ? (
+                <div className="mt-1.5 flex items-center justify-between rounded-xl border bg-gray-50 p-3">
+                  <span className="text-sm font-medium truncate">{guests.find((g) => g.id === editResForm.guestId)?.name || ""}</span>
+                  <button onClick={() => { setEditResForm((f) => ({ ...f, guestId: "" })); setEditGuestSearch(""); }} className="shrink-0 text-xs text-rose-500">{t("change")}</button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative mt-1.5">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input value={editGuestSearch} onChange={(e) => setEditGuestSearch(e.target.value)} placeholder={t("searchGuestPlaceholder")} className="pl-9 h-11 rounded-xl" />
+                  </div>
+                  {editGuestResults.length > 0 && (
+                    <div className="mt-1 max-h-32 overflow-y-auto rounded-xl border bg-white">
+                      {editGuestResults.map((g) => (
+                        <button key={g.id} className="w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 border-b last:border-b-0 flex justify-between items-center"
+                          onClick={() => { setEditResForm((f) => ({ ...f, guestId: g.id })); setEditGuestSearch(g.name); }}>
+                          <span className="font-medium">{g.name}</span>
+                          <span className="text-gray-400">{g.phone}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            {/* Room */}
+            <div>
+              <Label className="text-xs font-semibold">{t("lblRoom")} *</Label>
+              <Select value={editResForm.roomId} onValueChange={(v) => setEditResForm((f) => ({ ...f, roomId: v }))}>
+                <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue placeholder={t("selectRoomPlaceholder")} /></SelectTrigger>
+                <SelectContent>
+                  {rooms.filter((r) => r.status !== "MAINTENANCE" || r.id === editResForm.roomId).map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.number} — {r.type} — {formatCurrency(r.pricePerNight)}/{t("night")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">{t("lblCheckIn")} *</Label>
+                <Input type="date" value={editResForm.checkIn} onChange={(e) => setEditResForm((f) => ({ ...f, checkIn: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">{t("lblCheckOut")} *</Label>
+                <Input type="date" value={editResForm.checkOut} min={editResForm.checkIn || undefined} onChange={(e) => setEditResForm((f) => ({ ...f, checkOut: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
+              </div>
+            </div>
+            {/* Rate / tax / discount */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">{t("lblRoomRate")}</Label>
+                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.roomRate} onChange={(e) => setEditResForm((f) => ({ ...f, roomRate: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">{t("lblTax")}</Label>
+                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.taxAmount} onChange={(e) => setEditResForm((f) => ({ ...f, taxAmount: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">{t("lblDiscount")}</Label>
+                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.discountAmount} onChange={(e) => setEditResForm((f) => ({ ...f, discountAmount: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
+              </div>
+            </div>
+            {/* Payment method */}
+            <div>
+              <Label className="text-xs font-semibold">{t("lblPaymentMethod")}</Label>
+              <Select value={editResForm.paymentMethod} onValueChange={(v) => setEditResForm((f) => ({ ...f, paymentMethod: v }))}>
+                <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Notes */}
+            <div>
+              <Label className="text-xs font-semibold">{t("lblNotes")}</Label>
+              <Textarea rows={2} value={editResForm.notes} onChange={(e) => setEditResForm((f) => ({ ...f, notes: e.target.value }))} className="mt-1.5 text-sm rounded-xl" />
+            </div>
+            {/* Live totals */}
+            {editNights > 0 && (
+              <p className="text-[11px] text-gray-500">
+                {t("editNightsLine", { nights: editNights })} · {t("editTotalLine", { total: formatCurrency(editTotal), paid: formatCurrency(editRes?.paidAmount || 0), balance: formatCurrency(editTotal - (editRes?.paidAmount || 0)) })}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setShowEditRes(false); setEditRes(null); }} disabled={savingEdit}>{t("cancel")}</Button>
+            <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={handleEditResSave} disabled={savingEdit || editNights === 0}>{savingEdit ? t("processing") : t("btnSaveEdit")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1046,10 +1243,11 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
   );
 }
 
-function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, t, formatDate, formatCurrency }: {
+function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, t, formatDate, formatCurrency }: {
   reservations: Reservation[];
   onCheckin: (r: Reservation) => void; onCheckout: (r: Reservation) => void;
   onExtend: (r: Reservation) => void; onEarlyCheckout: (r: Reservation) => void;
+  onEdit: (r: Reservation) => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
 }) {
@@ -1104,6 +1302,12 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
               </div>
 
               <div className="flex items-center gap-2 pl-[50px]">
+                {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                  <button
+                    onClick={() => onEdit(res)}
+                    className="flex-1 rounded-xl bg-violet-100 text-violet-700 py-2 text-xs font-semibold active:bg-violet-200 transition-colors"
+                  >{t("btnEdit")}</button>
+                )}
                 {res.status === "UPCOMING" && (
                   <button
                     onClick={() => onCheckin(res)}
