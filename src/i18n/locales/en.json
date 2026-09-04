@@ -3319,6 +3319,12 @@
       "floor": "Floor {{floor}}",
       "perNight": "/ night",
       "updated": "Updated {{time}}",
+      "availableRooms": "Available Rooms",
+      "colRoom": "Room",
+      "colGuesthouse": "Guesthouse",
+      "colType": "Type",
+      "colPrice": "Price",
+      "noAvailable": "No available rooms right now",
       "resultGuesthouses_one": "{{count}} guesthouse",
       "resultGuesthouses_other": "{{count}} guesthouses"
     },

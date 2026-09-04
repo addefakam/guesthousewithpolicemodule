@@ -140,6 +140,27 @@ export default function RoomsScreen() {
     [visibleProviders]
   );
 
+  // Flat list of every AVAILABLE room across all guesthouses (search-aware) —
+  // rendered as the quick-scan table at the top of the screen.
+  const availableRooms = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    return data.providers.flatMap((p) =>
+      p.rooms
+        .filter((r) => asRoomStatus(r.status) === "AVAILABLE")
+        .filter((r) => {
+          if (!q) return true;
+          return (
+            p.name.toLowerCase().includes(q) ||
+            (p.address || "").toLowerCase().includes(q) ||
+            (p.phone || "").includes(q) ||
+            r.number.toLowerCase().includes(q)
+          );
+        })
+        .map((r) => ({ ...r, providerName: p.name }))
+    );
+  }, [data, search]);
+
   const isFiltering = filter !== "ALL" || search.trim().length > 0;
 
   return (
@@ -180,6 +201,53 @@ export default function RoomsScreen() {
               className={`h-full rounded-full ${BRAND.gradientBar}`}
               style={{ width: `${Math.min(100, Math.max(2, summary.utilizationRate))}%` }}
             />
+          </div>
+        </section>
+      )}
+
+      {/* ── Available rooms table (quick scan across all guesthouses) ── */}
+      {!loading && !error && availableRooms.length > 0 && (
+        <section
+          className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm"
+          aria-label={t("rooms.availableRooms")}
+        >
+          <div className="flex items-center justify-between gap-2 px-4 pb-1 pt-4">
+            <h2 className="text-sm font-bold tracking-tight text-slate-900">{t("rooms.availableRooms")}</h2>
+            <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+              {availableRooms.length}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 text-[9px] uppercase tracking-wider text-slate-400">
+                  <th scope="col" className="px-4 py-2 font-semibold">{t("rooms.colRoom")}</th>
+                  <th scope="col" className="py-2 pr-2 font-semibold">{t("rooms.colGuesthouse")}</th>
+                  <th scope="col" className="py-2 pr-2 font-semibold">{t("rooms.colType")}</th>
+                  <th scope="col" className="py-2 pr-4 text-right font-semibold">{t("rooms.colPrice")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {availableRooms.map((r) => (
+                  <tr key={r.id} className="transition-colors active:bg-slate-50">
+                    <td className="px-4 py-2.5">
+                      <span className="block text-[13px] font-bold leading-tight text-slate-900">
+                        {t("rooms.roomNum", { room: r.number })}
+                      </span>
+                      {r.floor != null && (
+                        <span className="text-[10px] text-slate-400">{t("rooms.floor", { floor: r.floor })}</span>
+                      )}
+                    </td>
+                    <td className="max-w-[96px] truncate py-2.5 pr-2 text-[11px] text-slate-700">{r.providerName}</td>
+                    <td className="py-2.5 pr-2 text-[11px] text-slate-500">{r.type}</td>
+                    <td className="py-2.5 pr-4 text-right">
+                      <span className="text-[12px] font-bold text-slate-900">{r.pricePerNight}</span>
+                      <span className="block text-[9px] text-slate-400">{t("rooms.perNight")}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}

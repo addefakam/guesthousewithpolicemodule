@@ -3318,6 +3318,12 @@
       "floor": "Darbii {{floor}}",
       "perNight": "halkanii",
       "updated": "Haaromame {{time}}",
+      "availableRooms": "Kutaawwan Duwwaa",
+      "colRoom": "Kutaa",
+      "colGuesthouse": "Dhiyeessitoo",
+      "colType": "Gosa",
+      "colPrice": "Gatii",
+      "noAvailable": "Yeroo ammaa kutaawwan duwwaa hin jiru",
       "resultGuesthouses_one": "Dhiyeessitoota {{count}}",
       "resultGuesthouses_other": "Dhiyeessitoota {{count}}"
     },

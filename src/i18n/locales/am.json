@@ -3318,6 +3318,12 @@
       "floor": "ፎት {{floor}}",
       "perNight": "በሌሊት",
       "updated": "የተዘመነው {{time}}",
+      "availableRooms": "ክፍት ክፍሎች",
+      "colRoom": "ክፍል",
+      "colGuesthouse": "አቅራቢ",
+      "colType": "ዓይነት",
+      "colPrice": "ዋጋ",
+      "noAvailable": "አሁን ክፍት ክፍሎች የሉም",
       "resultGuesthouses_one": "{{count}} አቅራቢ",
       "resultGuesthouses_other": "{{count}} አቅራቢዎች"
     },
