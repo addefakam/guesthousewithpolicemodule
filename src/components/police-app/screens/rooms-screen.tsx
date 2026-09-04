@@ -165,12 +165,6 @@ export default function RoomsScreen() {
 
   return (
     <div className="space-y-3 px-4 pt-4">
-      {/* ── Simple header (text only) ── */}
-      <header className="px-1">
-        <h1 className="text-lg font-bold tracking-tight text-slate-900">{t("rooms.title")}</h1>
-        <p className="mt-0.5 text-xs text-slate-400">{t("rooms.subtitle")}</p>
-      </header>
-
       {/* ── Flat city-wide summary card ── */}
       {summary && (
         <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm" aria-label={t("rooms.title")}>
