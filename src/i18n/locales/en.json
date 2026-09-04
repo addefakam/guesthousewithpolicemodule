@@ -739,6 +739,14 @@
     "btnDeleting": "Deleting..."
   },
   "reservations": {
+    "tabFreeRooms": "Free Rooms",
+    "frColRoom": "Room",
+    "frColType": "Type",
+    "frColPrice": "Price / Night",
+    "frColStatus": "Status",
+    "frAvailable": "Available",
+    "frEmpty": "No free rooms",
+    "frNight": "night",
     "edit": "Edit",
     "dialogEditResTitle": "Edit Reservation",
     "dialogEditResDesc": "Update the booking details. Changes are saved immediately.",

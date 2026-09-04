@@ -738,6 +738,14 @@
     "btnDeleting": "በመሰረዝ ላይ..."
   },
   "reservations": {
+    "tabFreeRooms": "ነጻ ክፍሎች",
+    "frColRoom": "ክፍል",
+    "frColType": "ዓይነት",
+    "frColPrice": "ዋጋ / ማምሽት",
+    "frColStatus": "ሁኔታ",
+    "frAvailable": "ክፍት",
+    "frEmpty": "ነጻ ክፍል የለም",
+    "frNight": "ማምሽት",
     "edit": "አርትዕ",
     "dialogEditResTitle": "ቦታ ማስያዝ ያርትዕ",
     "dialogEditResDesc": "የቦታ ማስያዝ ዝርዝሮችን ያዘምኑ። ለውጦች ወዲያውኑ ይቀመጣሉ።",

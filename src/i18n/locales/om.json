@@ -738,6 +738,14 @@
     "btnDeleting": "Haqaa jira..."
   },
   "reservations": {
+    "tabFreeRooms": "Kutaawwan Bilisaa",
+    "frColRoom": "Kutaa",
+    "frColType": "Gosa",
+    "frColPrice": "Gatii / halkan",
+    "frColStatus": "Haala",
+    "frAvailable": "Duwwaa",
+    "frEmpty": "Kutaa bilisaa hin jiru",
+    "frNight": "halkan",
     "edit": "Gulaali",
     "dialogEditResTitle": "Beellama Gulaali",
     "dialogEditResDesc": "Detailii beellamaa haaromsi. Jijjiirri yoo olkaa'e ofumaan ol kaa'ama.",

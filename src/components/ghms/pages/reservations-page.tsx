@@ -155,7 +155,7 @@ interface Reservation {
   exceptionReason?: string;
 }
 
-const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED", "DELETED"] as const;
+const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED", "FREE_ROOMS"] as const;
 
 const STATUS_BADGE: Record<string, string> = {
   UPCOMING: "bg-sky-100 text-sky-800 border-sky-200",
@@ -352,9 +352,41 @@ export default function ReservationsPage() {
     );
   }, [guestMode, selectedGuestId, newGuestForm.name, newGuestForm.phone, newGuestForm.nationality, newGuestForm.idType]);
 
+  // Local calendar date (YYYY-MM-DD) — same key used by the rooms page.
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  // Free Rooms tab (replaced the old Deleted tab): rooms with nothing
+  // blocking today — same date-aware logic as the rooms page. A room is
+  // totally free when no guest is checked in, it is not under maintenance,
+  // and no upcoming booking covers today or a later date.
+  const freeRooms = useMemo(() => {
+    const activeRoomIds = new Set(
+      reservations.filter((r) => r.status === "ACTIVE" && r.roomId).map((r) => r.roomId)
+    );
+    const earliestUpcoming: Record<string, string> = {};
+    for (const r of reservations
+      .filter((x) => x.status === "UPCOMING" && x.roomId)
+      .sort((a, b) => a.checkIn.localeCompare(b.checkIn))) {
+      if (!earliestUpcoming[r.roomId]) earliestUpcoming[r.roomId] = r.checkOut;
+    }
+    return allRooms.filter((room) => {
+      if (activeRoomIds.has(room.id)) return false;
+      if (room.status === "MAINTENANCE") return false;
+      const upCheckOut = earliestUpcoming[room.id];
+      if (upCheckOut && upCheckOut > todayKey) return false;
+      return true;
+    });
+  }, [allRooms, reservations, todayKey]);
+
   // Filtered reservations
   const filtered = useMemo(() => {
     let list = reservations;
+    if (statusFilter === "FREE_ROOMS") {
+      return [];
+    }
     if (statusFilter !== "ALL") {
       list = list.filter((r) => r.status === statusFilter);
     }
@@ -373,8 +405,24 @@ export default function ReservationsPage() {
     return list;
   }, [reservations, statusFilter, search]);
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  // Free-rooms list respects the search box (room number, name, or type).
+  const filteredFreeRooms = useMemo(() => {
+    if (statusFilter !== "FREE_ROOMS") return [];
+    if (!search) return freeRooms;
+    const q = search.toLowerCase();
+    return freeRooms.filter(
+      (room) =>
+        room.number.toLowerCase().includes(q) ||
+        room.name.toLowerCase().includes(q) ||
+        room.type.toLowerCase().includes(q)
+    );
+  }, [statusFilter, freeRooms, search]);
+
+  const isFreeRoomsView = statusFilter === "FREE_ROOMS";
+  const viewCount = isFreeRoomsView ? filteredFreeRooms.length : filtered.length;
+  const totalPages = Math.ceil(viewCount / pageSize);
+  const pagedReservations = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const pagedFreeRooms = filteredFreeRooms.slice(page * pageSize, (page + 1) * pageSize);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(val);
@@ -740,14 +788,14 @@ export default function ReservationsPage() {
 
       {/* Status Tabs + Search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); clearHighlight(); }}>
+        <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); clearHighlight(); }}>
           <TabsList>
             {STATUS_TABS.map((tab) => (
               <TabsTrigger key={tab} value={tab} className="text-xs sm:text-sm">
-                {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                {tab === "ALL" ? "All" : tab === "FREE_ROOMS" ? t("tabFreeRooms", "Free Rooms") : tab.charAt(0) + tab.slice(1).toLowerCase()}
                 {tab !== "ALL" && (
                   <span className="ml-1.5 text-[10px] opacity-60">
-                    ({reservations.filter((r) => tab === "ALL" || r.status === tab).length})
+                    ({tab === "FREE_ROOMS" ? freeRooms.length : reservations.filter((r) => r.status === tab).length})
                   </span>
                 )}
               </TabsTrigger>
@@ -773,6 +821,7 @@ export default function ReservationsPage() {
       </div>
 
       {/* Table */}
+      {!isFreeRoomsView && (
       <div className="rounded-xl border bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -792,7 +841,7 @@ export default function ReservationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.length === 0 ? (
+              {pagedReservations.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="h-32 text-center">
                     <div className="flex flex-col items-center text-gray-400">
@@ -809,7 +858,7 @@ export default function ReservationsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paged.map((res) => (
+                pagedReservations.map((res) => (
                   <TableRow key={res.id} className={highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-l-4 border-l-sky-500 transition-all duration-300" : ""}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -932,8 +981,8 @@ export default function ReservationsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3">
             <p className="text-sm text-gray-500">
-              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of{" "}
-              {filtered.length}
+              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, viewCount)} of{" "}
+              {viewCount}
             </p>
             <div className="flex items-center gap-1">
               <Button
@@ -961,16 +1010,87 @@ export default function ReservationsPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Free Rooms View (replaces the old Deleted tab) */}
+      {isFreeRoomsView && (
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/80">
+                <TableHead>{t("frColRoom", "Room")}</TableHead>
+                <TableHead>{t("frColType", "Type")}</TableHead>
+                <TableHead>{t("frColPrice", "Price / Night")}</TableHead>
+                <TableHead>{t("frColStatus", "Status")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pagedFreeRooms.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-32 text-center">
+                    <div className="flex flex-col items-center text-gray-400">
+                      <CalendarRange className="h-8 w-8 mb-2" />
+                      <p className="font-medium text-lg">{t("frEmpty", "No free rooms")}</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pagedFreeRooms.map((room) => (
+                  <TableRow key={room.id}>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{room.number}</p>
+                        <p className="text-xs text-gray-400">{room.name}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">{room.type}</TableCell>
+                    <TableCell className="text-sm text-gray-600">{formatCurrency(room.pricePerNight)}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                        {t("frAvailable", "Available")}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <p className="text-sm text-gray-500">
+              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, viewCount)} of{" "}
+              {viewCount}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-3 text-sm text-gray-600">
+                {page + 1} / {totalPages}
+              </span>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Mobile Card View */}
+      {!isFreeRoomsView && (
       <div className="space-y-3 md:hidden">
-        {paged.length === 0 ? (
+        {pagedReservations.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
             <CalendarRange className="h-12 w-12 text-gray-300 mb-3" />
             <p className="text-lg font-medium text-gray-500">No reservations</p>
           </div>
         ) : (
-          paged.map((res) => (
+          pagedReservations.map((res) => (
             <div key={res.id} className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-sky-400 border-l-4 shadow-md shadow-sky-100" : "bg-white"}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
@@ -1071,6 +1191,39 @@ export default function ReservationsPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Free Rooms — Mobile Card View */}
+      {isFreeRoomsView && (
+      <div className="space-y-3 md:hidden">
+        {pagedFreeRooms.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+            <CalendarRange className="h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-lg font-medium text-gray-500">{t("frEmpty", "No free rooms")}</p>
+          </div>
+        ) : (
+          pagedFreeRooms.map((room) => (
+            <div key={room.id} className="rounded-xl border bg-white p-4 space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">{t("frColRoom", "Room")} {room.number}</h3>
+                  <p className="text-xs text-gray-500">{room.name}</p>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                  {t("frAvailable", "Available")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>{room.type}</span>
+                <span className="font-medium text-gray-700">
+                  {formatCurrency(room.pricePerNight)} / {t("frNight", "night")}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      )}
 
       {/* New Reservation Wizard Dialog */}
       <Dialog open={createOpen} onOpenChange={closeCreateDialog}>
