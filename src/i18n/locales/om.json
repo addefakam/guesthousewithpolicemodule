@@ -3173,6 +3173,7 @@
     "checkoutDayHint": "Guyyaan ba'ii seenuu itti-aanaaaf ni bana.",
     "overlapError": "Guyyaawwan filataman qabamee jiru waliin wal-dabalu ({{from}} → {{to}}). Maaloo guyyaa biraa filadhaa.",
     "blockedByOverlap": "Guyyaawwan wal-dabalu",
-    "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira"
+    "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira",
+    "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne"
   }
 }

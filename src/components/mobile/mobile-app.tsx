@@ -327,12 +327,30 @@ export default function MobileApp() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rooms]);
 
+  // Status priority for the list: bookable rooms first, occupied always last.
+  const STATUS_ORDER: Record<string, number> = {
+    AVAILABLE: 0,
+    RESERVED: 1,
+    MAINTENANCE: 2,
+    OCCUPIED: 3,
+  };
+  const roomNumberKey = (s: string) => s.replace(/\d+/g, (m) => m.padStart(8, "0"));
+
   const filteredRooms = useMemo(() => {
-    return rooms.filter((room) => {
-      if (statusFilter && room.status !== statusFilter) return false;
-      if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
-      return true;
-    });
+    return rooms
+      .filter((room) => {
+        if (statusFilter && room.status !== statusFilter) return false;
+        if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const so = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+        if (so !== 0) return so;
+        const fa = getFloorFromNumber(a.number) ?? a.floor;
+        const fb = getFloorFromNumber(b.number) ?? b.floor;
+        if (fa !== fb) return fa - fb;
+        return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
+      });
   }, [rooms, statusFilter, floorFilter]);
 
   const filteredGuests = useMemo(() => {
@@ -852,6 +870,18 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
             statusFilter === "RESERVED" ? "bg-sky-600 text-white" : "bg-white text-sky-700 border border-sky-200"
           }`}
         >{t("statusReserved")}</button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "OCCUPIED" ? null : "OCCUPIED")}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            statusFilter === "OCCUPIED" ? "bg-rose-600 text-white" : "bg-white text-rose-700 border border-rose-200"
+          }`}
+        >{t("statusOccupied")}</button>
+        <button
+          onClick={() => setStatusFilter(statusFilter === "MAINTENANCE" ? null : "MAINTENANCE")}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            statusFilter === "MAINTENANCE" ? "bg-amber-600 text-white" : "bg-white text-amber-700 border border-amber-200"
+          }`}
+        >{t("statusMaintenance")}</button>
       </div>
 
       {/* Room Grid */}
@@ -860,9 +890,14 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
           <BedSingle className="h-10 w-10 text-gray-300 mb-2" />
           <p className="text-sm text-gray-500">{t("noRooms")}</p>
         </div>
+      ) : filteredRooms.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-center">
+          <BedSingle className="h-10 w-10 text-gray-300 mb-2" />
+          <p className="text-sm text-gray-500">{t("noMatchFound")}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {rooms.map((room) => {
+          {filteredRooms.map((room) => {
             const amenities = parseAmenities(room.amenities);
             const res = roomResMap[room.id];
             return (

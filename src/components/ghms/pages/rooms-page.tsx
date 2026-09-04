@@ -614,17 +614,48 @@ export default function RoomsPage() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rooms]);
 
-  const filteredRooms = rooms.filter((room) => {
-    if (statusFilter && room.status !== statusFilter) return false;
-    if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      room.number.toLowerCase().includes(q) ||
-      room.name.toLowerCase().includes(q) ||
-      room.type.toLowerCase().includes(q)
-    );
-  });
+  // Status priority for the list: bookable rooms first, occupied always last.
+  const STATUS_ORDER: Record<string, number> = {
+    AVAILABLE: 0,
+    RESERVED: 1,
+    MAINTENANCE: 2,
+    OCCUPIED: 3,
+  };
+  // Pads digit runs so "2" < "10" and "102" < "201" when comparing room numbers.
+  const roomNumberKey = (s: string) => s.replace(/\d+/g, (m) => m.padStart(8, "0"));
+
+  const filteredRooms = useMemo(() => {
+    return rooms
+      .filter((room) => {
+        if (statusFilter && room.status !== statusFilter) return false;
+        if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          room.number.toLowerCase().includes(q) ||
+          room.name.toLowerCase().includes(q) ||
+          room.type.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        const so = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+        if (so !== 0) return so;
+        const fa = getFloorFromNumber(a.number) ?? a.floor;
+        const fb = getFloorFromNumber(b.number) ?? b.floor;
+        if (fa !== fb) return fa - fb;
+        return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
+      });
+  }, [rooms, statusFilter, floorFilter, search]);
+
+  // Per-status counts for the filter chips (respect the floor filter, ignore search).
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { AVAILABLE: 0, RESERVED: 0, OCCUPIED: 0, MAINTENANCE: 0 };
+    rooms.forEach((r) => {
+      if (floorFilter !== null && getFloorFromNumber(r.number) !== floorFilter) return;
+      if (counts[r.status] !== undefined) counts[r.status] += 1;
+    });
+    return counts;
+  }, [rooms, floorFilter]);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
@@ -748,6 +779,7 @@ export default function RoomsPage() {
             onClick={() => { setFloorFilter(null); setStatusFilter(null); }}
           >
             {t("filterAll")}
+            <span className="ml-1 tabular-nums opacity-60">({rooms.length})</span>
           </Button>
           {floors.slice(0, 3).map((f) => (
             <Button
@@ -791,24 +823,24 @@ export default function RoomsPage() {
         <Separator orientation="vertical" className="h-6 mx-1" />
         <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{t("filterStatus")}</span>
         <div className="flex gap-1.5">
-          <Button
-            variant={statusFilter === "AVAILABLE" ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs px-3 shrink-0"
-            onClick={() => setStatusFilter(statusFilter === "AVAILABLE" ? null : "AVAILABLE")}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-            {t("statusAvailable")}
-          </Button>
-          <Button
-            variant={statusFilter === "OCCUPIED" ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs px-3 shrink-0"
-            onClick={() => setStatusFilter(statusFilter === "OCCUPIED" ? null : "OCCUPIED")}
-          >
-            <AlertCircle className="h-3.5 w-3.5 mr-1" />
-            {t("statusOccupied")}
-          </Button>
+          {([
+            { status: "AVAILABLE", icon: <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> },
+            { status: "RESERVED", icon: <CalendarClock className="h-3.5 w-3.5 mr-1" /> },
+            { status: "OCCUPIED", icon: <AlertCircle className="h-3.5 w-3.5 mr-1" /> },
+            { status: "MAINTENANCE", icon: <Layers className="h-3.5 w-3.5 mr-1" /> },
+          ]).map(({ status, icon }) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs px-3 shrink-0"
+              onClick={() => setStatusFilter(statusFilter === status ? null : status)}
+            >
+              {icon}
+              {t("status" + status.charAt(0) + status.slice(1).toLowerCase())}
+              <span className="ml-1 tabular-nums opacity-60">({statusCounts[status] ?? 0})</span>
+            </Button>
+          ))}
         </div>
       </div>
       {/* Room Grid */}

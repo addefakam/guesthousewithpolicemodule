@@ -3174,6 +3174,7 @@
     "checkoutDayHint": "A checkout day stays open as the next arrival.",
     "overlapError": "Those dates overlap an existing booking ({{from}} → {{to}}). Pick different dates.",
     "blockedByOverlap": "Dates conflict",
-    "extendConflict": "Cannot extend — the room already has a booking for those dates"
+    "extendConflict": "Cannot extend — the room already has a booking for those dates",
+    "noMatchFound": "No rooms match the selected filters"
   }
 }
