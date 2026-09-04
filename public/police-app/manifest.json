@@ -1,0 +1,17 @@
+{
+  "name": "GHMS Police",
+  "short_name": "GHMS Police",
+  "description": "Standalone police module app — guesthouse room availability & guest monitoring",
+  "start_url": "/police-app",
+  "display": "standalone",
+  "background_color": "#081426",
+  "theme_color": "#0B1D3A",
+  "icons": [
+    {
+      "src": "/police-app/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

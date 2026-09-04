@@ -3213,5 +3213,109 @@
     "blockedByOverlap": "Guyyaawwan wal-dabalu",
     "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira",
     "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne"
+  },
+  "policeApp": {
+    "appName": "GHMS Poolisii",
+    "appTagline": "To'annaa Iddoo Jeedinsaa",
+    "login": {
+      "title": "Seensa Poolisii",
+      "subtitle": "Appii mojulaa poolisii banuu",
+      "username": "Maqaa fayyadamaa",
+      "usernamePlaceholder": "Maqaa fayyadamaa galchi",
+      "password": "Jecha icciitii",
+      "showPassword": "Jecha icciitii agarsiisi",
+      "hidePassword": "Jecha icciitii dhoki",
+      "signIn": "Seeni",
+      "signingIn": "Seensi…",
+      "error": "Seensi hin milkoofne",
+      "notPolice": "Appiin kun herrega poolisii qofaatiif.",
+      "notPoliceTitle": "Seensi dhorkameera",
+      "switchAccount": "Herrega jijjiiri",
+      "footerNote": "Haala kutaawwanii fi to'annaa amantaa herrega poolisiiramaaniif qofa. Seensi hundii galmeefama."
+    },
+    "nav": {
+      "home": "Jalqaba",
+      "rooms": "Kutaawwan",
+      "guests": "Ammantaa",
+      "more": "Dabalata"
+    },
+    "home": {
+      "title": "Dasiboodii",
+      "subtitle": "Ilaasa guutummaa magaalaa",
+      "totalProviders": "Dhiyeessitoonni",
+      "totalRooms": "Kutaawwan Waliigalaa",
+      "activeStays": "Qabannoo Hojjetan",
+      "totalGuests": "Ammantaa Galmeffaman",
+      "totalRevenue": "Galii Waliigalaa",
+      "reservationRevenue": "Qabannoo",
+      "daytimeRevenue": "Tajaajila Guyyaa",
+      "busiest": "Iddoolee hojjetan",
+      "viewRooms": "Kutaawwan ilaali",
+      "activeWord": "hojjetan"
+    },
+    "rooms": {
+      "title": "Haala Kutaawwan",
+      "subtitle": "Haala yeroo iddoo jeedinsaa hunda",
+      "searchPlaceholder": "Iddoo jeedinsaa, bilbila, teessoo barbaadi…",
+      "filterAll": "Hunda",
+      "available": "Duwwaa",
+      "occupied": "Qabameera",
+      "reserved": "Dursee Qabame",
+      "maintenance": "Suphaa Irra",
+      "utilization": "Itti fayyadama",
+      "totalRooms": "Kutaawwan",
+      "guesthouses": "Dhiyeessitoonni",
+      "capacity": "Kabaasitii",
+      "roomsWord": "kutaawwan",
+      "matchCount": "{{total}} kutaawwan keessaa {{matched}}",
+      "resultGuesthouses": "Dhiyeessitoota {{count}}",
+      "noProviders": "Dhiyeessitoonni hin argamne",
+      "noRoomsForFilter": "Yeroo ammaa haala kanaan kutaawwan hin jiru",
+      "tryClearing": "Barbaacha ykn filannoo haqi",
+      "avgPrice": "Gatii giddugaleessa",
+      "license": "Hayyama",
+      "roomNum": "Kutaa {{room}}",
+      "floor": "Darbii {{floor}}",
+      "perNight": "halkanii",
+      "updated": "Haaromame {{time}}",
+      "resultGuesthouses_one": "Dhiyeessitoota {{count}}",
+      "resultGuesthouses_other": "Dhiyeessitoota {{count}}"
+    },
+    "guests": {
+      "title": "Ammantaa fi Jireenya",
+      "subtitle": "Qabannoo hojjetan siftuu guutummaa magaalaa",
+      "searchPlaceholder": "Ammantaa, bilbila, lakkoofsa eenyummaa, kutaa barbaadi…",
+      "empty": "Qabannoon hojjetan ykn siftuu hin jiru",
+      "noMatch": "Barbaacha keetiin walsimu ammantaa hin argamne",
+      "showing": "Qabannoo {{count}} agarsiifama",
+      "statusActive": "Hojjetan",
+      "statusUpcoming": "Siftuu",
+      "phone": "Bilbila",
+      "idNumber": "Lakkoofsa eenyummaa",
+      "nationality": "Lammummaa",
+      "room": "Kutaa {{room}}",
+      "nights": "{{count}} halkan",
+      "nights_one": "{{count}} halkan",
+      "nights_other": "{{count}} halkan"
+    },
+    "more": {
+      "title": "Offiserii",
+      "rolePolice": "Poolisii",
+      "language": "Afaan",
+      "about": "Waa'ee",
+      "aboutText": "Appiin mojulaa poolisii addaa haala kutaawwan iddoo jeedinsaa fi ammantaa galmeffaman guutummaa magaalaa to'achuuf kan qophaa'edha.",
+      "logout": "Ba'i"
+    },
+    "rank": {
+      "ADMIN": "Hogganaa Poolisii",
+      "DETECTIVE": "Diteektiivii",
+      "OFFICER": "Offiserii",
+      "VIEWER": "Ilchaaf"
+    },
+    "common": {
+      "errorGeneric": "Dogoggorri uumameera",
+      "retry": "Irra deebi'i yaali",
+      "refresh": "Haaromsi"
+    }
   }
 }

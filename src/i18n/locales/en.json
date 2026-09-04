@@ -3214,5 +3214,109 @@
     "blockedByOverlap": "Dates conflict",
     "extendConflict": "Cannot extend — the room already has a booking for those dates",
     "noMatchFound": "No rooms match the selected filters"
+  },
+  "policeApp": {
+    "appName": "GHMS Police",
+    "appTagline": "Guesthouse Monitoring",
+    "login": {
+      "title": "Police sign in",
+      "subtitle": "Access the standalone police module app",
+      "username": "Username",
+      "usernamePlaceholder": "Enter your username",
+      "password": "Password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "signIn": "Sign In",
+      "signingIn": "Signing in…",
+      "error": "Sign-in failed",
+      "notPolice": "This app is for police accounts only.",
+      "notPoliceTitle": "Access restricted",
+      "switchAccount": "Switch account",
+      "footerNote": "Room availability and guest monitoring for authorized police personnel only. All access is logged and audited."
+    },
+    "nav": {
+      "home": "Home",
+      "rooms": "Rooms",
+      "guests": "Guests",
+      "more": "More"
+    },
+    "home": {
+      "title": "Dashboard",
+      "subtitle": "City-wide overview",
+      "totalProviders": "Guesthouses",
+      "totalRooms": "Total Rooms",
+      "activeStays": "Active Reservations",
+      "totalGuests": "Registered Guests",
+      "totalRevenue": "Total Revenue",
+      "reservationRevenue": "Reservations",
+      "daytimeRevenue": "Daytime Services",
+      "busiest": "Busiest guesthouses",
+      "viewRooms": "View rooms",
+      "activeWord": "active"
+    },
+    "rooms": {
+      "title": "Room Availability",
+      "subtitle": "Live status across all guesthouses",
+      "searchPlaceholder": "Search guesthouse, phone, address…",
+      "filterAll": "All",
+      "available": "Available",
+      "occupied": "Occupied",
+      "reserved": "Reserved",
+      "maintenance": "Maintenance",
+      "utilization": "Utilization",
+      "totalRooms": "Rooms",
+      "guesthouses": "Guesthouses",
+      "capacity": "Beds",
+      "roomsWord": "rooms",
+      "matchCount": "{{matched}} of {{total}} rooms",
+      "resultGuesthouses": "{{count}} guesthouses",
+      "noProviders": "No guesthouses found",
+      "noRoomsForFilter": "No rooms with this status right now",
+      "tryClearing": "Try clearing the search or status filter",
+      "avgPrice": "Avg price",
+      "license": "License",
+      "roomNum": "Room {{room}}",
+      "floor": "Floor {{floor}}",
+      "perNight": "/ night",
+      "updated": "Updated {{time}}",
+      "resultGuesthouses_one": "{{count}} guesthouse",
+      "resultGuesthouses_other": "{{count}} guesthouses"
+    },
+    "guests": {
+      "title": "Guests & Stays",
+      "subtitle": "Active and upcoming reservations city-wide",
+      "searchPlaceholder": "Search guest, phone, ID, room…",
+      "empty": "No active or upcoming reservations",
+      "noMatch": "No guests match your search",
+      "showing": "Showing {{count}} reservations",
+      "statusActive": "Active",
+      "statusUpcoming": "Upcoming",
+      "phone": "Phone",
+      "idNumber": "ID number",
+      "nationality": "Nationality",
+      "room": "Room {{room}}",
+      "nights": "{{count}} nights",
+      "nights_one": "{{count}} night",
+      "nights_other": "{{count}} nights"
+    },
+    "more": {
+      "title": "Officer",
+      "rolePolice": "Police",
+      "language": "Language",
+      "about": "About",
+      "aboutText": "Standalone police module app for monitoring guesthouse room availability and registered guests across the city.",
+      "logout": "Sign Out"
+    },
+    "rank": {
+      "ADMIN": "Police Admin",
+      "DETECTIVE": "Detective",
+      "OFFICER": "Officer",
+      "VIEWER": "Viewer"
+    },
+    "common": {
+      "errorGeneric": "Something went wrong",
+      "retry": "Retry",
+      "refresh": "Refresh"
+    }
   }
 }

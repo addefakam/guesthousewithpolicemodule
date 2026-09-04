@@ -3213,5 +3213,109 @@
     "blockedByOverlap": "ቀናት ይጋጭናሉ",
     "extendConflict": "ማራዘም አይቻልም — ክፍሉ ለእነዚህ ቀናት ቀጠሮ አለው",
     "noMatchFound": "ከማጣሪያው ጋር የሚስማማ ክፍል አልተገኘም"
+  },
+  "policeApp": {
+    "appName": "GHMS ፖሊስ",
+    "appTagline": "የሆቴሎች ቁጥጥር",
+    "login": {
+      "title": "የፖሊስ መግቢያ",
+      "subtitle": "የፖሊስ ሞዱል መተግበሪያውን ይክፈቱ",
+      "username": "የተጠቃሚ ስም",
+      "usernamePlaceholder": "የተጠቃሚ ስምዎን ያስገቡ",
+      "password": "የይለፍ ቃል",
+      "showPassword": "የይለፍ ቃል አሳይ",
+      "hidePassword": "የይለፍ ቃል ደብቅ",
+      "signIn": "ግባ",
+      "signingIn": "በመግባት ላይ…",
+      "error": "መግባት አልተሳካም",
+      "notPolice": "ይህ መተግበሪያ ለፖሊስ መለያዎች ብቻ ነው።",
+      "notPoliceTitle": "መዳረሻ ታግዷል",
+      "switchAccount": "መለያ ቀይር",
+      "footerNote": "የክፍሎች ዝግጁነትና የእንግዶች ቁጥጥር ለተፈቀደላቸው የፖሊስ ሰራተኞች ብቻ ነው። ሁሉም መዳረሻ ይመዘገባል።"
+    },
+    "nav": {
+      "home": "መነሻ",
+      "rooms": "ክፍሎች",
+      "guests": "እንግዶች",
+      "more": "ተጨማሪ"
+    },
+    "home": {
+      "title": "ዳሽቦርድ",
+      "subtitle": "ከመላ ከተማ አጠቃላይ እይታ",
+      "totalProviders": "አቅራቢዎች",
+      "totalRooms": "ጠቅላላ ክፍሎች",
+      "activeStays": "ንቁ ቀጠሮዎች",
+      "totalGuests": "የተመዘገቡ እንግዶች",
+      "totalRevenue": "አጠቃላይ ገቢ",
+      "reservationRevenue": "ቀጠሮዎች",
+      "daytimeRevenue": "የቀን አገልግሎቶች",
+      "busiest": "ብዙ ተጠቃሚ ያላቸው ሆቴሎች",
+      "viewRooms": "ክፍሎችን ይመልከቱ",
+      "activeWord": "ንቁ"
+    },
+    "rooms": {
+      "title": "የክፍል ዝግጁነት",
+      "subtitle": "በሁሉም ሆቴሎች የቅጽበታዊ ሁኔታ",
+      "searchPlaceholder": "በሆቴል፣ በስልክ፣ በአድራሻ ይፈልጉ…",
+      "filterAll": "ሁሉም",
+      "available": "ክፍት",
+      "occupied": "የተያዘ",
+      "reserved": "ቀድሞ የተያዘ",
+      "maintenance": "ጥገና",
+      "utilization": "አጠቃቀም",
+      "totalRooms": "ክፍሎች",
+      "guesthouses": "አቅራቢዎች",
+      "capacity": "አልጋዎች",
+      "roomsWord": "ክፍሎች",
+      "matchCount": "ከ{{total}} ክፍሎች {{matched}}",
+      "resultGuesthouses": "{{count}} አቅራቢዎች",
+      "noProviders": "አቅራቢዎች አልተገኙም",
+      "noRoomsForFilter": "በአሁኑ ጊዜ በዚህ ሁኔታ ክፍሎች የሉም",
+      "tryClearing": "ፍለጋውን ወይም ማጣሪያውን ያስወግዱ",
+      "avgPrice": "አማካይ ዋጋ",
+      "license": "ፍቃድ",
+      "roomNum": "ክፍል {{room}}",
+      "floor": "ፎት {{floor}}",
+      "perNight": "በሌሊት",
+      "updated": "የተዘመነው {{time}}",
+      "resultGuesthouses_one": "{{count}} አቅራቢ",
+      "resultGuesthouses_other": "{{count}} አቅራቢዎች"
+    },
+    "guests": {
+      "title": "እንግዶችና ማረፊያዎች",
+      "subtitle": "ከመላ ከተማ ንቁና መጪ ቀጠሮዎች",
+      "searchPlaceholder": "በእንግዳ፣ በስልክ፣ በመታወቂያ፣ በክፍል ይፈልጉ…",
+      "empty": "ንቁ ወይም መጪ ቀጠሮዎች የሉም",
+      "noMatch": "ከፍለጋዎ ጋር የሚስማማ እንግዳ አልተገኘም",
+      "showing": "{{count}} ቀጠሮዎች ይታያሉ",
+      "statusActive": "ንቁ",
+      "statusUpcoming": "መጪ",
+      "phone": "ስልክ",
+      "idNumber": "የመታወቂያ ቁጥር",
+      "nationality": "ዜግነት",
+      "room": "ክፍል {{room}}",
+      "nights": "{{count}} ሌሊቶች",
+      "nights_one": "{{count}} ሌሊት",
+      "nights_other": "{{count}} ሌሊቶች"
+    },
+    "more": {
+      "title": "ኦፊሰር",
+      "rolePolice": "ፖሊስ",
+      "language": "ቋንቋ",
+      "about": "ስለ መተግበሪያው",
+      "aboutText": "የክፍሎች ዝግጁነትንና የተመዘገቡ እንግዶችን ከመላ ከተማ ለመቆጣጠር የተነደፈ የፖሊስ ሞዱል መተግበሪያ።",
+      "logout": "ውጣ"
+    },
+    "rank": {
+      "ADMIN": "የፖሊስ አስተዳዳሪ",
+      "DETECTIVE": "ደታክቲቭ",
+      "OFFICER": "ኦፊሰር",
+      "VIEWER": "ተመልካች"
+    },
+    "common": {
+      "errorGeneric": "የሆነ ስህተት ተከስቷል",
+      "retry": "እንደገና ሞክር",
+      "refresh": "አድስ"
+    }
   }
 }

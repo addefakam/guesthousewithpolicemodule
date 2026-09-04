@@ -221,6 +221,8 @@ export const apiRegisterProvider = async (data: FormData) => {
 
 // Police
 export const apiPoliceDashboard = () => req("/api/police-dashboard");
+export const apiPoliceActiveReservations = (limit = 500) =>
+  req(`/api/police-dashboard/active-reservations?limit=${limit}`);
 export const apiPoliceGuests = (params?: { q?: string; page?: number; pageSize?: number }) => {
   const sp = new URLSearchParams();
   if (params?.q) sp.set("q", params.q);
