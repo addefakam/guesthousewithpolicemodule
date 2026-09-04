@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
+import { ensureReservationStatusEnum } from "@/lib/ensure-enum-values";
 
 export async function PUT(
   req: NextRequest,
@@ -150,7 +151,10 @@ export async function DELETE(
       );
     }
 
-    // Soft-delete: update status to DELETED instead of removing the record
+    // Soft-delete: update status to DELETED instead of removing the record.
+    // The DELETED enum value may not exist in the database yet (Vercel builds
+    // never run prisma db push), so make sure it does before writing it.
+    await ensureReservationStatusEnum();
     const updated = await db.reservation.update({
       where: { id },
       data: { status: "DELETED" },

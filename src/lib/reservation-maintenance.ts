@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { ensureReservationStatusEnum } from "@/lib/ensure-enum-values";
 
 /**
  * Reservation lifecycle maintenance
@@ -111,6 +112,12 @@ async function performMaintenance(
   let remindersCreated = 0;
   let releasedReservations = 0;
   let roomsReleased = 0;
+
+  // Self-heal enum drift first: schema enum values (e.g. DELETED for
+  // soft-delete) may be missing from the production database because
+  // Vercel builds never run prisma db push. Idempotent, runs once per
+  // server instance, never throws.
+  await ensureReservationStatusEnum();
 
   // ── (a) Check-in date passed without check-in → reminder notification ────
   const noShows = await db.reservation.findMany({
