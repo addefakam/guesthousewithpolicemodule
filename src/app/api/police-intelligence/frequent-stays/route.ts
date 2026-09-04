@@ -145,17 +145,17 @@ export async function POST(req: NextRequest) {
     const GUEST_BATCH_CAP = 5000;
     const guestIdsToQuery = allGuestIds.slice(0, GUEST_BATCH_CAP);
 
-    // Buggy original query kept for fallback — fixed with sql.join for PG compatibility
+    // Fixed with Prisma.join for PG compatibility
     const reservations: ReservationRow[] = await db.$queryRaw(
       Prisma.sql`SELECT
          CASE
-           WHEN LOWER(TRIM(g."phone")) IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)}) THEN LOWER(TRIM(g."phone"))
+           WHEN LOWER(TRIM(g."phone")) IN (${Prisma.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), ", ")}) THEN LOWER(TRIM(g."phone"))
            ELSE LOWER(TRIM(g."idNumber"))
          END AS link_key_dummy,
          r."checkIn", r."status", g."id" AS guest_id
        FROM "Reservation" r
        JOIN "Guest" g ON r."guestId" = g."id"
-       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)})
+       WHERE r."guestId" IN (${Prisma.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), ", ")})
        ORDER BY r."checkIn" ASC`
     );
 
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
     const reservationRows: { guestId: string; checkIn: string; status: string }[] = await db.$queryRaw(
       Prisma.sql`SELECT r."guestId", r."checkIn", r."status"
        FROM "Reservation" r
-       WHERE r."guestId" IN (${sql.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), Prisma.sql`, `)})
+       WHERE r."guestId" IN (${Prisma.join(guestIdsToQuery.map(id => Prisma.sql`${id}`), ", ")})
        ORDER BY r."checkIn" ASC`
     );
     for (const r of reservationRows) {

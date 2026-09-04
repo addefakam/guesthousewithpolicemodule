@@ -32,7 +32,7 @@ export async function PUT(
 
     updates.push(`"updatedAt" = CURRENT_TIMESTAMP`);
 
-    await db.$executePrisma.raw(
+    await db.$executeRaw(
       Prisma.sql`UPDATE "Geofence" SET ${Prisma.raw(updates.join(", "))} WHERE "id" = ${id}`
     );
 
@@ -57,7 +57,7 @@ export async function DELETE(
     requirePoliceMinRank(auth, "ADMIN");
     const { id } = await params;
 
-    await db.$executePrisma.raw(Prisma.sql`DELETE FROM "Geofence" WHERE "id" = ${id}`);
+    await db.$executeRaw(Prisma.sql`DELETE FROM "Geofence" WHERE "id" = ${id}`);
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

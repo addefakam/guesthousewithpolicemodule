@@ -651,9 +651,10 @@ export default function MobileApp() {
       <main className="flex-1 pb-24 overflow-y-auto">
         {activeTab === "rooms" && (
           <RoomsTab
-            rooms={filteredRooms} roomResMap={roomResMap} floors={floors}
+            rooms={filteredRooms} totalRooms={rooms.length} roomResMap={roomResMap} floors={floors}
             floorFilter={floorFilter} setFloorFilter={setFloorFilter}
             statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+            displayStatus={displayStatus}
             onRoomTap={openRoomDetail} onReserve={handleReserveFromRoom}
             onAddRoom={() => setShowAddRoom(true)}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency} parseAmenities={parseAmenities}
@@ -847,10 +848,11 @@ export default function MobileApp() {
 
 // ── Sub-components ──
 
-function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, statusFilter, setStatusFilter, onRoomTap, onReserve, onAddRoom, t, formatDate, formatCurrency, parseAmenities }: {
-  rooms: Room[]; roomResMap: Record<string, Reservation>; floors: number[];
+function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloorFilter, statusFilter, setStatusFilter, displayStatus, onRoomTap, onReserve, onAddRoom, t, formatDate, formatCurrency, parseAmenities }: {
+  rooms: Room[]; totalRooms: number; roomResMap: Record<string, Reservation>; floors: number[];
   floorFilter: number | null; setFloorFilter: (f: number | null) => void;
   statusFilter: string | null; setStatusFilter: (s: string | null) => void;
+  displayStatus: (r: Room) => string;
   onRoomTap: (r: Room) => void; onReserve: (r: Room) => void; onAddRoom: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
@@ -860,7 +862,7 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
     <div className="px-4 pt-4 space-y-3">
       {/* Header with Add button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-slate-800">{t("tabRooms")} ({rooms.length})</h2>
+        <h2 className="text-sm font-bold text-slate-800">{t("tabRooms")} ({totalRooms})</h2>
         <button
           onClick={onAddRoom}
           className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white active:bg-emerald-700 transition-colors"
@@ -912,19 +914,19 @@ function RoomsTab({ rooms, roomResMap, floors, floorFilter, setFloorFilter, stat
       </div>
 
       {/* Room Grid */}
-      {rooms.length === 0 ? (
+      {totalRooms === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
           <BedSingle className="h-10 w-10 text-gray-300 mb-2" />
           <p className="text-sm text-gray-500">{t("noRooms")}</p>
         </div>
-      ) : filteredRooms.length === 0 ? (
+      ) : rooms.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center">
           <BedSingle className="h-10 w-10 text-gray-300 mb-2" />
           <p className="text-sm text-gray-500">{t("noMatchFound")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {filteredRooms.map((room) => {
+          {rooms.map((room) => {
             const amenities = parseAmenities(room.amenities);
             const res = roomResMap[room.id];
             const st = displayStatus(room);

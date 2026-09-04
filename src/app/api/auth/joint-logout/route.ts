@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit";
 import { verifyToken } from "@/lib/auth-utils";
 
