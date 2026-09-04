@@ -867,10 +867,10 @@ export default function ReservationsPage() {
                             <DropdownMenuItem
                               onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
                               className="text-emerald-700 focus:text-emerald-700"
-                              disabled={new Date(res.checkIn) > new Date()}
+                              disabled={new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)}
                             >
                               <LogIn className="mr-2 h-4 w-4" />
-                              Check In{new Date(res.checkIn) > new Date() ? ` (${formatDateShort(res.checkIn)})` : ""}
+                              Check In{new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0) ? ` (${formatDateShort(res.checkIn)})` : ""}
                             </DropdownMenuItem>
                           )}
                           {res.status === "ACTIVE" && (
@@ -994,8 +994,8 @@ export default function ReservationsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {res.status === "UPCOMING" && (
-                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })} disabled={new Date(res.checkIn) > new Date()}>
-                        <LogIn className="mr-2 h-4 w-4" /> Check In{new Date(res.checkIn) > new Date() ? ` (${formatDateShort(res.checkIn)})` : ""}
+                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })} disabled={new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)}>
+                        <LogIn className="mr-2 h-4 w-4" /> Check In{new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0) ? ` (${formatDateShort(res.checkIn)})` : ""}
                       </DropdownMenuItem>
                     )}
                     {res.status === "ACTIVE" && (
