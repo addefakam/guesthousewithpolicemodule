@@ -20,6 +20,10 @@ import {
 } from "@/components/ui/table";
 import { apiGetAnomalies, apiToggleAnomalyDetection } from "@/lib/api";
 import {
+  PoliceDetailDialog,
+  type KpiDetailKind,
+} from "@/components/ghms/police-detail-dialogs";
+import {
   Building2,
   CheckCircle2,
   Clock,
@@ -86,6 +90,7 @@ export default function PoliceDashboardPage() {
   const { t } = useTranslation("policeDashboard");
   const { refreshKey, currentUser } = useAppStore();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [detailKind, setDetailKind] = useState<KpiDetailKind | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [anomalyEnabled, setAnomalyEnabled] = useState(false);
@@ -159,6 +164,7 @@ export default function PoliceDashboardPage() {
           icon: Building2,
           color: "text-slate-600",
           bg: "bg-slate-100",
+          kind: "providers" as KpiDetailKind,
         },
         {
           title: t("kpiApproved"),
@@ -166,6 +172,7 @@ export default function PoliceDashboardPage() {
           icon: CheckCircle2,
           color: "text-emerald-600",
           bg: "bg-emerald-50",
+          kind: "approved" as KpiDetailKind,
         },
         {
           title: t("kpiPending"),
@@ -173,6 +180,7 @@ export default function PoliceDashboardPage() {
           icon: Clock,
           color: "text-yellow-600",
           bg: "bg-yellow-50",
+          kind: "pending" as KpiDetailKind,
         },
         {
           title: t("kpiRooms"),
@@ -180,6 +188,7 @@ export default function PoliceDashboardPage() {
           icon: DoorOpen,
           color: "text-sky-600",
           bg: "bg-sky-50",
+          kind: "rooms" as KpiDetailKind,
         },
         {
           title: t("kpiActive"),
@@ -187,6 +196,7 @@ export default function PoliceDashboardPage() {
           icon: Users,
           color: "text-violet-600",
           bg: "bg-violet-50",
+          kind: "active" as KpiDetailKind,
         },
         {
           title: t("kpiTotalRevenue"),
@@ -194,6 +204,7 @@ export default function PoliceDashboardPage() {
           icon: Banknote,
           color: "text-emerald-600",
           bg: "bg-emerald-50",
+          kind: "revenue" as KpiDetailKind,
         },
       ]
     : [];
@@ -253,8 +264,9 @@ export default function PoliceDashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards — 2 cols on mobile, 3 on tablet, 6 on desktop */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {/* KPI Cards — 2 cols on mobile, 3 on tablet, 6 on desktop. Click any card to drill into its details. */}
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
         {loading
           ? Array.from({ length: 6 }).map((_, i) => (
               <Card key={i} className="shadow-sm">
@@ -265,7 +277,20 @@ export default function PoliceDashboardPage() {
               </Card>
             ))
           : kpiCards.map((kpi) => (
-              <Card key={kpi.title} className="shadow-sm">
+              <Card
+                key={kpi.title}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailKind(kpi.kind)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailKind(kpi.kind);
+                  }
+                }}
+                className="cursor-pointer shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 active:translate-y-0"
+                title={t("detail.hint")}
+              >
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg ${kpi.bg}`}>
@@ -279,6 +304,10 @@ export default function PoliceDashboardPage() {
                 </CardContent>
               </Card>
             ))}
+        </div>
+        {!loading && kpiCards.length > 0 && (
+          <p className="text-[11px] text-muted-foreground/70">{t("detail.hint")}</p>
+        )}
       </div>
 
       {/* Provider Overview — Cards on mobile, Table on md+ */}
@@ -383,6 +412,16 @@ export default function PoliceDashboardPage() {
           setPageSize={providerPagination.setPageSize}
         />
       )}
+
+      {/* KPI drill-down dialog */}
+      <PoliceDetailDialog
+        kind={detailKind}
+        open={detailKind !== null}
+        onOpenChange={(o) => {
+          if (!o) setDetailKind(null);
+        }}
+        dashboard={dashboard}
+      />
     </div>
   );
 }
