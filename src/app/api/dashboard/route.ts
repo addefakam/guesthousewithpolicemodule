@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, AuthError } from "@/lib/tenant";
 import { calcSubscriptionStatus, TRIAL_DAYS } from "@/lib/subscription";
+import { todayStr } from "@/lib/reservation-maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,12 @@ export async function GET(req: NextRequest) {
 
     const where = filter.isPolice ? {} : (filter.providerId ? { providerId: filter.providerId } : {});
 
-    // Today & month boundaries
+    // Today (app home timezone, Africa/Addis_Ababa) & month boundaries.
+    // toISOString() would give the UTC date, which is still "yesterday"
+    // between 00:00 and 03:00 local time — that made Today's Schedule show
+    // the wrong day every early morning.
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
+    const today = todayStr();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -28,8 +32,15 @@ export async function GET(req: NextRequest) {
       await Promise.all([
         db.room.groupBy({ by: ["status"], where, _count: { status: true } }),
         db.reservation.count({ where: { ...where, status: "ACTIVE" } }),
-        db.reservation.count({ where: { ...where, status: "UPCOMING", checkIn: today } }),
-        db.reservation.count({ where: { ...where, status: "ACTIVE", checkOut: today } }),
+        // Arrivals scheduled for today: still pending (UPCOMING) or already
+        // checked in (ACTIVE). Counting only UPCOMING made the number drop
+        // to zero as soon as the guest was checked in. CANCELLED/DELETED
+        // never count; checkIn is a plain YYYY-MM-DD string.
+        db.reservation.count({ where: { ...where, status: { in: ["UPCOMING", "ACTIVE"] }, checkIn: today } }),
+        // Departures scheduled for today: in-house (ACTIVE), never-checked-in
+        // bookings ending today (UPCOMING), and guests who already checked
+        // out today (COMPLETED) so the schedule stays stable through the day.
+        db.reservation.count({ where: { ...where, status: { in: ["UPCOMING", "ACTIVE", "COMPLETED"] }, checkOut: today } }),
         db.reservation.aggregate({
           _sum: { paidAmount: true },
           where: { ...where, status: "COMPLETED", actualCheckOut: { gte: monthStart, lte: monthEnd } },
