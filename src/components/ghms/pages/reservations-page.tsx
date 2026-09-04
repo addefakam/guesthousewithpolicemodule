@@ -7,7 +7,6 @@ import {
   apiGetReservations,
   apiCreateReservation,
   apiUpdateReservation,
-  apiDeleteReservation,
   apiCheckin,
   apiCheckout,
   apiCancelReservation,
@@ -72,7 +71,6 @@ import {
   Search,
   Plus,
   MoreVertical,
-  Trash2,
   LogIn,
   LogOut,
   XCircle,
@@ -226,9 +224,6 @@ export default function ReservationsPage() {
   });
   const [creating, setCreating] = useState(false);
 
-  // Delete dialog
-  const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Payment dialog
   const [paymentDialog, setPaymentDialog] = useState<Reservation | null>(null);
@@ -536,27 +531,6 @@ export default function ReservationsPage() {
     setSelectedGuestId("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    if (deleteTarget.status === "COMPLETED" || deleteTarget.status === "CANCELLED" || deleteTarget.status === "DELETED") {
-      toast.error("Cannot delete a completed, cancelled, or already deleted reservation");
-      setDeleteTarget(null);
-      return;
-    }
-    try {
-      setDeleting(true);
-      await apiDeleteReservation(deleteTarget.id);
-      toast.success("Reservation deleted and room released");
-      setDeleteTarget(null);
-      triggerRefresh();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete reservation";
-      toast.error(message);
-    } finally {
-      setDeleting(false);
-    }
   };
 
   const handleAction = async () => {
@@ -941,18 +915,6 @@ export default function ReservationsPage() {
                               </DropdownMenuItem>
                             </>
                           )}
-                          {res.status !== "COMPLETED" && res.status !== "CANCELLED" && res.status !== "DELETED" && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-rose-600 focus:text-rose-600"
-                                onClick={() => setDeleteTarget(res)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
-                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -1055,17 +1017,6 @@ export default function ReservationsPage() {
                       <DropdownMenuItem className="text-rose-600" onClick={() => setConfirmAction({ type: "cancel", reservation: res })}>
                         <XCircle className="mr-2 h-4 w-4" /> Cancel
                       </DropdownMenuItem>
-                    )}
-                    {res.status !== "COMPLETED" && res.status !== "CANCELLED" && res.status !== "DELETED" && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-rose-600 focus:text-rose-600"
-                          onClick={() => setDeleteTarget(res)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1612,27 +1563,6 @@ export default function ReservationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("dialogDeleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("dialogDeleteDesc", { guest: deleteTarget?.guest?.name, room: deleteTarget?.room?.number })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("btnCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-rose-600 hover:bg-rose-700"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? t("btnDeleting") : t("btnDelete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       {/* Edit Reservation Dialog (pending / active only) */}
       <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
         <DialogContent className="sm:max-w-xl">
