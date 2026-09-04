@@ -21,6 +21,9 @@ import { StatusDot } from "@/components/police-app/visuals";
 import {
   ROOM_STATUSES,
   ROOM_STATUS_STYLES,
+  ROOM_STATUS_I18N,
+  PROVIDER_COUNT_KEY,
+  asRoomStatus,
   BRAND,
   type RoomStatus,
 } from "@/lib/police-app-status";
@@ -70,25 +73,6 @@ interface AvailabilityData {
 }
 
 type StatusFilter = "ALL" | RoomStatus;
-
-// Provider stat fields are lowercase while room status values are uppercase
-const PROVIDER_COUNT_KEY: Record<RoomStatus, "available" | "occupied" | "reserved" | "maintenance"> = {
-  AVAILABLE: "available",
-  OCCUPIED: "occupied",
-  RESERVED: "reserved",
-  MAINTENANCE: "maintenance",
-};
-
-const ROOM_STATUS_KEYS: Record<RoomStatus, string> = {
-  AVAILABLE: "rooms.available",
-  OCCUPIED: "rooms.occupied",
-  RESERVED: "rooms.reserved",
-  MAINTENANCE: "rooms.maintenance",
-};
-
-function asRoomStatus(status: string): RoomStatus {
-  return (ROOM_STATUSES as string[]).includes(status) ? (status as RoomStatus) : "MAINTENANCE";
-}
 
 export default function RoomsScreen() {
   const { t } = useTranslation("policeApp");
@@ -221,7 +205,7 @@ export default function RoomsScreen() {
                   {statusCounts[status]}
                 </p>
                 <p className={`truncate text-[9px] ${active ? "text-indigo-100" : "text-slate-400"}`}>
-                  {t(ROOM_STATUS_KEYS[status])}
+                  {t(ROOM_STATUS_I18N[status])}
                 </p>
               </button>
             );
@@ -272,7 +256,7 @@ export default function RoomsScreen() {
                   }`}
                 >
                   <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white/90" : s.dot}`} />
-                  {t(ROOM_STATUS_KEYS[status])}
+                  {t(ROOM_STATUS_I18N[status])}
                   <span className="ml-0.5 opacity-70">· {statusCounts[status]}</span>
                 </button>
               );
@@ -418,7 +402,7 @@ export default function RoomsScreen() {
                                     <span
                                       className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.chipBg} ${s.chipText} ${s.chipBorder}`}
                                     >
-                                      {t(ROOM_STATUS_KEYS[st])}
+                                      {t(ROOM_STATUS_I18N[st])}
                                     </span>
                                   </div>
                                   <p className="mt-1 truncate text-[10px] text-slate-400">

@@ -3291,6 +3291,7 @@
       "daytimeRevenue": "Daytime Services",
       "busiest": "Busiest guesthouses",
       "viewRooms": "View rooms",
+      "providerBreakdown": "Provider Room Breakdown",
       "activeWord": "active"
     },
     "rooms": {

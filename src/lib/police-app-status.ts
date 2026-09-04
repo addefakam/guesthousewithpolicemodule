@@ -52,6 +52,27 @@ export const ROOM_STATUS_STYLES: Record<RoomStatus, StatusStyle> = {
   },
 };
 
+/** i18n key per room status (shared by rooms + home screens). */
+export const ROOM_STATUS_I18N: Record<RoomStatus, string> = {
+  AVAILABLE: "rooms.available",
+  OCCUPIED: "rooms.occupied",
+  RESERVED: "rooms.reserved",
+  MAINTENANCE: "rooms.maintenance",
+};
+
+/** Provider stat fields are lowercase while room status values are uppercase. */
+export const PROVIDER_COUNT_KEY: Record<RoomStatus, "available" | "occupied" | "reserved" | "maintenance"> = {
+  AVAILABLE: "available",
+  OCCUPIED: "occupied",
+  RESERVED: "reserved",
+  MAINTENANCE: "maintenance",
+};
+
+/** Normalize an arbitrary status string to a RoomStatus. */
+export function asRoomStatus(status: string): RoomStatus {
+  return (ROOM_STATUSES as string[]).includes(status) ? (status as RoomStatus) : "MAINTENANCE";
+}
+
 /** Shared uniform interaction colors (the "color flow" of the app). */
 export const BRAND = {
   /** solid active state — chips, tiles, segmented controls */
