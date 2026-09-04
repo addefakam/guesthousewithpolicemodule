@@ -21,12 +21,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0B1D3A",
+  themeColor: "#F6F7FB",
 };
 
 export default function PoliceAppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-gray-50 text-gray-900 antialiased">
+    <div className="min-h-dvh bg-[#F6F7FB] text-slate-900 antialiased">
       {children}
     </div>
   );

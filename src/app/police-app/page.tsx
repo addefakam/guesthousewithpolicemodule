@@ -39,17 +39,15 @@ function PoliceAppGate() {
   }, [mounted]);
 
   if (!mounted) {
+    // Light splash — soft canvas, gradient tile, loading shimmer
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#0B1D3A]">
-        <div className="relative flex h-16 w-16 items-center justify-center">
-          <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/20" />
-          <svg viewBox="0 0 24 24" className="h-10 w-10 text-amber-400" fill="currentColor" aria-hidden="true">
-            <path d="M12 1.8 21 5v6.2c0 5.2-3.6 9.4-9 11-5.4-1.6-9-5.8-9-11V5l9-3.2Z" opacity=".35" />
-            <path d="m12 5.5 5.2 1.9v3.8c0 3.2-2.2 5.8-5.2 6.8-3-1-5.2-3.6-5.2-6.8V7.4L12 5.5Z" />
-          </svg>
-        </div>
-        <div className="h-1 w-28 overflow-hidden rounded-full bg-slate-800">
-          <div className="h-full w-1/2 animate-pulse rounded-full bg-amber-400" />
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#F6F7FB]">
+        <div
+          aria-hidden="true"
+          className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/25"
+        />
+        <div className="h-1 w-28 overflow-hidden rounded-full bg-indigo-100">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" />
         </div>
       </div>
     );

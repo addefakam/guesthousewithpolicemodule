@@ -1,9 +1,9 @@
 "use client";
 
 // ── Room Availability — the flagship screen of the standalone Police App ──
-// City-wide live room status across every approved guesthouse, with the
-// police-badge-in-front-of-house hero as its visual identity. Styling
-// mirrors the /m operator app: white cards, pill chips, pastel badges.
+// Aurora light design system: simple text header, one flat summary card,
+// uniform indigo interaction states, soft pastel status identifiers.
+// No artwork, no imagery — just clean light surfaces.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,14 +17,11 @@ import {
   BedDouble,
 } from "lucide-react";
 import { apiPoliceRoomAvailability } from "@/lib/api";
-import {
-  PoliceHouseHero,
-  UtilizationRing,
-  StatusDot,
-} from "@/components/police-app/visuals";
+import { StatusDot } from "@/components/police-app/visuals";
 import {
   ROOM_STATUSES,
   ROOM_STATUS_STYLES,
+  BRAND,
   type RoomStatus,
 } from "@/lib/police-app-status";
 
@@ -163,43 +160,47 @@ export default function RoomsScreen() {
 
   return (
     <div className="space-y-3 px-4 pt-4">
-      {/* ── Hero: police badge standing in front of the house ── */}
-      <section className="relative overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm">
-        <PoliceHouseHero className="h-auto w-full" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#081426] via-[#081426]/75 to-transparent px-4 pb-3.5 pt-12">
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold leading-tight text-white">
-                {t("rooms.title")}
-              </h1>
-              <p className="mt-0.5 truncate text-xs text-slate-300">{t("rooms.subtitle")}</p>
-            </div>
-            {summary && (
-              <div className="shrink-0 rounded-2xl border border-white/10 bg-[#0B1D3A]/70 px-3 py-2 backdrop-blur">
-                <UtilizationRing value={summary.utilizationRate} size={52} />
-                <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wider text-slate-300">
-                  {t("rooms.utilization")}
-                </p>
-              </div>
-            )}
-          </div>
-          {summary && (
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-300">
-              <span>
-                <span className="font-bold text-white">{summary.totalRooms}</span> {t("rooms.totalRooms")}
-              </span>
-              <span>
-                <span className="font-bold text-white">{summary.totalProviders}</span> {t("rooms.guesthouses")}
-              </span>
-              <span>
-                <span className="font-bold text-white">{summary.totalCapacity}</span> {t("rooms.capacity")}
-              </span>
-            </div>
-          )}
-        </div>
-      </section>
+      {/* ── Simple header (text only) ── */}
+      <header className="px-1">
+        <h1 className="text-lg font-bold tracking-tight text-slate-900">{t("rooms.title")}</h1>
+        <p className="mt-0.5 text-xs text-slate-400">{t("rooms.subtitle")}</p>
+      </header>
 
-      {/* ── Status tiles (tap to filter) — same stat-tile language as /m ── */}
+      {/* ── Flat city-wide summary card ── */}
+      {summary && (
+        <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm" aria-label={t("rooms.title")}>
+          <div className="flex items-end justify-between gap-3">
+            <dl className="flex gap-5">
+              {[
+                { value: summary.totalRooms, label: t("rooms.totalRooms") },
+                { value: summary.totalProviders, label: t("rooms.guesthouses") },
+                { value: summary.totalCapacity, label: t("rooms.capacity") },
+              ].map((x) => (
+                <div key={x.label}>
+                  <dd className="text-lg font-bold leading-none tracking-tight text-slate-900">{x.value}</dd>
+                  <dt className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-slate-400">{x.label}</dt>
+                </div>
+              ))}
+            </dl>
+            <div className="shrink-0 text-right">
+              <p className={`text-lg font-bold leading-none tracking-tight ${BRAND.gradientText}`}>
+                {summary.utilizationRate}%
+              </p>
+              <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                {t("rooms.utilization")}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full ${BRAND.gradientBar}`}
+              style={{ width: `${Math.min(100, Math.max(2, summary.utilizationRate))}%` }}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* ── Status tiles (tap to filter) ── */}
       {statusCounts && (
         <section className="grid grid-cols-4 gap-2" aria-label={t("rooms.title")}>
           {ROOM_STATUSES.map((status) => {
@@ -211,15 +212,15 @@ export default function RoomsScreen() {
                 type="button"
                 onClick={() => setFilter(active ? "ALL" : status)}
                 aria-pressed={active}
-                className={`rounded-lg p-2 text-center transition-all active:scale-95 ${
-                  active ? "bg-slate-900 ring-2 ring-slate-300" : "bg-white border border-gray-100 shadow-sm"
+                className={`rounded-xl border p-2 text-center transition-all active:scale-95 ${
+                  active ? BRAND.active : "border-slate-100 bg-white shadow-sm"
                 }`}
               >
-                <div className={`mx-auto mb-1 h-1.5 w-1.5 rounded-full ${s.dot}`} />
-                <p className={`text-lg font-bold leading-tight ${active ? "text-white" : "text-gray-900"}`}>
+                <span aria-hidden="true" className={`mx-auto mb-1 block h-1.5 w-1.5 rounded-full ${s.dot}`} />
+                <p className={`text-lg font-bold leading-tight tracking-tight ${active ? "text-white" : "text-slate-900"}`}>
                   {statusCounts[status]}
                 </p>
-                <p className={`text-[9px] truncate ${active ? "text-slate-300" : "text-gray-500"}`}>
+                <p className={`truncate text-[9px] ${active ? "text-indigo-100" : "text-slate-400"}`}>
                   {t(ROOM_STATUS_KEYS[status])}
                 </p>
               </button>
@@ -231,7 +232,7 @@ export default function RoomsScreen() {
       {/* ── Search + filter chips ── */}
       <section className="space-y-2.5">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             name="police-rooms-search"
@@ -240,7 +241,7 @@ export default function RoomsScreen() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("rooms.searchPlaceholder")}
             aria-label={t("rooms.searchPlaceholder")}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
           />
         </div>
 
@@ -249,8 +250,8 @@ export default function RoomsScreen() {
             type="button"
             onClick={() => setFilter("ALL")}
             aria-pressed={filter === "ALL"}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === "ALL" ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              filter === "ALL" ? BRAND.active : BRAND.idle
             }`}
           >
             {t("rooms.filterAll")}
@@ -266,12 +267,13 @@ export default function RoomsScreen() {
                   type="button"
                   onClick={() => setFilter(active ? "ALL" : status)}
                   aria-pressed={active}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    active ? s.chipActive : s.chipIdle
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active ? BRAND.active : BRAND.idle
                   }`}
                 >
+                  <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white/90" : s.dot}`} />
                   {t(ROOM_STATUS_KEYS[status])}
-                  <span className="ml-1 opacity-70">· {statusCounts[status]}</span>
+                  <span className="ml-0.5 opacity-70">· {statusCounts[status]}</span>
                 </button>
               );
             })}
@@ -283,7 +285,7 @@ export default function RoomsScreen() {
             {data.roomTypes.map((rt) => (
               <span
                 key={rt.type}
-                className="flex h-7 shrink-0 items-center rounded-full border border-gray-200 bg-white px-3 text-[11px] font-medium text-gray-600"
+                className="flex h-7 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-500"
               >
                 {rt.type} · {rt.count}
               </span>
@@ -299,19 +301,19 @@ export default function RoomsScreen() {
         <ErrorBox message={error} onRetry={load} retryLabel={t("common.retry")} />
       ) : !data || data.providers.length === 0 ? (
         <EmptyState
-          icon={<BedDouble className="h-10 w-10" />}
+          icon={<BedDouble className="h-6 w-6" />}
           title={t("rooms.noProviders")}
         />
       ) : visibleProviders.length === 0 ? (
         <EmptyState
-          icon={<Search className="h-10 w-10" />}
+          icon={<Search className="h-6 w-6" />}
           title={filter !== "ALL" ? t("rooms.noRoomsForFilter") : t("rooms.noProviders")}
           hint={isFiltering ? t("rooms.tryClearing") : undefined}
         />
       ) : (
         <>
           {isFiltering && (
-            <p className="px-1 text-[11px] font-medium text-gray-500">
+            <p className="px-1 text-[11px] font-medium text-slate-400">
               {t("rooms.matchCount", { matched: totalMatched, total: summary?.totalRooms ?? 0 })}
               {" · "}
               {t("rooms.resultGuesthouses", { count: visibleProviders.length })}
@@ -320,73 +322,66 @@ export default function RoomsScreen() {
           <ul className="space-y-3">
             {visibleProviders.map((p) => {
               const expanded = expandedId === p.id;
+              const busy = p.utilizationRate >= 80;
               return (
                 <li
                   key={p.id}
-                  className="overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm transition-transform"
+                  className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm"
                 >
                   {/* Provider header (toggle) */}
                   <button
                     type="button"
                     onClick={() => setExpandedId(expanded ? null : p.id)}
                     aria-expanded={expanded}
-                    className="w-full p-3.5 text-left transition-colors active:bg-gray-50"
+                    className="w-full p-4 text-left transition-colors active:bg-slate-50"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="truncate text-sm font-bold text-gray-900">{p.name}</h3>
+                        <h3 className="truncate text-sm font-bold text-slate-900">{p.name}</h3>
                         {p.address && (
-                          <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-gray-500">
-                            <MapPin className="h-3 w-3 shrink-0 text-gray-400" />
+                          <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-slate-400">
+                            <MapPin className="h-3 w-3 shrink-0" />
                             {p.address}
                           </p>
                         )}
                         {p.phone && (
-                          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-500">
-                            <Phone className="h-3 w-3 shrink-0 text-gray-400" />
+                          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
+                            <Phone className="h-3 w-3 shrink-0" />
                             {p.phone}
                           </p>
                         )}
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            p.utilizationRate >= 80
-                              ? "bg-rose-100 text-rose-800"
-                              : p.utilizationRate >= 50
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-emerald-100 text-emerald-800"
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                            busy
+                              ? "border-rose-100 bg-rose-50 text-rose-700"
+                              : "border-indigo-100 bg-indigo-50 text-indigo-700"
                           }`}
                         >
                           {p.utilizationRate}%
                         </span>
                         <ChevronDown
-                          className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+                          className={`h-4 w-4 text-slate-300 transition-transform ${expanded ? "rotate-180" : ""}`}
                         />
                       </div>
                     </div>
                     {/* mini status counts */}
                     <div className="mt-3 flex items-center gap-3">
                       {ROOM_STATUSES.map((status) => (
-                        <span key={status} className="flex items-center gap-1 text-[11px] font-semibold text-gray-600">
+                        <span key={status} className="flex items-center gap-1 text-[11px] font-semibold text-slate-600">
                           <StatusDot status={status} />
                           {p[PROVIDER_COUNT_KEY[status]]}
                         </span>
                       ))}
-                      <span className="ml-auto text-[11px] text-gray-400">
+                      <span className="ml-auto text-[11px] text-slate-400">
                         {p.total} {t("rooms.roomsWord")}
                       </span>
                     </div>
-                    {/* utilization bar */}
-                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                    {/* utilization bar — brand gradient flow */}
+                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className={`h-full rounded-full ${
-                          p.utilizationRate >= 80
-                            ? "bg-rose-500"
-                            : p.utilizationRate >= 50
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                        }`}
+                        className={`h-full rounded-full ${busy ? "bg-rose-400" : BRAND.gradientBar}`}
                         style={{ width: `${p.utilizationRate}%` }}
                       />
                     </div>
@@ -394,14 +389,14 @@ export default function RoomsScreen() {
 
                   {/* Expanded room chips */}
                   {expanded && (
-                    <div className="border-t border-gray-100 bg-gray-50 p-3">
-                      <div className="mb-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        <span>{t("rooms.avgPrice")}: <span className="text-gray-700">{p.avgPrice}</span></span>
-                        <span>{t("rooms.capacity")}: <span className="text-gray-700">{p.totalCapacity}</span></span>
-                        {p.licenseNo && <span>{t("rooms.license")}: <span className="text-gray-700">{p.licenseNo}</span></span>}
+                    <div className="border-t border-slate-100 bg-slate-50/70 p-3">
+                      <div className="mb-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                        <span>{t("rooms.avgPrice")}: <span className="text-slate-600">{p.avgPrice}</span></span>
+                        <span>{t("rooms.capacity")}: <span className="text-slate-600">{p.totalCapacity}</span></span>
+                        {p.licenseNo && <span>{t("rooms.license")}: <span className="text-slate-600">{p.licenseNo}</span></span>}
                       </div>
                       {p.matchedRooms.length === 0 ? (
-                        <p className="rounded-xl border border-gray-200 bg-white px-3 py-4 text-center text-xs text-gray-500">
+                        <p className="rounded-xl border border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
                           {t("rooms.noRoomsForFilter")}
                         </p>
                       ) : (
@@ -412,28 +407,27 @@ export default function RoomsScreen() {
                             return (
                               <li
                                 key={r.id}
-                                className="overflow-hidden rounded-xl bg-white border border-gray-100 shadow-sm"
+                                className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm"
                               >
-                                {/* status dot bar — /m room-card signature */}
-                                <div className={`h-1.5 ${s.strip}`} />
+                                <div className={`h-1 ${s.strip}`} />
                                 <div className="p-2.5">
                                   <div className="flex items-center justify-between gap-1.5">
-                                    <span className="text-sm font-bold text-gray-900">
+                                    <span className="text-sm font-bold tracking-tight text-slate-900">
                                       {t("rooms.roomNum", { room: r.number })}
                                     </span>
                                     <span
-                                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${s.chipBg} ${s.chipText}`}
+                                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${s.chipBg} ${s.chipText} ${s.chipBorder}`}
                                     >
                                       {t(ROOM_STATUS_KEYS[st])}
                                     </span>
                                   </div>
-                                  <p className="mt-1 truncate text-[10px] text-gray-500">
+                                  <p className="mt-1 truncate text-[10px] text-slate-400">
                                     {[r.type, r.floor != null ? t("rooms.floor", { floor: r.floor }) : null]
                                       .filter(Boolean)
                                       .join(" · ")}
                                   </p>
-                                  <p className="mt-0.5 text-[11px] text-gray-600">
-                                    {r.pricePerNight} <span className="text-gray-400">{t("rooms.perNight")}</span>
+                                  <p className="mt-0.5 text-[11px] text-slate-600">
+                                    {r.pricePerNight} <span className="text-slate-400">{t("rooms.perNight")}</span>
                                   </p>
                                 </div>
                               </li>
@@ -452,12 +446,12 @@ export default function RoomsScreen() {
 
       {/* Footer meta */}
       {!loading && !error && updatedAt && (
-        <p className="flex items-center justify-center gap-2 pb-4 pt-1 text-center text-[10px] text-gray-400">
+        <p className="flex items-center justify-center gap-2 pb-4 pt-1 text-center text-[10px] text-slate-400">
           {t("rooms.updated", { time: updatedAt.toLocaleTimeString() })}
           <button
             type="button"
             onClick={load}
-            className="flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 font-semibold text-gray-600 transition active:scale-95"
+            className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-500 transition active:scale-95"
           >
             <RefreshCw className="h-3 w-3" />
             {t("common.refresh")}
@@ -472,10 +466,10 @@ function RoomsSkeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="rounded-2xl bg-white border border-gray-100 p-4">
-          <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
-          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-gray-100" />
-          <div className="mt-3 h-1.5 w-full animate-pulse rounded bg-gray-100" />
+        <div key={i} className="rounded-2xl border border-slate-100 bg-white p-4">
+          <div className="h-4 w-1/3 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+          <div className="mt-3 h-1.5 w-full animate-pulse rounded bg-slate-100" />
         </div>
       ))}
     </div>
@@ -484,14 +478,14 @@ function RoomsSkeleton() {
 
 export function ErrorBox({ message, onRetry, retryLabel }: { message: string; onRetry?: () => void; retryLabel?: string }) {
   return (
-    <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-center">
-      <AlertTriangle className="mx-auto h-8 w-8 text-rose-500" />
+    <div role="alert" className="rounded-2xl border border-rose-100 bg-rose-50/80 p-5 text-center">
+      <AlertTriangle className="mx-auto h-8 w-8 text-rose-400" />
       <p className="mt-2.5 text-sm font-medium text-rose-800">{message}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-5 text-xs font-bold text-white transition active:scale-95"
+          className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-rose-500 px-5 text-xs font-bold text-white transition active:scale-95"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {retryLabel}
@@ -504,9 +498,11 @@ export function ErrorBox({ message, onRetry, retryLabel }: { message: string; on
 export function EmptyState({ icon, title, hint }: { icon: React.ReactNode; title: string; hint?: string }) {
   return (
     <div className="flex flex-col items-center py-16 text-center">
-      <div className="mb-2 text-gray-300">{icon}</div>
-      <p className="text-sm text-gray-500">{title}</p>
-      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50/70 text-indigo-300">
+        {icon}
+      </div>
+      <p className="text-sm text-slate-500">{title}</p>
+      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
     </div>
   );
 }

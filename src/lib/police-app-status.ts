@@ -1,67 +1,70 @@
 // ── Room status presentation helpers for the standalone Police App ──
-// Aligned with the /m operator app: same four statuses, same pastel-badge
-// language (bg-*-100 / text-*-800), same solid dots (bg-*-500), and the same
-// solid-color active filter chips (bg-*-600).
+// Aurora light design system: ONE uniform brand (indigo) drives every
+// interactive state (active chips/tiles/tabs — set inline by screens);
+// these per-status styles are purely semantic identifiers (dots, pastel
+// badges, card strips) kept in one soft pastel family.
 
 export type RoomStatus = "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
 
 export const ROOM_STATUSES: RoomStatus[] = ["AVAILABLE", "OCCUPIED", "RESERVED", "MAINTENANCE"];
 
 interface StatusStyle {
-  /** solid dot color (bg-*-500 family) */
+  /** solid dot color */
   dot: string;
-  /** pastel badge background (bg-*-100) */
+  /** pastel badge background */
   chipBg: string;
-  /** pastel badge text (text-*-800) */
+  /** pastel badge text */
   chipText: string;
-  /** pastel badge border (border-*-200) */
+  /** pastel badge border */
   chipBorder: string;
-  /** active filter chip — solid color + white text, like /m */
-  chipActive: string;
-  /** inactive filter chip — white bg + tinted text/border, like /m */
-  chipIdle: string;
-  /** top strip on cards (h-1.5 status bar), like /m room cards */
+  /** thin status strip on room cards */
   strip: string;
 }
 
 export const ROOM_STATUS_STYLES: Record<RoomStatus, StatusStyle> = {
   AVAILABLE: {
     dot: "bg-emerald-500",
-    chipBg: "bg-emerald-100",
-    chipText: "text-emerald-800",
-    chipBorder: "border-emerald-200",
-    chipActive: "bg-emerald-600 text-white border-emerald-600",
-    chipIdle: "bg-white text-emerald-700 border-emerald-200",
-    strip: "bg-emerald-500",
+    chipBg: "bg-emerald-50",
+    chipText: "text-emerald-700",
+    chipBorder: "border-emerald-100",
+    strip: "bg-emerald-400",
   },
   OCCUPIED: {
     dot: "bg-rose-500",
-    chipBg: "bg-rose-100",
-    chipText: "text-rose-800",
-    chipBorder: "border-rose-200",
-    chipActive: "bg-rose-600 text-white border-rose-600",
-    chipIdle: "bg-white text-rose-700 border-rose-200",
-    strip: "bg-rose-500",
+    chipBg: "bg-rose-50",
+    chipText: "text-rose-700",
+    chipBorder: "border-rose-100",
+    strip: "bg-rose-400",
   },
   RESERVED: {
     dot: "bg-sky-500",
-    chipBg: "bg-sky-100",
-    chipText: "text-sky-800",
-    chipBorder: "border-sky-200",
-    chipActive: "bg-sky-600 text-white border-sky-600",
-    chipIdle: "bg-white text-sky-700 border-sky-200",
-    strip: "bg-sky-500",
+    chipBg: "bg-sky-50",
+    chipText: "text-sky-700",
+    chipBorder: "border-sky-100",
+    strip: "bg-sky-400",
   },
   MAINTENANCE: {
     dot: "bg-amber-500",
-    chipBg: "bg-amber-100",
-    chipText: "text-amber-800",
-    chipBorder: "border-amber-200",
-    chipActive: "bg-amber-600 text-white border-amber-600",
-    chipIdle: "bg-white text-amber-700 border-amber-200",
-    strip: "bg-amber-500",
+    chipBg: "bg-amber-50",
+    chipText: "text-amber-700",
+    chipBorder: "border-amber-100",
+    strip: "bg-amber-400",
   },
 };
+
+/** Shared uniform interaction colors (the "color flow" of the app). */
+export const BRAND = {
+  /** solid active state — chips, tiles, segmented controls */
+  active: "bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-500/25",
+  /** soft active surface — language buttons, info tiles */
+  activeSoft: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  /** idle chip / button surface */
+  idle: "bg-white text-slate-600 border-slate-200",
+  /** the signature gradient bar (used in tiny doses) */
+  gradientBar: "bg-gradient-to-r from-indigo-500 to-violet-400",
+  /** gradient text for hero numbers */
+  gradientText: "bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent",
+} as const;
 
 /** ETB currency formatter matching the desktop police dashboard. */
 export function formatEtb(amount: number): string {

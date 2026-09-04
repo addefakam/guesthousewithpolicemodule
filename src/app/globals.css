@@ -106,3 +106,22 @@
   --color-sidebar-border: oklch(0.269 0 0);
   --color-sidebar-ring: oklch(0.621 0.17 264);
 }
+/* ── Police App (Aurora light redesign): gentle screen enter ── */
+@keyframes pa-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.pa-enter {
+  animation: pa-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pa-enter {
+    animation: none;
+  }
+}
