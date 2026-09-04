@@ -603,6 +603,8 @@
     "toastNoActiveReservation": "No active reservation found for this room",
     "filterFloor": "Floor:",
     "filterOthers": "Others",
+    "filterFloorLabel": "Floor {{floor}}",
+    "cancel": "Cancel",
     "filterStatus": "Status:",
     "roomLabel": "Room {{number}}",
     "roomLabelWithName": "Room {{number}} — {{name}}",

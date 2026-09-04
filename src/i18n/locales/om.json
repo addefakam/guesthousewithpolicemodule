@@ -602,6 +602,8 @@
     "toastNoActiveReservation": "Kuta kanaaf qabannaa hojjechaa hin jiru",
     "filterFloor": "Darbii:",
     "filterOthers": "Kan biro",
+    "filterFloorLabel": "Darbii {{floor}}",
+    "cancel": "Dhiisi",
     "filterStatus": "Haala:",
     "roomLabel": "Kutaa {{number}}",
     "roomLabelWithName": "Kutaa {{number}} — {{name}}",
