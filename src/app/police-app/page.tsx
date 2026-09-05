@@ -8,12 +8,18 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/config";
 import PoliceApp from "@/components/police-app/police-app";
 import { PoliceLogin, PoliceRoleError } from "@/components/police-app/police-login";
+import PwaInstallPrompt from "@/components/pwa-install-prompt";
 
 const emptySubscribe = () => () => {};
 
 export default function PoliceAppPage() {
   return (
     <I18nextProvider i18n={i18n}>
+      <PwaInstallPrompt
+        titleKey="install.policeTitle"
+        descKey="install.policeDesc"
+        dismissStorageKey="ghms_police_install_dismissed"
+      />
       <PoliceAppGate />
     </I18nextProvider>
   );

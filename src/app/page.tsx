@@ -2,7 +2,7 @@
 
 import "@/i18n/config";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";
 import LoginPage from "@/components/ghms/login-page";
 import Sidebar from "@/components/ghms/sidebar";
@@ -12,12 +12,22 @@ import PwaInstallPrompt from "@/components/pwa-install-prompt";
 import { apiGetNotifications, apiMarkNotificationRead } from "@/lib/api";
 import { useTranslation, I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/config";
-import { Bell } from "lucide-react";
+import { Bell, ArrowLeft } from "lucide-react";
 
 interface UrgentNotif {
   id: string;
   title: string;
   message: string;
+}
+
+const emptySubscribe = () => () => {};
+
+function readFromPoliceAppFlag(): boolean {
+  try {
+    return sessionStorage.getItem("ghms_from_police_app") === "1";
+  } catch {
+    return false;
+  }
 }
 
 export default function Home() {
@@ -36,6 +46,23 @@ function HomeContent() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [urgentNotifs, setUrgentNotifs] = useState<UrgentNotif[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Show a "back to the police app" arrow when the user arrived via the
+  // police app's Full System Access (incl. the installed standalone window).
+  const fromPoliceApp = useSyncExternalStore(
+    emptySubscribe,
+    readFromPoliceAppFlag,
+    () => false
+  );
+
+  const backToPoliceApp = useCallback(() => {
+    try {
+      sessionStorage.removeItem("ghms_from_police_app");
+    } catch {
+      /* ignore */
+    }
+    window.location.assign("/police-app");
+  }, []);
 
   // ── ALL hooks must be called before any conditional return (Rules of Hooks) ──
 
@@ -96,6 +123,17 @@ function HomeContent() {
     return () => clearInterval(interval);
   }, [mounted, currentUser, fetchNotifData]);
 
+  // Logout (or session loss) clears the police-app back arrow
+  useEffect(() => {
+    if (mounted && !currentUser) {
+      try {
+        sessionStorage.removeItem("ghms_from_police_app");
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [mounted, currentUser]);
+
   // ── Conditional renders (AFTER all hooks) ──
 
   if (!mounted) {
@@ -155,6 +193,17 @@ function HomeContent() {
           </div>
         )}
         <header className="flex items-center justify-end px-4 md:px-6 h-12 shrink-0 bg-white border-b border-slate-100 gap-2">
+          {fromPoliceApp && (
+            <button
+              onClick={backToPoliceApp}
+              title={t("Back to Police App")}
+              aria-label={t("Back to Police App")}
+              className="mr-auto flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-[18px] w-[18px]" />
+              <span className="hidden sm:inline">{t("Police App")}</span>
+            </button>
+          )}
           <LanguageSwitcher />
           <button
             onClick={() => setCurrentPage("notifications")}

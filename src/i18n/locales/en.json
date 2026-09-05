@@ -60,12 +60,16 @@
     "new": "new"
   },
   "common": {
+    "Back to Police App": "Back to Police App",
+    "Police App": "Police App",
       "install": {
         "title": "Install GHMS on your desktop",
         "desc": "Add GHMS as an app for one-click access from your dock or start menu — no app store needed.",
         "action": "Install app",
         "later": "Not now"
-      },
+,
+        "policeTitle": "Install GHMS Police on your desktop",
+        "policeDesc": "Add GHMS Police as an app for one-click access from your dock or start menu — no app store needed."      },
     "URGENT": "URGENT",
     "Click to view": "Click to view →",
     "lblguest": "Guest",

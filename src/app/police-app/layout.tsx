@@ -6,8 +6,11 @@ export const metadata: Metadata = {
   description: "Standalone police module app — guesthouse room availability & guest monitoring",
   manifest: "/police-app/manifest.json",
   icons: {
-    icon: "/police-app/icon.svg",
-    apple: "/police-app/icon.svg",
+    icon: [
+      { url: "/police-app/icon.svg", type: "image/svg+xml" },
+      { url: "/police-app/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/police-app/icon-192.png",
   },
   appleWebApp: {
     capable: true,

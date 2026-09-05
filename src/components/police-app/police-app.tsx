@@ -48,6 +48,9 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   // ── Full System Access — switch to the main GHMS app with NO re-authentication.
   // The JWT cookie and persisted store are shared between both apps, so the main
   // system renders the role's landing page straight from the session.
+  // We also drop a sessionStorage flag so the main system shows a "back to the
+  // app" arrow; inside the installed standalone window this keeps the user in
+  // the app (the police manifest scope "/" covers the whole origin).
   function openFullSystem() {
     const page =
       user.role === "POLICE"
@@ -56,6 +59,11 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
           ? "super-admin-dashboard"
           : "dashboard";
     setCurrentPage(page);
+    try {
+      sessionStorage.setItem("ghms_from_police_app", "1");
+    } catch {
+      /* ignore */
+    }
     window.location.assign("/");
   }
 

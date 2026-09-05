@@ -11,18 +11,33 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "ghms_install_dismissed";
 const CAPTURE_KEY = "__ghmsInstallPrompt" as const;
 
+interface PwaInstallPromptProps {
+  /** i18n key (common namespace) for the card title */
+  titleKey?: string;
+  /** i18n key (common namespace) for the card description */
+  descKey?: string;
+  /** localStorage key persisting the dismissal (per app) */
+  dismissStorageKey?: string;
+}
+
 /**
- * Desktop install promotion for the main system (PWA).
+ * Desktop install promotion (PWA).
  * - Registers the minimal service worker (/sw.js).
  * - Listens for `beforeinstallprompt` (Chromium browsers) and shows a
  *   dismissible card at the bottom-right with an Install button.
  * - Hidden on mobile viewports, in standalone mode, once installed,
  *   or after the user dismisses it (persisted in localStorage).
+ * - Mounted by BOTH the main system and the standalone police app
+ *   (the police app passes its own title/desc keys + storage key, so
+ *   each app keeps its own dismissal).
  */
-export default function PwaInstallPrompt() {
+export default function PwaInstallPrompt({
+  titleKey = "install.title",
+  descKey = "install.desc",
+  dismissStorageKey = "ghms_install_dismissed",
+}: PwaInstallPromptProps) {
   const { t } = useTranslation("common");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
@@ -32,13 +47,13 @@ export default function PwaInstallPrompt() {
     if (window.matchMedia("(display-mode: standalone)").matches) return;
     if ((navigator as Navigator & { standalone?: boolean }).standalone) return;
     try {
-      if (localStorage.getItem(DISMISS_KEY) === "1") return;
+      if (localStorage.getItem(dismissStorageKey) === "1") return;
     } catch {
       /* private mode — ignore */
     }
     setDeferred(evt);
     setVisible(true);
-  }, []);
+  }, [dismissStorageKey]);
 
   useEffect(() => {
     // Register the passthrough service worker (PWA installability).
@@ -55,7 +70,7 @@ export default function PwaInstallPrompt() {
       setVisible(false);
       setDeferred(null);
       try {
-        localStorage.setItem(DISMISS_KEY, "1");
+        localStorage.setItem(dismissStorageKey, "1");
       } catch {
         /* ignore */
       }
@@ -76,17 +91,17 @@ export default function PwaInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, [maybeShow]);
+  }, [maybeShow, dismissStorageKey]);
 
   const dismiss = useCallback(() => {
     setVisible(false);
     setDeferred(null);
     try {
-      localStorage.setItem(DISMISS_KEY, "1");
+      localStorage.setItem(dismissStorageKey, "1");
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [dismissStorageKey]);
 
   const onInstall = useCallback(async () => {
     try {
@@ -102,7 +117,7 @@ export default function PwaInstallPrompt() {
   return (
     <div
       role="dialog"
-      aria-label={t("install.title")}
+      aria-label={t(titleKey)}
       className="fixed bottom-4 right-4 z-50 hidden w-[340px] md:block"
     >
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
@@ -111,8 +126,8 @@ export default function PwaInstallPrompt() {
             <MonitorDown className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">{t("install.title")}</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">{t("install.desc")}</p>
+            <p className="text-sm font-semibold text-slate-900">{t(titleKey)}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">{t(descKey)}</p>
           </div>
           <button
             onClick={dismiss}
