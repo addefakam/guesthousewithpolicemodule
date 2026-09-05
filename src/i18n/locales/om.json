@@ -67,6 +67,8 @@
         "action": "App dhaabi",
         "later": "Ammaa miti"
 ,
+        "menuHint": "Yoo fuula dhaabuu hin mul’anne, haasawaa braawzarii keessanii banuun “Install app” ykn “Add to Home screen” filadhu.",
+        "iosSteps": "Safari keessaa mallattoo Share tuquun, ergasii “Add to Home Screen” filadhu.",
         "policeTitle": "GHMS Police destoopii irratti dhaabadhu",
         "policeDesc": "GHMS Police appii ta'eettin tokkoon tuqamaan irraa banaa — app store barbaachisa miti."      },
     "URGENT": "ARIFATISAA",

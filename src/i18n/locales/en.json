@@ -68,6 +68,8 @@
         "action": "Install app",
         "later": "Not now"
 ,
+        "menuHint": "Can’t see the install dialog? Open your browser menu and choose “Install app” (or “Add to Home screen”).",
+        "iosSteps": "On iPhone/iPad: tap the Share icon in Safari, then choose “Add to Home Screen”.",
         "policeTitle": "Install GHMS Police on your desktop",
         "policeDesc": "Add GHMS Police as an app for one-click access from your dock or start menu — no app store needed."      },
     "URGENT": "URGENT",

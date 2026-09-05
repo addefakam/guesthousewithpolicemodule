@@ -19,6 +19,7 @@ export default function PoliceAppPage() {
         titleKey="install.policeTitle"
         descKey="install.policeDesc"
         dismissStorageKey="ghms_police_install_dismissed"
+        showOnMobile
       />
       <PoliceAppGate />
     </I18nextProvider>
