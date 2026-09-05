@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MonitorDown, X } from "lucide-react";
 
@@ -15,7 +15,7 @@ const CAPTURE_KEY = "__ghmsInstallPrompt" as const;
 /** "Not now" suppresses the ask for 7 days (instead of forever). */
 const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** If the native dialog is still unavailable shortly after open, show manual steps. */
-const MANUAL_HINT_DELAY_MS = 6000;
+const MANUAL_HINT_DELAY_MS = 8000;
 
 type InstallPlatform = "ios" | "chromium" | "other";
 
@@ -76,8 +76,9 @@ interface PwaInstallPromptProps {
  *   longer waits for `beforeinstallprompt`, which Chromium may delay for
  *   engagement reasons and Firefox/Safari never fire at all.
  * - "Install app" triggers the native dialog when the event is available;
- *   otherwise it falls back to manual steps (browser menu / iOS Add to
- *   Home Screen), which also appear automatically after a few seconds.
+ *   otherwise it remembers the intent (the dialog auto-opens as soon as
+ *   the browser allows it) and falls back to manual steps (browser menu /
+ *   iOS Add to Home Screen), which also appear automatically after seconds.
  * - Hidden in standalone mode, while installed, or for 7 days after the
  *   user dismisses it (persisted per app via localStorage).
  * - The police app passes its own title/desc keys + storage key and
@@ -94,6 +95,9 @@ export default function PwaInstallPrompt({
   const [visible, setVisible] = useState(false);
   const [iosMode, setIosMode] = useState(false);
   const [manualHint, setManualHint] = useState(false);
+  // True when the user clicked "Install app" before the browser allowed the
+  // native dialog — the dialog then auto-opens as soon as the event arrives.
+  const installIntentRef = useRef(false);
 
   const captureEvent = useCallback(
     (evt: BeforeInstallPromptEvent) => {
@@ -107,6 +111,12 @@ export default function PwaInstallPrompt({
     [dismissStorageKey]
   );
 
+  const dismiss = useCallback(() => {
+    setVisible(false);
+    setDeferred(null);
+    persistDismissal(dismissStorageKey);
+  }, [dismissStorageKey]);
+
   useEffect(() => {
     // Register the passthrough service worker (PWA installability).
     if ("serviceWorker" in navigator) {
@@ -115,8 +125,24 @@ export default function PwaInstallPrompt({
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
-      (window as unknown as Record<string, unknown>)[CAPTURE_KEY] = e;
-      captureEvent(e as BeforeInstallPromptEvent);
+      const evt = e as BeforeInstallPromptEvent;
+      (window as unknown as Record<string, unknown>)[CAPTURE_KEY] = evt;
+      if (installIntentRef.current) {
+        // The user asked to install before the browser allowed the native
+        // dialog — open it right away (needs fresh user activation; if the
+        // activation already expired, fall back to the shown manual steps).
+        installIntentRef.current = false;
+        setDeferred(evt);
+        setManualHint(false);
+        setVisible(true);
+        evt.prompt()
+          .then(() => dismiss())
+          .catch(() => {
+            installIntentRef.current = true;
+          });
+        return;
+      }
+      captureEvent(evt);
     };
     const onInstalled = () => {
       setVisible(false);
@@ -158,7 +184,7 @@ export default function PwaInstallPrompt({
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, [captureEvent, dismissStorageKey]);
+  }, [captureEvent, dismissStorageKey, dismiss]);
 
   // Native dialog not captured yet? Point at the browser menu after a beat.
   useEffect(() => {
@@ -167,16 +193,12 @@ export default function PwaInstallPrompt({
     return () => clearTimeout(timer);
   }, [visible, deferred]);
 
-  const dismiss = useCallback(() => {
-    setVisible(false);
-    setDeferred(null);
-    persistDismissal(dismissStorageKey);
-  }, [dismissStorageKey]);
-
   const onInstall = useCallback(async () => {
     if (!deferred) {
       // Native prompt not captured yet (engagement heuristics / other
-      // browser) — show the manual menu steps instead.
+      // browser) — remember the intent so the dialog auto-opens the moment
+      // the browser allows it, and show the manual steps meanwhile.
+      installIntentRef.current = true;
       setManualHint(true);
       return;
     }
