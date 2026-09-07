@@ -8,22 +8,25 @@
   <!-- Rounded square background -->
   <rect width="512" height="512" rx="108" fill="url(#bg)"/>
   <!-- House body -->
-  <path d="M256 120 L400 248 L400 400 C400 412 390 420 380 420 L132 420 C122 420 112 412 112 400 L112 248 Z" fill="white" opacity="0.95"/>
+  <path d="M256 120 L400 248 L400 400 C400 412 390 420 380 420 L132 420 C122 420 112 412 112 400 L112 248 Z" fill="#FFFFFF"/>
   <!-- Roof -->
-  <path d="M256 80 L432 240 L392 240 L256 108 L120 240 L80 240 Z" fill="white"/>
-  <!-- Door -->
-  <rect x="220" y="310" width="72" height="110" rx="6" fill="#059669" opacity="0.85"/>
+  <path d="M256 80 L432 240 L392 240 L256 108 L120 240 L80 240 Z" fill="#FFFFFF"/>
+  <!-- Door (darker green, full opacity) -->
+  <rect x="220" y="310" width="72" height="110" rx="6" fill="#047857"/>
   <!-- Door knob -->
-  <circle cx="276" cy="368" r="6" fill="white" opacity="0.9"/>
-  <!-- Windows -->
-  <rect x="148" y="240" width="52" height="48" rx="6" fill="#059669" opacity="0.4"/>
-  <rect x="312" y="240" width="52" height="48" rx="6" fill="#059669" opacity="0.4"/>
-  <!-- Window cross lines -->
-  <line x1="174" y1="240" x2="174" y2="288" stroke="#059669" stroke-width="2" opacity="0.3"/>
-  <line x1="148" y1="264" x2="200" y2="264" stroke="#059669" stroke-width="2" opacity="0.3"/>
-  <line x1="338" y1="240" x2="338" y2="288" stroke="#059669" stroke-width="2" opacity="0.3"/>
-  <line x1="312" y1="264" x2="364" y2="264" stroke="#059669" stroke-width="2" opacity="0.3"/>
-  <!-- Bed icon inside house (subtle) -->
-  <rect x="148" y="340" width="50" height="28" rx="4" fill="#059669" opacity="0.25"/>
-  <rect x="314" y="340" width="50" height="28" rx="4" fill="#059669" opacity="0.25"/>
+  <circle cx="276" cy="368" r="6" fill="#FFFFFF"/>
+  <!-- Windows (darker green, full opacity - clearly visible) -->
+  <rect x="148" y="240" width="52" height="48" rx="6" fill="#047857"/>
+  <rect x="312" y="240" width="52" height="48" rx="6" fill="#047857"/>
+  <!-- Window cross lines (white, full opacity - clean mullions) -->
+  <line x1="174" y1="240" x2="174" y2="288" stroke="#FFFFFF" stroke-width="3"/>
+  <line x1="148" y1="264" x2="200" y2="264" stroke="#FFFFFF" stroke-width="3"/>
+  <line x1="338" y1="240" x2="338" y2="288" stroke="#FFFFFF" stroke-width="3"/>
+  <line x1="312" y1="264" x2="364" y2="264" stroke="#FFFFFF" stroke-width="3"/>
+  <!-- Bed icons inside house (darker green, full opacity - clearly visible) -->
+  <rect x="148" y="340" width="50" height="28" rx="4" fill="#047857"/>
+  <rect x="314" y="340" width="50" height="28" rx="4" fill="#047857"/>
+  <!-- Pillow detail on beds (white, full opacity - clear contrast) -->
+  <rect x="152" y="344" width="14" height="8" rx="2" fill="#FFFFFF"/>
+  <rect x="318" y="344" width="14" height="8" rx="2" fill="#FFFFFF"/>
 </svg>
