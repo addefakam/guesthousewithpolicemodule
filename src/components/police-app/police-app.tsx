@@ -27,8 +27,8 @@ import GuestsScreen from "@/components/police-app/screens/guests-screen";
 
 type Tab = "home" | "rooms" | "guests" | "system";
 
-const LANG_CYCLE = ["en", "am", "om"];
-const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" };
+const LANG_CYCLE = ["en", "om"];
+const LANG_LABELS: Record<string, string> = { en: "EN", om: "OM" };
 
 export default function PoliceApp({ user }: { user: CurrentUser }) {
   const { t, i18n } = useTranslation("policeApp");

@@ -34,7 +34,7 @@ export function PoliceLogin() {
   const [error, setError] = useState<string | null>(null);
 
   function toggleLang() {
-    const next = i18n.language === "en" ? "am" : i18n.language === "am" ? "om" : "en";
+    const next = i18n.language === "en" ? "om" : "en";
     i18n.changeLanguage(next);
   }
 
@@ -77,7 +77,7 @@ export function PoliceLogin() {
           onClick={toggleLang}
           className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-500 backdrop-blur transition-colors active:bg-slate-100"
         >
-          {i18n.language === "en" ? "EN" : i18n.language === "am" ? "አማ" : "OM"}
+          {i18n.language === "en" ? "EN" : "OM"}
         </button>
       </div>
 
