@@ -421,7 +421,7 @@ export async function buildCertificatePdf(
 
   // ── 3. Issuing authority ─────────────────────────────────────────────
   doc
-    .font("EthiopicBold")
+    .font("SerifBold")
     .fontSize(12)
     .fillColor(C.navy)
     .text("Sirna Bulchiinsa Mana Gaazee", 0, topY + 56, {
@@ -446,7 +446,7 @@ export async function buildCertificatePdf(
   // ── 4. "Certificate of Registration" title ───────────────────────────
   const titleY = topY + 100;
   doc
-    .font("EthiopicBold")
+    .font("SerifBold")
     .fontSize(34)
     .fillColor(C.navy)
     .text("Marsariisa Mirgansa", 0, titleY, {
@@ -487,7 +487,7 @@ export async function buildCertificatePdf(
   // ── 6. "This is to certify that" preamble ───────────────────────────
   const preY = lineY + 14;
   doc
-    .font("EthiopicBold")
+    .font("SerifBold")
     .fontSize(13)
     .fillColor(C.inkSoft)
     .text("Kun immoo mirkaneessa", 0, preY, {
@@ -531,13 +531,16 @@ export async function buildCertificatePdf(
     .stroke();
 
   // ── 8. Certification statement (trilingual) — OM / AM / EN order ─────
+  // New message: certified that the holder has successfully completed
+  // training and is authorized to fully utilize the system per the
+  // standards of the Police Office.
   const stmtY = nameUnderlineY + 12;
   doc
-    .font("Ethiopic")
+    .font("SerifItalic")
     .fontSize(9)
     .fillColor(C.inkSoft)
     .text(
-      "Akkaataa sadarkaa sirna bulchiinsa mana gaazee, tajaajila gaazee kennuu danda'uuf kan mirkaneessameefi kan galmaa'ee ta'uu isaa kun qabiyyeeffata.",
+      "Leenjii milkaa'aa ee xumuruun, sirna guutuun fayyadamiinuu danda'uuf mirkaneffameera, akkaataa sadarkaa Waajjira Poolisiitiin.",
       0,
       stmtY,
       { width: w, align: "center" },
@@ -545,7 +548,7 @@ export async function buildCertificatePdf(
     .font("Ethiopic")
     .fontSize(9)
     .fillColor(C.inkSoft)
-    .text("በእንግድ ቤት አስተዳደር ስርዓት ደረጃዎች መሠረት እንግድ ቤት አገልግሎት ለመስጠት የተፈቀደ እና የተመዘገበ መሆኑን ይህ ሰነድ ያረጋግጣል።", 0, stmtY + 14, {
+    .text("ስልጠናውን በተሳካ ሆኖ አጠናቅቋል እንዲሁም በፖሊስ ጽሕፈት ቤት ደረጃዎች መሠረት ስርዓቱን በድጋፚ መጠቀም ተፈቅዷል።", 0, stmtY + 14, {
       width: w,
       align: "center",
     })
@@ -553,7 +556,7 @@ export async function buildCertificatePdf(
     .fontSize(10)
     .fillColor(C.ink)
     .text(
-      "is hereby certified as a registered lodging establishment, authorized to provide hospitality services",
+      "has successfully completed training and is certified to fully utilize the system",
       0,
       stmtY + 30,
       { width: w, align: "center" },
@@ -561,7 +564,7 @@ export async function buildCertificatePdf(
     .font("SerifItalic")
     .fontSize(10)
     .fillColor(C.ink)
-    .text("in accordance with the standards of the Guest House Management System.", 0, stmtY + 44, {
+    .text("in accordance with the standards of the Police Office.", 0, stmtY + 44, {
       width: w,
       align: "center",
     });
@@ -570,9 +573,9 @@ export async function buildCertificatePdf(
   // Replaces the previous plain-text "Establishment Particulars" factbox.
   // Scanning the QR with any phone camera shows the full cert record in
   // Oromo / Amharic / English.
-  const qrSize = 64;
+  const qrSize = 60;
   const qrX = (w - qrSize) / 2;
-  const qrY = stmtY + 50;
+  const qrY = stmtY + 70;
 
   // White rounded background frame for contrast
   doc
@@ -589,9 +592,10 @@ export async function buildCertificatePdf(
   await drawQrCode(doc, buildQrPayload(data), qrX, qrY, qrSize);
 
   // Trilingual caption below the QR — Oromo / Amharic / English order
+  // Oromo uses Latin (Qubee) script, so it uses the Serif font (not Ethiopic).
   const capY = qrY + qrSize + 14;
   doc
-    .font("EthiopicBold")
+    .font("SerifBold")
     .fontSize(8)
     .fillColor(C.navy)
     .text("Skanii gochuu agartoota mirkaneessaa", 0, capY, { width: w, align: "center" })
@@ -614,9 +618,9 @@ export async function buildCertificatePdf(
   // so the seal (top edge at footerY - 8) doesn't touch the caption.
   const footerY = 534;
 
-  // Left: Certificate number
+  // Left: Certificate number — Oromo uses Latin (Qubee) script
   doc
-    .font("EthiopicBold")
+    .font("SansBold")
     .fontSize(7)
     .fillColor(C.goldDark)
     .text("Lakk. Marsariisa", 90, footerY, {
@@ -626,7 +630,7 @@ export async function buildCertificatePdf(
     .font("Ethiopic")
     .fontSize(6)
     .fillColor(C.inkSoft)
-    .text("የማረጋገጫ ቁጥር  ·  Certificate No.", 90, footerY + 9, {
+    .text("የማረጋገጫ ቁጥር  —  Certificate No.", 90, footerY + 9, {
       width: 240,
       align: "center",
     })
@@ -655,19 +659,19 @@ export async function buildCertificatePdf(
       width: 240,
       align: "center",
     })
-    .font("Ethiopic")
+    .font("Serif")
     .fontSize(6)
     .fillColor(C.inkSoft)
     .text(
-      "Bulcha Sirna  ·  የስርዓት አስተዳዳሪ  ·  System Administrator",
+      "Bulcha Sirna  —  የስርዓት አስተዳዳሪ  —  System Administrator",
       w / 2 - 120,
       sigY + 14,
       { width: 240, align: "center" },
     );
 
-  // Right: Issue date + validity
+  // Right: Issue date + validity — Oromo uses Latin (Qubee) script
   doc
-    .font("EthiopicBold")
+    .font("SansBold")
     .fontSize(7)
     .fillColor(C.goldDark)
     .text("Guyaa Kennaa", w - 330, footerY, {
@@ -677,7 +681,7 @@ export async function buildCertificatePdf(
     .font("Ethiopic")
     .fontSize(6)
     .fillColor(C.inkSoft)
-    .text("የመስጠት ቀን  ·  Date of Issue", w - 330, footerY + 9, {
+    .text("የመስጠት ቀን  —  Date of Issue", w - 330, footerY + 9, {
       width: 240,
       align: "center",
     })
@@ -704,13 +708,14 @@ export async function buildCertificatePdf(
     });
 
   // Validity line (single trilingual line — OM / AM / EN order)
+  // Oromo uses Latin (Qubee) script
   const expiry = addValidityYear(data.issuedAt);
   doc
-    .font("Ethiopic")
+    .font("Serif")
     .fontSize(6.5)
     .fillColor(C.inkSoft)
     .text(
-      `Hanga ${formatDateOm(expiry)}  ·  እስከ ${formatDateAm(expiry)} ድረስ  ·  Valid until ${formatDate(expiry)}`,
+      `Hanga ${formatDateOm(expiry)}  —  እስከ ${formatDateAm(expiry)} ድረስ  —  Valid until ${formatDate(expiry)}`,
       w - 330,
       footerY + 64,
       { width: 240, align: "center" },
@@ -773,6 +778,7 @@ function buildQrPayload(d: CertificateData): string {
   // Oromo section
   const om = [
     "MARSARIISA MIRGANSA  ·  GHMS",
+    "Leenjii milkaa'aa ee xumuruun, sirna guutuun fayyadamiinuu danda'uuf mirkaneffameera, akkaataa sadarkaa Waajjira Poolisiitiin.",
     `Lakk. Marsariisa: ${d.certNumber}`,
     `Maqaa Dhaabbata: ${d.provider.name}`,
     `Abbaa Qabeenyaa: ${d.provider.ownerName || "—"}`,
@@ -787,6 +793,7 @@ function buildQrPayload(d: CertificateData): string {
   // Amharic section
   const am = [
     "የምዝገባ ማረጋገጫ  ·  GHMS",
+    "ስልጠናውን በተሳካ ሆኖ አጠናቅቋል እንዲሁም በፖሊስ ጽሕፈት ቤት ደረጃዎች መሠረት ስርዓቱን በድጋፚ መጠቀም ተፈቅዷል።",
     `የማረጋገጫ ቁጥር: ${d.certNumber}`,
     `የተቋም ስም: ${d.provider.name}`,
     `ባለቤት: ${d.provider.ownerName || "—"}`,
@@ -801,6 +808,7 @@ function buildQrPayload(d: CertificateData): string {
   // English section
   const en = [
     "CERTIFICATE OF REGISTRATION  ·  GHMS",
+    "Has successfully completed training and is certified to fully utilize the system in accordance with the standards of the Police Office.",
     `Certificate No.: ${d.certNumber}`,
     `Establishment: ${d.provider.name}`,
     `Owner: ${d.provider.ownerName || "—"}`,
