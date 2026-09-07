@@ -12,6 +12,7 @@
  */
 
 import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
 import type { Provider } from "@prisma/client";
 import { promises as fs } from "fs";
 import path from "path";
@@ -389,7 +390,7 @@ export async function buildCertificatePdf(
     .font("SansBold")
     .fontSize(10)
     .fillColor(C.gold)
-    .text("FEDERAL DEMOCRATIC REPUBLIC OF ETHIOPIA", 0, topY, {
+    .text("RIPABLIKII DIMOKRAATAWAA FEDERAALAWAA ITOOPHIYAA", 0, topY, {
       width: w,
       align: "center",
     })
@@ -403,7 +404,7 @@ export async function buildCertificatePdf(
     .font("Sans")
     .fontSize(7)
     .fillColor(C.gold)
-    .text("Ripabliikii Dimokraatawaa Federaalawaa Itoophiyaa", 0, topY + 28, {
+    .text("Federal Democratic Republic of Ethiopia", 0, topY + 28, {
       width: w,
       align: "center",
     });
@@ -420,10 +421,10 @@ export async function buildCertificatePdf(
 
   // ── 3. Issuing authority ─────────────────────────────────────────────
   doc
-    .font("SerifBold")
+    .font("EthiopicBold")
     .fontSize(12)
     .fillColor(C.navy)
-    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 56, {
+    .text("Sirna Bulchiinsa Mana Gaazee", 0, topY + 56, {
       width: w,
       align: "center",
     })
@@ -434,10 +435,10 @@ export async function buildCertificatePdf(
       width: w,
       align: "center",
     })
-    .font("Ethiopic")
+    .font("SerifBold")
     .fontSize(8)
     .fillColor(C.inkSoft)
-    .text("Sirna Bulchiinsa Mana Gaazee", 0, topY + 84, {
+    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 84, {
       width: w,
       align: "center",
     });
@@ -445,30 +446,30 @@ export async function buildCertificatePdf(
   // ── 4. "Certificate of Registration" title ───────────────────────────
   const titleY = topY + 100;
   doc
-    .font("SerifBold")
+    .font("EthiopicBold")
     .fontSize(34)
     .fillColor(C.navy)
-    .text("Certificate of Registration", 0, titleY, {
+    .text("Marsariisa Mirgansa", 0, titleY, {
       width: w,
       align: "center",
     })
     .font("EthiopicBold")
-    .fontSize(16)
+    .fontSize(20)
     .fillColor(C.navy)
     .text("የምዝገባ ማረጋገጫ", 0, titleY + 38, {
       width: w,
       align: "center",
     })
-    .font("EthiopicBold")
-    .fontSize(13)
+    .font("SerifBold")
+    .fontSize(16)
     .fillColor(C.navy)
-    .text("Marsariisa Mirgansa", 0, titleY + 60, {
+    .text("Certificate of Registration", 0, titleY + 62, {
       width: w,
       align: "center",
     });
 
   // ── 5. Decorative line below title ──────────────────────────────────
-  const lineY = titleY + 84;
+  const lineY = titleY + 86;
   doc
     .moveTo(w / 2 - 180, lineY)
     .lineTo(w / 2 - 20, lineY)
@@ -486,24 +487,24 @@ export async function buildCertificatePdf(
   // ── 6. "This is to certify that" preamble ───────────────────────────
   const preY = lineY + 14;
   doc
-    .font("SerifItalic")
+    .font("EthiopicBold")
     .fontSize(13)
     .fillColor(C.inkSoft)
-    .text("This is to certify that", 0, preY, {
+    .text("Kun immoo mirkaneessa", 0, preY, {
       width: w,
       align: "center",
     })
     .font("Ethiopic")
-    .fontSize(10)
+    .fontSize(11)
     .fillColor(C.inkSoft)
     .text("ይህ የሚያረጋግጸው", 0, preY + 18, {
       width: w,
       align: "center",
     })
-    .font("Ethiopic")
-    .fontSize(9)
+    .font("SerifItalic")
+    .fontSize(10)
     .fillColor(C.inkSoft)
-    .text("Kun immoo mirkaneessa", 0, preY + 32, {
+    .text("This is to certify that", 0, preY + 32, {
       width: w,
       align: "center",
     });
@@ -529,121 +530,103 @@ export async function buildCertificatePdf(
     .strokeColor(C.gold)
     .stroke();
 
-  // ── 8. Certification statement (trilingual) ─────────────────────────
+  // ── 8. Certification statement (trilingual) — OM / AM / EN order ─────
   const stmtY = nameUnderlineY + 12;
   doc
-    .font("SerifItalic")
-    .fontSize(11)
-    .fillColor(C.ink)
+    .font("Ethiopic")
+    .fontSize(9)
+    .fillColor(C.inkSoft)
     .text(
-      "is hereby certified as a registered lodging establishment, authorized to provide hospitality services",
+      "Akkaataa sadarkaa sirna bulchiinsa mana gaazee, tajaajila gaazee kennuu danda'uuf kan mirkaneessameefi kan galmaa'ee ta'uu isaa kun qabiyyeeffata.",
       0,
       stmtY,
       { width: w, align: "center" },
     )
+    .font("Ethiopic")
+    .fontSize(9)
+    .fillColor(C.inkSoft)
+    .text("በእንግድ ቤት አስተዳደር ስርዓት ደረጃዎች መሠረት እንግድ ቤት አገልግሎት ለመስጠት የተፈቀደ እና የተመዘገበ መሆኑን ይህ ሰነድ ያረጋግጣል።", 0, stmtY + 14, {
+      width: w,
+      align: "center",
+    })
     .font("SerifItalic")
-    .fontSize(11)
+    .fontSize(10)
     .fillColor(C.ink)
-    .text("in accordance with the standards of the Guest House Management System.", 0, stmtY + 14, {
-      width: w,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(9)
-    .fillColor(C.inkSoft)
-    .text("በእንግድ ቤት አስተዳደር ስርዓት ደረጃዎች መሠረት እንግድ ቤት አገልግሎት ለመስጠት የተፈቀደ እና የተመዘገበ መሆኑን ይህ ሰነድ ያረጋግጣል።", 0, stmtY + 32, {
-      width: w,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(9)
-    .fillColor(C.inkSoft)
-    .text("Akkaataa sadarkaa sirna bulchiinsa mana gaazee, tajaajila gaazee kennuu danda'uuf kan mirkaneessameefi kan galmaa'ee ta'uu isaa kun qabiyyeeffata.", 0, stmtY + 46, {
+    .text(
+      "is hereby certified as a registered lodging establishment, authorized to provide hospitality services",
+      0,
+      stmtY + 30,
+      { width: w, align: "center" },
+    )
+    .font("SerifItalic")
+    .fontSize(10)
+    .fillColor(C.ink)
+    .text("in accordance with the standards of the Guest House Management System.", 0, stmtY + 44, {
       width: w,
       align: "center",
     });
 
-  // ── 9. Guesthouse details — small factbox ───────────────────────────
-  // Place a small bordered card with owner, address, license no.
-  const boxW = 360;
-  const boxH = 50;
-  const boxX = (w - boxW) / 2;
-  const boxY = stmtY + 60;
+  // ── 9. QR code — encodes all certification details trilingually ──────
+  // Replaces the previous plain-text "Establishment Particulars" factbox.
+  // Scanning the QR with any phone camera shows the full cert record in
+  // Oromo / Amharic / English.
+  const qrSize = 64;
+  const qrX = (w - qrSize) / 2;
+  const qrY = stmtY + 50;
 
+  // White rounded background frame for contrast
   doc
     .save()
-    .roundedRect(boxX, boxY, boxW, boxH, 4)
-    .lineWidth(0.6)
-    .strokeColor(C.goldDark)
-    .fillOpacity(0.05)
-    .fill(C.gold)
+    .roundedRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 6)
+    .fillColor(C.white)
+    .fill()
+    .lineWidth(0.8)
+    .strokeColor(C.gold)
+    .stroke()
     .restore();
 
-  // Header line
+  // Draw the QR code
+  await drawQrCode(doc, buildQrPayload(data), qrX, qrY, qrSize);
+
+  // Trilingual caption below the QR — Oromo / Amharic / English order
+  const capY = qrY + qrSize + 14;
   doc
-    .font("SansBold")
-    .fontSize(7)
+    .font("EthiopicBold")
+    .fontSize(8)
     .fillColor(C.navy)
-    .text("ESTABLISHMENT PARTICULARS  ·  የተቋም ዝርዝር መረጃ  ·  Qabiyyee Dhaabbata", boxX + 8, boxY + 4, {
-      width: boxW - 16,
-      align: "center",
-    });
-
-  // Three columns inside the factbox
-  const colW = (boxW - 16) / 3;
-  const cols = [
-    { label: "Owner / ባለቤት / Abbaa Qabeenyaa", value: data.provider.ownerName || "—" },
-    { label: "License No. / ፈቃድ / Lakk. Hayyama", value: data.provider.licenseNo || "—" },
-    { label: "Type / አይነት / Akaakuu", value: humanizeType(data.provider.type) },
-  ];
-  cols.forEach((c, i) => {
-    const cx = boxX + 8 + i * colW;
-    doc
-      .font("Sans")
-      .fontSize(6)
-      .fillColor(C.inkSoft)
-      .text(c.label, cx, boxY + 14, { width: colW, align: "center" });
-    doc
-      .font("SerifBold")
-      .fontSize(10)
-      .fillColor(C.ink)
-      .text(c.value, cx, boxY + 26, { width: colW, align: "center" });
-  });
-
-  // Address row below the factbox
-  if (data.provider.address) {
-    doc
-      .font("Sans")
-      .fontSize(7)
-      .fillColor(C.inkSoft)
-      .text(
-        `Address / አድራሻ / Teessoo: ${data.provider.address}`,
-        boxX,
-        boxY + boxH - 8,
-        { width: boxW, align: "center" },
-      );
-  }
+    .text("Skanii gochuu agartoota mirkaneessaa", 0, capY, { width: w, align: "center" })
+    .font("EthiopicBold")
+    .fontSize(8)
+    .fillColor(C.navy)
+    .text("ለማረጋገጥ QR ይስክሩ", 0, capY + 12, { width: w, align: "center" })
+    .font("SansBold")
+    .fontSize(8)
+    .fillColor(C.navy)
+    .text("Scan QR to verify authenticity", 0, capY + 24, { width: w, align: "center" });
 
   // ── 10. Footer area: certificate number, issue/expiry, seal, signature ──
   // Three columns:
   //   LEFT (90 to 330):  Cert number
   //   CENTER (340 to 500): Seal + signature line
   //   RIGHT (510 to 750): Issue date + validity
-  const footerY = 490;
+  // Footer sits below the QR caption (which ends ~capY+32).
+  // QR caption ends around Y=524; we add a 10pt gap before the footer
+  // so the seal (top edge at footerY - 8) doesn't touch the caption.
+  const footerY = 534;
 
   // Left: Certificate number
   doc
-    .font("SansBold")
+    .font("EthiopicBold")
     .fontSize(7)
     .fillColor(C.goldDark)
-    .text("CERTIFICATE NUMBER", 90, footerY, {
+    .text("Lakk. Marsariisa", 90, footerY, {
       width: 240,
       align: "center",
     })
     .font("Ethiopic")
     .fontSize(6)
     .fillColor(C.inkSoft)
-    .text("የማረጋገጫ ቁጥር  ·  Lakk. Marsariisa", 90, footerY + 9, {
+    .text("የማረጋገጫ ቁጥር  ·  Certificate No.", 90, footerY + 9, {
       width: 240,
       align: "center",
     })
@@ -653,10 +636,11 @@ export async function buildCertificatePdf(
     .text(data.certNumber, 90, footerY + 24, { width: 240, align: "center" });
 
   // Center: Seal overlapping the signature line (classic certificate design)
-  const sealCY = footerY + 18;
-  drawSeal(doc, w / 2, sealCY, 26);
+  // Seal radius reduced from 26 to 22 so it doesn't overlap the QR caption above.
+  const sealCY = footerY + 16;
+  drawSeal(doc, w / 2, sealCY, 22);
   // Signature line directly below the seal
-  const sigY = sealCY + 30;
+  const sigY = sealCY + 28;
   doc
     .moveTo(w / 2 - 90, sigY)
     .lineTo(w / 2 + 90, sigY)
@@ -671,11 +655,11 @@ export async function buildCertificatePdf(
       width: 240,
       align: "center",
     })
-    .font("Sans")
+    .font("Ethiopic")
     .fontSize(6)
     .fillColor(C.inkSoft)
     .text(
-      "System Administrator  ·  የስርዓት አስተዳዳሪ  ·  Bulcha Sirna",
+      "Bulcha Sirna  ·  የስርዓት አስተዳዳሪ  ·  System Administrator",
       w / 2 - 120,
       sigY + 14,
       { width: 240, align: "center" },
@@ -683,24 +667,24 @@ export async function buildCertificatePdf(
 
   // Right: Issue date + validity
   doc
-    .font("SansBold")
+    .font("EthiopicBold")
     .fontSize(7)
     .fillColor(C.goldDark)
-    .text("DATE OF ISSUE", w - 330, footerY, {
+    .text("Guyaa Kennaa", w - 330, footerY, {
       width: 240,
       align: "center",
     })
     .font("Ethiopic")
     .fontSize(6)
     .fillColor(C.inkSoft)
-    .text("የመስጠት ቀን  ·  Guyaa Kennaa", w - 330, footerY + 9, {
+    .text("የመስጠት ቀን  ·  Date of Issue", w - 330, footerY + 9, {
       width: 240,
       align: "center",
     })
     .font("SerifBold")
     .fontSize(11)
     .fillColor(C.ink)
-    .text(formatDate(data.issuedAt), w - 330, footerY + 24, {
+    .text(formatDateOm(data.issuedAt), w - 330, footerY + 24, {
       width: 240,
       align: "center",
     })
@@ -711,22 +695,22 @@ export async function buildCertificatePdf(
       width: 240,
       align: "center",
     })
-    .font("Ethiopic")
+    .font("SerifBold")
     .fontSize(7)
     .fillColor(C.inkSoft)
-    .text(formatDateOm(data.issuedAt), w - 330, footerY + 50, {
+    .text(formatDate(data.issuedAt), w - 330, footerY + 50, {
       width: 240,
       align: "center",
     });
 
-  // Validity line (single trilingual line)
+  // Validity line (single trilingual line — OM / AM / EN order)
   const expiry = addValidityYear(data.issuedAt);
   doc
-    .font("Sans")
+    .font("Ethiopic")
     .fontSize(6.5)
     .fillColor(C.inkSoft)
     .text(
-      `Valid until ${formatDate(expiry)}  ·  እስከ ${formatDateAm(expiry)} ድረስ  ·  Hanga ${formatDateOm(expiry)}`,
+      `Hanga ${formatDateOm(expiry)}  ·  እስከ ${formatDateAm(expiry)} ድረስ  ·  Valid until ${formatDate(expiry)}`,
       w - 330,
       footerY + 64,
       { width: 240, align: "center" },
@@ -762,4 +746,95 @@ function humanizeType(type: string): string {
     MOTEL: "Motel",
   };
   return map[type] || type || "Guest House";
+}
+
+// ─── Trilingual type names (OM / AM / EN order) ──────────────────────────
+function humanizeTypeTrilingual(type: string): { om: string; am: string; en: string } {
+  const map: Record<string, { om: string; am: string; en: string }> = {
+    GUEST_HOUSE: { om: "Mana Gaazee", am: "እንግድ ቤት", en: "Guest House" },
+    HOTEL: { om: "Hoteela", am: "ሆቴል", en: "Hotel" },
+    LODGE: { om: "Lojii", am: "ሎጅ", en: "Lodge" },
+    RESORT: { om: "Reesoortii", am: "ሪሶርት", en: "Resort" },
+    MOTEL: { om: "Mooteelaa", am: "ሞቴል", en: "Motel" },
+  };
+  return map[type] || { om: type, am: type, en: type };
+}
+
+// ─── Build the QR payload (trilingual, OM / AM / EN) ─────────────────────
+//
+// Encodes the full certification record as a structured plain-text payload.
+// Anyone scanning the QR with a phone camera will see this text. We use
+// simple labelled lines so the output is human-readable in any QR app,
+// not just our own verifier.
+function buildQrPayload(d: CertificateData): string {
+  const expiry = addValidityYear(d.issuedAt);
+  const t = humanizeTypeTrilingual(d.provider.type);
+
+  // Oromo section
+  const om = [
+    "MARSARIISA MIRGANSA  ·  GHMS",
+    `Lakk. Marsariisa: ${d.certNumber}`,
+    `Maqaa Dhaabbata: ${d.provider.name}`,
+    `Abbaa Qabeenyaa: ${d.provider.ownerName || "—"}`,
+    `Lakk. Hayyama: ${d.provider.licenseNo || "—"}`,
+    `Akaakuu: ${t.om}`,
+    `Teessoo: ${d.provider.address || "—"}`,
+    `Guyaa Kennaa: ${formatDateOm(d.issuedAt)}`,
+    `Hanga: ${formatDateOm(expiry)}`,
+    `Kename: ${d.issuedByName || "Bulcha Sirna"}`,
+  ].join("\n");
+
+  // Amharic section
+  const am = [
+    "የምዝገባ ማረጋገጫ  ·  GHMS",
+    `የማረጋገጫ ቁጥር: ${d.certNumber}`,
+    `የተቋም ስም: ${d.provider.name}`,
+    `ባለቤት: ${d.provider.ownerName || "—"}`,
+    `የፈቃድ ቁጥር: ${d.provider.licenseNo || "—"}`,
+    `አይነት: ${t.am}`,
+    `አድራሻ: ${d.provider.address || "—"}`,
+    `የመስጠት ቀን: ${formatDateAm(d.issuedAt)}`,
+    `እስከ: ${formatDateAm(expiry)}`,
+    `የሰጠው: ${d.issuedByName || "የስርዓት አስተዳዳሪ"}`,
+  ].join("\n");
+
+  // English section
+  const en = [
+    "CERTIFICATE OF REGISTRATION  ·  GHMS",
+    `Certificate No.: ${d.certNumber}`,
+    `Establishment: ${d.provider.name}`,
+    `Owner: ${d.provider.ownerName || "—"}`,
+    `License No.: ${d.provider.licenseNo || "—"}`,
+    `Type: ${t.en}`,
+    `Address: ${d.provider.address || "—"}`,
+    `Issued: ${formatDate(d.issuedAt)}`,
+    `Valid until: ${formatDate(expiry)}`,
+    `Issued by: ${d.issuedByName || "System Administrator"}`,
+    `Verify: https://guesthousewithpolicemodule-ghjo-five.vercel.app/verify?q=${d.certNumber}`,
+  ].join("\n");
+
+  return [om, am, en].join("\n\n");
+}
+
+// Render the QR code and embed it into the PDF at (x, y) with given size.
+// Returns void — drawing happens directly on the doc.
+async function drawQrCode(
+  doc: PDFKit.PDFDocument,
+  payload: string,
+  x: number,
+  y: number,
+  size: number,
+): Promise<void> {
+  // Generate QR as PNG buffer. Use high error correction so the QR stays
+  // scannable even if printed at low DPI or partially obscured.
+  const pngBuffer = await QRCode.toBuffer(payload, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: Math.floor(size * 2), // 2× for crisp rendering when scaled down
+    color: {
+      dark: "#0d1b3d", // navy — matches the cert's primary color
+      light: "#ffffff00", // transparent background (we draw our own frame)
+    },
+  });
+  doc.image(pngBuffer, x, y, { width: size, height: size });
 }
