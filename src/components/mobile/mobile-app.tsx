@@ -541,7 +541,12 @@ export default function MobileApp() {
     } finally { setCreatingRes(false); }
   };
 
-  const handleAction = async () => {
+  const handleAction = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Radix AlertDialogAction auto-closes on click. Prevent default so the
+    // dialog stays mounted while the async check-in/check-out runs — otherwise
+    // the spinner never shows, the dialog vanishes instantly, and the user
+    // thinks nothing happened. We close it manually on success.
+    e.preventDefault();
     if (!confirmAction) return;
     const { type, res } = confirmAction;
     try {
@@ -838,7 +843,7 @@ export default function MobileApp() {
 
       {/* Check-in / Check-out Confirm */}
       {confirmAction && (
-        <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open && !actionLoading) setConfirmAction(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
