@@ -598,6 +598,12 @@ CREATE TABLE IF NOT EXISTS "MessageLog" (
   "sentAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ─── Certificate of Registration columns on Provider ───────────────
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certNumber" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedAt" TIMESTAMP(3); EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedBy" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedByName" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 `;
 
 // ─── Indexes ───────────────────────────────────────────────────────────────

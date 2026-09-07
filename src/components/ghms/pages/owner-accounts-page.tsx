@@ -60,6 +60,8 @@ import {
   Pencil,
   Trash2,
   Crown,
+  Award,
+  Download,
 } from "lucide-react";
 
 interface AccountUser {
@@ -203,6 +205,50 @@ export default function OwnerAccountsPage() {
   const [saving, setSaving] = useState(false);
   const [resetLabel, setResetLabel] = useState("");
   const [resetSublabel, setResetSublabel] = useState("");
+
+  // ── Certificate generation state ──
+  const [certLoadingId, setCertLoadingId] = useState<string | null>(null);
+
+  async function handleDownloadCertificate(provider: ProviderWithOwner) {
+    if (provider.status !== "APPROVED") {
+      toast.error(t("certToastPending"));
+      return;
+    }
+    setCertLoadingId(provider.id);
+    try {
+      const res = await fetch(`/api/providers/${provider.id}/certificate`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let msg = t("certToastError");
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Pull filename from Content-Disposition if present, else fallback
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename="?([^"]+)"?/i);
+      a.download = m?.[1] || `Certificate_${provider.name.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(t("certToastSuccess"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("certToastError"));
+    } finally {
+      setCertLoadingId(null);
+    }
+  }
 
   // ── Add/Edit police dialog ──
   const [policeDialogOpen, setPoliceDialogOpen] = useState(false);
@@ -664,6 +710,25 @@ export default function OwnerAccountsPage() {
                       <KeyRound className="h-3.5 w-3.5" />
                       {t('resetCredentials')}
                     </Button>
+                    {currentUser?.role === "SUPERUSER" && provider.status === "APPROVED" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 shrink-0 border-amber-300 text-amber-700 hover:bg-amber-50"
+                        disabled={certLoadingId === provider.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadCertificate(provider);
+                        }}
+                      >
+                        {certLoadingId === provider.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Award className="h-3.5 w-3.5" />
+                        )}
+                        {certLoadingId === provider.id ? t('certButtonLoading') : t('certButton')}
+                      </Button>
+                    )}
                   </div>
                 );
               })}
@@ -772,15 +837,33 @@ export default function OwnerAccountsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5"
-                          onClick={() => openOwnerReset(provider)}
-                        >
-                          <KeyRound className="h-3.5 w-3.5" />
-                          {t('resetCredentials')}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => openOwnerReset(provider)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                            {t('resetCredentials')}
+                          </Button>
+                          {currentUser?.role === "SUPERUSER" && provider.status === "APPROVED" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                              disabled={certLoadingId === provider.id}
+                              onClick={() => handleDownloadCertificate(provider)}
+                            >
+                              {certLoadingId === provider.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Award className="h-3.5 w-3.5" />
+                              )}
+                              {certLoadingId === provider.id ? t('certButtonLoading') : t('certButton')}
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -835,6 +918,22 @@ export default function OwnerAccountsPage() {
                     <KeyRound className="h-3.5 w-3.5" />
                     {t('resetCredentials')}
                   </Button>
+                  {currentUser?.role === "SUPERUSER" && provider.status === "APPROVED" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                      disabled={certLoadingId === provider.id}
+                      onClick={() => handleDownloadCertificate(provider)}
+                    >
+                      {certLoadingId === provider.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Award className="h-3.5 w-3.5" />
+                      )}
+                      {certLoadingId === provider.id ? t('certButtonLoading') : t('certButton')}
+                    </Button>
+                  )}
                 </div>
               );
             })}
