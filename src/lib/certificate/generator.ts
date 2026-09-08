@@ -189,8 +189,10 @@ async function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
   // Corner ornaments: 4 small circular badges, one at each corner of the
   // inner gold border. Each badge is the organization's official logo
   // (orompolice.png) embedded inside a gold filled ring frame.
-  const cornerOffset = m + 14;
-  const cornerR = 28;
+  // cornerR bumped from 28 → 36 so the logo renders larger and crisper
+  // (less downscaling from the 628×592 source PNG).
+  const cornerOffset = m + 22;
+  const cornerR = 36;
   const cornerCorners: [number, number][] = [
     [cornerOffset, cornerOffset],
     [w - cornerOffset, cornerOffset],
