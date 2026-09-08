@@ -544,7 +544,7 @@ export async function buildCertificatePdf(
   const topY = 60;
   doc
     .font("SansBold")
-    .fontSize(11)
+    .fontSize(12)
     .fillColor(C.gold)
     .text("Qajeelcha Olaanaa Poolisii Bulchiinsa Magaalaa Bishooftuu", 0, topY, {
       width: w,
@@ -573,7 +573,7 @@ export async function buildCertificatePdf(
     .font("EthiopicBold")
     .fontSize(9)
     .fillColor(C.ink)
-    .text("የእንግድ ቤት አስተዳደር ስርዓት", 0, topY + 48, {
+    .text("የእንግዳ ቤት አስተዳደር ስርዓት", 0, topY + 48, {
       width: w,
       align: "center",
     })
