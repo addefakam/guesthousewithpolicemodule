@@ -23,47 +23,45 @@ DST = "/home/z/my-project/guesthousewithpolicemodule/public/fonts/orompolice.png
 # Render at moderate resolution — 500px is plenty for a corner badge
 # that renders at ~60pt (1pt = 1.33px @96dpi, so 60pt = ~80px displayed,
 # 500px source = ~6x headroom for crisp rendering).
-OUTPUT_SIZE = 500
+# Render at very high resolution then downscale to OUTPUT_SIZE.
+# The SVG was auto-traced from a raster image, so paths have naturally
+# jagged edges. Rendering at 4× then downscaling with Lanczos averages
+# out the jaggedness, producing clean smooth edges.
+RENDER_SIZE = 2000   # render at 2000×2000 first
+OUTPUT_SIZE = 500    # then downscale to 500×500
 
 def main():
-    # 1. Read the SVG and replace all fill="#000000" with fill="#ffffff"
-    #    (so the logo is white instead of black)
+    # 1. Read the SVG as-is (black fills preserved per user request to
+    #    undo the previous white-color change)
     with open(SRC, "r") as f:
         svg_content = f.read()
-    svg_white = re.sub(
-        r'fill="#000000"',
-        'fill="#ffffff"',
-        svg_content,
-    )
-    print(f"[1] Replaced fill='#000000' with fill='#ffffff'")
+    print(f"[1] Using original SVG (black fills preserved)")
 
-    # 2. Render the modified SVG to a high-res RGBA PNG via cairosvg
+    # 2. Render the SVG at high resolution (2000×2000)
     Path(DST).parent.mkdir(parents=True, exist_ok=True)
     cairosvg.svg2png(
-        bytestring=svg_white.encode("utf-8"),
+        bytestring=svg_content.encode("utf-8"),
         write_to=DST,
-        output_width=OUTPUT_SIZE,
-        output_height=OUTPUT_SIZE,
+        output_width=RENDER_SIZE,
+        output_height=RENDER_SIZE,
     )
-    print(f"[2] Rendered to {OUTPUT_SIZE}x{OUTPUT_SIZE} px")
+    print(f"[2] Rendered to {RENDER_SIZE}x{RENDER_SIZE} px (high-res)")
 
-    # 3. Post-process: dilate the alpha channel slightly to fill any
-    #    tiny gaps between paths (removes the "distressed" look)
+    # 3. Downscale to OUTPUT_SIZE using Lanczos resampling.
+    #    This averages out the jagged path edges → clean smooth shapes.
     img = Image.open(DST).convert("RGBA")
+    img = img.resize((OUTPUT_SIZE, OUTPUT_SIZE), Image.LANCZOS)
+    print(f"[3] Downscaled to {OUTPUT_SIZE}x{OUTPUT_SIZE} px (Lanczos)")
+
+    # 4. Dilate the alpha channel slightly to fill any remaining micro-gaps
     arr = np.array(img)
     alpha = arr[:, :, 3]
-
-    # Threshold: treat any pixel with alpha > 64 as "filled"
     binary = (alpha > 64).astype(np.uint8) * 255
-
-    # Dilate the binary mask by 1 pixel using PIL's MaxFilter
     alpha_img = Image.fromarray(binary, "L")
-    alpha_dilated = alpha_img.filter(ImageFilter.MaxFilter(size=3))
-
-    # Re-apply the dilated alpha to the original RGBA image
-    arr[:, :, 3] = np.array(alpha_dilated)
+    alpha_final = alpha_img.filter(ImageFilter.MaxFilter(size=3))
+    arr[:, :, 3] = np.array(alpha_final)
     final = Image.fromarray(arr, "RGBA")
-    print(f"[3] Applied dilation (MaxFilter 3x3) to fill micro-gaps")
+    print(f"[4] Applied dilation (MaxFilter 3x3) to fill micro-gaps")
 
     # 4. Save the final PNG
     final.save(DST, "PNG", optimize=True, compress_level=9)
