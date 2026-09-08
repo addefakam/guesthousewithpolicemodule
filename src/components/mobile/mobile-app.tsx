@@ -547,6 +547,7 @@ export default function MobileApp() {
     // the spinner never shows, the dialog vanishes instantly, and the user
     // thinks nothing happened. We close it manually on success.
     e.preventDefault();
+    e.stopPropagation();
     if (!confirmAction) return;
     const { type, res } = confirmAction;
     try {
@@ -561,7 +562,10 @@ export default function MobileApp() {
       await fetchData();
       if (selectedRoom) fetchRoomReservations(selectedRoom.id);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("toastFailedAction"));
+      const msg = err instanceof Error ? err.message : t("toastFailedAction");
+      toast.error(msg);
+      // Keep the dialog open on error so the user can see what went wrong
+      // and retry. Only close on success (above) or cancel.
     } finally { setActionLoading(false); }
   };
 
@@ -860,6 +864,7 @@ export default function MobileApp() {
             <AlertDialogFooter>
               <AlertDialogCancel disabled={actionLoading}>{t("cancel")}</AlertDialogCancel>
               <AlertDialogAction
+                type="button"
                 className={confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700"}
                 onClick={handleAction} disabled={actionLoading}
               >{actionLoading ? t("processing") : (confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut"))}</AlertDialogAction>
