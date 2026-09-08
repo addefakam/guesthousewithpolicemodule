@@ -187,12 +187,13 @@ function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
     .stroke();
 
   // Corner ornaments: 4 small circular badges, one at each corner of the
-  // inner gold border. Each circle contains the phone number 0913169652
-  // displayed as straight text inside the circle (more readable than arc
-  // text at this small size). The number is the cert issuer's contact
-  // line — visible on every printed copy for verification.
+  // inner gold border. Each badge is an Oromia Police-style emblem —
+  // copper/gold circular badge with 'POOLISII OROMIYAA' text around the
+  // rim and a stylized Odaa tree (traditional Oromo sycamore symbol) at
+  // the center. Inspired by the official Oromia Police emblem, redrawn
+  // as vector primitives to match the certificate's color palette.
   const cornerOffset = m + 14;
-  const cornerR = 26;
+  const cornerR = 28;
   const cornerCorners: [number, number][] = [
     [cornerOffset, cornerOffset],
     [w - cornerOffset, cornerOffset],
@@ -200,7 +201,7 @@ function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
     [w - cornerOffset, h - cornerOffset],
   ];
   for (const [cx, cy] of cornerCorners) {
-    drawPhoneBadge(doc, cx, cy, cornerR, "0913169652");
+    drawCornerLogo(doc, cx, cy, cornerR);
   }
 
   // Subtle gold filigree on top center and bottom center of the navy border
@@ -262,59 +263,148 @@ function drawTopFiligree(
   doc.restore();
 }
 
-// ─── Corner phone badge — small circular ornament with phone number ──────
+// ─── Corner logo — Oromia Police-style emblem ────────────────────────────
 //
-// Used at all four corners of the inner gold border. Each badge is a small
-// navy circle with a gold rim, the phone number "0913169652" displayed as
-// straight text inside the circle (split into two lines for readability at
-// this small size), and tiny gold dots above and below for decoration.
-// Replaces the previous diamond-only corner ornaments per user request.
-function drawPhoneBadge(
+// Used at all four corners of the inner gold border. Each badge is an
+// emblem inspired by the official Oromia Police logo:
+//   - Outer copper/gold circular ring
+//   - Navy filled inner disc
+//   - "POOLISII OROMIYAA" text wrapped around the top half of the rim
+//     (Afaan Oromoo for "Oromia Police")
+//   - A small five-pointed star at the bottom of the rim
+//   - A stylized Odaa tree (traditional Oromo sycamore symbol) at the
+//     center — trunk with a radiating canopy of leaves
+//
+// Colors are chosen to harmonize with the certificate's existing palette
+// (navy + gold + cream) rather than copying the source emblem's hue.
+function drawCornerLogo(
   doc: PDFKit.PDFDocument,
   cx: number,
   cy: number,
   r: number,
-  phone: string,
 ) {
-  // Navy filled circle
+  // ── 1. Outer copper/gold filled ring (the badge body)
   doc
     .circle(cx, cy, r)
+    .fillColor(C.gold)
+    .fill();
+
+  // ── 2. Inner navy filled disc (the badge center)
+  const innerR = r - 4;
+  doc
+    .circle(cx, cy, innerR)
     .fillColor(C.navy)
     .fill();
 
-  // Gold rim (outer ring)
+  // ── 3. Thin gold-light inner ring (decorative separator)
   doc
-    .circle(cx, cy, r)
-    .lineWidth(1.5)
-    .strokeColor(C.gold)
-    .stroke();
-
-  // Inner thin gold ring (decorative)
-  doc
-    .circle(cx, cy, r - 3)
+    .circle(cx, cy, innerR - 2)
     .lineWidth(0.4)
     .strokeColor(C.goldLight)
     .stroke();
 
-  // Phone number split into two lines: "0913" / "169652"
-  // (10 digits don't fit on one line at this circle size.)
-  const line1 = phone.slice(0, 4);
-  const line2 = phone.slice(4);
-
+  // ── 4. "POOLISII OROMIYAA" text wrapped around the top half of the rim
+  //    We use drawTextOnArc to place each character along the curve.
   doc
-    .font("SansBold")
-    .fontSize(8)
+    .fontSize(4.5)
+    .fillColor(C.navy)
+    .font("SansBold");
+  drawTextOnArc(doc, "POOLISII OROMIYAA", cx, cy, r - 2, Math.PI * 0.18, true);
+
+  // ── 5. Small five-point star at the bottom of the rim (7 o'clock position)
+  drawFivePointStar(doc, cx, cy + r - 2, 2.5, C.navy);
+
+  // ── 6. Central Odaa tree symbol
+  //    Stylized sycamore: trunk + canopy of radiating leaves
+  drawOdaaTree(doc, cx, cy, innerR - 4);
+}
+
+// ─── Five-pointed star (filled, points up) ────────────────────────────────
+function drawFivePointStar(
+  doc: PDFKit.PDFDocument,
+  cx: number,
+  cy: number,
+  rOuter: number,
+  color: string,
+) {
+  const rInner = rOuter * 0.4;
+  const points = 5;
+  doc.save();
+  doc.moveTo(cx, cy - rOuter);
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (Math.PI * 2 * i) / (points * 2) - Math.PI / 2;
+    const r = i % 2 === 0 ? rOuter : rInner;
+    doc.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+  }
+  doc.fill(color);
+  doc.restore();
+}
+
+// ─── Odaa tree — traditional Oromo sycamore symbol ────────────────────────
+//
+// A stylized representation of the Odaa (sycamore fig tree), the
+// traditional gathering tree under which the Oromo Gadaa council meets.
+// Drawn as: trunk (rectangle) + radiating leaf canopy (overlapping
+// circles forming a fan) + small roots at the base.
+function drawOdaaTree(
+  doc: PDFKit.PDFDocument,
+  cx: number,
+  cy: number,
+  scale: number,
+) {
+  // Scale factor for sizing within the badge
+  const trunkW = scale * 0.18;
+  const trunkH = scale * 0.55;
+  const canopyR = scale * 0.32;
+
+  // Trunk (vertical rectangle, gold-light color)
+  doc
+    .rect(cx - trunkW / 2, cy - trunkH * 0.2, trunkW, trunkH)
     .fillColor(C.goldLight)
-    .text(line1, cx - r, cy - 8, { width: r * 2, align: "center" })
-    .text(line2, cx - r, cy + 1, { width: r * 2, align: "center" });
+    .fill();
 
-  // Tiny gold dots above and below the number for decoration
+  // Canopy — radiating circles forming a fan/leaf cluster at the top
+  // 7 overlapping circles arranged in a semicircle above the trunk
+  const canopyCenterY = cy - trunkH * 0.35;
+  const leafR = canopyR * 0.55;
+  const leafPositions = [
+    { x: cx, y: canopyCenterY - canopyR * 0.8 }, // top center
+    { x: cx - canopyR * 0.6, y: canopyCenterY - canopyR * 0.5 }, // upper left
+    { x: cx + canopyR * 0.6, y: canopyCenterY - canopyR * 0.5 }, // upper right
+    { x: cx - canopyR * 0.9, y: canopyCenterY }, // left
+    { x: cx + canopyR * 0.9, y: canopyCenterY }, // right
+    { x: cx - canopyR * 0.4, y: canopyCenterY - canopyR * 0.2 }, // mid-left
+    { x: cx + canopyR * 0.4, y: canopyCenterY - canopyR * 0.2 }, // mid-right
+  ];
+  for (const pos of leafPositions) {
+    doc
+      .circle(pos.x, pos.y, leafR)
+      .fillColor(C.goldLight)
+      .fill();
+  }
+
+  // Roots — two small lines flaring out from the base of the trunk
+  const rootY = cy + trunkH * 0.35;
   doc
-    .circle(cx, cy - r + 6, 1)
-    .fill(C.goldLight);
+    .moveTo(cx, rootY - 2)
+    .lineTo(cx - canopyR * 0.5, rootY + 4)
+    .lineWidth(1)
+    .strokeColor(C.goldLight)
+    .stroke();
   doc
-    .circle(cx, cy + r - 6, 1)
-    .fill(C.goldLight);
+    .moveTo(cx, rootY - 2)
+    .lineTo(cx + canopyR * 0.5, rootY + 4)
+    .lineWidth(1)
+    .strokeColor(C.goldLight)
+    .stroke();
+
+  // Small ground line below the roots
+  doc
+    .moveTo(cx - canopyR * 0.7, rootY + 5)
+    .lineTo(cx + canopyR * 0.7, rootY + 5)
+    .lineWidth(0.5)
+    .strokeColor(C.goldLight)
+    .stroke();
 }
 
 // ─── Official seal ───────────────────────────────────────────────────────
