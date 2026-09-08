@@ -537,11 +537,13 @@ export async function buildCertificatePdf(
   drawOrnateBorder(doc, w, h);
 
   // ── 2. Top header — Issuing authority banner ─────────────────────────
-  // Scaled up to 28pt per user request to fill the page properly.
-  const topY = 50;
+  // Reduced from 28pt (too big) to 18pt — sits in the middle of the
+  // visual hierarchy: bigger than the system-name lines (12-13pt) but
+  // smaller than the guesthouse name (24pt). Centered, balanced.
+  const topY = 56;
   doc
     .font("SansBold")
-    .fontSize(28)
+    .fontSize(18)
     .fillColor(C.gold)
     .text("Qajeelcha Olaanaa Poolisii Bulchiinsa Magaalaa Bishooftuu", 0, topY, {
       width: w,
@@ -550,44 +552,43 @@ export async function buildCertificatePdf(
 
   // Thin gold separator line below the issuing-authority banner
   doc
-    .moveTo(w / 2 - 100, topY + 38)
-    .lineTo(w / 2 + 100, topY + 38)
+    .moveTo(w / 2 - 100, topY + 28)
+    .lineTo(w / 2 + 100, topY + 28)
     .lineWidth(0.8)
     .strokeColor(C.gold)
     .stroke();
-  drawDiamond(doc, w / 2 - 100, topY + 38, 2, C.gold);
-  drawDiamond(doc, w / 2 + 100, topY + 38, 2, C.gold);
+  drawDiamond(doc, w / 2 - 100, topY + 28, 2, C.gold);
+  drawDiamond(doc, w / 2 + 100, topY + 28, 2, C.gold);
 
   // ── 3. Issuing authority (system name) ──────────────────────────────
-  // Scaled up relatively (12→18, 9→13, 8→12) to fill the page.
   doc
     .font("SerifBold")
-    .fontSize(18)
+    .fontSize(16)
     .fillColor(C.navy)
-    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 52, {
+    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 40, {
       width: w,
       align: "center",
     })
     .font("EthiopicBold")
-    .fontSize(13)
+    .fontSize(12)
     .fillColor(C.ink)
-    .text("የእንግዳ ቤት አስተዳደር ስርዓት", 0, topY + 76, {
+    .text("የእንግዳ ቤት አስተዳደር ስርዓት", 0, topY + 60, {
       width: w,
       align: "center",
     })
     .font("SerifBold")
-    .fontSize(12)
+    .fontSize(11)
     .fillColor(C.inkSoft)
-    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 94, {
+    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 76, {
       width: w,
       align: "center",
     });
 
   // ── 4. Certificate title removed per user request ────────────────────
-  const titleY = topY + 116;
+  const titleY = topY + 96;
 
   // ── 5. Decorative line ──────────────────────────────────────────────
-  const lineY = titleY + 18;
+  const lineY = titleY + 16;
   doc
     .moveTo(w / 2 - 180, lineY)
     .lineTo(w / 2 - 20, lineY)
