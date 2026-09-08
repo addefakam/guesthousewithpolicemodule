@@ -303,13 +303,8 @@ function drawCornerLogo(
     .strokeColor(C.goldLight)
     .stroke();
 
-  // ── 4. "POOLISII OROMIYAA" text wrapped around the top half of the rim
-  //    We use drawTextOnArc to place each character along the curve.
-  doc
-    .fontSize(4.5)
-    .fillColor(C.navy)
-    .font("SansBold");
-  drawTextOnArc(doc, "POOLISII OROMIYAA", cx, cy, r - 2, Math.PI * 0.18, true);
+  // ── 4. (Removed per user request — was "POOLISII OROMIYAA" rim text)
+  //    The badge now has no text; only the central Odaa tree + star.
 
   // ── 5. Small five-point star at the bottom of the rim (7 o'clock position)
   drawFivePointStar(doc, cx, cy + r - 2, 2.5, C.navy);
