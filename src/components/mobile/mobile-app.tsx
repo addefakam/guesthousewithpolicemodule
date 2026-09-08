@@ -1316,8 +1316,7 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
                 {res.status === "UPCOMING" && (
                   <button
                     onClick={() => onCheckin(res)}
-                    disabled={new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)}
-                    className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors disabled:opacity-40"
+                    className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors"
                   >{t("btnCheckIn")}</button>
                 )}
                 {res.status === "ACTIVE" && (
