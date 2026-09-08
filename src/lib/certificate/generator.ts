@@ -536,61 +536,51 @@ export async function buildCertificatePdf(
   // ── 1. Background + ornate border ────────────────────────────────────
   drawOrnateBorder(doc, w, h);
 
-  // ── 2. Top header — Republic of Ethiopia / federal look ──────────────
+  // ── 2. Top header — Issuing authority banner ─────────────────────────
+  // Replaced per user request: the previous "RIPABLIKII DIMOKRAATAWAA
+  // FEDERAALAWAA ITOOPHIYAA / የኢትዮጵያ ፌዴራላዊ ዴሞክራሲያዊ ሪፐብሊክ / Federal
+  // Democratic Republic of Ethiopia" three-line federal header is gone.
+  // Replaced with a single Oromo line: the issuing authority's banner.
   const topY = 60;
   doc
     .font("SansBold")
-    .fontSize(10)
+    .fontSize(11)
     .fillColor(C.gold)
-    .text("RIPABLIKII DIMOKRAATAWAA FEDERAALAWAA ITOOPHIYAA", 0, topY, {
-      width: w,
-      align: "center",
-    })
-    .font("SerifItalic")
-    .fontSize(8)
-    .fillColor(C.goldLight)
-    .text("የኢትዮጵያ ፌዴራላዊ ዴሞክራሲያዊ ሪፐብሊክ", 0, topY + 14, {
-      width: w,
-      align: "center",
-    })
-    .font("Sans")
-    .fontSize(7)
-    .fillColor(C.gold)
-    .text("Federal Democratic Republic of Ethiopia", 0, topY + 28, {
+    .text("Qajeelcha Olaanaa Poolisii Bulchiinsa Magaalaa Bishooftuu", 0, topY, {
       width: w,
       align: "center",
     });
 
-  // Thin gold separator line below the federal header
+  // Thin gold separator line below the issuing-authority banner
   doc
-    .moveTo(w / 2 - 100, topY + 46)
-    .lineTo(w / 2 + 100, topY + 46)
+    .moveTo(w / 2 - 100, topY + 22)
+    .lineTo(w / 2 + 100, topY + 22)
     .lineWidth(0.8)
     .strokeColor(C.gold)
     .stroke();
-  drawDiamond(doc, w / 2 - 100, topY + 46, 2, C.gold);
-  drawDiamond(doc, w / 2 + 100, topY + 46, 2, C.gold);
+  drawDiamond(doc, w / 2 - 100, topY + 22, 2, C.gold);
+  drawDiamond(doc, w / 2 + 100, topY + 22, 2, C.gold);
 
-  // ── 3. Issuing authority ─────────────────────────────────────────────
+  // ── 3. Issuing authority (system name) ──────────────────────────────
   doc
     .font("SerifBold")
     .fontSize(12)
     .fillColor(C.navy)
-    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 56, {
+    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 32, {
       width: w,
       align: "center",
     })
     .font("EthiopicBold")
     .fontSize(9)
     .fillColor(C.ink)
-    .text("የእንግድ ቤት አስተዳደር ስርዓት", 0, topY + 72, {
+    .text("የእንግድ ቤት አስተዳደር ስርዓት", 0, topY + 48, {
       width: w,
       align: "center",
     })
     .font("SerifBold")
     .fontSize(8)
     .fillColor(C.inkSoft)
-    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 84, {
+    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 60, {
       width: w,
       align: "center",
     });
@@ -599,7 +589,7 @@ export async function buildCertificatePdf(
   // New wording per user: Waraqaa Ragaa Galmee / የምዝገባ ምስክር ወረቀት /
   // Certificate of Registration. OM uses Latin (Qubee) script → Serif font.
   // AM uses Ge'ez → Ethiopic font. EN uses Latin → Serif font.
-  const titleY = topY + 100;
+  const titleY = topY + 76;
   doc
     .font("SerifBold")
     .fontSize(34)
@@ -639,33 +629,14 @@ export async function buildCertificatePdf(
     .stroke();
   drawDiamond(doc, w / 2, lineY, 4, C.gold);
 
-  // ── 6. "This is to certify that" preamble ───────────────────────────
-  const preY = lineY + 14;
-  doc
-    .font("SerifBold")
-    .fontSize(13)
-    .fillColor(C.inkSoft)
-    .text("Kun immoo mirkaneessa", 0, preY, {
-      width: w,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(11)
-    .fillColor(C.inkSoft)
-    .text("ይህ የሚያረጋግጸው", 0, preY + 18, {
-      width: w,
-      align: "center",
-    })
-    .font("SerifItalic")
-    .fontSize(10)
-    .fillColor(C.inkSoft)
-    .text("This is to certify that", 0, preY + 32, {
-      width: w,
-      align: "center",
-    });
+  // ── 6. Preamble removed per user request ─────────────────────────────
+  // Previously: "Kun immoo mirkaneessa / ይህ የሚያረጋግጸው / This is to certify that"
+  // The guesthouse name now follows directly below the decorative line,
+  // with a comfortable gap.
+  const preY = lineY + 30;
 
   // ── 7. Guesthouse name (hero element) ────────────────────────────────
-  const nameY = preY + 48;
+  const nameY = preY + 18;
   doc
     .font("SerifBold")
     .fontSize(28)
