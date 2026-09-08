@@ -154,7 +154,7 @@ export function buildCertNumber(seq: number, year: number): string {
 
 // ─── Ornate border drawing ──────────────────────────────────────────────
 
-function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
+async function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
   // Outer navy frame
   doc
     .rect(0, 0, w, h)
@@ -187,11 +187,8 @@ function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
     .stroke();
 
   // Corner ornaments: 4 small circular badges, one at each corner of the
-  // inner gold border. Each badge is an Oromia Police-style emblem —
-  // copper/gold circular badge with 'POOLISII OROMIYAA' text around the
-  // rim and a stylized Odaa tree (traditional Oromo sycamore symbol) at
-  // the center. Inspired by the official Oromia Police emblem, redrawn
-  // as vector primitives to match the certificate's color palette.
+  // inner gold border. Each badge is the organization's official logo
+  // (orompolice.png) embedded inside a gold filled ring frame.
   const cornerOffset = m + 14;
   const cornerR = 28;
   const cornerCorners: [number, number][] = [
@@ -201,7 +198,7 @@ function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
     [w - cornerOffset, h - cornerOffset],
   ];
   for (const [cx, cy] of cornerCorners) {
-    drawCornerLogo(doc, cx, cy, cornerR);
+    await drawCornerLogo(doc, cx, cy, cornerR);
   }
 
   // Subtle gold filigree on top center and bottom center of the navy border
@@ -263,55 +260,51 @@ function drawTopFiligree(
   doc.restore();
 }
 
-// ─── Corner logo — Oromia Police-style emblem ────────────────────────────
+// ─── Corner logo — organization logo image embedded in a gold frame ─────
 //
-// Used at all four corners of the inner gold border. Each badge is an
-// emblem inspired by the official Oromia Police logo:
-//   - Outer copper/gold circular ring
-//   - Navy filled inner disc
-//   - "POOLISII OROMIYAA" text wrapped around the top half of the rim
-//     (Afaan Oromoo for "Oromia Police")
-//   - A small five-pointed star at the bottom of the rim
-//   - A stylized Odaa tree (traditional Oromo sycamore symbol) at the
-//     center — trunk with a radiating canopy of leaves
+// Used at all four corners of the inner gold border. Each badge is:
+//   - A gold filled outer ring (the badge body)
+//   - The official organization logo (orompolice.png) centered inside,
+//     scaled to fit within a slightly smaller square than the ring's
+//     diameter (so a thin gold border shows around the logo image).
 //
-// Colors are chosen to harmonize with the certificate's existing palette
-// (navy + gold + cream) rather than copying the source emblem's hue.
-function drawCornerLogo(
+// The logo image is loaded once from public/fonts/orompolice.png and
+// cached for subsequent draws in the same PDF. The function is async
+// because file I/O for the image buffer happens lazily on first call.
+let _cornerLogoBuffer: Buffer | null = null;
+async function loadCornerLogoBuffer(): Promise<Buffer> {
+  if (_cornerLogoBuffer) return _cornerLogoBuffer;
+  const logoPath = path.join(process.cwd(), "public", "fonts", "orompolice.png");
+  _cornerLogoBuffer = await fs.readFile(logoPath);
+  return _cornerLogoBuffer;
+}
+
+async function drawCornerLogo(
   doc: PDFKit.PDFDocument,
   cx: number,
   cy: number,
   r: number,
-) {
-  // ── 1. Outer copper/gold filled ring (the badge body)
+): Promise<void> {
+  // ── 1. Gold filled outer ring (frame around the logo)
+  //    Slightly larger than the logo image so a thin gold rim shows.
   doc
     .circle(cx, cy, r)
     .fillColor(C.gold)
     .fill();
 
-  // ── 2. Inner navy filled disc (the badge center)
-  const innerR = r - 4;
-  doc
-    .circle(cx, cy, innerR)
-    .fillColor(C.navy)
-    .fill();
-
-  // ── 3. Thin gold-light inner ring (decorative separator)
-  doc
-    .circle(cx, cy, innerR - 2)
-    .lineWidth(0.4)
-    .strokeColor(C.goldLight)
-    .stroke();
-
-  // ── 4. (Removed per user request — was "POOLISII OROMIYAA" rim text)
-  //    The badge now has no text; only the central Odaa tree + star.
-
-  // ── 5. Small five-point star at the bottom of the rim (7 o'clock position)
-  drawFivePointStar(doc, cx, cy + r - 2, 2.5, C.navy);
-
-  // ── 6. Central Odaa tree symbol
-  //    Stylized sycamore: trunk + canopy of radiating leaves
-  drawOdaaTree(doc, cx, cy, innerR - 4);
+  // ── 2. Embed the organization logo image, centered.
+  //    The logo PNG is circular with an opaque navy background, so it
+  //    fills the gold ring cleanly without any white square showing.
+  //    We use only `width` (not `height`) so pdfkit preserves the logo's
+  //    native aspect ratio (158×148 ≈ 1.07:1) instead of stretching it
+  //    into a square that would crop the top/bottom of the image.
+  const logoSize = (r - 2) * 2; // diameter, leaving a 2pt gold rim
+  const logoBuffer = await loadCornerLogoBuffer();
+  doc.image(logoBuffer, cx - logoSize / 2, cy - logoSize / 2, {
+    width: logoSize,
+    align: "center",
+    valign: "center",
+  });
 }
 
 // ─── Five-pointed star (filled, points up) ────────────────────────────────
@@ -534,7 +527,7 @@ export async function buildCertificatePdf(
   doc.on("data", (c: Buffer) => chunks.push(c));
 
   // ── 1. Background + ornate border ────────────────────────────────────
-  drawOrnateBorder(doc, w, h);
+  await drawOrnateBorder(doc, w, h);
 
   // ── 2. Top header — Issuing authority banner ─────────────────────────
   // Reduced from 28pt (too big) to 18pt — sits in the middle of the
