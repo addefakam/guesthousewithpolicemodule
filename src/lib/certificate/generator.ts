@@ -59,6 +59,10 @@ type Fonts = {
   sans: string;
   ethiopic: string;
   ethiopicBold: string;
+  // FreeSerif has BOTH Ge'ez + Latin digits — used for Amharic strings that
+  // contain Latin characters (like dates "8 ሴፕቴምበር 2026"). Noto Sans Ethiopic
+  // alone doesn't include Latin digits, so dates lost their day/year numbers.
+  ethiopicMixed: string;
 };
 
 let _fontsCache: Fonts | null = null;
@@ -74,6 +78,7 @@ async function loadFonts(doc: PDFKit.PDFDocument): Promise<Fonts> {
     doc.registerFont("SansBold", f.sansBold);
     doc.registerFont("Ethiopic", f.ethiopic);
     doc.registerFont("EthiopicBold", f.ethiopicBold);
+    doc.registerFont("EthiopicMixed", f.ethiopicMixed);
     return f;
   }
   const fontsDir = path.join(process.cwd(), "public", "fonts");
@@ -85,6 +90,7 @@ async function loadFonts(doc: PDFKit.PDFDocument): Promise<Fonts> {
     sansBold: path.join(fontsDir, "LiberationSans-Bold.ttf"),
     ethiopic: path.join(fontsDir, "NotoSansEthiopic-Regular.ttf"),
     ethiopicBold: path.join(fontsDir, "NotoSansEthiopic-Bold.ttf"),
+    ethiopicMixed: path.join(fontsDir, "FreeSerif.ttf"),
   };
   // Verify files exist (fail loudly in dev rather than produce a broken PDF)
   for (const [k, p] of Object.entries(f)) {
@@ -101,6 +107,7 @@ async function loadFonts(doc: PDFKit.PDFDocument): Promise<Fonts> {
   doc.registerFont("SansBold", f.sansBold);
   doc.registerFont("Ethiopic", f.ethiopic);
   doc.registerFont("EthiopicBold", f.ethiopicBold);
+  doc.registerFont("EthiopicMixed", f.ethiopicMixed);
   _fontsCache = f;
   return f;
 }
@@ -424,7 +431,7 @@ export async function buildCertificatePdf(
     .font("SerifBold")
     .fontSize(12)
     .fillColor(C.navy)
-    .text("Sirna Bulchiinsa Mana Gaazee", 0, topY + 56, {
+    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 56, {
       width: w,
       align: "center",
     })
@@ -443,33 +450,36 @@ export async function buildCertificatePdf(
       align: "center",
     });
 
-  // ── 4. "Certificate of Registration" title ───────────────────────────
+  // ── 4. Certificate title — trilingual, elegant, OM / AM / EN ────────
+  // New wording per user: Waraqaa Ragaa Galmee / የምዝገባ ምስክር ወረቀት /
+  // Certificate of Registration. OM uses Latin (Qubee) script → Serif font.
+  // AM uses Ge'ez → Ethiopic font. EN uses Latin → Serif font.
   const titleY = topY + 100;
   doc
     .font("SerifBold")
     .fontSize(34)
     .fillColor(C.navy)
-    .text("Marsariisa Mirgansa", 0, titleY, {
+    .text("Waraqaa Ragaa Galmee", 0, titleY, {
       width: w,
       align: "center",
     })
     .font("EthiopicBold")
-    .fontSize(20)
+    .fontSize(22)
     .fillColor(C.navy)
-    .text("የምዝገባ ማረጋገጫ", 0, titleY + 38, {
+    .text("የምዝገባ ምስክር ወረቀት", 0, titleY + 40, {
       width: w,
       align: "center",
     })
     .font("SerifBold")
-    .fontSize(16)
+    .fontSize(18)
     .fillColor(C.navy)
-    .text("Certificate of Registration", 0, titleY + 62, {
+    .text("Certificate of Registration", 0, titleY + 70, {
       width: w,
       align: "center",
     });
 
   // ── 5. Decorative line below title ──────────────────────────────────
-  const lineY = titleY + 86;
+  const lineY = titleY + 96;
   doc
     .moveTo(w / 2 - 180, lineY)
     .lineTo(w / 2 - 20, lineY)
@@ -531,195 +541,139 @@ export async function buildCertificatePdf(
     .stroke();
 
   // ── 8. Certification statement (trilingual) — OM / AM / EN order ─────
-  // New message: certified that the holder has successfully completed
-  // training and is authorized to fully utilize the system per the
-  // standards of the Police Office.
-  const stmtY = nameUnderlineY + 12;
+  // New wording per user. Oromo uses Latin (Qubee) → Serif font. Amharic
+  // uses Ge'ez → Ethiopic font. English uses Latin → Serif font.
+  // Each statement is broken into 2 lines for readability and elegance.
+  const stmtY = nameUnderlineY + 16;
   doc
     .font("SerifItalic")
-    .fontSize(9)
+    .fontSize(10)
     .fillColor(C.inkSoft)
     .text(
-      "Leenjii milkaa'aa ee xumuruun, sirna guutuun fayyadamiinuu danda'uuf mirkaneffameera, akkaataa sadarkaa Waajjira Poolisiitiin.",
+      "Leenjii milkiidhaan kan xumure yoo ta'u, akkaataa istaandardii",
       0,
       stmtY,
       { width: w, align: "center" },
     )
-    .font("Ethiopic")
-    .fontSize(9)
-    .fillColor(C.inkSoft)
-    .text("ስልጠናውን በተሳካ ሆኖ አጠናቅቋል እንዲሁም በፖሊስ ጽሕፈት ቤት ደረጃዎች መሠረት ስርዓቱን በድጋፚ መጠቀም ተፈቅዷል።", 0, stmtY + 14, {
-      width: w,
-      align: "center",
-    })
     .font("SerifItalic")
     .fontSize(10)
-    .fillColor(C.ink)
+    .fillColor(C.inkSoft)
     .text(
-      "has successfully completed training and is certified to fully utilize the system",
+      "Waajjira Poolisiitiin sirnichatti guutummaatti fayyadamuuf waraqaa ragaa argateera.",
       0,
-      stmtY + 30,
+      stmtY + 14,
+      { width: w, align: "center" },
+    )
+    .font("Ethiopic")
+    .fontSize(10)
+    .fillColor(C.inkSoft)
+    .text(
+      "ከፖሊስ ቢሮው መስፈርቶች ጋር በሚስማማ መልኩ፣ ስርዓቱን ሙሉ በሙሉ",
+      0,
+      stmtY + 32,
+      { width: w, align: "center" },
+    )
+    .font("Ethiopic")
+    .fontSize(10)
+    .fillColor(C.inkSoft)
+    .text(
+      "ለመጠቀም የሚያስችለውን ስልጠና በተሳካ ሁኔታ አጠናቆ የምስክር ወረቀት አግኝቷል።",
+      0,
+      stmtY + 46,
       { width: w, align: "center" },
     )
     .font("SerifItalic")
-    .fontSize(10)
+    .fontSize(11)
     .fillColor(C.ink)
-    .text("in accordance with the standards of the Police Office.", 0, stmtY + 44, {
-      width: w,
-      align: "center",
-    });
+    .text(
+      "Has successfully completed training and obtained a certificate of credentials",
+      0,
+      stmtY + 64,
+      { width: w, align: "center" },
+    )
+    .font("SerifItalic")
+    .fontSize(11)
+    .fillColor(C.ink)
+    .text(
+      "to fully utilize the system in accordance with the standards of the Police Office.",
+      0,
+      stmtY + 78,
+      { width: w, align: "center" },
+    );
 
-  // ── 9. QR code — encodes all certification details trilingually ──────
-  // Replaces the previous plain-text "Establishment Particulars" factbox.
-  // Scanning the QR with any phone camera shows the full cert record in
-  // Oromo / Amharic / English.
-  const qrSize = 60;
-  const qrX = (w - qrSize) / 2;
-  const qrY = stmtY + 70;
+  // ── 9. Footer — centered seal + signature + date (elegant, symmetric) ──
+  // Removed per user request: QR code + caption, cert number, validity line,
+  // signature role label.
+  //
+  // Layout math (page height = 595, must keep last element < 570 for microprint):
+  //   stmtY ≈ 368, last stmt line ≈ stmtY + 78 = 446 + descender ≈ 456
+  //   footerY = stmtY + 100 = 468 (12pt gap below stmt)
+  //   sealCY = footerY + 14 = 482, radius 20 → top 462, bottom 502
+  //   (seal's text ring extends ~5pt above circle top → ~457, 1pt gap from stmt)
+  //   sigY = sealCY + 28 = 510
+  //   dateY = sigY + 18 = 528, last date line at dateY + 36 = 564 ✓
+  //   microprint at h-22 = 573 — 9pt gap (tight but OK)
+  const footerY = stmtY + 100;
 
-  // White rounded background frame for contrast
-  doc
-    .save()
-    .roundedRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 6)
-    .fillColor(C.white)
-    .fill()
-    .lineWidth(0.8)
-    .strokeColor(C.gold)
-    .stroke()
-    .restore();
+  // Official seal — centered, smaller radius (20) so its text ring doesn't
+  // overlap the certification statement above.
+  const sealCY = footerY + 14;
+  drawSeal(doc, w / 2, sealCY, 20);
 
-  // Draw the QR code
-  await drawQrCode(doc, buildQrPayload(data), qrX, qrY, qrSize);
-
-  // Trilingual caption below the QR — Oromo / Amharic / English order
-  // Oromo uses Latin (Qubee) script, so it uses the Serif font (not Ethiopic).
-  const capY = qrY + qrSize + 14;
-  doc
-    .font("SerifBold")
-    .fontSize(8)
-    .fillColor(C.navy)
-    .text("Skanii gochuu agartoota mirkaneessaa", 0, capY, { width: w, align: "center" })
-    .font("EthiopicBold")
-    .fontSize(8)
-    .fillColor(C.navy)
-    .text("ለማረጋገጥ QR ይስክሩ", 0, capY + 12, { width: w, align: "center" })
-    .font("SansBold")
-    .fontSize(8)
-    .fillColor(C.navy)
-    .text("Scan QR to verify authenticity", 0, capY + 24, { width: w, align: "center" });
-
-  // ── 10. Footer area: certificate number, issue/expiry, seal, signature ──
-  // Three columns:
-  //   LEFT (90 to 330):  Cert number
-  //   CENTER (340 to 500): Seal + signature line
-  //   RIGHT (510 to 750): Issue date + validity
-  // Footer sits below the QR caption (which ends ~capY+32).
-  // QR caption ends around Y=524; we add a 10pt gap before the footer
-  // so the seal (top edge at footerY - 8) doesn't touch the caption.
-  const footerY = 534;
-
-  // Left: Certificate number — Oromo uses Latin (Qubee) script
-  doc
-    .font("SansBold")
-    .fontSize(7)
-    .fillColor(C.goldDark)
-    .text("Lakk. Marsariisa", 90, footerY, {
-      width: 240,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(6)
-    .fillColor(C.inkSoft)
-    .text("የማረጋገጫ ቁጥር  —  Certificate No.", 90, footerY + 9, {
-      width: 240,
-      align: "center",
-    })
-    .font("SansBold")
-    .fontSize(12)
-    .fillColor(C.navy)
-    .text(data.certNumber, 90, footerY + 24, { width: 240, align: "center" });
-
-  // Center: Seal overlapping the signature line (classic certificate design)
-  // Seal radius reduced from 26 to 22 so it doesn't overlap the QR caption above.
-  const sealCY = footerY + 16;
-  drawSeal(doc, w / 2, sealCY, 22);
   // Signature line directly below the seal
   const sigY = sealCY + 28;
   doc
-    .moveTo(w / 2 - 90, sigY)
-    .lineTo(w / 2 + 90, sigY)
+    .moveTo(w / 2 - 100, sigY)
+    .lineTo(w / 2 + 100, sigY)
     .lineWidth(0.6)
     .strokeColor(C.ink)
     .stroke();
-  doc
-    .font("SansBold")
-    .fontSize(8)
-    .fillColor(C.ink)
-    .text(data.issuedByName || "System Administrator", w / 2 - 120, sigY + 3, {
-      width: 240,
-      align: "center",
-    })
-    .font("Serif")
-    .fontSize(6)
-    .fillColor(C.inkSoft)
-    .text(
-      "Bulcha Sirna  —  የስርዓት አስተዳዳሪ  —  System Administrator",
-      w / 2 - 120,
-      sigY + 14,
-      { width: 240, align: "center" },
-    );
 
-  // Right: Issue date + validity — Oromo uses Latin (Qubee) script
+  // Issuer name (just the name — no role label per user request)
   doc
-    .font("SansBold")
-    .fontSize(7)
-    .fillColor(C.goldDark)
-    .text("Guyaa Kennaa", w - 330, footerY, {
-      width: 240,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(6)
-    .fillColor(C.inkSoft)
-    .text("የመስጠት ቀን  —  Date of Issue", w - 330, footerY + 9, {
-      width: 240,
-      align: "center",
-    })
     .font("SerifBold")
-    .fontSize(11)
+    .fontSize(10)
     .fillColor(C.ink)
-    .text(formatDateOm(data.issuedAt), w - 330, footerY + 24, {
-      width: 240,
-      align: "center",
-    })
-    .font("Ethiopic")
-    .fontSize(7)
-    .fillColor(C.inkSoft)
-    .text(formatDateAm(data.issuedAt), w - 330, footerY + 38, {
-      width: 240,
-      align: "center",
-    })
-    .font("SerifBold")
-    .fontSize(7)
-    .fillColor(C.inkSoft)
-    .text(formatDate(data.issuedAt), w - 330, footerY + 50, {
-      width: 240,
+    .text(data.issuedByName || "System Administrator", w / 2 - 140, sigY + 3, {
+      width: 280,
       align: "center",
     });
 
-  // Validity line (single trilingual line — OM / AM / EN order)
-  // Oromo uses Latin (Qubee) script
-  const expiry = addValidityYear(data.issuedAt);
+  // Date of issue below the issuer name — trilingual, OM / AM / EN
+  // Compact spacing so the last line stays within page bounds.
+  // Each language on its own line to avoid mixed-font rendering issues.
+  // (Mixing Latin + Ge'ez on one line causes tofu boxes because no single
+  // font covers both scripts — Latin font lacks Ge'ez glyphs and vice versa.)
+  const dateY = sigY + 18;
   doc
-    .font("Serif")
-    .fontSize(6.5)
+    .font("SerifBold")
+    .fontSize(8)
+    .fillColor(C.goldDark)
+    .text("Guyaa Kennaa  /  Date of Issue", w / 2 - 140, dateY, {
+      width: 280,
+      align: "center",
+    })
+    .font("SerifBold")
+    .fontSize(9)
+    .fillColor(C.ink)
+    .text(formatDateOm(data.issuedAt), w / 2 - 140, dateY + 12, {
+      width: 280,
+      align: "center",
+    })
+    .font("EthiopicMixed")
+    .fontSize(8)
     .fillColor(C.inkSoft)
-    .text(
-      `Hanga ${formatDateOm(expiry)}  —  እስከ ${formatDateAm(expiry)} ድረስ  —  Valid until ${formatDate(expiry)}`,
-      w - 330,
-      footerY + 64,
-      { width: 240, align: "center" },
-    );
+    .text(formatDateAm(data.issuedAt), w / 2 - 140, dateY + 24, {
+      width: 280,
+      align: "center",
+    })
+    .font("SerifBold")
+    .fontSize(8)
+    .fillColor(C.inkSoft)
+    .text(formatDate(data.issuedAt), w / 2 - 140, dateY + 36, {
+      width: 280,
+      align: "center",
+    });
 
   // ── 12. Microprint footer (anti-forgery detail) — single line, in-bounds ──
   doc
