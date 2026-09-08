@@ -186,16 +186,21 @@ function drawOrnateBorder(doc: PDFKit.PDFDocument, w: number, h: number) {
     .strokeColor(C.gold)
     .stroke();
 
-  // Corner ornaments (4 small filled diamonds at the inner gold border corners)
+  // Corner ornaments: 4 small circular badges, one at each corner of the
+  // inner gold border. Each circle contains the phone number 0913169652
+  // displayed as straight text inside the circle (more readable than arc
+  // text at this small size). The number is the cert issuer's contact
+  // line — visible on every printed copy for verification.
   const cornerOffset = m + 14;
-  const corners = [
+  const cornerR = 26;
+  const cornerCorners: [number, number][] = [
     [cornerOffset, cornerOffset],
     [w - cornerOffset, cornerOffset],
     [cornerOffset, h - cornerOffset],
     [w - cornerOffset, h - cornerOffset],
   ];
-  for (const [cx, cy] of corners) {
-    drawDiamond(doc, cx, cy, 5, C.gold);
+  for (const [cx, cy] of cornerCorners) {
+    drawPhoneBadge(doc, cx, cy, cornerR, "0913169652");
   }
 
   // Subtle gold filigree on top center and bottom center of the navy border
@@ -255,6 +260,61 @@ function drawTopFiligree(
     .circle(cx + width / 2 + 6, cy, 2)
     .fill(C.goldLight);
   doc.restore();
+}
+
+// ─── Corner phone badge — small circular ornament with phone number ──────
+//
+// Used at all four corners of the inner gold border. Each badge is a small
+// navy circle with a gold rim, the phone number "0913169652" displayed as
+// straight text inside the circle (split into two lines for readability at
+// this small size), and tiny gold dots above and below for decoration.
+// Replaces the previous diamond-only corner ornaments per user request.
+function drawPhoneBadge(
+  doc: PDFKit.PDFDocument,
+  cx: number,
+  cy: number,
+  r: number,
+  phone: string,
+) {
+  // Navy filled circle
+  doc
+    .circle(cx, cy, r)
+    .fillColor(C.navy)
+    .fill();
+
+  // Gold rim (outer ring)
+  doc
+    .circle(cx, cy, r)
+    .lineWidth(1.5)
+    .strokeColor(C.gold)
+    .stroke();
+
+  // Inner thin gold ring (decorative)
+  doc
+    .circle(cx, cy, r - 3)
+    .lineWidth(0.4)
+    .strokeColor(C.goldLight)
+    .stroke();
+
+  // Phone number split into two lines: "0913" / "169652"
+  // (10 digits don't fit on one line at this circle size.)
+  const line1 = phone.slice(0, 4);
+  const line2 = phone.slice(4);
+
+  doc
+    .font("SansBold")
+    .fontSize(8)
+    .fillColor(C.goldLight)
+    .text(line1, cx - r, cy - 8, { width: r * 2, align: "center" })
+    .text(line2, cx - r, cy + 1, { width: r * 2, align: "center" });
+
+  // Tiny gold dots above and below the number for decoration
+  doc
+    .circle(cx, cy - r + 6, 1)
+    .fill(C.goldLight);
+  doc
+    .circle(cx, cy + r - 6, 1)
+    .fill(C.goldLight);
 }
 
 // ─── Official seal ───────────────────────────────────────────────────────
@@ -601,27 +661,30 @@ export async function buildCertificatePdf(
       { width: w, align: "center" },
     );
 
-  // ── 9. Footer — centered seal + signature + date (elegant, symmetric) ──
-  // Removed per user request: QR code + caption, cert number, validity line,
-  // signature role label.
+  // ── 9. Footer — centered signature + Oromo date only ─────────────────
+  // Removed per user request:
+  //   - QR code + caption
+  //   - Certificate number row
+  //   - Validity line
+  //   - Signature role label
+  //   - Central official seal (replaced by 4 corner phone-number badges)
+  //   - Amharic date (ሴፕቴምበር 2026)
+  //   - English date (07 September 2026)
+  //   - Microprint footer
   //
-  // Layout math (page height = 595, must keep last element < 570 for microprint):
+  // What remains: centered signature line + issuer name + Oromo date only.
+  //
+  // Layout math (page height = 595):
   //   stmtY ≈ 368, last stmt line ≈ stmtY + 78 = 446 + descender ≈ 456
   //   footerY = stmtY + 100 = 468 (12pt gap below stmt)
-  //   sealCY = footerY + 14 = 482, radius 20 → top 462, bottom 502
-  //   (seal's text ring extends ~5pt above circle top → ~457, 1pt gap from stmt)
-  //   sigY = sealCY + 28 = 510
-  //   dateY = sigY + 18 = 528, last date line at dateY + 36 = 564 ✓
-  //   microprint at h-22 = 573 — 9pt gap (tight but OK)
+  //   sigY = footerY + 30 = 498 (centered in remaining space)
+  //   dateY = sigY + 22 = 520, last date line at dateY + 12 = 532 ✓
+  //   Bottom corner badges centered at h-42 = 553, radius 18 → bottom 535
+  //   Plenty of breathing room.
   const footerY = stmtY + 100;
 
-  // Official seal — centered, smaller radius (20) so its text ring doesn't
-  // overlap the certification statement above.
-  const sealCY = footerY + 14;
-  drawSeal(doc, w / 2, sealCY, 20);
-
-  // Signature line directly below the seal
-  const sigY = sealCY + 28;
+  // Signature line — centered, no seal above it now
+  const sigY = footerY + 30;
   doc
     .moveTo(w / 2 - 100, sigY)
     .lineTo(w / 2 + 100, sigY)
@@ -632,60 +695,31 @@ export async function buildCertificatePdf(
   // Issuer name (just the name — no role label per user request)
   doc
     .font("SerifBold")
-    .fontSize(10)
+    .fontSize(11)
     .fillColor(C.ink)
-    .text(data.issuedByName || "System Administrator", w / 2 - 140, sigY + 3, {
+    .text(data.issuedByName || "System Administrator", w / 2 - 140, sigY + 4, {
       width: 280,
       align: "center",
     });
 
-  // Date of issue below the issuer name — trilingual, OM / AM / EN
-  // Compact spacing so the last line stays within page bounds.
-  // Each language on its own line to avoid mixed-font rendering issues.
-  // (Mixing Latin + Ge'ez on one line causes tofu boxes because no single
-  // font covers both scripts — Latin font lacks Ge'ez glyphs and vice versa.)
-  const dateY = sigY + 18;
+  // Date of issue — Oromo only, per user request.
+  // (Amharic + English date lines removed.)
+  const dateY = sigY + 22;
   doc
     .font("SerifBold")
     .fontSize(8)
     .fillColor(C.goldDark)
-    .text("Guyaa Kennaa  /  Date of Issue", w / 2 - 140, dateY, {
+    .text("Guyaa Kennaa", w / 2 - 140, dateY, {
       width: 280,
       align: "center",
     })
     .font("SerifBold")
-    .fontSize(9)
+    .fontSize(10)
     .fillColor(C.ink)
     .text(formatDateOm(data.issuedAt), w / 2 - 140, dateY + 12, {
       width: 280,
       align: "center",
-    })
-    .font("EthiopicMixed")
-    .fontSize(8)
-    .fillColor(C.inkSoft)
-    .text(formatDateAm(data.issuedAt), w / 2 - 140, dateY + 24, {
-      width: 280,
-      align: "center",
-    })
-    .font("SerifBold")
-    .fontSize(8)
-    .fillColor(C.inkSoft)
-    .text(formatDate(data.issuedAt), w / 2 - 140, dateY + 36, {
-      width: 280,
-      align: "center",
     });
-
-  // ── 12. Microprint footer (anti-forgery detail) — single line, in-bounds ──
-  doc
-    .font("SerifItalic")
-    .fontSize(5)
-    .fillColor(C.goldDark)
-    .text(
-      "This certificate is issued electronically by the GHMS platform.  ·  Any alteration or forgery is punishable by law.",
-      60,
-      h - 22,
-      { width: w - 120, align: "center" },
-    );
 
   // ── Done ─────────────────────────────────────────────────────────────
   doc.end();
