@@ -537,14 +537,11 @@ export async function buildCertificatePdf(
   drawOrnateBorder(doc, w, h);
 
   // ── 2. Top header — Issuing authority banner ─────────────────────────
-  // Replaced per user request: the previous "RIPABLIKII DIMOKRAATAWAA
-  // FEDERAALAWAA ITOOPHIYAA / የኢትዮጵያ ፌዴራላዊ ዴሞክራሲያዊ ሪፐብሊክ / Federal
-  // Democratic Republic of Ethiopia" three-line federal header is gone.
-  // Replaced with a single Oromo line: the issuing authority's banner.
-  const topY = 60;
+  // Scaled up to 28pt per user request to fill the page properly.
+  const topY = 50;
   doc
     .font("SansBold")
-    .fontSize(12)
+    .fontSize(28)
     .fillColor(C.gold)
     .text("Qajeelcha Olaanaa Poolisii Bulchiinsa Magaalaa Bishooftuu", 0, topY, {
       width: w,
@@ -553,47 +550,44 @@ export async function buildCertificatePdf(
 
   // Thin gold separator line below the issuing-authority banner
   doc
-    .moveTo(w / 2 - 100, topY + 22)
-    .lineTo(w / 2 + 100, topY + 22)
+    .moveTo(w / 2 - 100, topY + 38)
+    .lineTo(w / 2 + 100, topY + 38)
     .lineWidth(0.8)
     .strokeColor(C.gold)
     .stroke();
-  drawDiamond(doc, w / 2 - 100, topY + 22, 2, C.gold);
-  drawDiamond(doc, w / 2 + 100, topY + 22, 2, C.gold);
+  drawDiamond(doc, w / 2 - 100, topY + 38, 2, C.gold);
+  drawDiamond(doc, w / 2 + 100, topY + 38, 2, C.gold);
 
   // ── 3. Issuing authority (system name) ──────────────────────────────
+  // Scaled up relatively (12→18, 9→13, 8→12) to fill the page.
   doc
     .font("SerifBold")
-    .fontSize(12)
+    .fontSize(18)
     .fillColor(C.navy)
-    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 32, {
+    .text("Sirna Bulchiinsa Mana Seeree", 0, topY + 52, {
       width: w,
       align: "center",
     })
     .font("EthiopicBold")
-    .fontSize(9)
+    .fontSize(13)
     .fillColor(C.ink)
-    .text("የእንግዳ ቤት አስተዳደር ስርዓት", 0, topY + 48, {
+    .text("የእንግዳ ቤት አስተዳደር ስርዓት", 0, topY + 76, {
       width: w,
       align: "center",
     })
     .font("SerifBold")
-    .fontSize(8)
+    .fontSize(12)
     .fillColor(C.inkSoft)
-    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 60, {
+    .text("GUEST HOUSE MANAGEMENT SYSTEM", 0, topY + 94, {
       width: w,
       align: "center",
     });
 
   // ── 4. Certificate title removed per user request ────────────────────
-  // Previously: "Waraqaa Ragaa Galmee / የምዝገባ ምስክር ወረቀት /
-  // Certificate of Registration" three-line title block.
-  // The decorative line now follows directly below the issuing-authority
-  // block, and the guesthouse name follows below the decorative line.
-  const titleY = topY + 76;
+  const titleY = topY + 116;
 
   // ── 5. Decorative line ──────────────────────────────────────────────
-  const lineY = titleY + 16;
+  const lineY = titleY + 18;
   doc
     .moveTo(w / 2 - 180, lineY)
     .lineTo(w / 2 - 20, lineY)
@@ -609,16 +603,14 @@ export async function buildCertificatePdf(
   drawDiamond(doc, w / 2, lineY, 4, C.gold);
 
   // ── 6. Preamble removed per user request ─────────────────────────────
-  // Previously: "Kun immoo mirkaneessa / ይህ የሚያረጋግጸው / This is to certify that"
-  // The guesthouse name now follows directly below the decorative line,
-  // with a comfortable gap.
-  const preY = lineY + 30;
+  const preY = lineY + 38;
 
   // ── 7. Guesthouse name (hero element) ────────────────────────────────
-  const nameY = preY + 18;
+  // Font size reduced from 28 to 24 per user request (relative scaling).
+  const nameY = preY + 20;
   doc
     .font("SerifBold")
-    .fontSize(28)
+    .fontSize(24)
     .fillColor(C.navy)
     .text(data.provider.name, 0, nameY, {
       width: w,
@@ -626,8 +618,8 @@ export async function buildCertificatePdf(
     });
 
   // Underline the name
-  const nameWidth = doc.widthOfString(data.provider.name, { font: "SerifBold", size: 28 });
-  const nameUnderlineY = nameY + 34;
+  const nameWidth = doc.widthOfString(data.provider.name, { font: "SerifBold", size: 24 });
+  const nameUnderlineY = nameY + 30;
   doc
     .moveTo(w / 2 - nameWidth / 2, nameUnderlineY)
     .lineTo(w / 2 + nameWidth / 2, nameUnderlineY)
@@ -636,13 +628,12 @@ export async function buildCertificatePdf(
     .stroke();
 
   // ── 8. Certification statement (trilingual) — OM / AM / EN order ─────
-  // New wording per user. Oromo uses Latin (Qubee) → Serif font. Amharic
-  // uses Ge'ez → Ethiopic font. English uses Latin → Serif font.
-  // Each statement is broken into 2 lines for readability and elegance.
-  const stmtY = nameUnderlineY + 16;
+  // Font sizes scaled up (10→14, 11→14) to fill the page. Y offsets
+  // increased to accommodate larger line heights.
+  const stmtY = nameUnderlineY + 22;
   doc
     .font("SerifItalic")
-    .fontSize(10)
+    .fontSize(14)
     .fillColor(C.inkSoft)
     .text(
       "Leenjii milkiidhaan kan xumure yoo ta'u, akkaataa istaandardii",
@@ -651,72 +642,56 @@ export async function buildCertificatePdf(
       { width: w, align: "center" },
     )
     .font("SerifItalic")
-    .fontSize(10)
+    .fontSize(14)
     .fillColor(C.inkSoft)
     .text(
       "Waajjira Poolisiitiin sirnichatti guutummaatti fayyadamuuf waraqaa ragaa argateera.",
       0,
-      stmtY + 14,
+      stmtY + 20,
       { width: w, align: "center" },
     )
     .font("Ethiopic")
-    .fontSize(10)
+    .fontSize(14)
     .fillColor(C.inkSoft)
     .text(
       "ከፖሊስ ቢሮው መስፈርቶች ጋር በሚስማማ መልኩ፣ ስርዓቱን ሙሉ በሙሉ",
       0,
-      stmtY + 32,
+      stmtY + 44,
       { width: w, align: "center" },
     )
     .font("Ethiopic")
-    .fontSize(10)
+    .fontSize(14)
     .fillColor(C.inkSoft)
     .text(
       "ለመጠቀም የሚያስችለውን ስልጠና በተሳካ ሁኔታ አጠናቆ የምስክር ወረቀት አግኝቷል።",
-      0,
-      stmtY + 46,
-      { width: w, align: "center" },
-    )
-    .font("SerifItalic")
-    .fontSize(11)
-    .fillColor(C.ink)
-    .text(
-      "Has successfully completed training and obtained a certificate of credentials",
       0,
       stmtY + 64,
       { width: w, align: "center" },
     )
     .font("SerifItalic")
-    .fontSize(11)
+    .fontSize(14)
+    .fillColor(C.ink)
+    .text(
+      "Has successfully completed training and obtained a certificate of credentials",
+      0,
+      stmtY + 88,
+      { width: w, align: "center" },
+    )
+    .font("SerifItalic")
+    .fontSize(14)
     .fillColor(C.ink)
     .text(
       "to fully utilize the system in accordance with the standards of the Police Office.",
       0,
-      stmtY + 78,
+      stmtY + 108,
       { width: w, align: "center" },
     );
 
   // ── 9. Footer — centered signature + Oromo date only ─────────────────
-  // Removed per user request:
-  //   - QR code + caption
-  //   - Certificate number row
-  //   - Validity line
-  //   - Signature role label
-  //   - Central official seal (replaced by 4 corner phone-number badges)
-  //   - Amharic date (ሴፕቴምበር 2026)
-  //   - English date (07 September 2026)
-  //   - Microprint footer
-  //
-  // What remains: centered signature line + issuer name + Oromo date only.
-  //
-  // Layout math (page height = 595):
-  //   stmtY ≈ 368, last stmt line ≈ stmtY + 78 = 446 + descender ≈ 456
-  //   footerY = stmtY + 100 = 468 (12pt gap below stmt)
-  //   sigY = footerY + 30 = 498 (centered in remaining space)
-  //   dateY = sigY + 22 = 520, last date line at dateY + 12 = 532 ✓
-  //   Bottom corner badges centered at h-42 = 553, radius 18 → bottom 535
-  //   Plenty of breathing room.
-  const footerY = stmtY + 100;
+  // Font sizes scaled up (11→14, 8→11, 10→13) to fill the page.
+  // Y offsets re-spaced to use the vertical space freed by removing
+  // the title block and preamble.
+  const footerY = stmtY + 144;
 
   // Signature line — centered, no seal above it now
   const sigY = footerY + 30;
@@ -730,28 +705,27 @@ export async function buildCertificatePdf(
   // Issuer name (just the name — no role label per user request)
   doc
     .font("SerifBold")
-    .fontSize(11)
+    .fontSize(14)
     .fillColor(C.ink)
-    .text(data.issuedByName || "System Administrator", w / 2 - 140, sigY + 4, {
+    .text(data.issuedByName || "System Administrator", w / 2 - 140, sigY + 5, {
       width: 280,
       align: "center",
     });
 
   // Date of issue — Oromo only, per user request.
-  // (Amharic + English date lines removed.)
-  const dateY = sigY + 22;
+  const dateY = sigY + 30;
   doc
     .font("SerifBold")
-    .fontSize(8)
+    .fontSize(11)
     .fillColor(C.goldDark)
     .text("Guyaa Kennaa", w / 2 - 140, dateY, {
       width: 280,
       align: "center",
     })
     .font("SerifBold")
-    .fontSize(10)
+    .fontSize(13)
     .fillColor(C.ink)
-    .text(formatDateOm(data.issuedAt), w / 2 - 140, dateY + 12, {
+    .text(formatDateOm(data.issuedAt), w / 2 - 140, dateY + 16, {
       width: 280,
       align: "center",
     });
