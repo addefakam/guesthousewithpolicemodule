@@ -540,7 +540,9 @@ export async function buildCertificatePdf(
   // Reduced from 28pt (too big) to 18pt — sits in the middle of the
   // visual hierarchy: bigger than the system-name lines (12-13pt) but
   // smaller than the guesthouse name (24pt). Centered, balanced.
-  const topY = 56;
+  // topY bumped from 56 → 90 to push items 1-5 down and close the wide
+  // gap between the decorative line (5) and the guesthouse name (6).
+  const topY = 90;
   doc
     .font("SansBold")
     .fontSize(18)
@@ -604,11 +606,13 @@ export async function buildCertificatePdf(
   drawDiamond(doc, w / 2, lineY, 4, C.gold);
 
   // ── 6. Preamble removed per user request ─────────────────────────────
-  const preY = lineY + 38;
+  // Tightened gap from lineY+38 → lineY+18 to close the wide space
+  // between the decorative line and the guesthouse name.
+  const preY = lineY + 18;
 
   // ── 7. Guesthouse name (hero element) ────────────────────────────────
   // Font size reduced from 28 to 24 per user request (relative scaling).
-  const nameY = preY + 20;
+  const nameY = preY + 14;
   doc
     .font("SerifBold")
     .fontSize(24)
