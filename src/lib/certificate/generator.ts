@@ -585,36 +585,15 @@ export async function buildCertificatePdf(
       align: "center",
     });
 
-  // ── 4. Certificate title — trilingual, elegant, OM / AM / EN ────────
-  // New wording per user: Waraqaa Ragaa Galmee / የምዝገባ ምስክር ወረቀት /
-  // Certificate of Registration. OM uses Latin (Qubee) script → Serif font.
-  // AM uses Ge'ez → Ethiopic font. EN uses Latin → Serif font.
+  // ── 4. Certificate title removed per user request ────────────────────
+  // Previously: "Waraqaa Ragaa Galmee / የምዝገባ ምስክር ወረቀት /
+  // Certificate of Registration" three-line title block.
+  // The decorative line now follows directly below the issuing-authority
+  // block, and the guesthouse name follows below the decorative line.
   const titleY = topY + 76;
-  doc
-    .font("SerifBold")
-    .fontSize(34)
-    .fillColor(C.navy)
-    .text("Waraqaa Ragaa Galmee", 0, titleY, {
-      width: w,
-      align: "center",
-    })
-    .font("EthiopicBold")
-    .fontSize(22)
-    .fillColor(C.navy)
-    .text("የምዝገባ ምስክር ወረቀት", 0, titleY + 40, {
-      width: w,
-      align: "center",
-    })
-    .font("SerifBold")
-    .fontSize(18)
-    .fillColor(C.navy)
-    .text("Certificate of Registration", 0, titleY + 70, {
-      width: w,
-      align: "center",
-    });
 
-  // ── 5. Decorative line below title ──────────────────────────────────
-  const lineY = titleY + 96;
+  // ── 5. Decorative line ──────────────────────────────────────────────
+  const lineY = titleY + 16;
   doc
     .moveTo(w / 2 - 180, lineY)
     .lineTo(w / 2 - 20, lineY)
