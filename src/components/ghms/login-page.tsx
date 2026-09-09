@@ -8,6 +8,7 @@ import { Building2, KeyRound, UserPlus, LogIn, Upload } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
 
 import {
@@ -64,6 +65,7 @@ export default function LoginPage() {
   const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regLoading, setRegLoading] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Login handler ──
@@ -259,6 +261,14 @@ export default function LoginPage() {
                     t("signIn")
                   )}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setResetOpen(true)}
+                  className="text-center text-xs font-medium text-slate-500 hover:text-slate-700 active:text-slate-800 transition-colors"
+                >
+                  {t("resetPassword")}
+                </button>
               </form>
             </TabsContent>
 
@@ -495,6 +505,8 @@ export default function LoginPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <ResetPasswordDialog open={resetOpen} onOpenChange={setResetOpen} variant="light" />
     </div>
   );
 }

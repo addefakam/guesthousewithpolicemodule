@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiAuth } from "@/lib/api";
+import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 
 export function MobileLoginPage() {
   const { t, i18n } = useTranslation("mobile");
@@ -12,6 +13,7 @@ export function MobileLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,10 +117,20 @@ export function MobileLoginPage() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => setResetOpen(true)}
+          className="mt-4 text-center text-xs font-medium text-emerald-400 hover:text-emerald-300 active:text-emerald-200 transition-colors"
+        >
+          {t("resetPassword")}
+        </button>
+
         <p className="mt-8 text-center text-[11px] text-slate-600">
           {t("loginSubtitle")}
         </p>
       </div>
+
+      <ResetPasswordDialog open={resetOpen} onOpenChange={setResetOpen} variant="dark" />
     </div>
   );
 }

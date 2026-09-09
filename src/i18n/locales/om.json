@@ -315,7 +315,8 @@
     "desiredUsername": "Maqaa fayyadamaa barbaadame",
     "submitting": "Ergaa jira...",
     "registerGuestHouse": "Mana Keessummaa Galmeessi",
-    "reviewNotice": "Galmeen keessan osoo hin eegalin dura bulchaadhaan ni qoratama."
+    "reviewNotice": "Galmeen keessan osoo hin eegalin dura bulchaadhaan ni qoratama.",
+    "resetPassword": "Jecha Darbii Haaromsi"
   },
   "dashboard": {
     "errorLoadFailed": "Daashboordii fiduun hin milkoofne",
@@ -3178,7 +3179,8 @@
     "overlapError": "Guyyaawwan filataman qabamee jiru waliin wal-dabalu ({{from}} → {{to}}). Maaloo guyyaa biraa filadhaa.",
     "blockedByOverlap": "Guyyaawwan wal-dabalu",
     "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira",
-    "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne"
+    "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne",
+    "resetPassword": "Jecha Darbii Haaromsi"
   },
   "policeApp": {
     "appName": "GHMS Poolisii",
@@ -3197,7 +3199,8 @@
       "notPolice": "Appiin kun herrega poolisii qofaatiif.",
       "notPoliceTitle": "Seensi dhorkameera",
       "switchAccount": "Herrega jijjiiri",
-      "footerNote": "Haala kutaawwanii fi to'annaa amantaa herrega poolisiiramaaniif qofa. Seensi hundii galmeefama."
+      "footerNote": "Haala kutaawwanii fi to'annaa amantaa herrega poolisiiramaaniif qofa. Seensi hundii galmeefama.",
+      "resetPassword": "Jecha Darbii Haaromsi"
     },
     "nav": {
       "home": "Jalqaba",

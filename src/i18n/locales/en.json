@@ -316,7 +316,8 @@
     "desiredUsername": "Desired username",
     "submitting": "Submitting...",
     "registerGuestHouse": "Register Guest House",
-    "reviewNotice": "Your registration will be reviewed by an administrator before activation."
+    "reviewNotice": "Your registration will be reviewed by an administrator before activation.",
+    "resetPassword": "Reset Password"
   },
   "dashboard": {
     "errorLoadFailed": "Failed to load dashboard",
@@ -3179,7 +3180,8 @@
     "overlapError": "Those dates overlap an existing booking ({{from}} → {{to}}). Pick different dates.",
     "blockedByOverlap": "Dates conflict",
     "extendConflict": "Cannot extend — the room already has a booking for those dates",
-    "noMatchFound": "No rooms match the selected filters"
+    "noMatchFound": "No rooms match the selected filters",
+    "resetPassword": "Reset Password"
   },
   "policeApp": {
     "appName": "GHMS Police",
@@ -3198,7 +3200,8 @@
       "notPolice": "This app is for police accounts only.",
       "notPoliceTitle": "Access restricted",
       "switchAccount": "Switch account",
-      "footerNote": "Room availability and guest monitoring for authorized police personnel only. All access is logged and audited."
+      "footerNote": "Room availability and guest monitoring for authorized police personnel only. All access is logged and audited.",
+      "resetPassword": "Reset Password"
     },
     "nav": {
       "home": "Home",

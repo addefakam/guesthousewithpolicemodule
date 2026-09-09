@@ -771,3 +771,19 @@ model PoliceAlertConfig {
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 }
+
+// Password reset tokens — created when user requests reset, consumed on use.
+// Single-use, expire after 1 hour. Used by /api/auth/reset-request and
+// /api/auth/reset-confirm.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   // FK to User.id (not enforced at DB level to keep
+                    // migration simple — we add an index instead)
+  token     String   @unique // the random token in the reset link
+  expiresAt DateTime // now + 1 hour
+  usedAt    DateTime? // null until consumed
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}

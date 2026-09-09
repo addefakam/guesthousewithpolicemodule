@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Loader2, ShieldAlert, LogIn } from "lucide-react";
 import { apiAuth, apiLogout } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 
 /** Soft artistic backdrop shared by login / role-error states. */
 function AuroraBackdrop() {
@@ -32,6 +33,7 @@ export function PoliceLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
 
   function toggleLang() {
     const next = i18n.language === "en" ? "om" : "en";
@@ -184,7 +186,17 @@ export function PoliceLogin() {
         <p className="mt-6 max-w-sm text-center text-[11px] leading-relaxed text-slate-400">
           {t("login.footerNote")}
         </p>
+
+        <button
+          type="button"
+          onClick={() => setResetOpen(true)}
+          className="mt-4 text-center text-xs font-medium text-indigo-500 hover:text-indigo-600 active:text-indigo-700 transition-colors"
+        >
+          {t("login.resetPassword")}
+        </button>
       </div>
+
+      <ResetPasswordDialog open={resetOpen} onOpenChange={setResetOpen} variant="light" />
     </div>
   );
 }

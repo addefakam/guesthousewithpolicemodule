@@ -315,7 +315,8 @@
     "desiredUsername": "የሚፈልጉት የተጠቃሚ ስም",
     "submitting": "በማስገባት ላይ...",
     "registerGuestHouse": "የእንግዳ ማረፊያ ይመዝገቡ",
-    "reviewNotice": "ምዝገባዎ ከመጀመሩ በፊት በአስተዳዳሪ ይገመገማል።"
+    "reviewNotice": "ምዝገባዎ ከመጀመሩ በፊት በአስተዳዳሪ ይገመገማል።",
+    "resetPassword": "የይለፍ ቃል ዳግም አስጀምር"
   },
   "dashboard": {
     "errorLoadFailed": "ዳሽቦርድ መጫን አልተሳካም",
@@ -3178,7 +3179,8 @@
     "overlapError": "የመረጡት ቀናት ከነባር ቀጠሮ ጋር ይተሳሰራሉ ({{from}} → {{to}})። እባክዎ ሌሎች ቀናት ይምረጡ።",
     "blockedByOverlap": "ቀናት ይጋጭናሉ",
     "extendConflict": "ማራዘም አይቻልም — ክፍሉ ለእነዚህ ቀናት ቀጠሮ አለው",
-    "noMatchFound": "ከማጣሪያው ጋር የሚስማማ ክፍል አልተገኘም"
+    "noMatchFound": "ከማጣሪያው ጋር የሚስማማ ክፍል አልተገኘም",
+    "resetPassword": "የይለፍ ቃል ዳግም አስጀምር"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",
@@ -3197,7 +3199,8 @@
       "notPolice": "ይህ መተግበሪያ ለፖሊስ መለያዎች ብቻ ነው።",
       "notPoliceTitle": "መዳረሻ ታግዷል",
       "switchAccount": "መለያ ቀይር",
-      "footerNote": "የክፍሎች ዝግጁነትና የእንግዶች ቁጥጥር ለተፈቀደላቸው የፖሊስ ሰራተኞች ብቻ ነው። ሁሉም መዳረሻ ይመዘገባል።"
+      "footerNote": "የክፍሎች ዝግጁነትና የእንግዶች ቁጥጥር ለተፈቀደላቸው የፖሊስ ሰራተኞች ብቻ ነው። ሁሉም መዳረሻ ይመዘገባል።",
+      "resetPassword": "የይለፍ ቃል ዳግም አስጀምር"
     },
     "nav": {
       "home": "መነሻ",

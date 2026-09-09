@@ -55,6 +55,25 @@ export const apiLogout = async () => {
   }
 };
 
+// ── Password Reset ────────────────────────────────────────────────────
+// Public endpoints — no auth required.
+
+// Request a password reset link by email. Returns the reset URL + token
+// in the response (no SMTP integration yet — admin copies the link and
+// sends it to the user via SMS/WhatsApp).
+export const apiRequestReset = (email: string) =>
+  req("/api/auth/reset-request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+// Confirm a password reset by submitting the token + new password.
+export const apiConfirmReset = (token: string, password: string) =>
+  req("/api/auth/reset-confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+
 // ── Joint Session (Concurrent Dual Session) ──
 export const apiJointLogin = (data: { username: string; password: string }) =>
   req("/api/auth/joint-login", { method: "POST", body: JSON.stringify(data) });

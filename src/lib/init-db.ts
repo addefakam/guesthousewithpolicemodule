@@ -604,6 +604,19 @@ DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certNumber" TEXT; EXCEPTION WHEN 
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedAt" TIMESTAMP(3); EXCEPTION WHEN duplicate_column THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedBy" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "certIssuedByName" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+
+-- ─── PasswordResetToken table ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "token" TEXT NOT NULL,
+  "expiresAt" TIMESTAMP(3) NOT NULL,
+  "usedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResetToken_token_key" ON "PasswordResetToken" ("token");
+CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken" ("userId");
 `;
 
 // ─── Indexes ───────────────────────────────────────────────────────────────
