@@ -649,7 +649,11 @@ export default function MobileApp() {
     } finally { setSavingEdit(false); }
   };
 
-  const handleEarlyCheckout = async () => {
+  const handleEarlyCheckout = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Radix AlertDialogAction auto-closes on click. Prevent default so the
+    // dialog stays mounted while the async checkout runs.
+    e.preventDefault();
+    e.stopPropagation();
     if (!earlyCheckoutRes) return;
     try {
       setEarlyCheckingOut(true);
@@ -658,7 +662,9 @@ export default function MobileApp() {
       setShowEarlyCheckout(false); setEarlyCheckoutRes(null); setSelectedRoom(null);
       triggerRefresh(); await fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("toastFailedAction"));
+      const msg = err instanceof Error ? err.message : t("toastFailedAction");
+      toast.error(msg);
+      // Keep the dialog open on error so user can see + retry
     } finally { setEarlyCheckingOut(false); }
   };
 
@@ -1014,7 +1020,7 @@ export default function MobileApp() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={earlyCheckingOut}>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleEarlyCheckout} disabled={earlyCheckingOut}>
+            <AlertDialogAction type="button" className="bg-rose-600 hover:bg-rose-700" onClick={handleEarlyCheckout} disabled={earlyCheckingOut}>
               {earlyCheckingOut ? t("processing") : t("btnEarlyCheckout")}
             </AlertDialogAction>
           </AlertDialogFooter>
