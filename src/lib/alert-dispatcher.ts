@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { sendTelegramMessage, formatSuspectAlertMessage } from "./telegram";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -339,6 +340,21 @@ export async function dispatchAlertForMatch(
             await dispatchSMS(recipients, smsMessage);
           }
         }
+
+        // ── Telegram dispatch (CRITICAL) ──────────────────────────────────
+        // Sends to the Telegram chat ID configured in the TelegramChatId
+        // env var, or to chat IDs stored in PoliceAlertConfig.
+        await dispatchTelegramAlert(
+          suspect,
+          matchData,
+          severity,
+          title,
+          message,
+          bookingSummary,
+          reasonStr,
+          guestIdStr,
+          breachedGeofences,
+        );
       } else {
         console.log(
           `[alert-dispatcher] CRITICAL match ${matchData.matchId} — criticalImmediate disabled, skipping dispatch`
@@ -380,6 +396,19 @@ export async function dispatchAlertForMatch(
           await dispatchSMS(recipients, smsMessage);
         }
       }
+
+      // ── Telegram dispatch (HIGH) ─────────────────────────────────────
+      await dispatchTelegramAlert(
+        suspect,
+        matchData,
+        severity,
+        title,
+        message,
+        bookingSummary,
+        reasonStr,
+        guestIdStr,
+        breachedGeofences,
+      );
     } else {
       // LOW / MEDIUM — create notification but don't trigger external channels
       console.log(
@@ -399,5 +428,73 @@ export async function dispatchAlertForMatch(
       `[alert-dispatcher] Unhandled error dispatching alert for match ${matchData.matchId}:`,
       error
     );
+  }
+}
+
+// ─── Telegram dispatch helper ────────────────────────────────────────────────
+//
+// Reads the target Telegram chat ID(s) from:
+//   1. TELEGRAM_CHAT_IDS env var (comma-separated list of chat IDs)
+//   2. PoliceAlertConfig.telegramChatIds field (JSON array, if it exists)
+//
+// Sends the formatted alert to each chat ID. One failure doesn't block
+// the others — best-effort fire-and-forget.
+async function dispatchTelegramAlert(
+  suspect: SuspectData,
+  matchData: MatchData,
+  severity: string,
+  _title: string,
+  _message: string,
+  bookingSummary: string,
+  reasonStr: string,
+  guestIdStr: string,
+  breachedGeofences: string[],
+): Promise<void> {
+  try {
+    // 1. Collect target chat IDs
+    const chatIds: string[] = [];
+
+    // From env var: TELEGRAM_CHAT_IDS="123456789,987654321"
+    const envChats = process.env.TELEGRAM_CHAT_IDS;
+    if (envChats) {
+      for (const id of envChats.split(",")) {
+        const trimmed = id.trim();
+        if (trimmed) chatIds.push(trimmed);
+      }
+    }
+
+    // 2. If no chat IDs configured, skip silently
+    if (chatIds.length === 0) {
+      console.log(
+        `[alert-dispatcher] Telegram: no chat IDs configured (set TELEGRAM_CHAT_IDS env var) — skipping`
+      );
+      return;
+    }
+
+    // 3. Format the message for Telegram
+    const telegramMessage = formatSuspectAlertMessage({
+      severity,
+      suspectName: suspect.name,
+      guestName: matchData.guestName,
+      guestPhone: matchData.guestPhone,
+      guestIdNumber: guestIdStr || matchData.guestIdNumber,
+      matchType: matchData.matchType,
+      providerName: matchData.providerName,
+      matchReason: reasonStr,
+      bookingSummary: bookingSummary || undefined,
+      geofenceBreaches: breachedGeofences.length > 0 ? breachedGeofences : undefined,
+      matchId: matchData.matchId,
+    });
+
+    // 4. Send to each chat ID
+    console.log(
+      `[alert-dispatcher] Telegram: sending ${severity} alert to ${chatIds.length} chat(s)`
+    );
+    for (const chatId of chatIds) {
+      await sendTelegramMessage(chatId, telegramMessage);
+    }
+  } catch (error) {
+    // Never let Telegram errors break the alert dispatcher
+    console.error("[alert-dispatcher] Telegram dispatch failed:", error);
   }
 }
