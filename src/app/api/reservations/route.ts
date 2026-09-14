@@ -83,7 +83,16 @@ export async function POST(req: NextRequest) {
     checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
 
     const body = await req.json();
-    const { guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount, paymentMethod, notes, groupBookingId, secondGuestName, secondGuestPhone, secondGuestIdNumber, exceptionallyReserved, exceptionReason } = body;
+    const {
+      guestId, roomId, checkIn, checkOut, roomRate, taxAmount, discountAmount,
+      paymentMethod, notes, groupBookingId,
+      secondGuestName, secondGuestPhone, secondGuestIdNumber,
+      exceptionallyReserved, exceptionReason,
+      // Family Room: array of companions (family members, security, servants)
+      // Each has: { name, idNumber, idType, phone, nationality, role }
+      // role is one of: 'FAMILY' | 'SECURITY' | 'SERVANT'
+      companions,
+    } = body;
 
     if (!guestId || !roomId || !checkIn || !checkOut) {
       return NextResponse.json({ error: "guestId, roomId, checkIn, and checkOut are required" }, { status: 400 });
@@ -196,6 +205,32 @@ export async function POST(req: NextRequest) {
     });
 
     // Room stays AVAILABLE until check-in date — status will be updated by checkin API
+
+    // ── Family Room: create Guest records for each companion ───────────
+    // Each companion is created as a separate Guest linked to the leader
+    // (the reservation's primary guest) via familyLeaderId, with role
+    // indicating their relationship (FAMILY / SECURITY / SERVANT).
+    // The leader's own Guest record should already have role='LEADER' set
+    // by the mobile app at creation time.
+    if (Array.isArray(companions) && companions.length > 0) {
+      await db.$transaction(
+        companions.map((c: { name?: string; idNumber?: string; idType?: string; phone?: string; nationality?: string; role?: string }) =>
+          db.guest.create({
+            data: {
+              name: String(c.name || "").trim(),
+              phone: String(c.phone || "").trim(),
+              idNumber: String(c.idNumber || "").trim(),
+              idType: String(c.idType || "NATIONAL_ID"),
+              nationality: String(c.nationality || "").trim(),
+              // Link this companion to the family leader (the reservation's guest)
+              familyLeaderId: guestId,
+              role: String(c.role || "FAMILY"),
+              providerId: providerId!,
+            },
+          }),
+        );
+      );
+    }
 
     // Background: check if guest matches any suspected person (fire-and-forget)
     checkSuspectMatch({

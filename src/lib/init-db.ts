@@ -617,6 +617,28 @@ CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResetToken_token_key" ON "PasswordResetToken" ("token");
 CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken" ("userId");
+
+-- ─── Family Room: add FAMILY to RoomType enum ──────────────────────
+-- Postgres enums: ALTER TYPE ADD VALUE is idempotent-ish — but it can't
+-- run inside a transaction. Since init-db.ts runs each statement via
+-- execViaPrisma (which wraps in a transaction), we use a DO block that
+-- checks the pg_enum catalog first.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum
+    WHERE enumlabel = 'FAMILY'
+      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'RoomType')
+  ) THEN
+    ALTER TYPE "RoomType" ADD VALUE 'FAMILY';
+  END IF;
+END $$;
+
+-- ─── Family Room: add role + familyLeaderId columns to Guest ────────
+DO $$ BEGIN ALTER TABLE "Guest" ADD COLUMN "role" TEXT NOT NULL DEFAULT ''; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Guest" ADD COLUMN "familyLeaderId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+CREATE INDEX IF NOT EXISTS "Guest_familyLeaderId_idx" ON "Guest" ("familyLeaderId");
+CREATE INDEX IF NOT EXISTS "Guest_role_idx" ON "Guest" ("role");
 `;
 
 // ─── Indexes ───────────────────────────────────────────────────────────────
