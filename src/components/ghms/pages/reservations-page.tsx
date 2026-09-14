@@ -523,7 +523,7 @@ export default function ReservationsPage() {
     // ── All validation passed — now make API calls ──
 
     // Family Room gate: if the selected room is FAMILY, require companions
-    const selRoom = allRooms.find((r) => r.id === createForm.roomId);
+    // (selRoom is already defined above at line 493)
     if (selRoom?.type === "FAMILY" && familyCompanions.length === 0) {
       setShowFamilyForm(true);
       return;
