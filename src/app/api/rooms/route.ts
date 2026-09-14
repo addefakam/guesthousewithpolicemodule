@@ -150,20 +150,63 @@ export async function POST(req: NextRequest) {
       await ensureRoomTypeFAMILY();
     }
 
-    const room = await db.room.create({
-      data: {
-        number,
-        name: name || `Room ${number}`,   // auto-generate name if omitted
-        type,
-        pricePerNight: Number(pricePerNight),
-        floor: Number(floor),
-        capacity: Number(capacity),
-        amenities: amenities || "[]",
-        description: description || "",
-        image: image || null,
-        providerId: auth.providerId,
-      },
-    });
+    let room;
+
+    // Try to create the room. If it fails with the enum error (22P02),
+    // it means the FAMILY enum value was just added but the current
+    // Prisma connection doesn't see it yet (PostgreSQL caches prepared
+    // statements per-connection). We add the enum value explicitly
+    // and retry with a fresh PrismaClient instance.
+    try {
+      room = await db.room.create({
+        data: {
+          number,
+          name: name || `Room ${number}`,
+          type,
+          pricePerNight: Number(pricePerNight),
+          floor: Number(floor),
+          capacity: Number(capacity),
+          amenities: amenities || "[]",
+          description: description || "",
+          image: image || null,
+          providerId: auth.providerId,
+        },
+      });
+    } catch (createErr: unknown) {
+      const errMsg = createErr instanceof Error ? createErr.message : String(createErr);
+
+      // If it's the enum error, try to add the value and retry with a new connection
+      if (errMsg.includes("22P02") || errMsg.includes("invalid input value for enum")) {
+        console.log("[rooms] Enum error — adding FAMILY to RoomType and retrying with fresh connection");
+
+        // Force-add the enum value (this works even if already present due to IF NOT EXISTS)
+        const { Prisma, PrismaClient } = await import("@prisma/client");
+        const freshClient = new PrismaClient();
+        try {
+          await freshClient.$executeRawUnsafe(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
+          // Use the fresh client (which sees the new enum value) to create the room
+          room = await freshClient.room.create({
+            data: {
+              number,
+              name: name || `Room ${number}`,
+              type,
+              pricePerNight: Number(pricePerNight),
+              floor: Number(floor),
+              capacity: Number(capacity),
+              amenities: amenities || "[]",
+              description: description || "",
+              image: image || null,
+              providerId: auth.providerId,
+            },
+          });
+          console.log("[rooms] Retry succeeded — FAMILY room created");
+        } finally {
+          await freshClient.$disconnect();
+        }
+      } else {
+        throw createErr; // Re-throw if it's a different error
+      }
+    }
 
     return NextResponse.json({ room }, { status: 201 });
   } catch (error: unknown) {
