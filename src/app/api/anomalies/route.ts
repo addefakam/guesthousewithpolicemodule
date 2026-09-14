@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
           WHERE ($1 = '' OR "type" = $1)
             AND ($2 = '' OR "severity" = $2)
             AND ($3::boolean IS NULL OR "isReviewed" = $3)
-          ORDER BY "riskScore" DESC, "createdAt" DESC
+          ORDER BY "createdAt" DESC
           LIMIT $4 OFFSET $5`,
         type, severity, reviewed ? reviewedBool : null, pageSize, offset
       ),
