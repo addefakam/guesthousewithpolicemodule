@@ -681,7 +681,7 @@
     "menuToggleAvailability": "Toggle Availability",
     "btnReserve": "Reserve",
     "btnManageReservations": "Manage Reservations",
-    "importTypeHint": "type must be one of: SINGLE, DOUBLE, TWIN, SUITE, DELUXE",
+    "importTypeHint": "type must be one of: SINGLE, DOUBLE, TWIN, SUITE, DELUXE, FAMILY",
     "importAmenitiesHint": "amenities — comma-separated, e.g. WiFi, TV, AC",
     "importFileSelected": "Selected: {{name}} ({{size}} KB)",
     "importCreated": "Created",

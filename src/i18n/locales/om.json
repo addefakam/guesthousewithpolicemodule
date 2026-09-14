@@ -680,7 +680,7 @@
     "menuToggleAvailability": "Ashaaraa Jijjiiri",
     "btnReserve": "Qabannaa",
     "btnManageReservations": "Qabannoota Bulchi",
-    "importTypeHint": "gosa SINGLE, DOUBLE, TWIN, SUITE, DELUXE keessaa tokko ta'uu qabu",
+    "importTypeHint": "gosa SINGLE, DOUBLE, TWIN, SUITE, DELUXE, FAMILY keessaa tokko ta'uu qabu",
     "importAmenitiesHint": "tajaajiloota — komaa hedhun, fkn WiFi, TV, AC",
     "importFileSelected": "Filame: {{name}} ({{size}} KB)",
     "importCreated": "Uumameera",

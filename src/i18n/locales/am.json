@@ -680,7 +680,7 @@
     "menuToggleAvailability": "አገልግሎት ቀይር",
     "btnReserve": "አስያዝ",
     "btnManageReservations": "ቦታዎችን ያስተዳድሩ",
-    "importTypeHint": "ዓይነቱ SINGLE, DOUBLE, TWIN, SUITE, DELUXE አንዱ መሆን አለበት",
+    "importTypeHint": "ዓይነቱ SINGLE, DOUBLE, TWIN, SUITE, DELUXE, FAMILY አንዱ መሆን አለበት",
     "importAmenitiesHint": "አመላካቾች — በኮማ የተለየ፣ ለምሳሌ WiFi, TV, AC",
     "importFileSelected": "የተመረጠ: {{name}} ({{size}} KB)",
     "importCreated": "የተፈጠረ",
