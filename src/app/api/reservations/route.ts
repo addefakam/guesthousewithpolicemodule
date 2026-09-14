@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
               providerId: providerId!,
             },
           }),
-        );
+        ),
       );
     }
 
