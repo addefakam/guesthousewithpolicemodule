@@ -2322,7 +2322,7 @@
     "pageTitle": "የጥፋት ሰዎች",
     "pageSubtitle": "የተጠራጠሩ ሰዎችን መመዝገብ እና አስተዳደር",
     "searchPlaceholder": "ስም, ስልክ, መለያ ፈልግ...",
-    "personsRegistered": "{{count}} person{{count !== 1 ? 's' : ''}} registered",
+    "personsRegistered": "{{count}} ሰዎች ተመዝግበዋል",
     "noMatchesFound": "ግኝት አልተገኘም",
     "noneRegisteredYet": "እስካሁን የጥፋት ሰው የተመዘገበ የለም",
     "addPersonHint": "ለመከታተል ሰዎች ያክሉ — ስርዓቱ ምርመራ ሲያደርጉ ማንቂ ይሰጥልዎታል",

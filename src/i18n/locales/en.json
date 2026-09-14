@@ -2323,7 +2323,7 @@
     "pageTitle": "Suspected Persons",
     "pageSubtitle": "Register and manage persons of interest",
     "searchPlaceholder": "Search name, phone, ID...",
-    "personsRegistered": "{{count}} person{{count !== 1 ? 's' : ''}} registered",
+    "personsRegistered": "{{count}} persons registered",
     "noMatchesFound": "No matches found",
     "noneRegisteredYet": "No suspected persons registered yet",
     "addPersonHint": "Add persons to monitor — system will alert when they make reservations",

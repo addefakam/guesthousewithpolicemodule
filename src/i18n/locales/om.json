@@ -2322,7 +2322,7 @@
     "pageTitle": "Qofota Boruu",
     "pageSubtitle": "Qofota yaalaa galmeessaa fi gargaaruu",
     "searchPlaceholder": "Maqaa, bilbila, ID barbaadi...",
-    "personsRegistered": "{{count}} person{{count !== 1 ? 's' : ''}} registered",
+    "personsRegistered": "{{count}} namaa galmeeffameera",
     "noMatchesFound": "Walsimsiisuu hin argamne",
     "noneRegisteredYet": "Qof boruu galmeessan hin jiru",
     "addPersonHint": "Qofota adda qabadhuuf dabaluu — sirriin yoo qabiyyee galmeessan beeksisa",
