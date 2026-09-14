@@ -764,7 +764,8 @@
     "tooltipReservedFrom": "Kan:",
     "tooltipReservedTo": "Hanga:",
     "toastRoomOccupied": "Kunoo {{number}} {{guest}} irraa {{from}} hanga {{to}}tti qabameera",
-    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne"
+    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne",
+    "roomTypeFAMILY": "Mana Maatii"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",

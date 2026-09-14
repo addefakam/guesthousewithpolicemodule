@@ -764,7 +764,8 @@
     "tooltipReservedFrom": "ከ:",
     "tooltipReservedTo": "እስከ:",
     "toastRoomOccupied": "ክፍል {{number}} በ{{guest}} ከ{{from}} እስከ {{to}} ድረስ ተይዟል",
-    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም"
+    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም",
+    "roomTypeFAMILY": "የቤተሰብ ክፍል"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",

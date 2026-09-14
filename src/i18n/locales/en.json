@@ -765,7 +765,8 @@
     "tooltipReservedFrom": "From:",
     "tooltipReservedTo": "To:",
     "toastRoomOccupied": "Room {{number}} is occupied by {{guest}} from {{from}} to {{to}}",
-    "toastRoomNotAvailable": "Room {{number}} is not available for reservation"
+    "toastRoomNotAvailable": "Room {{number}} is not available for reservation",
+    "roomTypeFAMILY": "Family Room"
   },
   "guests": {
     "pageTitle": "Guest Directory",

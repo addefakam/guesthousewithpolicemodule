@@ -132,7 +132,7 @@ interface RoomReservation {
   roomId?: string;
 }
 
-const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
+const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE", "FAMILY"] as const;
 
 const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   SINGLE: <BedSingle className="h-4 w-4" />,
@@ -140,6 +140,7 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   TWIN: <Hotel className="h-4 w-4" />,
   SUITE: <Crown className="h-4 w-4" />,
   DELUXE: <Star className="h-4 w-4" />,
+  FAMILY: <Users className="h-4 w-4" />,
 };
 
 const ROOM_TYPE_COLORS: Record<string, string> = {
@@ -148,6 +149,7 @@ const ROOM_TYPE_COLORS: Record<string, string> = {
   TWIN: "bg-teal-50 text-teal-700 border-teal-200",
   SUITE: "bg-amber-50 text-amber-700 border-amber-200",
   DELUXE: "bg-rose-50 text-rose-700 border-rose-200",
+  FAMILY: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
 const STATUS_STYLES: Record<string, string> = {
