@@ -1622,7 +1622,7 @@ export default function ReservationsPage() {
         leaderName={
           guestMode === "new"
             ? newGuestForm.name
-            : guestOptions.find((g) => g.id === selectedGuestId)?.name || ""
+            : allGuests.find((g) => g.id === selectedGuestId)?.name || ""
         }
         onConfirm={(companions) => {
           setFamilyCompanions(companions);
