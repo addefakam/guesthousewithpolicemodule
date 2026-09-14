@@ -930,7 +930,10 @@
     "calendarPickRoom": "ክፍል ይምረጡ።",
     "calendarNoBookings": "ለዚህ ክፍል የመጡ ቀጠሮዎች የሉም — ሙሉ በሙሉ ክፍት ነው።",
     "calendarLegendOccupied": "የተያዘ ሌሊት (ማጫን አይቻልም)",
-    "calendarLegendTurnover": "የመውጫ ቀን — ለአዲስ መግቢያ ክፍት ነው"
+    "calendarLegendTurnover": "የመውጫ ቀን — ለአዲስ መግቢያ ክፍት ነው",
+    "familyRoomTitle": "የቤተሰብ ቀጠሮ",
+    "familyRoomSummary": "መሪ + {{total}} አብረዋቸው የሚጓዙ ({{family}} ቤተሰብ፣ {{security}} ጥበቃ፣ {{servant}} አገልጋዮች፣ {{driver}} አሽከርካሪዎች)",
+    "editCompanions": "አስተካክል"
   },
   "reports": {
     "pageTitle": "ሪፖርቶች እና ትንታኔዎች",
@@ -3199,11 +3202,13 @@
     "companionPhone": "ስልክ (አማራጭ)",
     "companionNationality": "ዜግነት",
     "companionRequired": "ለቤተሰብ ክፍል ቀጠሮ ቢያንስ አንድ አብረዋቸው የሚጓዝ ሰው መመዝገብ ያስፈልጋል።",
-    "familyRoomSummary": "መሪ + {{total}} አብረዋቸው የሚጓዙ ({{family}} ቤተሰብ፣ {{security}} ጥበቃ፣ {{servant}} አገልጋዮች)",
+    "familyRoomSummary": "መሪ + {{total}} አብረዋቸው የሚጓዙ ({{family}} ቤተሰብ፣ {{security}} ጥበቃ፣ {{servant}} አገልጋዮች፣ {{driver}} አሽከርካሪዎች)",
     "addCompanions": "አብረዋቸው የሚጓዙን ያክሉ",
     "reviewCompanions": "አብረዋቸው የሚጓዙን ያረጋግጡ",
     "editCompanions": "አስተካክል",
-    "companion": "አብረዋቸው የሚጓዝ {{i}}"
+    "companion": "አብረዋቸው የሚጓዝ {{i}}",
+    "numDriver": "የአሽከርካሪዎች ብዛት",
+    "roleDRIVER": "አሽከርካሪ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

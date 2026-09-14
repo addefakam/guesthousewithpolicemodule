@@ -930,7 +930,10 @@
     "calendarPickRoom": "Kutaa filadhu",
     "calendarNoBookings": "Qabdameewwan gargatteera kan kutaa kanaa hin jiru — guutummaatti ni bana.",
     "calendarLegendOccupied": "Halkan qabame (cuqaasuu hin danda'amu)",
-    "calendarLegendTurnover": "Guyyaa ba'ii — seenuu haaraaaf ni bana"
+    "calendarLegendTurnover": "Guyyaa ba'ii — seenuu haaraaaf ni bana",
+    "familyRoomTitle": "Qabiyyee Maatii",
+    "familyRoomSummary": "Bulaa + {{total}} waliin deeman ({{family}} maatii, {{security}} eegumsa, {{servant}} tajaajilaa, {{driver}} konkolaachisaa)",
+    "editCompanions": "Gulaali"
   },
   "reports": {
     "pageTitle": "Gabaasaa fi Qorannoo",
@@ -3199,11 +3202,13 @@
     "companionPhone": "Bilbila (filata)",
     "companionNationality": "Lammummaa",
     "companionRequired": "Qabiyyee mana maatii qabuuf ohoowwan xiqqaan tokko waliin deemu galmeessuu qabda.",
-    "familyRoomSummary": "Bulaa + {{total}} waliin deeman ({{family}} maatii, {{security}} eegumsa, {{servant}} tajaajilaa)",
+    "familyRoomSummary": "Bulaa + {{total}} waliin deeman ({{family}} maatii, {{security}} eegumsa, {{servant}} tajaajilaa, {{driver}} konkolaachisaa)",
     "addCompanions": "Waliin deeman dabi",
     "reviewCompanions": "Waliin deeman mirkaneessi",
     "editCompanions": "Gulaali",
-    "companion": "Waliin deemuu {{i}}"
+    "companion": "Waliin deemuu {{i}}",
+    "numDriver": "Lakkoofsa konkolaachisaa",
+    "roleDRIVER": "Konkolaachisaa"
   },
   "policeApp": {
     "appName": "GHMS Poolisii",

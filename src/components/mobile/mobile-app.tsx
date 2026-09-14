@@ -907,6 +907,7 @@ export default function MobileApp() {
                   family: familyCompanions.filter((c) => c.role === "FAMILY").length,
                   security: familyCompanions.filter((c) => c.role === "SECURITY").length,
                   servant: familyCompanions.filter((c) => c.role === "SERVANT").length,
+                  driver: familyCompanions.filter((c) => c.role === "DRIVER").length,
                 })}
               </p>
               <button

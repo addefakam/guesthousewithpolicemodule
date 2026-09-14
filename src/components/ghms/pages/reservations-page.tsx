@@ -94,6 +94,8 @@ import {
   CalendarPlus,
   Pencil,
 } from "lucide-react";
+
+import { FamilyCompanionForm, type Companion } from "@/components/mobile/family-companion-form";
 import AddressFields from "@/components/shared/address-fields";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 
@@ -224,6 +226,9 @@ export default function ReservationsPage() {
   });
   const [creating, setCreating] = useState(false);
 
+  // Family Room: companions state + family form visibility
+  const [familyCompanions, setFamilyCompanions] = useState<Companion[]>([]);
+  const [showFamilyForm, setShowFamilyForm] = useState(false);
 
   // Payment dialog
   const [paymentDialog, setPaymentDialog] = useState<Reservation | null>(null);
@@ -516,14 +521,36 @@ export default function ReservationsPage() {
     }
 
     // ── All validation passed — now make API calls ──
+
+    // Family Room gate: if the selected room is FAMILY, require companions
+    const selRoom = allRooms.find((r) => r.id === createForm.roomId);
+    if (selRoom?.type === "FAMILY" && familyCompanions.length === 0) {
+      setShowFamilyForm(true);
+      return;
+    }
+
     try {
       setCreating(true);
 
       // Determine guestId: use existing or create new
       let guestId = selectedGuestId;
       if (guestMode === "new") {
-        const created = await apiCreateGuest(newGuestForm);
+        const created = await apiCreateGuest({
+          ...newGuestForm,
+          // Mark as LEADER if this is a FAMILY room reservation
+          role: selRoom?.type === "FAMILY" ? "LEADER" : undefined,
+        });
         guestId = created.id;
+      } else if (selRoom?.type === "FAMILY" && guestId) {
+        // Existing guest as leader — best-effort role update
+        try {
+          await fetch(`/api/guests/${guestId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ role: "LEADER" }),
+          });
+        } catch { /* non-blocking */ }
       }
 
       if (!guestId) {
@@ -542,10 +569,13 @@ export default function ReservationsPage() {
         secondGuestIdNumber: createForm.secondGuestIdNumber,
         exceptionallyReserved: createForm.exceptionallyReserved,
         exceptionReason: createForm.exceptionReason,
+        // Family Room: pass companions to the API
+        companions: selRoom?.type === "FAMILY" ? familyCompanions : undefined,
       });
 
       toast.success("Guest and reservation created successfully");
       closeCreateDialog();
+      setFamilyCompanions([]);
       triggerRefresh();
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : "Failed to create reservation";
@@ -579,6 +609,7 @@ export default function ReservationsPage() {
     setSelectedGuestId("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
+    setFamilyCompanions([]);
   };
 
   const handleAction = async () => {
@@ -1558,8 +1589,47 @@ export default function ReservationsPage() {
               </>
             )}
           </DialogFooter>
+
+          {/* Family Room companion summary — shown after companions are entered */}
+          {familyCompanions.length > 0 && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+              <p className="font-semibold mb-1">{t("familyRoomTitle")}</p>
+              <p>
+                {t("familyRoomSummary", {
+                  total: familyCompanions.length,
+                  family: familyCompanions.filter((c) => c.role === "FAMILY").length,
+                  security: familyCompanions.filter((c) => c.role === "SECURITY").length,
+                  servant: familyCompanions.filter((c) => c.role === "SERVANT").length,
+                  driver: familyCompanions.filter((c) => c.role === "DRIVER").length,
+                })}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowFamilyForm(true)}
+                className="mt-1 text-emerald-700 underline"
+              >
+                {t("editCompanions")}
+              </button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Family Companion Form — shown when reserving a FAMILY room */}
+      <FamilyCompanionForm
+        open={showFamilyForm}
+        onOpenChange={setShowFamilyForm}
+        leaderName={
+          guestMode === "new"
+            ? newGuestForm.name
+            : guestOptions.find((g) => g.id === selectedGuestId)?.name || ""
+        }
+        onConfirm={(companions) => {
+          setFamilyCompanions(companions);
+          setShowFamilyForm(false);
+          toast.success(`${companions.length} companions recorded`);
+        }}
+      />
 
       {/* Action Confirmation Dialog (Check-in / Check-out / Cancel) */}
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>

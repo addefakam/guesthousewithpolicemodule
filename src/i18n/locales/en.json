@@ -931,7 +931,10 @@
     "calendarPickRoom": "Select a room to see its availability",
     "calendarNoBookings": "No upcoming bookings for this room — fully open.",
     "calendarLegendOccupied": "Occupied night (not clickable)",
-    "calendarLegendTurnover": "Checkout day — open for a new arrival"
+    "calendarLegendTurnover": "Checkout day — open for a new arrival",
+    "familyRoomTitle": "Family Reservation",
+    "familyRoomSummary": "Leader + {{total}} companions ({{family}} family, {{security}} security, {{servant}} servants, {{driver}} drivers)",
+    "editCompanions": "Edit"
   },
   "reports": {
     "pageTitle": "Reports & Analytics",
@@ -3200,11 +3203,13 @@
     "companionPhone": "Phone (optional)",
     "companionNationality": "Nationality",
     "companionRequired": "At least one companion is required for a Family Room reservation.",
-    "familyRoomSummary": "Leader + {{total}} companions ({{family}} family, {{security}} security, {{servant}} servants)",
+    "familyRoomSummary": "Leader + {{total}} companions ({{family}} family, {{security}} security, {{servant}} servants, {{driver}} drivers)",
     "addCompanions": "Add companions",
     "reviewCompanions": "Review companions",
     "editCompanions": "Edit",
-    "companion": "Companion {{i}}"
+    "companion": "Companion {{i}}",
+    "numDriver": "Number of drivers",
+    "roleDRIVER": "Driver"
   },
   "policeApp": {
     "appName": "GHMS Police",

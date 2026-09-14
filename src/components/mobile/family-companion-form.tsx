@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Shield, UserCog, User, Crown, Plus, Trash2, AlertCircle } from "lucide-react";
+import { Users, Shield, UserCog, User, Crown, Car, Plus, Trash2, AlertCircle } from "lucide-react";
 
 /**
  * Companion — a single person traveling with the family leader.
@@ -32,7 +32,7 @@ export interface Companion {
   idType: string;
   phone: string;
   nationality: string;
-  role: "FAMILY" | "SECURITY" | "SERVANT";
+  role: "FAMILY" | "SECURITY" | "SERVANT" | "DRIVER";
 }
 
 /**
@@ -70,6 +70,7 @@ export function FamilyCompanionForm({
   const [numFamily, setNumFamily] = useState("0");
   const [numSecurity, setNumSecurity] = useState("0");
   const [numServant, setNumServant] = useState("0");
+  const [numDriver, setNumDriver] = useState("0");
   const [step, setStep] = useState<1 | 2>(1);
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +79,10 @@ export function FamilyCompanionForm({
     return (
       (parseInt(numFamily, 10) || 0) +
       (parseInt(numSecurity, 10) || 0) +
-      (parseInt(numServant, 10) || 0)
+      (parseInt(numServant, 10) || 0) +
+      (parseInt(numDriver, 10) || 0)
     );
-  }, [numFamily, numSecurity, numServant]);
+  }, [numFamily, numSecurity, numServant, numDriver]);
 
   // Generate companion slots when moving from step 1 → step 2
   const handleProceed = () => {
@@ -98,6 +100,9 @@ export function FamilyCompanionForm({
     }
     for (let i = 0; i < (parseInt(numServant, 10) || 0); i++) {
       slots.push({ name: "", idNumber: "", idType: "NATIONAL_ID", phone: "", nationality: "", role: "SERVANT" });
+    }
+    for (let i = 0; i < (parseInt(numDriver, 10) || 0); i++) {
+      slots.push({ name: "", idNumber: "", idType: "NATIONAL_ID", phone: "", nationality: "", role: "DRIVER" });
     }
     setCompanions(slots);
     setStep(2);
@@ -126,6 +131,7 @@ export function FamilyCompanionForm({
     setNumFamily("0");
     setNumSecurity("0");
     setNumServant("0");
+    setNumDriver("0");
     setCompanions([]);
     setError(null);
   };
@@ -135,6 +141,7 @@ export function FamilyCompanionForm({
     setNumFamily("0");
     setNumSecurity("0");
     setNumServant("0");
+    setNumDriver("0");
     setCompanions([]);
     setError(null);
     onOpenChange(false);
@@ -210,6 +217,19 @@ export function FamilyCompanionForm({
                   className="mt-1.5 h-11"
                 />
               </div>
+              <div>
+                <Label className="text-xs font-medium text-slate-500">
+                  {t("numDriver")}
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={numDriver}
+                  onChange={(e) => setNumDriver(e.target.value)}
+                  className="mt-1.5 h-11"
+                />
+              </div>
             </div>
 
             {/* Summary */}
@@ -220,6 +240,7 @@ export function FamilyCompanionForm({
                   family: parseInt(numFamily, 10) || 0,
                   security: parseInt(numSecurity, 10) || 0,
                   servant: parseInt(numServant, 10) || 0,
+                  driver: parseInt(numDriver, 10) || 0,
                 })}
               </div>
             )}
@@ -315,12 +336,14 @@ function CompanionCard({
     FAMILY: <User className="h-3.5 w-3.5" />,
     SECURITY: <Shield className="h-3.5 w-3.5" />,
     SERVANT: <UserCog className="h-3.5 w-3.5" />,
+    DRIVER: <Car className="h-3.5 w-3.5" />,
   }[companion.role];
 
   const roleColor = {
     FAMILY: "bg-emerald-100 text-emerald-700 border-emerald-200",
     SECURITY: "bg-rose-100 text-rose-700 border-rose-200",
     SERVANT: "bg-amber-100 text-amber-700 border-amber-200",
+    DRIVER: "bg-sky-100 text-sky-700 border-sky-200",
   }[companion.role];
 
   return (
