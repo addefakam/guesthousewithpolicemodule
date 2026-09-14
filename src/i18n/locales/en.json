@@ -766,7 +766,7 @@
     "tooltipReservedTo": "To:",
     "toastRoomOccupied": "Room {{number}} is occupied by {{guest}} from {{from}} to {{to}}",
     "toastRoomNotAvailable": "Room {{number}} is not available for reservation",
-    "roomTypeFAMILY": "Family Room"
+    "roomTypeFamily": "Family Room"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -3186,7 +3186,6 @@
     "extendConflict": "Cannot extend — the room already has a booking for those dates",
     "noMatchFound": "No rooms match the selected filters",
     "resetPassword": "Reset Password",
-    "roomTypeFAMILY": "Family Room",
     "familyRoomTitle": "Family Reservation",
     "familyRoomDesc": "This is a Family Room. Record the family leader and all companions (family members, security, servants).",
     "familyLeader": "Family Leader",
@@ -3210,7 +3209,8 @@
     "editCompanions": "Edit",
     "companion": "Companion {{i}}",
     "numDriver": "Number of drivers",
-    "roleDRIVER": "Driver"
+    "roleDRIVER": "Driver",
+    "roomTypeFamily": "Family Room"
   },
   "policeApp": {
     "appName": "GHMS Police",

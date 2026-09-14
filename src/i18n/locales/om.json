@@ -765,7 +765,7 @@
     "tooltipReservedTo": "Hanga:",
     "toastRoomOccupied": "Kunoo {{number}} {{guest}} irraa {{from}} hanga {{to}}tti qabameera",
     "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne",
-    "roomTypeFAMILY": "Mana Maatii"
+    "roomTypeFamily": "Mana Maatii"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -3185,7 +3185,6 @@
     "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira",
     "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne",
     "resetPassword": "Jecha Darbii Haaromsi",
-    "roomTypeFAMILY": "Mana Maatii",
     "familyRoomTitle": "Qabiyyee Maatii",
     "familyRoomDesc": "Kun mana maatii dha. Bulaa maatiifi hunda waliin deeman (maatii, eegumsa, tajaajiltootaa) galmeessi.",
     "familyLeader": "Bulaa Maatii",
@@ -3209,7 +3208,8 @@
     "editCompanions": "Gulaali",
     "companion": "Waliin deemuu {{i}}",
     "numDriver": "Lakkoofsa konkolaachisaa",
-    "roleDRIVER": "Konkolaachisaa"
+    "roleDRIVER": "Konkolaachisaa",
+    "roomTypeFamily": "Mana Maatii"
   },
   "policeApp": {
     "appName": "GHMS Poolisii",

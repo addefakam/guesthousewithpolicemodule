@@ -765,7 +765,7 @@
     "tooltipReservedTo": "እስከ:",
     "toastRoomOccupied": "ክፍል {{number}} በ{{guest}} ከ{{from}} እስከ {{to}} ድረስ ተይዟል",
     "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም",
-    "roomTypeFAMILY": "የቤተሰብ ክፍል"
+    "roomTypeFamily": "የቤተሰብ ክፍል"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -3185,7 +3185,6 @@
     "extendConflict": "ማራዘም አይቻልም — ክፍሉ ለእነዚህ ቀናት ቀጠሮ አለው",
     "noMatchFound": "ከማጣሪያው ጋር የሚስማማ ክፍል አልተገኘም",
     "resetPassword": "የይለፍ ቃል ዳግም አስጀምር",
-    "roomTypeFAMILY": "የቤተሰብ ክፍል",
     "familyRoomTitle": "የቤተሰብ ቀጠሮ",
     "familyRoomDesc": "ይህ የቤተሰብ ክፍል ነው። የቤተሰቡን መሪ እና ሁሉንም አብረዋቸው የሚጓዙ ሰዎች (የቤተሰብ አባላት፣ ጥበቃ፣ አገልጋዮች) መዝግቡ።",
     "familyLeader": "የቤተሰብ መሪ",
@@ -3209,7 +3208,8 @@
     "editCompanions": "አስተካክል",
     "companion": "አብረዋቸው የሚጓዝ {{i}}",
     "numDriver": "የአሽከርካሪዎች ብዛት",
-    "roleDRIVER": "አሽከርካሪ"
+    "roleDRIVER": "አሽከርካሪ",
+    "roomTypeFamily": "የቤተሰብ ክፍል"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

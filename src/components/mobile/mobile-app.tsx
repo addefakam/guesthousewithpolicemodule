@@ -1920,7 +1920,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCu
               <SelectItem value="TWIN">{t("roomTypeTWIN")}</SelectItem>
               <SelectItem value="SUITE">{t("roomTypeSUITE")}</SelectItem>
               <SelectItem value="DELUXE">{t("roomTypeDELUXE")}</SelectItem>
-              <SelectItem value="FAMILY">{t("roomTypeFAMILY")}</SelectItem>
+              <SelectItem value="FAMILY">{t("roomTypeFamily")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
