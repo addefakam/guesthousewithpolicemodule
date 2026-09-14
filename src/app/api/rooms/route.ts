@@ -7,6 +7,7 @@ import {
   AuthError,
 } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
+import { ensureRoomTypeFAMILY } from "@/lib/ensure-room-type-enum";
 
 export async function GET(req: NextRequest) {
   try {
@@ -141,6 +142,12 @@ export async function POST(req: NextRequest) {
         { error: "Room number already exists for this provider" },
         { status: 409 }
       );
+    }
+
+    // Ensure FAMILY exists in the RoomType enum before creating any room.
+    // This is a no-op if FAMILY is already present.
+    if (type === "FAMILY") {
+      await ensureRoomTypeFAMILY();
     }
 
     const room = await db.room.create({
