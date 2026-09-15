@@ -310,7 +310,7 @@ export function MobileLoginPage() {
                     autoComplete="name"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder={t("regOwnerNamePh") || "John Doe"}
+                    placeholder={t("regOwnerNamePh") || "Abebe Bekele"}
                     className={inputClass}
                   />
                 </div>
@@ -338,7 +338,7 @@ export function MobileLoginPage() {
                     autoComplete="email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder="abebe@example.com"
                     className={inputClass}
                   />
                 </div>
@@ -429,7 +429,7 @@ export function MobileLoginPage() {
                     autoCapitalize="off"
                     value={regUsername}
                     onChange={(e) => setRegUsername(e.target.value)}
-                    placeholder={t("regUsernamePh") || "johndoe"}
+                    placeholder={t("regUsernamePh") || "abebe_bekele"}
                     className={inputClass}
                   />
                 </div>
