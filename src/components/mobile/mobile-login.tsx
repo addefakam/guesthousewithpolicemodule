@@ -12,9 +12,7 @@ const GUESTHOUSE_TYPES = [
   { value: "GUEST_HOUSE" },
   { value: "HOTEL" },
   { value: "LODGE" },
-  { value: "HOMESTAY" },
   { value: "RESORT" },
-  { value: "DHARAMSHALA" },
   { value: "OTHER" },
 ];
 
@@ -28,10 +26,12 @@ const TYPE_LABELS: Record<string, string> = {
   GUEST_HOUSE: "Guest House",
   HOTEL: "Hotel",
   LODGE: "Lodge",
-  HOMESTAY: "Homestay",
   RESORT: "Resort",
-  DHARAMSHALA: "Dharamshala",
   OTHER: "Other",
+  // Kept for backward-compatibility: existing guesthouses with these types
+  // still display their label correctly if they were created before removal.
+  HOMESTAY: "Homestay",
+  DHARAMSHALA: "Dharamshala",
 };
 
 export function MobileLoginPage() {

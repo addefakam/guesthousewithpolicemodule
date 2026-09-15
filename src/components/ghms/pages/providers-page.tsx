@@ -102,9 +102,7 @@ const GUESTHOUSE_TYPES = [
   { value: "GUEST_HOUSE" },
   { value: "HOTEL" },
   { value: "LODGE" },
-  { value: "HOMESTAY" },
   { value: "RESORT" },
-  { value: "DHARAMSHALA" },
   { value: "OTHER" },
 ];
 
@@ -175,10 +173,12 @@ export default function ProvidersPage() {
       GUEST_HOUSE: t('typeGuestHouse'),
       HOTEL: t('typeHotel'),
       LODGE: t('typeLodge'),
-      HOMESTAY: t('typeHomestay'),
       RESORT: t('typeResort'),
-      DHARAMSHALA: t('typeDharamshala'),
       OTHER: t('typeOther'),
+      // Kept for backward-compatibility: existing guesthouses with these types
+      // still display their label correctly if they were created before removal.
+      HOMESTAY: t('typeHomestay'),
+      DHARAMSHALA: t('typeDharamshala'),
     };
     return map[value] || value;
   };

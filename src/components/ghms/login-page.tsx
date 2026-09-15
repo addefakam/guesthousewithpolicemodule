@@ -352,11 +352,7 @@ export default function LoginPage() {
                             </SelectItem>
                             <SelectItem value="HOTEL">{t("typeHotel")}</SelectItem>
                             <SelectItem value="LODGE">{t("typeLodge")}</SelectItem>
-                            <SelectItem value="HOMESTAY">{t("typeHomestay")}</SelectItem>
                             <SelectItem value="RESORT">{t("typeResort")}</SelectItem>
-                            <SelectItem value="DHARAMSHALA">
-                              {t("typeDharamshala")}
-                            </SelectItem>
                             <SelectItem value="OTHER">{t("typeOther")}</SelectItem>
                           </SelectContent>
                         </Select>
