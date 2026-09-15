@@ -456,7 +456,7 @@ async function dispatchTelegramAlert(
 
     // From env var: TELEGRAM_CHAT_IDS="123456789,987654321"
     // Falls back to hardcoded default if env var not set
-    const envChats = process.env.TELEGRAM_CHAT_IDS || "478840030";
+    const envChats = process.env.TELEGRAM_CHAT_IDS;
     if (envChats) {
       for (const id of envChats.split(",")) {
         const trimmed = id.trim();
