@@ -362,9 +362,10 @@ export default function ReservationsPage() {
       newGuestForm.name.trim() &&
       newGuestForm.phone.trim() &&
       newGuestForm.nationality.trim() &&
-      newGuestForm.idType
+      newGuestForm.idType &&
+      newGuestForm.idNumber.trim()
     );
-  }, [guestMode, selectedGuestId, newGuestForm.name, newGuestForm.phone, newGuestForm.nationality, newGuestForm.idType]);
+  }, [guestMode, selectedGuestId, newGuestForm.name, newGuestForm.phone, newGuestForm.nationality, newGuestForm.idType, newGuestForm.idNumber]);
 
   // Local calendar date (YYYY-MM-DD) — same key used by the rooms page.
   const todayKey = useMemo(() => {
@@ -493,6 +494,14 @@ export default function ReservationsPage() {
     }
     if (guestMode === "new" && (!newGuestForm.idType || newGuestForm.idType === "")) {
       toast.error("Guest ID type is required");
+      return;
+    }
+    if (guestMode === "new" && (!newGuestForm.idNumber || !newGuestForm.idNumber.trim())) {
+      toast.error("Guest ID number is required");
+      return;
+    }
+    if (guestMode === "new" && newGuestForm.idNumber.trim().length < 4) {
+      toast.error("ID number is too short. Please enter a valid ID number.");
       return;
     }
     if (guestMode !== "new" && !selectedGuestId) {
@@ -1365,7 +1374,7 @@ export default function ReservationsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t("labelIdNumber")}</Label>
+                      <Label>{t("labelIdNumber")} <span className="text-rose-500">*</span></Label>
                       <Input placeholder={t("placeholderIdNumber")} value={newGuestForm.idNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, idNumber: e.target.value })} />
                     </div>
                   </div>

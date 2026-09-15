@@ -527,7 +527,7 @@ export default function MobileApp() {
   // ── Handlers ──
   const handleCreateRes = async () => {
     if (resForm.guestMode === "direct") {
-      if (!resForm.directName.trim() || !resForm.directPhone.trim()) {
+      if (!resForm.directName.trim() || !resForm.directPhone.trim() || !resForm.directIdNumber.trim()) {
         toast.error(t("toastFillRequired")); return;
       }
       if (!isValidPhone(resForm.directPhone)) {
@@ -1813,7 +1813,7 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
 }) {
   const isDirect = form.guestMode === "direct";
   const canSubmit = isDirect
-    ? (form.directName.trim() && form.directPhone.trim() && form.roomId)
+    ? (form.directName.trim() && form.directPhone.trim() && form.directIdNumber.trim() && form.roomId)
     : (form.guestId && form.roomId);
 
   // ── Availability for the selected room (keyed by roomId so stale data
@@ -1910,7 +1910,7 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-semibold">{t("lblGuestIdNumber")}</Label>
+              <Label className="text-xs font-semibold">{t("lblGuestIdNumber")} <span className="text-rose-400">*</span></Label>
               <Input value={form.directIdNumber} onChange={(e) => onUpdate({ directIdNumber: e.target.value })} placeholder={t("phGuestIdNumber")} className="mt-1.5 h-11 rounded-xl" />
             </div>
           </div>
