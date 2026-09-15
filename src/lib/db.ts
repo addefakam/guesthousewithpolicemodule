@@ -12,9 +12,108 @@ function createPrismaClient(): PrismaClient {
         "Add it in Vercel Dashboard > Settings > Environment Variables."
     );
   }
-  return new PrismaClient({
+
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["warn", "error"],
   });
+
+  // Prisma middleware: catch enum errors on Room queries and fall back
+  // to raw SQL with type::text cast. This is a GLOBAL fix that covers
+  // ALL routes without needing to change each one individually.
+  return client.$extends({
+    query: {
+      room: {
+        async findMany({ args, query }) {
+          try {
+            return await query(args);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
+              console.log("[db] Room findMany enum error — raw SQL fallback");
+              const w = args.where as Record<string, unknown> || {};
+              let sql = `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"`;
+              const conditions: string[] = [];
+              if (w.providerId) conditions.push(`\"providerId\" = '${w.providerId}'`);
+              if (w.status) conditions.push(`\"status\" = '${w.status}'`);
+              if (conditions.length) sql += ` WHERE ${conditions.join(" AND ")}`;
+              sql += ` ORDER BY "floor" ASC`;
+              const results = await new PrismaClient().$queryRawUnsafe(sql);
+              return results as never;
+            }
+            throw err;
+          }
+        },
+        async groupBy({ args, query }) {
+          try {
+            return await query(args);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
+              console.log("[db] Room groupBy enum error — raw SQL fallback");
+              const by = (args.by as string[]) || ["type"];
+              const w = args.where as Record<string, unknown> || {};
+              const whereClause = w.providerId ? ` WHERE "providerId" = '${w.providerId}'` : "";
+              if (by[0] === "type") {
+                const results = await new PrismaClient().$queryRawUnsafe(
+                  `SELECT "type"::text AS "type", COUNT(*)::int AS count FROM "Room"${whereClause} GROUP BY "type"`
+                ) as { type: string; count: number }[];
+                return results.map(r => ({ type: r.type, _count: { id: r.count } })) as never;
+              }
+              if (by[0] === "status") {
+                const results = await new PrismaClient().$queryRawUnsafe(
+                  `SELECT "status", COUNT(*)::int AS count FROM "Room"${whereClause} GROUP BY "status"`
+                ) as { status: string; count: number }[];
+                return results.map(r => ({ status: r.status, _count: { status: r.count } })) as never;
+              }
+              throw err;
+            }
+            throw err;
+          }
+        },
+        async findFirst({ args, query }) {
+          try {
+            return await query(args);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
+              console.log("[db] Room findFirst enum error — raw SQL fallback");
+              const w = args.where as Record<string, unknown> || {};
+              const conditions: string[] = [];
+              if (w.id) conditions.push(`"id" = '${w.id}'`);
+              if (w.providerId) conditions.push(`"providerId" = '${w.providerId}'`);
+              if (w.number) conditions.push(`"number" = '${w.number}'`);
+              const whereClause = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+              const results = await new PrismaClient().$queryRawUnsafe(
+                `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} LIMIT 1`
+              ) as Record<string, unknown>[];
+              return (results.length > 0 ? results[0] : null) as never;
+            }
+            throw err;
+          }
+        },
+        async findUnique({ args, query }) {
+          try {
+            return await query(args);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
+              console.log("[db] Room findUnique enum error — raw SQL fallback");
+              const w = args.where as Record<string, unknown> || {};
+              const conditions: string[] = [];
+              if (w.id) conditions.push(`"id" = '${w.id}'`);
+              if (w.providerId) conditions.push(`"providerId" = '${w.providerId}'`);
+              const whereClause = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+              const results = await new PrismaClient().$queryRawUnsafe(
+                `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} LIMIT 1`
+              ) as Record<string, unknown>[];
+              return (results.length > 0 ? results[0] : null) as never;
+            }
+            throw err;
+          }
+        },
+      },
+    },
+  }) as unknown as PrismaClient;
 }
 
 function getClient(): PrismaClient {
