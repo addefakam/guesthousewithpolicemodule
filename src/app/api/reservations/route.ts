@@ -253,7 +253,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Room stays AVAILABLE until check-in date — status will be updated by checkin API
+    // Update room status to RESERVED so it visually changes color immediately
+    await db.room.update({
+      where: { id: roomId },
+      data: { status: "RESERVED" },
+      select: { id: true },
+    });
 
 
     // Background: check if guest matches any suspected person (fire-and-forget)

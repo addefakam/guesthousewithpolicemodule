@@ -40,8 +40,7 @@ export async function POST(
 
     // Release room back to AVAILABLE if it was RESERVED or OCCUPIED
     if (
-      reservation.room.status === "RESERVED" ||
-      reservation.room.status === "OCCUPIED"
+      reservation.room.status === "OCCUPIED" || reservation.room.status === "RESERVED"
     ) {
       await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
         where: { id: reservation.roomId },
