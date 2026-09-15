@@ -123,6 +123,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: formattedReservations, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     const message = error instanceof Error ? error.message : "Failed to fetch reservations";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, getProviderFilter, checkWritePermission } from "@/lib/tenant";
+import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { checkSuspectMatch } from "@/lib/suspect-check";
 import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
@@ -49,6 +49,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ guests, total, page, limit });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     const message = error instanceof Error ? error.message : "Failed to fetch guests";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -61,7 +64,7 @@ export async function POST(req: NextRequest) {
     checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "guests" });
 
     const body = await req.json();
-    const { name, phone, email, idNumber, idType, nationality, region, zone, woreda, kebele, houseNumber, streetName, plateNumber, weapon, address, notes, vip, role, familyLeaderId } = body;
+    const { name, phone, email, idNumber, idType, nationality, region, zone, woreda, kebele, houseNumber, streetName, plateNumber, weapon, address, notes, vip } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
@@ -107,7 +110,6 @@ export async function POST(req: NextRequest) {
         address: composedAddress,
         notes: notes || "",
         vip: vip || false,
-        // familyLeaderId (points to the leader's Guest.id for companions)
         providerId,
       },
     });
