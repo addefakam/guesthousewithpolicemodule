@@ -164,6 +164,13 @@ const STATUS_DOT: Record<string, string> = {
   RESERVED: "bg-sky-500",
 };
 
+const STATUS_CARD: Record<string, string> = {
+  AVAILABLE: "bg-white border-l-emerald-400",
+  OCCUPIED: "bg-rose-50/40 border-l-rose-400",
+  MAINTENANCE: "bg-amber-50/40 border-l-amber-400",
+  RESERVED: "bg-sky-50/40 border-l-sky-400",
+};
+
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   WiFi: <Wifi className="h-3 w-3" />,
   TV: <Tv className="h-3 w-3" />,
@@ -897,7 +904,7 @@ export default function RoomsPage() {
             const amenities = parseAmenities(room.amenities);
             const st = displayStatus(room);
             return (
-              <Card key={room.id} className="gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md cursor-pointer" onClick={() => setInfoRoom(room)}>
+              <Card key={room.id} className={`gap-0 overflow-hidden py-0 border-l-4 transition-shadow hover:shadow-md cursor-pointer ${STATUS_CARD[st] || "bg-white border-l-gray-300"}`} onClick={() => setInfoRoom(room)}>
                 {/* Status Bar */}
                 <div className={`h-1.5 w-full ${STATUS_DOT[st]}`} />
 

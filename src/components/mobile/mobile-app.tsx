@@ -147,6 +147,14 @@ const STATUS_DOT: Record<string, string> = {
   RESERVED: "bg-sky-500",
 };
 
+// Card background tint based on status — subtle left-border + bg tint
+const STATUS_CARD: Record<string, string> = {
+  AVAILABLE: "bg-white border-l-emerald-400",
+  OCCUPIED: "bg-rose-50/40 border-l-rose-400",
+  MAINTENANCE: "bg-amber-50/40 border-l-amber-400",
+  RESERVED: "bg-sky-50/40 border-l-sky-400",
+};
+
 const RES_STATUS: Record<string, { color: string; label: string }> = {
   UPCOMING: { color: "bg-blue-100 text-blue-800", label: "Upcoming" },
   ACTIVE: { color: "bg-emerald-100 text-emerald-800", label: "Checked In" },
@@ -1198,7 +1206,7 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
             return (
               <div
                 key={room.id}
-                className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+                className={`rounded-2xl border border-gray-100 border-l-4 overflow-hidden shadow-sm active:scale-[0.98] transition-transform ${STATUS_CARD[st] || "bg-white border-l-gray-300"}`}
               >
                 {/* Status dot bar */}
                 <div className={`h-1.5 ${STATUS_DOT[st]}`} />
