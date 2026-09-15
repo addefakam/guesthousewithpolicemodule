@@ -21,7 +21,7 @@ export async function POST(
           where: { status: "ACTIVE" },
           include: {
             guest: { select: { id: true, name: true, phone: true } },
-            room: { select: { id: true, number: true, name: true, type: true } },
+            room: { select: { id: true, number: true, name: true } },
           },
         },
       },

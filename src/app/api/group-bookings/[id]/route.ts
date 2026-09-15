@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         reservations: {
           include: {
             guest: { select: { id: true, name: true, phone: true, email: true } },
-            room: { select: { id: true, number: true, name: true, type: true, pricePerNight: true } },
+            room: { select: { id: true, number: true, name: true, pricePerNight: true } },
           },
           orderBy: { checkIn: "asc" },
         },

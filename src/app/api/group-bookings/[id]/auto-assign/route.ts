@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status: { in: ["AVAILABLE", "RESERVED"] },
         id: { notIn: [...conflictingRoomIds] },
       },
-      select: { id: true, number: true, name: true, type: true, pricePerNight: true, capacity: true },
+      select: { id: true, number: true, name: true, pricePerNight: true, capacity: true },
       orderBy: [{ capacity: "desc" }, { pricePerNight: "asc" }],
     });
 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         },
         include: {
           guest: { select: { name: true, phone: true } },
-          room: { select: { number: true, name: true, type: true, pricePerNight: true } },
+          room: { select: { number: true, name: true, pricePerNight: true } },
         },
       });
 

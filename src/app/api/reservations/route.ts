@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
           secondGuestName: true, secondGuestPhone: true, secondGuestIdNumber: true,
           exceptionallyReserved: true, exceptionReason: true,
           guest: { select: { id: true, name: true, phone: true } },
-          room: { select: { id: true, number: true, name: true, type: true } },
+          room: { select: { id: true, number: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         guest: { select: { id: true, name: true, phone: true, idNumber: true, idType: true } },
-        room: { select: { id: true, number: true, name: true, type: true } },
+        room: { select: { id: true, number: true, name: true } },
       },
     });
 

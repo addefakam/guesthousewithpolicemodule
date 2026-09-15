@@ -130,7 +130,7 @@ export async function PUT(
       },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true, type: true } },
+        room: { select: { id: true, number: true, name: true } },
       },
     });
 
@@ -218,7 +218,7 @@ export async function DELETE(
       data: { status: "DELETED" },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true, type: true } },
+        room: { select: { id: true, number: true, name: true } },
       },
     });
 
