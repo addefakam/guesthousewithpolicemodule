@@ -48,26 +48,62 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
     const skip = (page - 1) * limit;
 
-    const [reservations, total] = await Promise.all([
-      db.reservation.findMany({
-        where,
-        select: {
-          id: true, guestId: true, roomId: true, checkIn: true, checkOut: true,
-          nights: true, roomRate: true, totalCost: true, paidAmount: true,
-          balance: true, paymentStatus: true, paymentMethod: true,
-          status: true, taxAmount: true, discountAmount: true,
-          providerId: true, actualCheckIn: true, actualCheckOut: true, createdAt: true, updatedAt: true,
-          secondGuestName: true, secondGuestPhone: true, secondGuestIdNumber: true,
-          exceptionallyReserved: true, exceptionReason: true,
-          guest: { select: { id: true, name: true, phone: true } },
-          room: { select: { id: true, number: true, name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      db.reservation.count({ where }),
+    // Use raw SQL to avoid Prisma's enum cache issue with RoomType (FAMILY).
+    // Prisma validates enum values on ALL queries that touch the Room model,
+    // even when type is NOT in the select clause. Raw SQL bypasses this.
+    const { Prisma } = await import("@prisma/client");
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+    
+    if (where.providerId) {
+      conditions.push(`r."providerId" = $${paramIdx++}`);
+      params.push(where.providerId);
+    }
+    if (where.status) {
+      if (Array.isArray(where.status.in)) {
+        const statuses = where.status.in as string[];
+        if (statuses.length > 0) {
+          conditions.push(`r."status" = ANY($${paramIdx++}::text[])`);
+          params.push(statuses);
+        }
+      } else {
+        conditions.push(`r."status" = $${paramIdx++}`);
+        params.push(where.status);
+      }
+    }
+    if (where.OR) {
+      const orConds = (where.OR as Record<string, unknown>[]).map((cond) => {
+        if (cond.guestId) { return `r."guestId" = $${paramIdx++}`; params.push(cond.guestId); }
+        return null;
+      }).filter(Boolean);
+      if (orConds.length > 0) {
+        conditions.push(`(${orConds.join(" OR ")})`);
+      }
+    }
+    
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    
+    const [reservations, totalResult] = await Promise.all([
+      db.$queryRawUnsafe(
+        `SELECT r.*, g."name" AS "guestName", g."phone" AS "guestPhone",
+                rm."number" AS "roomNumber", rm."name" AS "roomName",
+                rm."type"::text AS "roomType", rm."id" AS "roomId"
+         FROM "Reservation" r
+         LEFT JOIN "Guest" g ON g."id" = r."guestId"
+         LEFT JOIN "Room" rm ON rm."id" = r."roomId"
+         ${whereClause}
+         ORDER BY r."createdAt" DESC
+         LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
+        ...params, limit, skip
+      ),
+      db.$queryRawUnsafe(
+        `SELECT COUNT(*)::int AS count FROM "Reservation" r ${whereClause}`,
+        ...params
+      ),
     ]);
+    
+    const total = Array.isArray(totalResult) ? (totalResult[0] as Record<string, number>)?.count ?? 0 : 0;
 
     return NextResponse.json({ data: reservations, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error: unknown) {
@@ -109,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get room to check type
-    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, type: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
+    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
     if (!room) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
@@ -161,7 +197,6 @@ export async function POST(req: NextRequest) {
       },
       include: {
         guest: { select: { name: true, phone: true } },
-        room: { select: { number: true, name: true } },
       },
     });
 
@@ -200,7 +235,6 @@ export async function POST(req: NextRequest) {
       },
       include: {
         guest: { select: { id: true, name: true, phone: true, idNumber: true, idType: true } },
-        room: { select: { id: true, number: true, name: true } },
       },
     });
 

@@ -21,14 +21,14 @@ export async function PUT(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where });
+    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
 
     // If room number is being changed, check for duplicates
     if (body.number && body.number !== existing.number) {
-      const dup = await db.room.findFirst({
+      const dup = await db.room.findFirst({ select: { id: true, number: true },
         where: {
           number: body.number,
           providerId: existing.providerId,
@@ -43,7 +43,7 @@ export async function PUT(
       }
     }
 
-    const room = await db.room.update({
+    const room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
       where: { id },
       data: {
         ...(body.number !== undefined && { number: body.number }),
@@ -98,7 +98,7 @@ export async function DELETE(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where });
+    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }

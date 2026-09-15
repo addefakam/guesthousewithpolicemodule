@@ -15,7 +15,6 @@ export async function POST(
 
     const reservation = await db.reservation.findFirst({
       where: { id, providerId },
-      include: { room: { select: { id: true, status: true } } },
     });
     if (!reservation) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
@@ -36,7 +35,6 @@ export async function POST(
       },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true } },
       },
     });
 
@@ -45,7 +43,7 @@ export async function POST(
       reservation.room.status === "RESERVED" ||
       reservation.room.status === "OCCUPIED"
     ) {
-      await db.room.update({
+      await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
         where: { id: reservation.roomId },
         data: { status: "AVAILABLE" },
       });

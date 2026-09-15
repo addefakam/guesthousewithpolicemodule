@@ -36,12 +36,12 @@ export async function PUT(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where });
+    const existing = await db.room.findFirst({ where, select: { id: true, number: true, status: true, providerId: true } });
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
 
-    const room = await db.room.update({
+    const room = await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
       where: { id },
       data: { status },
     });

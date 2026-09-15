@@ -17,7 +17,6 @@ export async function PUT(
 
     const existing = await db.reservation.findFirst({
       where: { id, providerId },
-      include: { room: { select: { id: true, status: true, number: true } } },
     });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
@@ -70,7 +69,6 @@ export async function PUT(
           checkIn: { lt: outDay },
           checkOut: { gt: inDay },
         },
-        include: { room: { select: { number: true, name: true } } },
       });
       if (overlapping) {
         return NextResponse.json(
@@ -130,7 +128,6 @@ export async function PUT(
       },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true } },
       },
     });
 
@@ -153,7 +150,7 @@ export async function PUT(
         othersOnOldRoom === 0 &&
         (existing.room.status === "OCCUPIED" || existing.room.status === "RESERVED")
       ) {
-        await db.room.update({
+        await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
           where: { id: existing.roomId },
           data: { status: "AVAILABLE" },
         });
@@ -164,7 +161,7 @@ export async function PUT(
           select: { status: true },
         });
         if (newRoom && (newRoom.status === "AVAILABLE" || newRoom.status === "RESERVED")) {
-          await db.room.update({
+          await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
             where: { id: roomId },
             data: { status: "OCCUPIED" },
           });
@@ -196,7 +193,6 @@ export async function DELETE(
 
     const existing = await db.reservation.findFirst({
       where: { id, providerId },
-      include: { room: { select: { id: true, status: true } } },
     });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
@@ -218,7 +214,6 @@ export async function DELETE(
       data: { status: "DELETED" },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true } },
       },
     });
 
@@ -227,7 +222,7 @@ export async function DELETE(
       existing.room.status === "RESERVED" ||
       existing.room.status === "OCCUPIED"
     ) {
-      await db.room.update({
+      await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
         where: { id: existing.roomId },
         data: { status: "AVAILABLE" },
       });

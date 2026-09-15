@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
           continue;
         }
         try {
-          const existing = await db.room.findFirst({ where: { number: String(number), providerId: auth.providerId } });
+          const existing = await db.room.findFirst({ select: { id: true, number: true }, where: { number: String(number), providerId: auth.providerId }, select: { id: true, number: true } });
           if (existing) {
             results.push({ number: String(number), status: "skipped", error: "Room number already exists" });
             continue;
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate room number within the same provider
-    const existing = await db.room.findFirst({
+    const existing = await db.room.findFirst({ select: { id: true, number: true },
       where: { number, providerId: auth.providerId },
     });
     if (existing) {

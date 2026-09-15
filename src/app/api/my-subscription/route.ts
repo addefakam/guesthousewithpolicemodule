@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get operator's total bed count (sum of all room capacities)
-    const rooms = await db.room.findMany({
+    const rooms = await db.room.findMany({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
       where: { providerId: auth.providerId },
       select: { capacity: true },
     });

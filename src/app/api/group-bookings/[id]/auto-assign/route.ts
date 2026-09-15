@@ -19,7 +19,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const booking = await db.groupBooking.findFirst({
       where: { id, providerId },
-      include: { reservations: { include: { guest: true, room: { select: { id: true, number: true, name: true, pricePerNight: true, capacity: true, status: true, floor: true } } } } },
     });
     if (!booking) return NextResponse.json({ error: "Group booking not found" }, { status: 404 });
 
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       select: { roomId: true },
     }).then((res) => new Set(res.map((r) => r.roomId)));
 
-    const availableRooms = await db.room.findMany({
+    const availableRooms = await db.room.findMany({ select: { id: true, number: true, name: true, pricePerNight: true, capacity: true, status: true, providerId: true, floor: true },
       where: {
         providerId,
         status: { in: ["AVAILABLE", "RESERVED"] },
@@ -143,7 +142,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         },
         include: {
           guest: { select: { name: true, phone: true } },
-          room: { select: { number: true, name: true, pricePerNight: true } },
         },
       });
 

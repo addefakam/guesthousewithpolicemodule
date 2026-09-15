@@ -37,12 +37,11 @@ export async function POST(
       },
       include: {
         guest: { select: { id: true, name: true, phone: true } },
-        room: { select: { id: true, number: true, name: true } },
       },
     });
 
     // Update room status to AVAILABLE
-    await db.room.update({
+    await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
       where: { id: reservation.roomId },
       data: { status: "AVAILABLE" },
     });

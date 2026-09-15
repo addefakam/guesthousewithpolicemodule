@@ -37,7 +37,6 @@ export async function GET(req: NextRequest) {
           reservations: {
             include: {
               guest: { select: { id: true, name: true, phone: true, email: true } },
-              room: { select: { id: true, number: true, name: true, pricePerNight: true } },
             },
             orderBy: { checkIn: "asc" },
           },
