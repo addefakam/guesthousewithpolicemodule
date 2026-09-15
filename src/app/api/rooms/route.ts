@@ -58,9 +58,19 @@ export async function GET(req: NextRequest) {
     const roomsRaw = await db.$queryRawUnsafe(
       `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
       ...params
-    );
+    ) as Record<string, unknown>[];
 
-    return NextResponse.json({ rooms: roomsRaw });
+    // Serialize Date objects to ISO strings for JSON response
+    const rooms = roomsRaw.map((r) => ({
+      ...r,
+      pricePerNight: Number(r.pricePerNight),
+      floor: Number(r.floor),
+      capacity: Number(r.capacity),
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
+    }));
+
+    return NextResponse.json({ rooms });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });

@@ -90,7 +90,39 @@ export async function GET(req: NextRequest) {
 
     const total = Array.isArray(totalResult) ? (totalResult[0] as Record<string, number>)?.count ?? 0 : 0;
 
-    return NextResponse.json({ data: reservations, total, page, limit, totalPages: Math.ceil(total / limit) });
+    // Map raw SQL results to the format the frontend expects
+    // (nested guest/room objects instead of flat column names)
+    const formattedReservations = (reservations as Record<string, unknown>[]).map((r) => ({
+      id: r.id,
+      guestId: r.guestId,
+      roomId: r.roomId,
+      checkIn: r.checkIn,
+      checkOut: r.checkOut,
+      nights: Number(r.nights),
+      roomRate: Number(r.roomRate),
+      totalCost: Number(r.totalCost),
+      paidAmount: Number(r.paidAmount),
+      balance: Number(r.balance),
+      paymentStatus: r.paymentStatus,
+      paymentMethod: r.paymentMethod,
+      status: r.status,
+      taxAmount: Number(r.taxAmount),
+      discountAmount: Number(r.discountAmount),
+      providerId: r.providerId,
+      actualCheckIn: r.actualCheckIn,
+      actualCheckOut: r.actualCheckOut,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
+      secondGuestName: r.secondGuestName,
+      secondGuestPhone: r.secondGuestPhone,
+      secondGuestIdNumber: r.secondGuestIdNumber,
+      exceptionallyReserved: r.exceptionallyReserved,
+      exceptionReason: r.exceptionReason,
+      guest: r.guestName ? { id: r.guestId, name: r.guestName, phone: r.guestPhone } : null,
+      room: r.roomId ? { id: r.roomId, number: r.roomNumber, name: r.roomName, type: r.roomType } : null,
+    }));
+
+    return NextResponse.json({ data: formattedReservations, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch reservations";
     return NextResponse.json({ error: message }, { status: 500 });
