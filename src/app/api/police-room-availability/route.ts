@@ -29,27 +29,53 @@ export async function GET(req: NextRequest) {
     const roomTypes = roomTypesRaw.map(r => ({ type: r.type, _count: { id: Number(r.count) } }));
 
     // ── Per-provider room breakdown ──
-    const providers = await db.provider.findMany({
-      where: { status: "APPROVED" },
-      select: {
-        id: true, name: true, ownerName: true, phone: true,
-        address: true, licenseNo: true, latitude: true, longitude: true,
-        rooms: {
-          select: {
-            id: true,
-            number: true,
-            name: true,
-            type: true,
-            status: true,
-            floor: true,
-            capacity: true,
-            pricePerNight: true,
-          },
-          orderBy: { number: "asc" },
-        },
-      },
-      orderBy: { name: "asc" },
-    });
+    // Use raw SQL to avoid Prisma's prepared-statement cache issue with
+    // the RoomType enum (FAMILY value was added after Prisma cached its
+    // query plans). Casting type::text avoids enum validation entirely.
+    const providersRaw = await db.$queryRaw<{
+      id: string; name: string; ownerName: string; phone: string;
+      address: string; licenseNo: string; latitude: number; longitude: number;
+      roomId: string; roomNumber: string; roomName: string; roomType: string;
+      roomStatus: string; roomFloor: number; roomCapacity: number; roomPrice: number;
+    }[]>`
+      SELECT
+        p."id", p."name", p."ownerName", p."phone",
+        p."address", p."licenseNo", p."latitude", p."longitude",
+        r."id" AS "roomId", r."number" AS "roomNumber", r."name" AS "roomName",
+        r."type"::text AS "roomType", r."status" AS "roomStatus",
+        r."floor" AS "roomFloor", r."capacity" AS "roomCapacity",
+        r."pricePerNight" AS "roomPrice"
+      FROM "Provider" p
+      LEFT JOIN "Room" r ON r."providerId" = p."id"
+      WHERE p."status" = 'APPROVED'
+      ORDER BY p."name" ASC, r."number" ASC
+    `;
+
+    // Group rooms by provider
+    const providerMap = new Map<string, {
+      id: string; name: string; ownerName: string; phone: string;
+      address: string; licenseNo: string; latitude: number; longitude: number;
+      rooms: { id: string; number: string; name: string; type: string; status: string; floor: number; capacity: number; pricePerNight: number; }[];
+    }>();
+
+    for (const row of providersRaw) {
+      if (!providerMap.has(row.id)) {
+        providerMap.set(row.id, {
+          id: row.id, name: row.name, ownerName: row.ownerName, phone: row.phone,
+          address: row.address, licenseNo: row.licenseNo, latitude: row.latitude, longitude: row.longitude,
+          rooms: [],
+        });
+      }
+      if (row.roomId) {
+        providerMap.get(row.id)!.rooms.push({
+          id: row.roomId, number: row.roomNumber, name: row.roomName,
+          type: row.roomType, status: row.roomStatus, floor: row.roomFloor,
+          capacity: row.roomCapacity, pricePerNight: row.roomPrice,
+        });
+      }
+    }
+
+    const providers = Array.from(providerMap.values());
 
     // Build per-provider stats with room counts by status
     const providerStats = providers.map((p) => {
