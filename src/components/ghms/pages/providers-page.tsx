@@ -370,7 +370,7 @@ export default function ProvidersPage() {
   // ── Bulk Import handlers ──
   const handleDownloadTemplate = () => {
     import("xlsx").then((XLSX) => {
-      const headers = ["Full Name", "Phone", "Email", "Guesthouse Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
+      const headers = ["Full Name", "Phone", "Email", "Organization Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
       const example1 = ["Abebe Kebede", "+251911223344", "abebe@example.com", "Sunshine Guest House", "GUEST_HOUSE", "LIC-2024-001", "Cheleleka", "Erer", "sunshine_gh", "pass1234"];
       const example2 = ["Tigist Haile", "+251922334455", "tigist@example.com", "Bishoftu Lodge", "LODGE", "LIC-2024-002", "Dukam", "Malkaa", "bishoftu_lodge", "pass5678"];
       const ws = XLSX.utils.aoa_to_sheet([headers, example1, example2]);
@@ -402,7 +402,7 @@ export default function ProvidersPage() {
       }
 
       // Validate columns
-      const requiredCols = ["Full Name", "Phone", "Email", "Guesthouse Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
+      const requiredCols = ["Full Name", "Phone", "Email", "Organization Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
       const firstRowKeys = Object.keys(rows[0]);
       const missingCols = requiredCols.filter((c) => !firstRowKeys.includes(c));
       if (missingCols.length > 0) {
@@ -419,7 +419,7 @@ export default function ProvidersPage() {
         const fullName = (row["Full Name"] || "").trim();
         const phone = (row["Phone"] || "").trim();
         const email = (row["Email"] || "").trim();
-        const ghName = (row["Guesthouse Name"] || "").trim();
+        const ghName = (row["Organization Name"] || (row["Guesthouse Name"] || "")).trim();
         const type = (row["Type"] || "").trim();
         const licenseNo = (row["License No"] || "").trim();
         const subCity = (row["Sub-City"] || "").trim();
@@ -432,7 +432,7 @@ export default function ProvidersPage() {
         else if (!isValidPhone(phone)) errors.push(t('bulkRowInvalidPhone', { row: rowNum, value: phone }));
         if (!email) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Email" }));
         else if (!isValidEmail(email)) errors.push(t('bulkRowInvalidEmail', { row: rowNum, value: email }));
-        if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Guesthouse Name" }));
+        if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Organization Name" }));
         if (!type) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Type" }));
         else if (!validTypes.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
         // licenseNo is OPTIONAL for bulk import too — defaults to empty string.
@@ -477,7 +477,7 @@ export default function ProvidersPage() {
           ownerName: (row["Full Name"] || "").trim(),
           phone: (row["Phone"] || "").trim(),
           email: (row["Email"] || "").trim(),
-          name: (row["Guesthouse Name"] || "").trim(),
+          name: (row["Organization Name"] || (row["Guesthouse Name"] || "")).trim(),
           type,
           licenseNo: (row["License No"] || "").trim(),
           address,

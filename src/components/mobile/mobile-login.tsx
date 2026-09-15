@@ -343,9 +343,9 @@ export function MobileLoginPage() {
                   />
                 </div>
 
-                {/* Guesthouse name */}
+                {/* Organization name */}
                 <div>
-                  <label className={labelClass}>{t("regGuestHouseName") || "Guesthouse Name"} <span className="text-rose-400">*</span></label>
+                  <label className={labelClass}>{t("regGuestHouseName") || "Organization Name"} <span className="text-rose-400">*</span></label>
                   <input
                     type="text"
                     value={regGuestHouseName}
