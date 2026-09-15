@@ -765,8 +765,7 @@
     "tooltipReservedFrom": "From:",
     "tooltipReservedTo": "To:",
     "toastRoomOccupied": "Room {{number}} is occupied by {{guest}} from {{from}} to {{to}}",
-    "toastRoomNotAvailable": "Room {{number}} is not available for reservation",
-    "roomTypeFamily": "Family Room"
+    "toastRoomNotAvailable": "Room {{number}} is not available for reservation"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -3186,31 +3185,13 @@
     "extendConflict": "Cannot extend — the room already has a booking for those dates",
     "noMatchFound": "No rooms match the selected filters",
     "resetPassword": "Reset Password",
-    "familyRoomTitle": "Family Reservation",
-    "familyRoomDesc": "This is a Family Room. Record the family leader and all companions (family members, security, servants).",
-    "familyLeader": "Family Leader",
-    "companions": "Companions",
-    "numFamily": "Number of family members",
     "numSecurity": "Number of security personnel",
     "numServant": "Number of servants",
     "roleLEADER": "Family Leader",
-    "roleFAMILY": "Family Member",
     "roleSECURITY": "Security",
     "roleSERVANT": "Servant",
-    "companionName": "Full name",
-    "companionId": "ID number",
-    "companionIdType": "ID type",
-    "companionPhone": "Phone (optional)",
-    "companionNationality": "Nationality",
-    "companionRequired": "At least one companion is required for a Family Room reservation.",
-    "familyRoomSummary": "Leader + {{total}} companions ({{family}} family, {{security}} security, {{servant}} servants, {{driver}} drivers)",
-    "addCompanions": "Add companions",
-    "reviewCompanions": "Review companions",
-    "editCompanions": "Edit",
-    "companion": "Companion {{i}}",
     "numDriver": "Number of drivers",
-    "roleDRIVER": "Driver",
-    "roomTypeFamily": "Family Room"
+    "roleDRIVER": "Driver"
   },
   "policeApp": {
     "appName": "GHMS Police",

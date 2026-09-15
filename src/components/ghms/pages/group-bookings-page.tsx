@@ -183,7 +183,6 @@ export default function GroupBookingsPage() {
     DOUBLE: t("roomTypeDOUBLE"),
     TWIN: t("roomTypeTWIN"),
     SUITE: t("roomTypeSUITE"),
-    FAMILY: t("roomTypeFAMILY"),
     TRIPLE: t("roomTypeTRIPLE"),
     DORMITORY: t("roomTypeDORMITORY"),
   };

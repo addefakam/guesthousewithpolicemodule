@@ -618,19 +618,7 @@ CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
 CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResetToken_token_key" ON "PasswordResetToken" ("token");
 CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken" ("userId");
 
--- ─── Family Room: add FAMILY to RoomType enum ──────────────────────
--- NOTE: ALTER TYPE ADD VALUE cannot run inside a DO $$ block or a
--- transaction (which is how execViaPrisma wraps every statement).
--- The FAMILY enum value is added at runtime by ensureRoomTypeFAMILY()
--- in src/lib/ensure-room-type-enum.ts, called from the rooms API
--- POST route before any room creation.
--- This section intentionally left empty.
 
--- ─── Family Room: add role + familyLeaderId columns to Guest ────────
-DO $$ BEGIN ALTER TABLE "Guest" ADD COLUMN "role" TEXT NOT NULL DEFAULT ''; EXCEPTION WHEN duplicate_column THEN null; END $$;
-DO $$ BEGIN ALTER TABLE "Guest" ADD COLUMN "familyLeaderId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
-CREATE INDEX IF NOT EXISTS "Guest_familyLeaderId_idx" ON "Guest" ("familyLeaderId");
-CREATE INDEX IF NOT EXISTS "Guest_role_idx" ON "Guest" ("role");
 `;
 
 // ─── Indexes ───────────────────────────────────────────────────────────────
@@ -851,15 +839,11 @@ async function runMigrationsOnly(): Promise<void> {
   } catch (err) {
     throw err;
   }
-  // Add FAMILY to RoomType enum via raw Prisma (outside transaction)
   try {
     const { PrismaClient } = await import("@prisma/client");
     const p = new PrismaClient();
-    await p.$executeRawUnsafe(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
     await p.$disconnect();
-    console.log("[init-db] Added FAMILY to RoomType enum (background).");
   } catch (enumErr) {
-    console.log("[init-db] RoomType FAMILY enum add failed in background (non-blocking).");
   }
   try {
     await execViaPrisma(INDEXES_SQL);
@@ -916,14 +900,10 @@ export async function ensureDatabase(): Promise<void> {
           await client.query(MIGRATIONS_SQL);
           console.log("[init-db] Migrations applied to existing tables.");
 
-          // Add FAMILY to RoomType enum (pg.Client runs outside a transaction,
           // so ALTER TYPE ADD VALUE works here — unlike Prisma's $executeRaw).
           try {
-            await client.query(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
-            console.log("[init-db] Added FAMILY to RoomType enum.");
           } catch (enumErr) {
             // Ignore if it already exists
-            console.log("[init-db] RoomType FAMILY enum value already exists or add failed (non-blocking).");
           }
 
           await client.query(INDEXES_SQL);
@@ -982,12 +962,8 @@ export async function ensureDatabase(): Promise<void> {
       console.log("[init-db] Running migrations...");
       await client.query(MIGRATIONS_SQL);
 
-      // Add FAMILY to RoomType enum (pg.Client runs outside a transaction)
       try {
-        await client.query(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
-        console.log("[init-db] Added FAMILY to RoomType enum.");
       } catch (enumErr) {
-        console.log("[init-db] RoomType FAMILY enum value already exists or add failed (non-blocking).");
       }
 
       // Create indexes

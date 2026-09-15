@@ -95,7 +95,6 @@ import {
   Pencil,
 } from "lucide-react";
 
-import { FamilyCompanionForm, type Companion } from "@/components/mobile/family-companion-form";
 import AddressFields from "@/components/shared/address-fields";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 
@@ -226,9 +225,6 @@ export default function ReservationsPage() {
   });
   const [creating, setCreating] = useState(false);
 
-  // Family Room: companions state + family form visibility
-  const [familyCompanions, setFamilyCompanions] = useState<Companion[]>([]);
-  const [showFamilyForm, setShowFamilyForm] = useState(false);
 
   // Payment dialog
   const [paymentDialog, setPaymentDialog] = useState<Reservation | null>(null);
@@ -522,12 +518,6 @@ export default function ReservationsPage() {
 
     // ── All validation passed — now make API calls ──
 
-    // Family Room gate: if the selected room is FAMILY, require companions
-    // (selRoom is already defined above at line 493)
-    if (selRoom?.type === "FAMILY" && familyCompanions.length === 0) {
-      setShowFamilyForm(true);
-      return;
-    }
 
     try {
       setCreating(true);
@@ -536,10 +526,7 @@ export default function ReservationsPage() {
       let guestId = selectedGuestId;
       if (guestMode === "new") {
         const created = await apiCreateGuest({
-          ...newGuestForm,
-          // Mark as LEADER if this is a FAMILY room reservation
-          role: selRoom?.type === "FAMILY" ? "LEADER" : undefined,
-        });
+          ...newGuestForm,        });
         guestId = created.id;
       } else if (selRoom?.type === "FAMILY" && guestId) {
         // Existing guest as leader — best-effort role update
@@ -568,14 +555,10 @@ export default function ReservationsPage() {
         secondGuestPhone: createForm.secondGuestPhone,
         secondGuestIdNumber: createForm.secondGuestIdNumber,
         exceptionallyReserved: createForm.exceptionallyReserved,
-        exceptionReason: createForm.exceptionReason,
-        // Family Room: pass companions to the API
-        companions: selRoom?.type === "FAMILY" ? familyCompanions : undefined,
-      });
+        exceptionReason: createForm.exceptionReason,      });
 
       toast.success("Guest and reservation created successfully");
       closeCreateDialog();
-      setFamilyCompanions([]);
       triggerRefresh();
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : "Failed to create reservation";
@@ -1615,21 +1598,6 @@ export default function ReservationsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Family Companion Form — shown when reserving a FAMILY room */}
-      <FamilyCompanionForm
-        open={showFamilyForm}
-        onOpenChange={setShowFamilyForm}
-        leaderName={
-          guestMode === "new"
-            ? newGuestForm.name
-            : allGuests.find((g) => g.id === selectedGuestId)?.name || ""
-        }
-        onConfirm={(companions) => {
-          setFamilyCompanions(companions);
-          setShowFamilyForm(false);
-          toast.success(`${companions.length} companions recorded`);
-        }}
-      />
 
       {/* Action Confirmation Dialog (Check-in / Check-out / Cancel) */}
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>

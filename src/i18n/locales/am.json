@@ -764,8 +764,7 @@
     "tooltipReservedFrom": "ከ:",
     "tooltipReservedTo": "እስከ:",
     "toastRoomOccupied": "ክፍል {{number}} በ{{guest}} ከ{{from}} እስከ {{to}} ድረስ ተይዟል",
-    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም",
-    "roomTypeFamily": "የቤተሰብ ክፍል"
+    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -3185,31 +3184,13 @@
     "extendConflict": "ማራዘም አይቻልም — ክፍሉ ለእነዚህ ቀናት ቀጠሮ አለው",
     "noMatchFound": "ከማጣሪያው ጋር የሚስማማ ክፍል አልተገኘም",
     "resetPassword": "የይለፍ ቃል ዳግም አስጀምር",
-    "familyRoomTitle": "የቤተሰብ ቀጠሮ",
-    "familyRoomDesc": "ይህ የቤተሰብ ክፍል ነው። የቤተሰቡን መሪ እና ሁሉንም አብረዋቸው የሚጓዙ ሰዎች (የቤተሰብ አባላት፣ ጥበቃ፣ አገልጋዮች) መዝግቡ።",
-    "familyLeader": "የቤተሰብ መሪ",
-    "companions": "አብረዋቸው የሚጓዙ ሰዎች",
-    "numFamily": "የቤተሰብ አባላት ብዛት",
     "numSecurity": "የጥበቃ ቡድን ብዛት",
     "numServant": "የአገልጋዮች ብዛት",
     "roleLEADER": "የቤተሰብ መሪ",
-    "roleFAMILY": "የቤተሰብ አባል",
     "roleSECURITY": "ጥበቃ",
     "roleSERVANT": "አገልጋይ",
-    "companionName": "ሙሉ ስም",
-    "companionId": "የመለያ ቁጥር",
-    "companionIdType": "የመለያ አይነት",
-    "companionPhone": "ስልክ (አማራጭ)",
-    "companionNationality": "ዜግነት",
-    "companionRequired": "ለቤተሰብ ክፍል ቀጠሮ ቢያንስ አንድ አብረዋቸው የሚጓዝ ሰው መመዝገብ ያስፈልጋል።",
-    "familyRoomSummary": "መሪ + {{total}} አብረዋቸው የሚጓዙ ({{family}} ቤተሰብ፣ {{security}} ጥበቃ፣ {{servant}} አገልጋዮች፣ {{driver}} አሽከርካሪዎች)",
-    "addCompanions": "አብረዋቸው የሚጓዙን ያክሉ",
-    "reviewCompanions": "አብረዋቸው የሚጓዙን ያረጋግጡ",
-    "editCompanions": "አስተካክል",
-    "companion": "አብረዋቸው የሚጓዝ {{i}}",
     "numDriver": "የአሽከርካሪዎች ብዛት",
-    "roleDRIVER": "አሽከርካሪ",
-    "roomTypeFamily": "የቤተሰብ ክፍል"
+    "roleDRIVER": "አሽከርካሪ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

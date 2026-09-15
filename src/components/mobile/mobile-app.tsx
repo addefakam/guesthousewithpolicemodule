@@ -92,7 +92,6 @@ import {
   Pencil,
 } from "lucide-react";
 
-import { FamilyCompanionForm, type Companion } from "@/components/mobile/family-companion-form";
 
 // ── Types ──
 interface Room {
@@ -132,7 +131,6 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   TWIN: <Hotel className="h-4 w-4" />,
   SUITE: <Crown className="h-4 w-4" />,
   DELUXE: <Star className="h-4 w-4" />,
-  FAMILY: <Users className="h-4 w-4" />,
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -247,9 +245,6 @@ export default function MobileApp() {
   const [resForm, setResForm] = useState(RES_FORM_DEFAULTS);
   const [resGuestSearch, setResGuestSearch] = useState("");
   const [creatingRes, setCreatingRes] = useState(false);
-  // Family Room: companions state + family form visibility
-  const [familyCompanions, setFamilyCompanions] = useState<Companion[]>([]);
-  const [showFamilyForm, setShowFamilyForm] = useState(false);
 
   // Check-in / Check-out confirm
   const [confirmAction, setConfirmAction] = useState<{
@@ -501,16 +496,6 @@ export default function MobileApp() {
       toast.error(t("toastFillRequired")); return;
     }
 
-    // Family Room gate: if the selected room is a FAMILY room, require
-    // companions to be filled in via the family-companion form before
-    // submitting. If they haven't been entered yet, open the form
-    // and abort this submit — the form's onConfirm will set
-    // familyCompanions, then the operator taps Reserve again.
-    const selectedRoom = rooms.find((r) => r.id === resForm.roomId);
-    if (selectedRoom?.type === "FAMILY" && familyCompanions.length === 0) {
-      setShowFamilyForm(true);
-      return;
-    }
 
     if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
       if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
@@ -531,10 +516,7 @@ export default function MobileApp() {
           phone: resForm.directPhone.trim(),
           idNumber: resForm.directIdNumber.trim() || undefined,
           idType: resForm.directIdType,
-          nationality: resForm.directNationality.trim() || undefined,
-          // Mark as LEADER if this is a FAMILY room reservation
-          role: selectedRoom?.type === "FAMILY" ? "LEADER" : "",
-        });
+          nationality: resForm.directNationality.trim() || undefined,        });
         guestId = newGuest?.id || newGuest?.guest?.id;
         if (!guestId) {
           toast.error(t("toastFailedCreateGuest")); return;
@@ -561,16 +543,11 @@ export default function MobileApp() {
         checkIn: resForm.checkIn, checkOut: resForm.checkOut, notes: resForm.notes,
         secondGuestName: resForm.secondGuestName, secondGuestPhone: resForm.secondGuestPhone,
         secondGuestIdNumber: resForm.secondGuestIdNumber,
-        exceptionallyReserved: resForm.exceptionallyReserved, exceptionReason: resForm.exceptionReason,
-        // Family Room: pass companions to the API so it can create Guest
-        // records for each one, linked to the leader via familyLeaderId.
-        companions: selectedRoom?.type === "FAMILY" ? familyCompanions : undefined,
-      });
+        exceptionallyReserved: resForm.exceptionallyReserved, exceptionReason: resForm.exceptionReason,      });
       toast.success(resForm.guestMode === "direct" ? t("toastGuestCreated") : t("toastResCreated"));
       setShowNewRes(false);
       setResForm(RES_FORM_DEFAULTS);
       setResGuestSearch("");
-      setFamilyCompanions([]);
       triggerRefresh();
       await fetchData();
     } catch (err: unknown) {
@@ -873,8 +850,7 @@ export default function MobileApp() {
         if (!open) {
           setShowNewRes(false);
           setResGuestSearch("");
-          setFamilyCompanions([]);
-        }
+            }
       }}>
         <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -890,53 +866,13 @@ export default function MobileApp() {
             creating={creatingRes} onSubmit={handleCreateRes} onCancel={() => {
               setShowNewRes(false);
               setResGuestSearch("");
-              setFamilyCompanions([]);
-            }}
+                    }}
             t={t} formatCurrency={formatCurrency}
           />
 
-          {/* Companion summary — visible only after the family form has been
-              filled in. Lets the operator verify the roster before tapping
-              Reserve again. */}
-          {familyCompanions.length > 0 && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-              <p className="font-semibold mb-1">{t("familyRoomTitle")}</p>
-              <p>
-                {t("familyRoomSummary", {
-                  total: familyCompanions.length,
-                  family: familyCompanions.filter((c) => c.role === "FAMILY").length,
-                  security: familyCompanions.filter((c) => c.role === "SECURITY").length,
-                  servant: familyCompanions.filter((c) => c.role === "SERVANT").length,
-                  driver: familyCompanions.filter((c) => c.role === "DRIVER").length,
-                })}
-              </p>
-              <button
-                type="button"
-                onClick={() => setShowFamilyForm(true)}
-                className="mt-1 text-emerald-700 underline"
-              >
-                {t("editCompanions")}
-              </button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
 
-      {/* Family Companion Form — shown when reserving a FAMILY room */}
-      <FamilyCompanionForm
-        open={showFamilyForm}
-        onOpenChange={setShowFamilyForm}
-        leaderName={
-          resForm.guestMode === "direct"
-            ? resForm.directName
-            : guests.find((g) => g.id === resForm.guestId)?.name || ""
-        }
-        onConfirm={(companions) => {
-          setFamilyCompanions(companions);
-          setShowFamilyForm(false);
-          toast.success(`${companions.length} companions recorded`);
-        }}
-      />
 
       {/* Check-in / Check-out Confirm */}
       {confirmAction && (
@@ -1920,7 +1856,6 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCu
               <SelectItem value="TWIN">{t("roomTypeTWIN")}</SelectItem>
               <SelectItem value="SUITE">{t("roomTypeSUITE")}</SelectItem>
               <SelectItem value="DELUXE">{t("roomTypeDELUXE")}</SelectItem>
-              <SelectItem value="FAMILY">{t("roomTypeFamily")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // police-grade surface. Read-only, capped, police-only.
 //
 // Uses raw SQL to avoid Prisma's prepared-statement cache issue with
-// the RoomType enum (FAMILY value added at runtime). All room.type
+// the RoomType enum 
 // values are cast to text to bypass enum validation.
 export async function GET(req: NextRequest) {
   try {

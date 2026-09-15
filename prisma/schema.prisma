@@ -29,7 +29,6 @@ enum RoomType {
   TWIN
   SUITE
   DELUXE
-  FAMILY
 }
 
 enum RoomStatus {
@@ -176,7 +175,6 @@ model User {
   provider    Provider?       @relation(fields: [providerId], references: [id])
 
   @@index([providerId])
-  @@index([role])
   @@index([isActive])
   @@index([createdBy])
 }
@@ -227,15 +225,6 @@ model Guest {
   vip         Boolean  @default(false)
   totalSpent  Float    @default(0)
   totalStays  Int      @default(0)
-  // Family Room feature:
-  //   - role: 'LEADER' (family leader / primary guest on the reservation),
-  //           'FAMILY' (a family member), 'SECURITY' (security personnel),
-  //           'SERVANT' (servant/household staff), or '' for normal guests.
-  //   - familyLeaderId: for non-leader companions, points to the Guest.id of
-  //     the family leader they're traveling under. NULL for leaders and
-  //     normal guests.
-  role            String   @default("")
-  familyLeaderId  String?
   providerId  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -253,8 +242,6 @@ model Guest {
   @@index([region])
   @@index([zone])
   @@index([woreda])
-  @@index([familyLeaderId])
-  @@index([role])
 }
 
 model Reservation {

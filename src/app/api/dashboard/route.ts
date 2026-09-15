@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     // ── Run core queries in parallel (all roles) ──
     // Use raw SQL for room status counts to avoid Prisma's prepared-statement
-    // cache issue with newly-added enum values (e.g. FAMILY in RoomType).
+    // cache issue with newly-added enum values .
     const [roomStatusCountsRaw, activeReservations, todayCheckins, todayCheckouts, revenueResult, activityLogs] =
       await Promise.all([
         db.$queryRaw<{ status: string; count: bigint }[]>`

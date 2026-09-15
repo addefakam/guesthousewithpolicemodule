@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const name = searchParams.get("name") || "";
 
     // Search across all providers for matching guest reservations
-    // Use raw SQL for room type to avoid Prisma enum cache issue (FAMILY)
+    // Use raw SQL for room type to avoid Prisma enum cache issue 
     const guests = await db.$queryRaw<{
       id: string; name: string; phone: string; idNumber: string; nationality: string;
       providerId: string | null; providerName: string | null; providerAddress: string | null;

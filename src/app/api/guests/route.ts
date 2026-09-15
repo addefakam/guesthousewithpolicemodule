@@ -107,10 +107,7 @@ export async function POST(req: NextRequest) {
         address: composedAddress,
         notes: notes || "",
         vip: vip || false,
-        // Family Room: role (LEADER/FAMILY/SECURITY/SERVANT) and optional
         // familyLeaderId (points to the leader's Guest.id for companions)
-        role: role || "",
-        familyLeaderId: familyLeaderId || null,
         providerId,
       },
     });

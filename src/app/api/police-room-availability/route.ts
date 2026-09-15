@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
-import { ensureRoomTypeFAMILY } from "@/lib/ensure-room-type-enum";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
 
-    // Ensure FAMILY exists in the RoomType enum before any query.
     // This is needed because Prisma's connection pool may have cached
-    // the old enum values from before FAMILY was added.
-    await ensureRoomTypeFAMILY();
+    // the old enum values .
 
     // ── City-wide room statistics ──
     // Use raw SQL for ALL room queries to avoid Prisma's prepared-statement
-    // cache issue with the RoomType enum (FAMILY value added at runtime).
+    // cache issue with the RoomType enum .
     const statsRaw = await db.$queryRaw<{ status: string; count: bigint }[]>`
       SELECT "status", COUNT(*)::bigint as count FROM "Room" GROUP BY "status"
     `;
@@ -37,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // ── Per-provider room breakdown ──
     // Use raw SQL to avoid Prisma's prepared-statement cache issue with
-    // the RoomType enum (FAMILY value was added after Prisma cached its
+    // the RoomType enum 
     // query plans). Casting type::text avoids enum validation entirely.
     const providersRaw = await db.$queryRaw<{
       id: string; name: string; ownerName: string; phone: string;

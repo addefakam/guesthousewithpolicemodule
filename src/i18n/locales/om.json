@@ -764,8 +764,7 @@
     "tooltipReservedFrom": "Kan:",
     "tooltipReservedTo": "Hanga:",
     "toastRoomOccupied": "Kunoo {{number}} {{guest}} irraa {{from}} hanga {{to}}tti qabameera",
-    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne",
-    "roomTypeFamily": "Mana Maatii"
+    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -3185,31 +3184,13 @@
     "extendConflict": "Dabaluu hin danda'amu — kutaan guyyaa kanaaf qabamee jira",
     "noMatchFound": "Filteewaan filatame walsimu koomii hin arganne",
     "resetPassword": "Jecha Darbii Haaromsi",
-    "familyRoomTitle": "Qabiyyee Maatii",
-    "familyRoomDesc": "Kun mana maatii dha. Bulaa maatiifi hunda waliin deeman (maatii, eegumsa, tajaajiltootaa) galmeessi.",
-    "familyLeader": "Bulaa Maatii",
-    "companions": "Waliin deeman",
-    "numFamily": "Lakkoofsa miseensa maatii",
     "numSecurity": "Lakkoofsa eegumsa",
     "numServant": "Lakkoofsa tajaajilaa",
     "roleLEADER": "Bulaa Maatii",
-    "roleFAMILY": "Miseensa Maatii",
     "roleSECURITY": "Eegumsa",
     "roleSERVANT": "Tajaajilaa",
-    "companionName": "Maqaa guutuu",
-    "companionId": "Lakkoofsa qubeessa",
-    "companionIdType": "Akaakuu qubeessa",
-    "companionPhone": "Bilbila (filata)",
-    "companionNationality": "Lammummaa",
-    "companionRequired": "Qabiyyee mana maatii qabuuf ohoowwan xiqqaan tokko waliin deemu galmeessuu qabda.",
-    "familyRoomSummary": "Bulaa + {{total}} waliin deeman ({{family}} maatii, {{security}} eegumsa, {{servant}} tajaajilaa, {{driver}} konkolaachisaa)",
-    "addCompanions": "Waliin deeman dabi",
-    "reviewCompanions": "Waliin deeman mirkaneessi",
-    "editCompanions": "Gulaali",
-    "companion": "Waliin deemuu {{i}}",
     "numDriver": "Lakkoofsa konkolaachisaa",
-    "roleDRIVER": "Konkolaachisaa",
-    "roomTypeFamily": "Mana Maatii"
+    "roleDRIVER": "Konkolaachisaa"
   },
   "policeApp": {
     "appName": "GHMS Poolisii",
