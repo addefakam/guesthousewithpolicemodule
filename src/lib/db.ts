@@ -13,107 +13,27 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const client = new PrismaClient({
-    log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["warn", "error"],
-  });
+  // Append ?prepared_statements=false to the connection string if not
+  // already present. This tells the PostgreSQL driver to NOT use prepared
+  // statements, which prevents the enum cache issue entirely.
+  //
+  // When ALTER TYPE ADD VALUE adds FAMILY to the RoomType enum at runtime,
+  // Prisma's prepared statements still have the old enum cached. By
+  // disabling prepared statements, every query is sent as a fresh
+  // statement that PostgreSQL validates against the CURRENT enum values.
+  //
+  // Performance impact: minimal for a serverless app (each request is
+  // a fresh connection anyway). The slight per-query overhead is worth
+  // the reliability of not crashing on new enum values.
+  let url = process.env.DATABASE_URL;
+  if (!url.includes("prepared_statements=false")) {
+    url += (url.includes("?") ? "&" : "?") + "prepared_statements=false";
+  }
 
-  // Prisma middleware: catch enum errors on Room queries and fall back
-  // to raw SQL with type::text cast. This is a GLOBAL fix that covers
-  // ALL routes without needing to change each one individually.
-  return client.$extends({
-    query: {
-      room: {
-        async findMany({ args, query }) {
-          try {
-            return await query(args);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
-              console.log("[db] Room findMany enum error — raw SQL fallback");
-              const w = args.where as Record<string, unknown> || {};
-              let sql = `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"`;
-              const conditions: string[] = [];
-              if (w.providerId) conditions.push(`\"providerId\" = '${w.providerId}'`);
-              if (w.status) conditions.push(`\"status\" = '${w.status}'`);
-              if (conditions.length) sql += ` WHERE ${conditions.join(" AND ")}`;
-              sql += ` ORDER BY "floor" ASC`;
-              const results = await new PrismaClient().$queryRawUnsafe(sql);
-              return results as never;
-            }
-            throw err;
-          }
-        },
-        async groupBy({ args, query }) {
-          try {
-            return await query(args);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
-              console.log("[db] Room groupBy enum error — raw SQL fallback");
-              const by = (args.by as string[]) || ["type"];
-              const w = args.where as Record<string, unknown> || {};
-              const whereClause = w.providerId ? ` WHERE "providerId" = '${w.providerId}'` : "";
-              if (by[0] === "type") {
-                const results = await new PrismaClient().$queryRawUnsafe(
-                  `SELECT "type"::text AS "type", COUNT(*)::int AS count FROM "Room"${whereClause} GROUP BY "type"`
-                ) as { type: string; count: number }[];
-                return results.map(r => ({ type: r.type, _count: { id: r.count } })) as never;
-              }
-              if (by[0] === "status") {
-                const results = await new PrismaClient().$queryRawUnsafe(
-                  `SELECT "status", COUNT(*)::int AS count FROM "Room"${whereClause} GROUP BY "status"`
-                ) as { status: string; count: number }[];
-                return results.map(r => ({ status: r.status, _count: { status: r.count } })) as never;
-              }
-              throw err;
-            }
-            throw err;
-          }
-        },
-        async findFirst({ args, query }) {
-          try {
-            return await query(args);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
-              console.log("[db] Room findFirst enum error — raw SQL fallback");
-              const w = args.where as Record<string, unknown> || {};
-              const conditions: string[] = [];
-              if (w.id) conditions.push(`"id" = '${w.id}'`);
-              if (w.providerId) conditions.push(`"providerId" = '${w.providerId}'`);
-              if (w.number) conditions.push(`"number" = '${w.number}'`);
-              const whereClause = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
-              const results = await new PrismaClient().$queryRawUnsafe(
-                `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} LIMIT 1`
-              ) as Record<string, unknown>[];
-              return (results.length > 0 ? results[0] : null) as never;
-            }
-            throw err;
-          }
-        },
-        async findUnique({ args, query }) {
-          try {
-            return await query(args);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (msg.includes("not found in enum") || msg.includes("22P02") || msg.includes("invalid input value for enum")) {
-              console.log("[db] Room findUnique enum error — raw SQL fallback");
-              const w = args.where as Record<string, unknown> || {};
-              const conditions: string[] = [];
-              if (w.id) conditions.push(`"id" = '${w.id}'`);
-              if (w.providerId) conditions.push(`"providerId" = '${w.providerId}'`);
-              const whereClause = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
-              const results = await new PrismaClient().$queryRawUnsafe(
-                `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} LIMIT 1`
-              ) as Record<string, unknown>[];
-              return (results.length > 0 ? results[0] : null) as never;
-            }
-            throw err;
-          }
-        },
-      },
-    },
-  }) as unknown as PrismaClient;
+  return new PrismaClient({
+    log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["warn", "error"],
+    datasources: { db: { url } },
+  });
 }
 
 function getClient(): PrismaClient {
@@ -123,10 +43,6 @@ function getClient(): PrismaClient {
   return _db;
 }
 
-/**
- * Destroy the current PrismaClient and create a fresh one.
- * Clears the prepared-statement cache so new enum values are visible.
- */
 async function recreateClient(): Promise<PrismaClient> {
   if (_db) {
     try { await _db.$disconnect(); } catch { /* ignore */ }
@@ -143,9 +59,6 @@ function ensureOnce(): Promise<void> {
   return _ensurePromise;
 }
 
-/**
- * Detect schema errors AND enum cache errors.
- */
 function isSchemaError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message;
@@ -161,9 +74,6 @@ function isSchemaError(err: unknown): boolean {
   );
 }
 
-/**
- * Force re-run migrations + recreate PrismaClient.
- */
 async function forceRemigrate(): Promise<void> {
   if (_migrating) {
     while (_migrating) {
@@ -186,68 +96,58 @@ async function forceRemigrate(): Promise<void> {
   }
 }
 
-/**
- * Execute a Prisma method with auto-retry on schema/enum errors.
- * On error: re-migrates, recreates PrismaClient, then retries using
- * the FRESH client (fetched via getClient() inside the retry closure).
- */
 async function withSchemaRetry<T>(fn: (client: PrismaClient) => Promise<T>): Promise<T> {
   await ensureOnce();
   try {
     return await fn(getClient());
   } catch (err) {
     if (isSchemaError(err)) {
-      console.log("[db] Schema/enum error caught, will retry after re-migration:", err instanceof Error ? err.message : String(err));
+      console.log("[db] Schema/enum error caught, retrying:", err instanceof Error ? err.message : String(err));
       await forceRemigrate();
-      // getClient() now returns the FRESH client (recreated in forceRemigrate)
       return await fn(getClient());
     }
     throw err;
   }
 }
 
-/**
- * Get a PrismaClient with migrations guaranteed to have run.
- */
 export async function getSafeDb(): Promise<PrismaClient> {
   await ensureOnce();
   return getClient();
 }
 
-/**
- * Convenience proxy — auto-ensures database before every query.
- * Auto-retries on schema/enum errors with a FRESH PrismaClient.
- *
- * Key fix: the fn callback receives the client as a parameter, so
- * when forceRemigrate() creates a new client, the retry uses it.
- */
+// Simple proxy: delegates to getClient() at call time, so recreateClient()
+// always picks up the fresh instance.
 export const db = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    // For function calls ($queryRaw, $executeRaw, $transaction, etc.)
-    if (typeof prop === "string" && prop.startsWith("$")) {
+    const client = getClient();
+    const value = (client as unknown as Record<string, unknown>)[prop as string];
+    if (typeof value === "function") {
       return async (...args: unknown[]) => {
-        return withSchemaRetry((client) =>
-          (client as unknown as Record<string, unknown>)[prop] &&
-          ((client as unknown as Record<string, (...a: unknown[]) => unknown>)[prop]).apply(client, args)
-        );
+        return withSchemaRetry((c) => {
+          const fn = (c as unknown as Record<string, (...a: unknown[]) => unknown>)[prop as string];
+          return fn.apply(c, args) as Promise<unknown>;
+        }) as Promise<unknown>;
       };
     }
-    // For model accessors (.room, .guest, .reservation, etc.)
-    // Return a proxy that defers client resolution to call-time
-    return new Proxy({}, {
-      get(_t, method) {
-        if (typeof method !== "string") return undefined;
-        return async (...args: unknown[]) => {
-          return withSchemaRetry((client) => {
-            const model = (client as unknown as Record<string, Record<string, unknown>>)[prop];
-            const fn = model?.[method];
-            if (typeof fn === "function") {
-              return fn.apply(model, args);
-            }
-            throw new Error(`Method ${String(method)} not found on model ${prop}`);
-          });
-        };
-      },
-    });
+    if (value && typeof value === "object") {
+      // Return a proxied model that resolves the client at CALL time
+      const modelName = prop as string;
+      return new Proxy({} as Record<string, (...args: unknown[]) => Promise<unknown>>, {
+        get(_t, method) {
+          if (typeof method !== "string") return undefined;
+          return async (...args: unknown[]) => {
+            return withSchemaRetry((c) => {
+              const model = (c as unknown as Record<string, Record<string, (...a: unknown[]) => unknown>>)[modelName];
+              const fn = model?.[method];
+              if (typeof fn !== "function") {
+                throw new Error(`Method ${method} not found on model ${modelName}`);
+              }
+              return fn.apply(model, args) as Promise<unknown>;
+            }) as Promise<unknown>;
+          };
+        },
+      });
+    }
+    return value;
   },
 });
