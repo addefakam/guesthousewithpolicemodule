@@ -111,7 +111,7 @@ export default function LoginPage() {
     if (
       !regName.trim() ||
       !regPhone.trim() ||
-      !regEmail.trim() ||
+      // email is OPTIONAL — validated below only if provided.
       !regGuestHouseName.trim() ||
       !regType ||
       // licenseNo is OPTIONAL — defaults to empty string at the API.
@@ -127,7 +127,8 @@ export default function LoginPage() {
       toast.error(t("errorInvalidPhone"));
       return;
     }
-    if (!isValidEmail(regEmail)) {
+    // Email is OPTIONAL — only validate format if the user provided one.
+    if (regEmail.trim() && !isValidEmail(regEmail)) {
       toast.error(t("errorInvalidEmail"));
       return;
     }
@@ -137,7 +138,10 @@ export default function LoginPage() {
       formData.append("name", regGuestHouseName.trim());   // backend 'name' = guest house name
       formData.append("ownerName", regName.trim());         // backend 'ownerName' = owner full name
       formData.append("phone", regPhone.trim());
-      formData.append("email", regEmail.trim());
+      // Email is OPTIONAL — only append if provided.
+      if (regEmail.trim()) {
+        formData.append("email", regEmail.trim());
+      }
       const address = ["Bishoftu", regSubCity, regWoreda].filter(Boolean).join(", ");
       if (address) formData.append("address", address);
       if (regSubCity) formData.append("subCity", regSubCity);
@@ -305,7 +309,9 @@ export default function LoginPage() {
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-email">{t("email")}</Label>
+                        <Label htmlFor="reg-email">
+                          {t("email")} <span className="text-gray-400 text-xs">(optional)</span>
+                        </Label>
                         <Input
                           id="reg-email"
                           type="email"

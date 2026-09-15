@@ -299,7 +299,7 @@ export default function ProvidersPage() {
       !registerForm.name.trim() ||
       !registerForm.ownerName.trim() ||
       !registerForm.phone.trim() ||
-      !registerForm.email.trim() ||
+      // email is OPTIONAL — validated below only if provided.
       !registerForm.type ||
       !registerForm.username.trim() ||
       !registerForm.password.trim() ||
@@ -318,7 +318,8 @@ export default function ProvidersPage() {
       toast.error(t('invalidPhone'));
       return;
     }
-    if (!isValidEmail(registerForm.email)) {
+    // Email is OPTIONAL — only validate format if the user provided one.
+    if (registerForm.email.trim() && !isValidEmail(registerForm.email)) {
       toast.error(t('invalidEmail'));
       return;
     }
@@ -940,7 +941,7 @@ export default function ProvidersPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-email" className="text-sm">{t('labelEmail')} <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-email" className="text-sm">{t('labelEmail')} <span className="text-gray-400 text-xs">(optional)</span></Label>
                     <Input
                       id="reg-email"
                       type="email"
