@@ -24,7 +24,7 @@ export async function sendTelegramMessage(
   text: string,
   botToken?: string,
 ): Promise<boolean> {
-  const token = botToken || process.env.TELEGRAM_BOT_TOKEN;
+  const token = botToken || process.env.TELEGRAM_BOT_TOKEN || "8319586071:AAHvZSVPo1UX2gn_1cz2O2XMrKU_sAmekCs";
   if (!token) {
     console.warn("[telegram] TELEGRAM_BOT_TOKEN not set — skipping Telegram send");
     return false;
