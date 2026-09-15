@@ -49,41 +49,26 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Use raw SQL to avoid Prisma's enum cache issue with RoomType (FAMILY).
-    // Prisma validates enum values on ALL queries that touch the Room model,
-    // even when type is NOT in the select clause. Raw SQL bypasses this.
-    const { Prisma } = await import("@prisma/client");
     const conditions: string[] = [];
     const params: unknown[] = [];
-    let paramIdx = 1;
-    
+    let pi = 1;
+
     if (where.providerId) {
-      conditions.push(`r."providerId" = $${paramIdx++}`);
+      conditions.push(`r."providerId" = $${pi++}`);
       params.push(where.providerId);
     }
     if (where.status) {
-      if (Array.isArray(where.status.in)) {
-        const statuses = where.status.in as string[];
-        if (statuses.length > 0) {
-          conditions.push(`r."status" = ANY($${paramIdx++}::text[])`);
-          params.push(statuses);
-        }
-      } else {
-        conditions.push(`r."status" = $${paramIdx++}`);
+      if (where.status.in && Array.isArray(where.status.in)) {
+        conditions.push(`r."status" = ANY($${pi++}::text[])`);
+        params.push(where.status.in);
+      } else if (typeof where.status === "string") {
+        conditions.push(`r."status" = $${pi++}`);
         params.push(where.status);
       }
     }
-    if (where.OR) {
-      const orConds = (where.OR as Record<string, unknown>[]).map((cond) => {
-        if (cond.guestId) { return `r."guestId" = $${paramIdx++}`; params.push(cond.guestId); }
-        return null;
-      }).filter(Boolean);
-      if (orConds.length > 0) {
-        conditions.push(`(${orConds.join(" OR ")})`);
-      }
-    }
-    
+
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
-    
+
     const [reservations, totalResult] = await Promise.all([
       db.$queryRawUnsafe(
         `SELECT r.*, g."name" AS "guestName", g."phone" AS "guestPhone",
@@ -94,7 +79,7 @@ export async function GET(req: NextRequest) {
          LEFT JOIN "Room" rm ON rm."id" = r."roomId"
          ${whereClause}
          ORDER BY r."createdAt" DESC
-         LIMIT $${paramIdx++} OFFSET $${paramIdx++}`,
+         LIMIT $${pi++} OFFSET $${pi++}`,
         ...params, limit, skip
       ),
       db.$queryRawUnsafe(
@@ -102,7 +87,7 @@ export async function GET(req: NextRequest) {
         ...params
       ),
     ]);
-    
+
     const total = Array.isArray(totalResult) ? (totalResult[0] as Record<string, number>)?.count ?? 0 : 0;
 
     return NextResponse.json({ data: reservations, total, page, limit, totalPages: Math.ceil(total / limit) });

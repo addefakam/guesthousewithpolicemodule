@@ -46,7 +46,7 @@ export async function PUT(
         ...(body.notes !== undefined && { notes: body.notes }),
         ...(body.status === "COMPLETED" && { completedAt: new Date() }),
       },
-      include: { room: { select: { id: true, number: true, name: true } } },
+      include: {},
     });
 
     return NextResponse.json({ task });

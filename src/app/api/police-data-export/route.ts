@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
             const rows = await db.reservation.findMany({
               include: {
                 guest: { select: { name: true, phone: true } },
-                room: { select: { number: true } },
+                
                 provider: { select: { name: true } },
               },
               orderBy: { createdAt: "desc" },
@@ -271,7 +271,7 @@ export async function GET(req: NextRequest) {
             const rows = await db.reservation.findMany({
               include: {
                 guest: { select: { name: true, phone: true } },
-                room: { select: { number: true } },
+                
                 provider: { select: { name: true } },
               },
               orderBy: { createdAt: "desc" },

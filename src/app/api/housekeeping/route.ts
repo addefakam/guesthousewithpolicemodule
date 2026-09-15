@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       db.housekeepingTask.findMany({
         where,
         orderBy: { scheduledDate: "asc" },
-        include: { room: { select: { id: true, number: true, name: true } } },
+        include: {},
         skip,
         take: limit,
       }),
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         notes: notes || "",
         providerId: auth.providerId,
       },
-      include: { room: { select: { id: true, number: true, name: true } } },
+      include: {},
     });
 
     return NextResponse.json({ task }, { status: 201 });

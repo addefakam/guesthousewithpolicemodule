@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
       db.payment.findMany({
         where: providerId ? { providerId } : undefined,
         include: {
-          reservation: { select: { id: true, guestId: true, room: { select: { number: true, name: true } } } },
+          reservation: { select: { id: true, guestId: true } },
         },
       }),
       db.settings.findMany({

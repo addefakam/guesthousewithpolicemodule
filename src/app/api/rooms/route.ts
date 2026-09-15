@@ -36,24 +36,29 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Use raw SQL with type::text cast to avoid Prisma's prepared-statement
-    // cache issue with the RoomType enum (FAMILY value added at runtime).
-    const roomsRaw = await db.$queryRaw<{
-      id: string; number: string; name: string; type: string;
-      pricePerNight: number; floor: number; capacity: number;
-      status: string; providerId: string | null;
-      createdAt: Date; updatedAt: Date;
-    }[]>`
-      SELECT
-        "id", "number", "name",
-        "type"::text AS "type",
-        "pricePerNight", "floor", "capacity",
-        "status", "providerId", "createdAt", "updatedAt"
-      FROM "Room"
-      ${q ? db.$queryRaw`WHERE "number" ILIKE ${'%' + q + '%'} OR "name" ILIKE ${'%' + q + '%'}` : db.$queryRaw``}
-      ${where.providerId ? (q ? db.$queryRaw`AND "providerId" = ${where.providerId}` : db.$queryRaw`WHERE "providerId" = ${where.providerId}`) : db.$queryRaw``}
-      ORDER BY "floor" ASC, "number" ASC
-    `;
+    // Use raw SQL with type::text cast to avoid Prisma's enum cache issue.
+    // Build the query with parameterized values to prevent SQL injection.
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (q) {
+      conditions.push(`("number" ILIKE $${paramIdx} OR "name" ILIKE $${paramIdx})`);
+      params.push(`%${q}%`);
+      paramIdx++;
+    }
+    if (where.providerId) {
+      conditions.push(`"providerId" = $${paramIdx}`);
+      params.push(where.providerId);
+      paramIdx++;
+    }
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const roomsRaw = await db.$queryRawUnsafe(
+      `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
+      ...params
+    );
 
     return NextResponse.json({ rooms: roomsRaw });
   } catch (error) {

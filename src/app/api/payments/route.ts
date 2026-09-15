@@ -27,7 +27,6 @@ export async function GET(req: NextRequest) {
               checkIn: true,
               checkOut: true,
               guest: { select: { id: true, name: true, phone: true } },
-              room: { select: { id: true, number: true, name: true } },
             },
           },
           daytimeBooking: {
