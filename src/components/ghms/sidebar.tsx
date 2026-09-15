@@ -34,7 +34,6 @@ import {
   BrainCircuit,
   ClipboardList,
   DoorOpen,
-  Wrench,
   Hotel,
   MessageSquare,
   ScrollText,
@@ -83,7 +82,6 @@ interface NavItem {
 const ALL_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { page: "accommodation", label: "Accommodation", icon: DoorOpen },
-  { page: "operations", label: "Operations", icon: Wrench },
   { page: "users", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
   { page: "group-bookings", label: "Group Bookings", icon: Users },
@@ -172,11 +170,6 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   // New keys with _view suffix
   rooms_view: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
   daytime_view: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
-  housekeeping_view: {
-    page: "operations",
-    label: "Operations",
-    icon: Wrench,
-  },
   reports_view: { page: "reports", label: "Reports", icon: BarChart3 },
   reviews_view: { page: "reviews", label: "Reviews", icon: Star },
   notifications_view: {
@@ -188,11 +181,6 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   // Legacy keys without _view suffix (backward compat)
   rooms: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
   daytime: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
-  housekeeping: {
-    page: "operations",
-    label: "Operations",
-    icon: Wrench,
-  },
   reports: { page: "reports", label: "Reports", icon: BarChart3 },
   reviews: { page: "reviews", label: "Reviews", icon: Star },
   notifications: {

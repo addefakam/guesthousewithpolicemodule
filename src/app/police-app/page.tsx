@@ -40,7 +40,7 @@ function PoliceAppGate() {
 
   // The police app defaults to English (unlike the operator mobile app which defaults to Amharic)
   useEffect(() => {
-    if (mounted && i18n.language !== "en") {
+    if (mounted && i18n && typeof i18n.changeLanguage === "function" && i18n.language !== "en") {
       i18n.changeLanguage("en");
     }
   }, [mounted]);

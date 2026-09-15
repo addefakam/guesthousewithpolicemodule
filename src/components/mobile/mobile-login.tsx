@@ -40,6 +40,7 @@ export function MobileLoginPage() {
   };
 
   const toggleLang = () => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const next = i18n.language === "am" ? "en" : "am";
     i18n.changeLanguage(next);
   };

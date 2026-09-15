@@ -158,6 +158,19 @@ interface Reservation {
 
 const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED", "FREE_ROOMS"] as const;
 
+// Human-readable labels for each status — used in tab pills, table badges,
+// and dropdown menus. Keeps vocabulary consistent: ACTIVE is rendered as
+// "Checked-in" everywhere (matches the user-facing terminology).
+const STATUS_LABEL: Record<string, string> = {
+  ALL: "All",
+  UPCOMING: "Upcoming",
+  ACTIVE: "Checked-in",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  FREE_ROOMS: "Free Rooms",
+  DELETED: "Deleted",
+};
+
 const STATUS_BADGE: Record<string, string> = {
   UPCOMING: "bg-sky-100 text-sky-800 border-sky-200",
   ACTIVE: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -805,7 +818,7 @@ export default function ReservationsPage() {
           <TabsList>
             {STATUS_TABS.map((tab) => (
               <TabsTrigger key={tab} value={tab} className="text-xs sm:text-sm">
-                {tab === "ALL" ? "All" : tab === "FREE_ROOMS" ? t("tabFreeRooms", "Free Rooms") : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                {STATUS_LABEL[tab] || tab.charAt(0) + tab.slice(1).toLowerCase()}
                 {tab !== "ALL" && (
                   <span className="ml-1.5 text-[10px] opacity-60">
                     ({tab === "FREE_ROOMS" ? freeRooms.length : reservations.filter((r) => r.status === tab).length})
@@ -912,7 +925,7 @@ export default function ReservationsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_BADGE[res.status] || ""}>
-                        {res.status}
+                        {STATUS_LABEL[res.status] || res.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -932,10 +945,9 @@ export default function ReservationsPage() {
                             <DropdownMenuItem
                               onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
                               className="text-emerald-700 focus:text-emerald-700"
-                              disabled={new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)}
                             >
                               <LogIn className="mr-2 h-4 w-4" />
-                              Check In{new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0) ? ` (${formatDateShort(res.checkIn)})` : ""}
+                              Check In
                             </DropdownMenuItem>
                           )}
                           {res.status === "ACTIVE" && (
@@ -1114,7 +1126,7 @@ export default function ReservationsPage() {
                     <div className="flex items-center gap-1.5">
                       <h3 className="font-semibold text-gray-900 text-sm">{res.guest?.name || "Unknown"}</h3>
                       <Badge variant="outline" className={`${STATUS_BADGE[res.status]} text-[10px] px-1.5 py-0`}>
-                        {res.status}
+                        {STATUS_LABEL[res.status] || res.status}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-500">
@@ -1130,8 +1142,8 @@ export default function ReservationsPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {res.status === "UPCOMING" && (
-                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })} disabled={new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0)}>
-                        <LogIn className="mr-2 h-4 w-4" /> Check In{new Date(res.checkIn).setHours(0, 0, 0, 0) > new Date().setHours(0, 0, 0, 0) ? ` (${formatDateShort(res.checkIn)})` : ""}
+                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
+                        <LogIn className="mr-2 h-4 w-4" /> Check In
                       </DropdownMenuItem>
                     )}
                     {res.status === "ACTIVE" && (

@@ -15,6 +15,7 @@ import {
   apiLogout,
   apiCheckin,
   apiCheckout,
+  apiCancelReservation,
   apiUpdateReservation,
   apiUpdateRoomStatus,
   apiGetRoomAvailability,
@@ -90,6 +91,7 @@ import {
   Power,
   Plus,
   Pencil,
+  Ban,
 } from "lucide-react";
 
 
@@ -115,6 +117,7 @@ interface Reservation {
   roomId?: string;
   secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
   exceptionallyReserved?: boolean; exceptionReason?: string;
+  createdAt?: string;
 }
 
 interface BookedRange {
@@ -254,9 +257,9 @@ export default function MobileApp() {
   const [resGuestSearch, setResGuestSearch] = useState("");
   const [creatingRes, setCreatingRes] = useState(false);
 
-  // Check-in / Check-out confirm
+  // Check-in / Check-out / Cancel confirm
   const [confirmAction, setConfirmAction] = useState<{
-    type: "checkin" | "checkout"; res: Reservation;
+    type: "checkin" | "checkout" | "cancel"; res: Reservation;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -289,25 +292,48 @@ export default function MobileApp() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [rmRaw, upRes, acRes, gRaw] = await Promise.all([
+      // Fetch ALL reservations (no status filter) so the Reservations tab
+      // can show Upcoming / Checked-in / Completed / Cancelled sections.
+      // Mirrors the web's approach (apiGetReservations() with limit=999).
+      const [rmRaw, allResRaw, gRaw] = await Promise.all([
         apiGetRooms(),
-        apiGetReservations("status=UPCOMING&limit=100").catch(() => []),
-        apiGetReservations("status=ACTIVE&limit=100").catch(() => []),
+        apiGetReservations("limit=999").catch(() => []),
         apiGetGuests(),
       ]);
 
       const rmList = Array.isArray(rmRaw.rooms) ? rmRaw.rooms : Array.isArray(rmRaw) ? rmRaw : [];
       setRooms(rmList);
 
-      // ACTIVE first so the per-room tooltip map prefers the in-house guest
-      const allRes: Reservation[] = [
-        ...(Array.isArray(acRes?.data) ? acRes.data : Array.isArray(acRes) ? acRes : []),
-        ...(Array.isArray(upRes?.data) ? upRes.data : Array.isArray(upRes) ? upRes : []),
-      ];
+      const allRes: Reservation[] = Array.isArray(allResRaw?.data)
+        ? allResRaw.data
+        : Array.isArray(allResRaw)
+          ? allResRaw
+          : [];
+      // Sort: UPCOMING (closest first) → ACTIVE → COMPLETED → CANCELLED
+      const STATUS_ORDER: Record<string, number> = {
+        UPCOMING: 0, ACTIVE: 1, COMPLETED: 2, CANCELLED: 3, DELETED: 4,
+      };
+      allRes.sort((a, b) => {
+        const so = STATUS_ORDER[a.status] ?? 99;
+        const so2 = STATUS_ORDER[b.status] ?? 99;
+        if (so !== so2) return so - so2;
+        // Within same status, upcoming → soonest check-in first;
+        // others → most recently created first.
+        if (a.status === "UPCOMING") return (a.checkIn || "").localeCompare(b.checkIn || "");
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      });
       setReservations(allRes);
+
+      // Build per-room reservation map — prefer the ACTIVE (in-house) one,
+      // else the soonest UPCOMING, else the most recent COMPLETED.
       const map: Record<string, Reservation> = {};
+      const priority: Record<string, number> = { ACTIVE: 0, UPCOMING: 1, COMPLETED: 2, CANCELLED: 3, DELETED: 4 };
       for (const r of allRes) {
-        if (r.roomId && !map[r.roomId]) map[r.roomId] = r;
+        if (!r.roomId) continue;
+        const existing = map[r.roomId];
+        if (!existing || (priority[r.status] ?? 99) < (priority[existing.status] ?? 99)) {
+          map[r.roomId] = r;
+        }
       }
       setRoomResMap(map);
 
@@ -577,6 +603,8 @@ export default function MobileApp() {
       setActionLoading(true);
       if (type === "checkin") {
         await apiCheckin(res.id); toast.success(t("toastCheckedIn"));
+      } else if (type === "cancel") {
+        await apiCancelReservation(res.id); toast.success(t("toastCancelled") || "Reservation cancelled");
       } else {
         await apiCheckout(res.id); toast.success(t("toastCheckedOut"));
       }
@@ -697,6 +725,7 @@ export default function MobileApp() {
   };
 
   const toggleLang = () => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const next = i18n.language === "am" ? "en" : "am";
     i18n.changeLanguage(next);
   };
@@ -821,6 +850,7 @@ export default function MobileApp() {
             onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
             onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
             onEdit={openEditRes}
+            onCancel={(r) => setConfirmAction({ type: "cancel", res: r })}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency}
           />
         )}
@@ -882,20 +912,25 @@ export default function MobileApp() {
         </DialogContent>
       </Dialog>
 
-
-      {/* Check-in / Check-out Confirm */}
+      {/* Check-in / Check-out / Cancel Confirm */}
       {confirmAction && (
         <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open && !actionLoading) setConfirmAction(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
-                {confirmAction.type === "checkin" ? <LogIn className="h-5 w-5" /> : <LogOut className="h-5 w-5" />}
-                {confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut")}
+                {confirmAction.type === "checkin" ? <LogIn className="h-5 w-5" />
+                  : confirmAction.type === "cancel" ? <Ban className="h-5 w-5" />
+                  : <LogOut className="h-5 w-5" />}
+                {confirmAction.type === "checkin" ? t("btnCheckIn")
+                  : confirmAction.type === "cancel" ? (t("btnCancel") || "Cancel")
+                  : t("btnCheckOut")}
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {confirmAction.type === "checkin"
                   ? t("confirmCheckInDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" })
-                  : t("confirmCheckOutDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" })
+                  : confirmAction.type === "cancel"
+                    ? (t("confirmCancelDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" }) || `Cancel reservation for ${confirmAction.res.guest?.name || "guest"} in room ${confirmAction.res.room?.number || ""}?`)
+                    : t("confirmCheckOutDesc", { guest: confirmAction.res.guest?.name || "", room: confirmAction.res.room?.number || "" })
                 }
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -903,9 +938,17 @@ export default function MobileApp() {
               <AlertDialogCancel disabled={actionLoading}>{t("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 type="button"
-                className={confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700"}
+                className={
+                  confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700"
+                  : confirmAction.type === "cancel" ? "bg-red-600 hover:bg-red-700"
+                  : "bg-sky-600 hover:bg-sky-700"
+                }
                 onClick={handleAction} disabled={actionLoading}
-              >{actionLoading ? t("processing") : (confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut"))}</AlertDialogAction>
+              >{actionLoading ? t("processing") : (
+                confirmAction.type === "checkin" ? t("btnCheckIn")
+                : confirmAction.type === "cancel" ? (t("btnCancel") || "Cancel")
+                : t("btnCheckOut")
+              )}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -1291,11 +1334,11 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
   );
 }
 
-function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, t, formatDate, formatCurrency }: {
+function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onCancel, t, formatDate, formatCurrency }: {
   reservations: Reservation[];
   onCheckin: (r: Reservation) => void; onCheckout: (r: Reservation) => void;
   onExtend: (r: Reservation) => void; onEarlyCheckout: (r: Reservation) => void;
-  onEdit: (r: Reservation) => void;
+  onEdit: (r: Reservation) => void; onCancel: (r: Reservation) => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
 }) {
@@ -1324,13 +1367,17 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
     <div className="px-4 pt-4 space-y-3">
       {/* Filter pills */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {["ALL", "UPCOMING", "ACTIVE"].map((s) => (
+        {["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED"].map((s) => (
           <button
             key={s} onClick={() => setFilter(s)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               filter === s ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
             }`}
-          >{s === "ALL" ? t("filterAll") : s === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}</button>
+          >{s === "ALL" ? t("filterAll")
+            : s === "UPCOMING" ? t("statusUpcoming")
+            : s === "ACTIVE" ? t("statusActive")
+            : s === "COMPLETED" ? t("statusCompleted")
+            : t("statusCancelled")}</button>
         ))}
       </div>
 
@@ -1346,7 +1393,10 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                    res.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                    res.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
+                    : res.status === "COMPLETED" ? "bg-slate-100 text-slate-700"
+                    : res.status === "CANCELLED" ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
                   }`}>
                     {(res.guest?.name || "?").charAt(0).toUpperCase()}
                   </div>
@@ -1356,7 +1406,7 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
                   </div>
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[res.status]?.color || ""}`}>
-                  {res.status === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}
+                  {RES_STATUS[res.status]?.label || res.status}
                 </span>
               </div>
 
@@ -1379,6 +1429,12 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
                     onClick={() => onCheckin(res)}
                     className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors"
                   >{t("btnCheckIn")}</button>
+                )}
+                {res.status === "UPCOMING" && (
+                  <button
+                    onClick={() => onCancel(res)}
+                    className="flex-1 rounded-xl bg-red-100 text-red-700 py-2 text-xs font-semibold active:bg-red-200 transition-colors"
+                  >{t("btnCancel") || "Cancel"}</button>
                 )}
                 {res.status === "ACTIVE" && (
                   <>
@@ -1444,7 +1500,7 @@ function GuestsTab({ guests, search, setSearch, guestResMap, onReserve, t, forma
                   </div>
                   {res && (
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[res.status]?.color || ""}`}>
-                      {res.status === "UPCOMING" ? t("statusUpcoming") : t("statusActive")}
+                      {RES_STATUS[res.status]?.label || res.status}
                     </span>
                   )}
                 </div>
@@ -1579,7 +1635,7 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
                   <p className="text-gray-400">{formatDate(r.checkIn)} → {formatDate(r.checkOut)}</p>
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${RES_STATUS[r.status]?.color || ""}`}>
-                  {r.status}
+                  {RES_STATUS[r.status]?.label || r.status}
                 </span>
               </div>
             ))}

@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 const TOGGLABLE_PAGES = [
   { key: "dashboard", label: "Dashboard", icon: "LayoutDashboard", category: "core" },
   { key: "accommodation", label: "Accommodation", icon: "DoorOpen", category: "core" },
-  { key: "operations", label: "Operations", icon: "Wrench", category: "management" },
   { key: "users", label: "Account Management", icon: "UserCog", category: "management" },
   { key: "reports", label: "Reports", icon: "BarChart3", category: "management" },
   { key: "group-bookings", label: "Group Bookings", icon: "Users", category: "operations" },

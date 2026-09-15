@@ -12,9 +12,27 @@ import { MobileLoginPage } from "@/components/mobile/mobile-login";
 export default function MobilePage() {
   return (
     <I18nextProvider i18n={i18n}>
+      <MobileLanguageBootstrap />
       <MobilePageContent />
     </I18nextProvider>
   );
+}
+
+function MobileLanguageBootstrap() {
+  // Force English as the default language for the operator mobile app on
+  // every fresh page load. Operators can still toggle to Amharic for the
+  // current session via the language button in the header.
+  // Defensive null-checks prevent the "e.changeLanguage is not a function"
+  // race-condition error under React 19 + Turbopack production builds
+  // when initReactI18next hasn't fully propagated the i18n instance yet.
+  const { i18n } = useTranslation();
+  useEffect(() => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+    if (i18n.language !== "en") {
+      i18n.changeLanguage("en");
+    }
+  }, [i18n]);
+  return null;
 }
 
 function MobilePageContent() {
@@ -22,13 +40,6 @@ function MobilePageContent() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  // Set Amharic as default for mobile
-  useEffect(() => {
-    if (mounted && i18n.language !== "am") {
-      i18n.changeLanguage("am");
-    }
-  }, [mounted]);
 
   if (!mounted) {
     return (
@@ -51,7 +62,7 @@ function MobilePageContent() {
 }
 
 function MobileLoginRoleError() {
-  const { t, i18n } = useTranslation("mobile");
+  const { t } = useTranslation("mobile");
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-900 px-6 text-center">
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/10">

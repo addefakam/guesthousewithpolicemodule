@@ -40,6 +40,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   const rank = (user.role === "SUPERUSER" ? "ADMIN" : user.policeRank || "OFFICER") as PoliceRank;
 
   function cycleLanguage() {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const idx = LANG_CYCLE.indexOf(i18n.language);
     const next = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
     i18n.changeLanguage(next);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, AuthError } from "@/lib/tenant";
 import { calcSubscriptionStatus, TRIAL_DAYS } from "@/lib/subscription";
@@ -32,9 +33,14 @@ export async function GET(req: NextRequest) {
     // cache issue with newly-added enum values .
     const [roomStatusCountsRaw, activeReservations, todayCheckins, todayCheckouts, revenueResult, activityLogs] =
       await Promise.all([
+        // Use Prisma.sql / Prisma.empty for fragment composition.
+        // Interpolating db.$queryRaw inside another db.$queryRaw binds a
+        // PrismaPromise as a $1 SQL parameter → invalid SQL → 500 error.
+        // This was the root cause of the dashboard "Internal server error"
+        // for guesthouse owners (OPERATOR role with providerId).
         db.$queryRaw<{ status: string; count: bigint }[]>`
           SELECT status, COUNT(*)::bigint as count FROM "Room"
-          ${where.providerId ? db.$queryRaw`WHERE "providerId" = ${where.providerId}` : db.$queryRaw``}
+          ${where.providerId ? Prisma.sql`WHERE "providerId" = ${where.providerId}` : Prisma.empty}
           GROUP BY status
         `,
         db.reservation.count({ where: { ...where, status: "ACTIVE" } }),

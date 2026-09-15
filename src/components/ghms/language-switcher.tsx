@@ -23,12 +23,13 @@ export default function LanguageSwitcher() {
   useEffect(() => {
     setMounted(true);
     const savedLng = localStorage.getItem("i18nextLng");
-    if (savedLng && ["en", "am", "om"].includes(savedLng)) {
+    if (savedLng && ["en", "am", "om"].includes(savedLng) && i18n && typeof i18n.changeLanguage === "function") {
       i18n.changeLanguage(savedLng);
     }
   }, []);
 
   const changeLang = (code: string) => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     i18n.changeLanguage(code);
     localStorage.setItem("i18nextLng", code);
   };

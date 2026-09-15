@@ -143,9 +143,6 @@ const SuperProfilePage = lazyPage(
 const GuesthouseUserManagementPage = lazyPage(
   () => import("@/components/ghms/pages/guesthouse-user-management-page")
 );
-const OperationsPage = lazyPage(
-  () => import("@/components/ghms/pages/operations-page")
-);
 const AccommodationPage = lazyPage(
   () => import("@/components/ghms/pages/accommodation-page")
 );
@@ -184,7 +181,6 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
     expenses: ExpensesPage,
     resources: ResourcesPage,
     housekeeping: HousekeepingPage,
-    operations: OperationsPage,
     users: UsersPage,
     reports: ReportsPage,
     settings: SettingsPage,

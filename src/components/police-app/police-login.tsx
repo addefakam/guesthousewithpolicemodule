@@ -36,6 +36,7 @@ export function PoliceLogin() {
   const [resetOpen, setResetOpen] = useState(false);
 
   function toggleLang() {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const next = i18n.language === "en" ? "om" : "en";
     i18n.changeLanguage(next);
   }

@@ -17,7 +17,6 @@ import {
   Shield,
   LayoutDashboard,
   DoorOpen,
-  Wrench,
   UserCog,
   BarChart3,
   Users,
@@ -39,7 +38,6 @@ interface FeaturePage {
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard,
   DoorOpen,
-  Wrench,
   UserCog,
   BarChart3,
   Users,
