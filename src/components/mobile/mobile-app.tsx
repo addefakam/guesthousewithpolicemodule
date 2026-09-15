@@ -844,6 +844,7 @@ export default function MobileApp() {
               room={selectedRoom} reservation={roomResMap[selectedRoom.id] || null}
               reservations={roomReservations} resLoading={roomResLoading}
               onReserve={() => handleReserveFromRoom(selectedRoom)}
+              onCheckin={(r) => { onClose(); setConfirmAction({ type: "checkin", res: r }); }}
               onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
               onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
               onClose={() => setSelectedRoom(null)}
@@ -1480,9 +1481,10 @@ function MainSystemTab({ t }: { t: (k: string) => string }) {
   );
 }
 
-function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onExtend, onEarlyCheckout, onClose, t, formatDate, formatCurrency, parseAmenities }: {
+function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onCheckin, onExtend, onEarlyCheckout, onClose, t, formatDate, formatCurrency, parseAmenities }: {
   room: Room; reservation: Reservation | null; reservations: Reservation[];
-  resLoading: boolean; onReserve: () => void; onExtend: (r: Reservation) => void;
+  resLoading: boolean; onReserve: () => void; onCheckin: (r: Reservation) => void;
+  onExtend: (r: Reservation) => void;
   onEarlyCheckout: (r: Reservation) => void; onClose: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
@@ -1525,7 +1527,7 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
           <div className="flex gap-2 pt-1">
             {activeRes.status === "UPCOMING" && (
               <button
-                onClick={() => { onClose(); /* trigger checkin from parent */ }}
+                onClick={() => onCheckin(activeRes)}
                 className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-xs font-semibold"
               >{t("btnCheckIn")}</button>
             )}
