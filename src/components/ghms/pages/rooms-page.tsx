@@ -393,7 +393,8 @@ export default function RoomsPage() {
   };
 
   const handleSave = async () => {
-    if (!form.number || !form.pricePerNight || !form.floor || !form.capacity) {
+    // pricePerNight is optional — defaults to 0 when omitted.
+    if (!form.number || !form.floor || !form.capacity) {
       toast.error(t("toastFillRequired"));
       return;
     }
@@ -403,7 +404,7 @@ export default function RoomsPage() {
       const payload = {
         number: form.number,
         type: form.type,
-        pricePerNight: Number(form.pricePerNight),
+        pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : 0,
         floor: Number(form.floor),
         capacity: Number(form.capacity),
         amenities: form.amenities || "[]",
@@ -1155,7 +1156,7 @@ export default function RoomsPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="room-price">
-                  {t("labelPriceNight")} <span className="text-rose-500">*</span>
+                  {t("labelPriceNight")} <span className="text-gray-400 text-xs">(optional)</span>
                 </Label>
                 <Input
                   id="room-price"

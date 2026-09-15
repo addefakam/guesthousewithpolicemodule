@@ -738,7 +738,8 @@ export default function MobileApp() {
   };
 
   const handleCreateRoom = async () => {
-    if (!roomForm.number.trim() || !roomForm.type || !roomForm.pricePerNight || !roomForm.floor || !roomForm.capacity) {
+    // pricePerNight is optional — defaults to 0 when omitted.
+    if (!roomForm.number.trim() || !roomForm.type || !roomForm.floor || !roomForm.capacity) {
       toast.error(t("toastFillRequired")); return;
     }
     try {
@@ -746,7 +747,7 @@ export default function MobileApp() {
       await apiCreateRoom({
         number: roomForm.number.trim(),
         type: roomForm.type,
-        pricePerNight: Number(roomForm.pricePerNight),
+        pricePerNight: roomForm.pricePerNight ? Number(roomForm.pricePerNight) : 0,
         floor: Number(roomForm.floor),
         capacity: Number(roomForm.capacity),
         amenities: roomForm.amenities || "[]",
@@ -1891,7 +1892,8 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCu
   creating: boolean; onSubmit: () => void; onCancel: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
 }) {
-  const canSubmit = form.number.trim() && form.type && form.pricePerNight && form.floor && form.capacity;
+  // pricePerNight is optional — defaults to 0 when omitted.
+  const canSubmit = form.number.trim() && form.type && form.floor && form.capacity;
   return (
     <div className="space-y-4">
       <div>
@@ -1916,8 +1918,8 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCu
           </Select>
         </div>
         <div>
-          <Label className="text-xs font-semibold">{t("addRoomPrice")} *</Label>
-          <Input type="number" value={form.pricePerNight} onChange={(e) => onUpdate({ pricePerNight: e.target.value })} placeholder="0" className="mt-1.5 h-11 rounded-xl" />
+          <Label className="text-xs font-semibold">{t("addRoomPrice")}</Label>
+          <Input type="number" value={form.pricePerNight} onChange={(e) => onUpdate({ pricePerNight: e.target.value })} placeholder="0 (optional)" className="mt-1.5 h-11 rounded-xl" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">

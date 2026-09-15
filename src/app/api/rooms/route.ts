@@ -109,12 +109,13 @@ export async function POST(req: NextRequest) {
 
       for (const row of body.bulk) {
         const { number, type, pricePerNight, floor, capacity, amenities, description, name } = row;
-        if (!number || !type || pricePerNight == null || floor == null || capacity == null) {
+        // pricePerNight is optional — defaults to 0 when omitted.
+        if (!number || !type || floor == null || capacity == null) {
           results.push({ number: String(number ?? "?"), status: "skipped", error: "Missing required fields" });
           continue;
         }
         try {
-          const existing = await db.room.findFirst({ select: { id: true, number: true }, where: { number: String(number), providerId: auth.providerId }, select: { id: true, number: true } });
+          const existing = await db.room.findFirst({ select: { id: true, number: true }, where: { number: String(number), providerId: auth.providerId } });
           if (existing) {
             results.push({ number: String(number), status: "skipped", error: "Room number already exists" });
             continue;
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
               number: String(number),
               name: name ? String(name) : `Room ${number}`,
               type: String(type).toUpperCase() as import("@prisma/client").RoomType,
-              pricePerNight: Number(pricePerNight),
+              pricePerNight: pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight),
               floor: Number(floor),
               capacity: Number(capacity),
               amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
@@ -156,9 +157,12 @@ export async function POST(req: NextRequest) {
       image,
     } = body;
 
-    if (!number || !type || pricePerNight == null || floor == null || capacity == null) {
+    // pricePerNight is OPTIONAL — defaults to 0 when omitted. Some operators
+    // don't charge per-night (e.g. flat-rate guest houses, complimentary rooms,
+    // or rooms where pricing is set later). The field is no longer required.
+    if (!number || !type || floor == null || capacity == null) {
       return NextResponse.json(
-        { error: "Missing required fields: number, type, pricePerNight, floor, capacity" },
+        { error: "Missing required fields: number, type, floor, capacity" },
         { status: 400 }
       );
     }
@@ -174,6 +178,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // pricePerNight is OPTIONAL — defaults to 0 when omitted/empty.
+    const priceVal = pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight);
 
     let room;
 
@@ -186,7 +192,7 @@ export async function POST(req: NextRequest) {
           number,
           name: name || `Room ${number}`,
           type,
-          pricePerNight: Number(pricePerNight),
+          pricePerNight: priceVal,
           floor: Number(floor),
           capacity: Number(capacity),
           amenities: amenities || "[]",
@@ -210,7 +216,7 @@ export async function POST(req: NextRequest) {
               number,
               name: name || `Room ${number}`,
               type,
-              pricePerNight: Number(pricePerNight),
+              pricePerNight: priceVal,
               floor: Number(floor),
               capacity: Number(capacity),
               amenities: amenities || "[]",
