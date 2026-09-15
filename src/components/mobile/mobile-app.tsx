@@ -844,7 +844,7 @@ export default function MobileApp() {
       <header className="sticky top-0 z-30 bg-slate-900 text-white px-4 pt-[env(safe-area-inset-top)] pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold leading-tight">GHMS</h1>
+            <h1 className="text-lg font-bold leading-tight">Bishoftu GMS</h1>
             <p className="text-[11px] text-slate-400">{currentUser?.name} &middot; {currentUser?.providerName || ""}</p>
           </div>
           <div className="flex items-center gap-2">

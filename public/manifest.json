@@ -1,7 +1,7 @@
 {
-  "name": "GHMS — Guest House Management System",
-  "short_name": "GHMS",
-  "description": "Multi-tenant Guest House Management System",
+  "name": "Bishoftu Guest Management System",
+  "short_name": "Bishoftu GMS",
+  "description": "Bishoftu Guest Management System",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

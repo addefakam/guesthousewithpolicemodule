@@ -1,7 +1,7 @@
 {
-  "name": "GHMS",
-  "short_name": "GHMS",
-  "description": "Guest House Management - Mobile Operator App",
+  "name": "Bishoftu GMS",
+  "short_name": "Bishoftu GMS",
+  "description": "Bishoftu Guest Management - Mobile Operator App",
   "start_url": "/m",
   "display": "standalone",
   "background_color": "#f9fafb",

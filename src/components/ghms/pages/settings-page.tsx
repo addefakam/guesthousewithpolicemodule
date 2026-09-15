@@ -429,7 +429,7 @@ function SuperuserSettings() {
   const [showNew, setShowNew] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
-  const [appName, setAppName] = useState("GHMS");
+  const [appName, setAppName] = useState("Bishoftu GMS");
   const [defaultCurrency, setDefaultCurrency] = useState("ETB");
   const [defaultLanguage, setDefaultLanguage] = useState("en");
   const [savingSystem, setSavingSystem] = useState(false);

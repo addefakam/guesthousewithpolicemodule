@@ -447,7 +447,7 @@ function drawSeal(doc: PDFKit.PDFDocument, cx: number, cy: number, r: number) {
     .fontSize(8)
     .fillColor(C.goldLight)
     .font("SansBold")
-    .text("GHMS", cx - 20, cy - 4, { width: 40, align: "center" });
+    .text("BGMS", cx - 20, cy - 4, { width: 40, align: "center" });
 }
 
 function drawEightPointStar(
@@ -516,9 +516,9 @@ export async function buildCertificatePdf(
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
     info: {
       Title: `Certificate of Registration — ${data.provider.name}`,
-      Author: "GHMS — Guest House Management System",
+      Author: "Bishoftu Guest Management System",
       Subject: "Provider Registration Certificate",
-      Creator: "GHMS",
+      Creator: "Bishoftu GMS",
     },
   });
 

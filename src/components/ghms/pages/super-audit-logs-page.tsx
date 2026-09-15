@@ -495,7 +495,7 @@ export default function SuperAuditLogsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            Complete system activity trail for Guest House Management System
+            Complete system activity trail for Bishoftu Guest Management System
           </p>
         </div>
         <Button

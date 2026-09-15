@@ -1,6 +1,6 @@
 {
-  "name": "GHMS Police",
-  "short_name": "GHMS Police",
+  "name": "Bishoftu GMS Police",
+  "short_name": "Bishoftu GMS Police",
   "description": "Standalone police module app — guesthouse room availability & guest monitoring",
   "start_url": "/police-app",
   "scope": "/",

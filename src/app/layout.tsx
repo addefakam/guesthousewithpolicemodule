@@ -4,13 +4,13 @@ import "@/i18n/config";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "GHMS - Guest House Management System",
-  description: "Multi-tenant Guest House Management System",
-  applicationName: "GHMS",
+  title: "Bishoftu Guest Management System",
+  description: "Bishoftu Guest Management System",
+  applicationName: "Bishoftu GMS",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "GHMS",
+    title: "Bishoftu GMS",
     statusBarStyle: "default",
   },
   icons: {

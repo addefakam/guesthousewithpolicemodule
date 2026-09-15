@@ -92,8 +92,8 @@ interface SystemConfig {
 const SYSTEM_VERSION = "1.4.0";
 
 const DEFAULT_GENERAL: GeneralSettings = {
-  systemName: "GHMS",
-  systemDescription: "Guest House Management System for managing guesthouses, reservations, and compliance.",
+  systemName: "Bishoftu GMS",
+  systemDescription: "Bishoftu Guest Management System for managing guesthouses, reservations, and compliance.",
   defaultLanguage: "en",
   defaultCurrency: "ETB",
   timezone: "Africa/Addis_Ababa",
@@ -1294,7 +1294,7 @@ export default function SuperSystemConfigPage() {
               System Configuration
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              Configure Guest House Management System settings and preferences
+              Configure Bishoftu Guest Management System settings and preferences
             </p>
           </div>
         </div>

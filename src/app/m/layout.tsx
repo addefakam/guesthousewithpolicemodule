@@ -3,8 +3,8 @@ import "@/i18n/config";
 import { MobileLanguageBootstrap } from "@/components/mobile/language-bootstrap";
 
 export const metadata: Metadata = {
-  title: "GHMS Mobile",
-  description: "Guest House Management — Mobile Operator App",
+  title: "Bishoftu GMS Mobile",
+  description: "Bishoftu Guest Management — Mobile Operator App",
   manifest: "/m-icons/manifest.json",
   icons: {
     icon: "/m-icons/favicon-32.png?v=2",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GHMS",
+    title: "Bishoftu GMS",
   },
 };
 

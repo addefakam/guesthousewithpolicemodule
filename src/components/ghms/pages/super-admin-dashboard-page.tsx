@@ -415,7 +415,7 @@ export default function SuperAdminDashboardPage() {
               {[
                 {
                   label: t("infoSystemName"),
-                  value: "GHMS",
+                  value: "Bishoftu GMS",
                   icon: <Globe className="h-3.5 w-3.5 text-slate-400" />,
                 },
                 {

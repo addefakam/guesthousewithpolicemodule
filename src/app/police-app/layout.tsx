@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@/i18n/config";
 
 export const metadata: Metadata = {
-  title: "GHMS Police",
+  title: "Bishoftu GMS Police",
   description: "Standalone police module app — guesthouse room availability & guest monitoring",
   manifest: "/police-app/manifest.json",
   icons: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GHMS Police",
+    title: "Bishoftu GMS Police",
   },
 };
 

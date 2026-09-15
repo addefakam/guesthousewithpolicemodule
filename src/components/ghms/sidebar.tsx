@@ -769,10 +769,10 @@ export default function Sidebar() {
         {!collapsed && (
           <div className="min-w-0">
             <h1 className="text-sm font-bold tracking-tight text-slate-900">
-              GHMS
+              Bishoftu GMS
             </h1>
             <p className="truncate text-[11px] text-slate-400">
-              {t("Guest House Management")}
+              {t("Bishoftu Guest Management")}
             </p>
           </div>
         )}
