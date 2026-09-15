@@ -851,6 +851,16 @@ async function runMigrationsOnly(): Promise<void> {
   } catch (err) {
     throw err;
   }
+  // Add FAMILY to RoomType enum via raw Prisma (outside transaction)
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const p = new PrismaClient();
+    await p.$executeRawUnsafe(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
+    await p.$disconnect();
+    console.log("[init-db] Added FAMILY to RoomType enum (background).");
+  } catch (enumErr) {
+    console.log("[init-db] RoomType FAMILY enum add failed in background (non-blocking).");
+  }
   try {
     await execViaPrisma(INDEXES_SQL);
   } catch {
@@ -905,6 +915,17 @@ export async function ensureDatabase(): Promise<void> {
           console.log("[init-db] Foreign keys verified.");
           await client.query(MIGRATIONS_SQL);
           console.log("[init-db] Migrations applied to existing tables.");
+
+          // Add FAMILY to RoomType enum (pg.Client runs outside a transaction,
+          // so ALTER TYPE ADD VALUE works here — unlike Prisma's $executeRaw).
+          try {
+            await client.query(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
+            console.log("[init-db] Added FAMILY to RoomType enum.");
+          } catch (enumErr) {
+            // Ignore if it already exists
+            console.log("[init-db] RoomType FAMILY enum value already exists or add failed (non-blocking).");
+          }
+
           await client.query(INDEXES_SQL);
           console.log("[init-db] Indexes verified.");
         } catch (migrateErr) {
@@ -960,6 +981,14 @@ export async function ensureDatabase(): Promise<void> {
       // Run migrations (add new columns to existing tables)
       console.log("[init-db] Running migrations...");
       await client.query(MIGRATIONS_SQL);
+
+      // Add FAMILY to RoomType enum (pg.Client runs outside a transaction)
+      try {
+        await client.query(`ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'FAMILY'`);
+        console.log("[init-db] Added FAMILY to RoomType enum.");
+      } catch (enumErr) {
+        console.log("[init-db] RoomType FAMILY enum value already exists or add failed (non-blocking).");
+      }
 
       // Create indexes
       console.log("[init-db] Creating indexes...");
