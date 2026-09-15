@@ -3,7 +3,7 @@
 import { useState, useRef, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Building2, KeyRound, UserPlus, LogIn, Upload } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogIn } from "lucide-react";
 
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
@@ -114,7 +114,7 @@ export default function LoginPage() {
       !regEmail.trim() ||
       !regGuestHouseName.trim() ||
       !regType ||
-      !regLicenseNo.trim() ||
+      // licenseNo is OPTIONAL — defaults to empty string at the API.
       !regUsername.trim() ||
       !regPassword.trim() ||
       !regSubCity ||
@@ -143,12 +143,15 @@ export default function LoginPage() {
       if (regSubCity) formData.append("subCity", regSubCity);
       if (regWoreda) formData.append("woreda", regWoreda);
       formData.append("type", regType);
-      formData.append("licenseNo", regLicenseNo.trim());
+      // licenseNo is OPTIONAL — only append if provided.
+      if (regLicenseNo.trim()) {
+        formData.append("licenseNo", regLicenseNo.trim());
+      }
       formData.append("username", regUsername.trim());
       formData.append("password", regPassword);
-      if (regLicenseFile) {
-        formData.append("licenseFile", regLicenseFile);
-      }
+      // License file upload was removed — no UI for it anymore.
+      // The regLicenseFile state is kept for backward compatibility but
+      // we no longer append it to the FormData.
 
       await apiRegisterProvider(formData);
       toast.success(t("registrationSuccess"));
@@ -353,7 +356,9 @@ export default function LoginPage() {
                         </Select>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="reg-license">{t("licenseNo")}</Label>
+                        <Label htmlFor="reg-license">
+                          {t("licenseNo")} <span className="text-gray-400 text-xs">(optional)</span>
+                        </Label>
                         <Input
                           id="reg-license"
                           placeholder={t("licensePlaceholder")}
@@ -362,51 +367,10 @@ export default function LoginPage() {
                         />
                       </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="reg-license-file">
-                        {t("uploadLicense")}
-                      </Label>
-                      <div
-                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50"
-                        onClick={() => fileInputRef.current?.click()}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ")
-                            fileInputRef.current?.click();
-                        }}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-                          <Upload className="size-4 text-slate-500" />
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                          <p className="truncate text-sm font-medium text-slate-700">
-                            {regLicenseFile
-                              ? regLicenseFile.name
-                              : t("clickToUpload")}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {regLicenseFile
-                              ? `${(regLicenseFile.size / 1024).toFixed(1)} KB`
-                              : t("uploadHint")}
-                          </p>
-                        </div>
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          if (file && file.size > 5 * 1024 * 1024) {
-                            toast.error(t("errorFileTooLarge"));
-                            return;
-                          }
-                          setRegLicenseFile(file);
-                        }}
-                      />
-                    </div>
+                    {/* License document upload has been removed per product
+                        decision. Operators register without uploading a
+                        license file. The regLicenseFile state is kept for
+                        backward compatibility but no UI is rendered. */}
                   </div>
                 </div>
 
