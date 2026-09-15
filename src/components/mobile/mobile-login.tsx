@@ -161,10 +161,23 @@ export function MobileLoginPage() {
     }
   };
 
+  // 3-way language cycle: EN → AM → OM → EN (matches the web admin's
+  // full trilingual support). The button label shows the NEXT language
+  // the user will switch to, so they can tap once to switch.
+  const LANG_CYCLE = ["en", "am", "om"] as const;
+  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" };
   const toggleLang = () => {
     if (!i18n || typeof i18n.changeLanguage !== "function") return;
-    const next = i18n.language === "am" ? "en" : "am";
+    const current = (i18n.language || "en").slice(0, 2).toLowerCase();
+    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
+    const next = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
     i18n.changeLanguage(next);
+  };
+  const nextLangLabel = () => {
+    const current = (i18n.language || "en").slice(0, 2).toLowerCase();
+    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
+    const nextCode = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
+    return LANG_LABELS[nextCode] || "EN";
   };
 
   const inputClass = "h-11 w-full rounded-xl border border-slate-700 bg-slate-800 px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
@@ -179,7 +192,8 @@ export function MobileLoginPage() {
           onClick={toggleLang}
           className="rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 active:bg-slate-700 transition-colors"
         >
-          {i18n.language === "am" ? "EN" : "አማ"}
+          {/* Label shows the NEXT language in the cycle: EN→AM→OM→EN */}
+          {nextLangLabel()}
         </button>
       </div>
 

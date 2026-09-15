@@ -736,9 +736,16 @@ export default function MobileApp() {
     setShowNewRes(true);
   };
 
+  // 3-way language cycle: EN → AM → OM → EN (matches the web admin's
+  // full trilingual support). The button label shows the NEXT language
+  // the user will switch to, so they can tap once to switch.
+  const LANG_CYCLE = ["en", "am", "om"] as const;
+  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" };
   const toggleLang = () => {
     if (!i18n || typeof i18n.changeLanguage !== "function") return;
-    const next = i18n.language === "am" ? "en" : "am";
+    const current = (i18n.language || "en").slice(0, 2).toLowerCase();
+    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
+    const next = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
     i18n.changeLanguage(next);
   };
 
@@ -858,8 +865,10 @@ export default function MobileApp() {
             <button
               onClick={toggleLang}
               className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors"
+              title={i18n.language === "en" ? "Switch to Amharic" : i18n.language === "am" ? "Switch to Oromo" : "Switch to English"}
             >
-              {i18n.language === "am" ? "EN" : "አማ"}
+              {/* Label shows the NEXT language in the cycle: EN→AM→OM→EN */}
+              {LANG_LABELS[LANG_CYCLE[(LANG_CYCLE.indexOf((i18n.language || "en").slice(0, 2).toLowerCase() as typeof LANG_CYCLE[number]) + 1) % LANG_CYCLE.length]] || "EN"}
             </button>
           </div>
         </div>
