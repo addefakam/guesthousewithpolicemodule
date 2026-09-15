@@ -29,23 +29,66 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [guests, total] = await Promise.all([
-      db.guest.findMany({
-        where,
-        select: {
-          id: true, name: true, phone: true, email: true, idNumber: true, idType: true,
-          nationality: true, region: true, zone: true, woreda: true, kebele: true,
-          houseNumber: true, streetName: true, plateNumber: true, weapon: true,
-          vip: true, totalSpent: true, totalStays: true, providerId: true,
-          createdAt: true, updatedAt: true,
-          // Exclude heavy fields from list: notes, address (composeAddress builds it)
-        },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      db.guest.count({ where }),
+    // Use raw SQL to avoid any Prisma schema mismatch issues
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let pi = 1;
+
+    if (!isPolice && providerId) {
+      conditions.push(`"providerId" = $${pi++}`);
+      params.push(providerId);
+    }
+    if (q) {
+      conditions.push(`("name" ILIKE $${pi} OR "phone" ILIKE $${pi} OR "idNumber" ILIKE $${pi})`);
+      params.push(`%${q}%`);
+      pi++;
+    }
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const [guestsRaw, totalRaw] = await Promise.all([
+      db.$queryRawUnsafe(
+        `SELECT "id", "name", "phone", "email", "idNumber", "idType",
+                "nationality", "region", "zone", "woreda", "kebele",
+                "houseNumber", "streetName", "plateNumber", "weapon",
+                "vip", "totalSpent", "totalStays", "providerId",
+                "createdAt", "updatedAt"
+         FROM "Guest"${whereClause}
+         ORDER BY "createdAt" DESC
+         LIMIT $${pi++} OFFSET $${pi++}`,
+        ...params, limit, skip
+      ),
+      db.$queryRawUnsafe(
+        `SELECT COUNT(*)::int AS count FROM "Guest"${whereClause}`,
+        ...params
+      ),
     ]);
+
+    const guests = (guestsRaw as Record<string, unknown>[]).map((g) => ({
+      id: String(g.id),
+      name: String(g.name || ""),
+      phone: String(g.phone || ""),
+      email: String(g.email || ""),
+      idNumber: String(g.idNumber || ""),
+      idType: String(g.idType || ""),
+      nationality: String(g.nationality || ""),
+      region: String(g.region || ""),
+      zone: String(g.zone || ""),
+      woreda: String(g.woreda || ""),
+      kebele: String(g.kebele || ""),
+      houseNumber: String(g.houseNumber || ""),
+      streetName: String(g.streetName || ""),
+      plateNumber: String(g.plateNumber || ""),
+      weapon: String(g.weapon || ""),
+      vip: Boolean(g.vip),
+      totalSpent: Number(g.totalSpent),
+      totalStays: Number(g.totalStays),
+      providerId: g.providerId ? String(g.providerId) : null,
+      createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : String(g.createdAt || ""),
+      updatedAt: g.updatedAt instanceof Date ? g.updatedAt.toISOString() : String(g.updatedAt || ""),
+    }));
+
+    const total = Array.isArray(totalRaw) ? (totalRaw[0] as Record<string, number>)?.count ?? 0 : 0;
 
     return NextResponse.json({ guests, total, page, limit });
   } catch (error: unknown) {
