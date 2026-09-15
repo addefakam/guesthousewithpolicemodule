@@ -254,11 +254,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Update room status to RESERVED so it visually changes color immediately
-    await db.room.update({
-      where: { id: roomId },
-      data: { status: "RESERVED" },
-      select: { id: true },
-    });
+    try {
+      await db.$queryRawUnsafe(`UPDATE "Room" SET "status" = 'RESERVED' WHERE "id" = $1`, roomId);
+      console.log("[reservations] Room status updated to RESERVED for room:", roomId);
+    } catch (roomErr) {
+      console.error("[reservations] Failed to update room status:", roomErr instanceof Error ? roomErr.message : String(roomErr));
+      // Non-blocking — reservation was still created
+    }
 
 
     // Background: check if guest matches any suspected person (fire-and-forget)
