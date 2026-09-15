@@ -26,6 +26,25 @@ function getClient(): PrismaClient {
 }
 
 /**
+ * Destroy the current PrismaClient and create a fresh one.
+ * This clears Prisma's prepared-statement cache, which is needed
+ * after adding a new enum value (e.g. FAMILY to RoomType) at runtime.
+ * The old client's cached queries don't know about the new enum value.
+ */
+async function recreateClient(): Promise<PrismaClient> {
+  if (_db) {
+    try {
+      await _db.$disconnect();
+    } catch {
+      /* ignore */
+    }
+  }
+  _db = createPrismaClient();
+  console.log("[db] PrismaClient recreated — prepared-statement cache cleared");
+  return _db;
+}
+
+/**
  * Returns a promise that resolves when DB migrations are guaranteed done.
  * Safe to call many times — only runs once per cold start.
  */
@@ -37,8 +56,10 @@ function ensureOnce(): Promise<void> {
 }
 
 /**
- * Check if an error is a database schema error (missing column, missing table, missing type).
- * These errors indicate migrations haven't been fully applied.
+ * Check if an error is a database schema error (missing column, missing table,
+ * missing type, or invalid enum value).
+ * These errors indicate migrations haven't been fully applied OR Prisma's
+ * prepared-statement cache is stale.
  */
 function isSchemaError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -48,13 +69,17 @@ function isSchemaError(err: unknown): boolean {
     /relation \".*\" does not exist/i.test(msg) ||
     /table \".*\" does not exist/i.test(msg) ||
     /type \".*\" does not exist/i.test(msg) ||
-    /does not exist in the current database/i.test(msg)
+    /does not exist in the current database/i.test(msg) ||
+    /invalid input value for enum/i.test(msg) ||
+    /not found in enum/i.test(msg) ||
+    /22P02/.test(msg)
   );
 }
 
 /**
  * Force re-run migrations (used when schema errors are detected at runtime).
  * Guards against concurrent migration runs.
+ * After migrating, recreates the PrismaClient to clear cached statements.
  */
 async function forceRemigrate(): Promise<void> {
   if (_migrating) {
@@ -71,6 +96,10 @@ async function forceRemigrate(): Promise<void> {
     _ensurePromise = null;
     await ensureDatabase();
     console.log("[db] Migration re-run complete.");
+
+    // Recreate the PrismaClient so the new enum value is visible
+    // to its prepared-statement cache.
+    await recreateClient();
   } catch (err) {
     console.error("[db] Forced migration failed:", err instanceof Error ? err.message : String(err));
   } finally {
@@ -80,8 +109,9 @@ async function forceRemigrate(): Promise<void> {
 
 /**
  * Execute a Prisma method with auto-retry on schema errors.
- * If the first attempt fails due to a missing column/table,
- * it re-runs migrations and retries once.
+ * If the first attempt fails due to a missing column/table/enum value,
+ * it re-runs migrations, recreates the PrismaClient (clearing cached
+ * prepared statements), and retries once.
  */
 async function withSchemaRetry<T>(fn: () => Promise<T>): Promise<T> {
   await ensureOnce();
@@ -89,9 +119,9 @@ async function withSchemaRetry<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } catch (err) {
     if (isSchemaError(err)) {
-      console.log("[db] Schema error caught, will retry after re-migration:", err instanceof Error ? err.message : String(err));
+      console.log("[db] Schema/enum error caught, will retry after re-migration:", err instanceof Error ? err.message : String(err));
       await forceRemigrate();
-      return await fn(); // Retry after migration
+      return await fn(); // Retry with fresh PrismaClient
     }
     throw err;
   }
@@ -129,7 +159,8 @@ function createEnsuredProxy<T>(model: T): T {
 
 /**
  * Convenience proxy — auto-ensures database before every query.
- * Auto-retries once if a schema error is detected (missing column/table).
+ * Auto-retries once if a schema error is detected (missing column/table/enum).
+ * On retry, creates a FRESH PrismaClient to clear the prepared-statement cache.
  */
 export const db = new Proxy({} as PrismaClient, {
   get(_target, prop) {
