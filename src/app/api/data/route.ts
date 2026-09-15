@@ -71,14 +71,16 @@ export async function GET(req: NextRequest) {
           provider: { select: { id: true, name: true, status: true } },
         },
       }),
-      db.room.findMany({
-        where: providerId ? { providerId } : undefined,
-        select: {
-          id: true, number: true, name: true, type: true, pricePerNight: true,
-          floor: true, capacity: true, status: true, providerId: true,
-          createdAt: true, updatedAt: true,
-        },
-      }),
+      db.$queryRaw`
+        SELECT
+          "id", "number", "name",
+          "type"::text AS "type",
+          "pricePerNight", "floor", "capacity", "status",
+          "providerId", "createdAt", "updatedAt"
+        FROM "Room"
+        ${providerId ? Prisma.sql`WHERE "providerId" = ${providerId}` : Prisma.sql``}
+        ORDER BY "floor" ASC, "number" ASC
+      `,
       db.guest.findMany({
         where: providerId ? { providerId } : undefined,
         select: {
@@ -89,13 +91,28 @@ export async function GET(req: NextRequest) {
           providerId: true, createdAt: true, updatedAt: true,
         },
       }),
-      db.reservation.findMany({
-        where: providerId ? { providerId } : undefined,
-        include: {
-          guest: { select: { id: true, name: true, phone: true, email: true, idNumber: true, nationality: true } },
-          room: { select: { id: true, number: true, name: true, type: true, pricePerNight: true } },
-        },
-      }),
+      db.$queryRaw`
+        SELECT
+          r."id", r."guestId", r."roomId", r."providerId",
+          r."checkIn", r."checkOut", r."nights", r."status",
+          r."totalCost", r."paidAmount", r."balance",
+          r."paymentStatus", r."paymentMethod",
+          r."secondGuestName", r."secondGuestPhone", r."secondGuestIdNumber",
+          r."exceptionallyReserved", r."exceptionReason",
+          r."createdAt", r."updatedAt",
+          g."name" AS "guestName", g."phone" AS "guestPhone",
+          g."email" AS "guestEmail", g."idNumber" AS "guestIdNumber",
+          g."nationality" AS "guestNationality",
+          rm."number" AS "roomNumber", rm."name" AS "roomName",
+          rm."type"::text AS "roomType",
+          rm."pricePerNight" AS "roomPricePerNight"
+        FROM "Reservation" r
+        LEFT JOIN "Guest" g ON g."id" = r."guestId"
+        LEFT JOIN "Room" rm ON rm."id" = r."roomId"
+        ${providerId ? Prisma.sql`WHERE r."providerId" = ${providerId}` : Prisma.sql``}
+        ORDER BY r."createdAt" DESC
+        LIMIT 500
+      `,
       db.expense.findMany({
         where: providerId ? { providerId } : undefined,
         include: {

@@ -36,17 +36,26 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const rooms = await db.room.findMany({
-      where,
-      select: {
-        id: true, number: true, name: true, type: true, pricePerNight: true,
-        floor: true, capacity: true, status: true, providerId: true,
-        createdAt: true, updatedAt: true,
-      },
-      orderBy: { floor: "asc" },
-    });
+    // Use raw SQL with type::text cast to avoid Prisma's prepared-statement
+    // cache issue with the RoomType enum (FAMILY value added at runtime).
+    const roomsRaw = await db.$queryRaw<{
+      id: string; number: string; name: string; type: string;
+      pricePerNight: number; floor: number; capacity: number;
+      status: string; providerId: string | null;
+      createdAt: Date; updatedAt: Date;
+    }[]>`
+      SELECT
+        "id", "number", "name",
+        "type"::text AS "type",
+        "pricePerNight", "floor", "capacity",
+        "status", "providerId", "createdAt", "updatedAt"
+      FROM "Room"
+      ${q ? db.$queryRaw`WHERE "number" ILIKE ${'%' + q + '%'} OR "name" ILIKE ${'%' + q + '%'}` : db.$queryRaw``}
+      ${where.providerId ? (q ? db.$queryRaw`AND "providerId" = ${where.providerId}` : db.$queryRaw`WHERE "providerId" = ${where.providerId}`) : db.$queryRaw``}
+      ORDER BY "floor" ASC, "number" ASC
+    `;
 
-    return NextResponse.json({ rooms });
+    return NextResponse.json({ rooms: roomsRaw });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
