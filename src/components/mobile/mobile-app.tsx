@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import {
   apiGetRooms,
   apiCreateRoom,
+  apiUpdateRoom,
+  apiDeleteRoom,
   apiGetReservations,
   apiGetGuests,
   apiCreateReservation,
@@ -92,6 +94,7 @@ import {
   Power,
   Plus,
   Pencil,
+  Trash2,
   Ban,
 } from "lucide-react";
 
@@ -233,10 +236,18 @@ export default function MobileApp() {
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Add room
+  // Add / Edit / Delete room
+  // - showAddRoom: controls the Add Room dialog (also reused for Edit Room)
+  // - editingRoom: when set, the Add Room dialog is in "edit" mode and
+  //   submits via apiUpdateRoom instead of apiCreateRoom.
+  // - deleteRoomTarget: when set, the Delete Room confirmation AlertDialog
+  //   is shown. Tap confirm → apiDeleteRoom(room.id).
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [roomForm, setRoomForm] = useState(ROOM_FORM_DEFAULTS);
   const [creatingRoom, setCreatingRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [deleteRoomTarget, setDeleteRoomTarget] = useState<Room | null>(null);
+  const [deletingRoom, setDeletingRoom] = useState(false);
 
   // Data
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -737,6 +748,9 @@ export default function MobileApp() {
     setCurrentUser(null);
   };
 
+  // Handles BOTH create and edit. When `editingRoom` is set, the same form
+  // is in "edit" mode — submit calls apiUpdateRoom(editingRoom.id, payload)
+  // instead of apiCreateRoom(payload).
   const handleCreateRoom = async () => {
     // pricePerNight is optional — defaults to 0 when omitted.
     if (!roomForm.number.trim() || !roomForm.type || !roomForm.floor || !roomForm.capacity) {
@@ -744,23 +758,67 @@ export default function MobileApp() {
     }
     try {
       setCreatingRoom(true);
-      await apiCreateRoom({
+      const payload = {
         number: roomForm.number.trim(),
         type: roomForm.type,
         pricePerNight: roomForm.pricePerNight ? Number(roomForm.pricePerNight) : 0,
         floor: Number(roomForm.floor),
         capacity: Number(roomForm.capacity),
         amenities: roomForm.amenities || "[]",
-      });
-      toast.success(t("toastRoomCreated"));
+      };
+      if (editingRoom) {
+        await apiUpdateRoom(editingRoom.id, payload);
+        toast.success(t("toastRoomUpdated") || "Room updated");
+      } else {
+        await apiCreateRoom(payload);
+        toast.success(t("toastRoomCreated"));
+      }
       setShowAddRoom(false);
+      setEditingRoom(null);
       setRoomForm(ROOM_FORM_DEFAULTS);
       triggerRefresh();
       await fetchData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t("toastFailedCreateRoom");
+      const msg = err instanceof Error ? err.message : (editingRoom ? (t("toastFailedUpdateRoom") || "Failed to update room") : t("toastFailedCreateRoom"));
       toast.error(msg);
     } finally { setCreatingRoom(false); }
+  };
+
+  // Open the Add Room dialog in EDIT mode — pre-fills the form with the
+  // room's current values. Same dialog, same submit handler.
+  const openEditRoom = (room: Room) => {
+    setEditingRoom(room);
+    setRoomForm({
+      number: room.number,
+      type: room.type,
+      pricePerNight: String(room.pricePerNight || ""),
+      floor: String(room.floor || "1"),
+      capacity: String(room.capacity || "1"),
+      amenities: room.amenities || "",
+    });
+    // Close the room detail sheet first so the edit dialog isn't behind it
+    setSelectedRoom(null);
+    setShowAddRoom(true);
+  };
+
+  // Delete room — called from the confirmation AlertDialog.
+  // The API blocks deletion when the room has active/upcoming reservations.
+  const handleDeleteRoom = async () => {
+    if (!deleteRoomTarget) return;
+    try {
+      setDeletingRoom(true);
+      await apiDeleteRoom(deleteRoomTarget.id);
+      toast.success(t("toastRoomDeleted") || "Room deleted");
+      setDeleteRoomTarget(null);
+      setSelectedRoom(null);
+      triggerRefresh();
+      await fetchData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (t("toastFailedDeleteRoom") || "Failed to delete room");
+      toast.error(msg);
+      // Keep the dialog open on error so the user can see what went wrong
+      // (e.g. 'Cannot delete room with active reservations') and retry.
+    } finally { setDeletingRoom(false); }
   };
 
   // ── Render: Loading ──
@@ -879,6 +937,8 @@ export default function MobileApp() {
               onCheckin={(r) => { onClose(); setConfirmAction({ type: "checkin", res: r }); }}
               onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
               onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
+              onEdit={() => openEditRoom(selectedRoom)}
+              onDelete={() => setDeleteRoomTarget(selectedRoom)}
               onClose={() => setSelectedRoom(null)}
               t={t} formatDate={formatDate} formatCurrency={formatCurrency} parseAmenities={parseAmenities}
             />
@@ -1126,19 +1186,50 @@ export default function MobileApp() {
       </AlertDialog>
 
       {/* Add Room Dialog */}
-      <Dialog open={showAddRoom} onOpenChange={(open) => { if (!open) { setShowAddRoom(false); setRoomForm(ROOM_FORM_DEFAULTS); } }}>
+      <Dialog open={showAddRoom} onOpenChange={(open) => { if (!open) { setShowAddRoom(false); setEditingRoom(null); setRoomForm(ROOM_FORM_DEFAULTS); } }}>
         <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5" /> {t("addRoomTitle")}</DialogTitle>
-            <DialogDescription>{t("addRoomDesc")}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              {editingRoom ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+              {editingRoom ? (t("editRoomTitle") || "Edit Room") : t("addRoomTitle")}
+            </DialogTitle>
+            <DialogDescription>{editingRoom ? (t("editRoomDesc") || "Update room information") : t("addRoomDesc")}</DialogDescription>
           </DialogHeader>
           <AddRoomForm
             form={roomForm} onUpdate={(patch) => setRoomForm((f) => ({ ...f, ...patch }))}
-            creating={creatingRoom} onSubmit={handleCreateRoom} onCancel={() => { setShowAddRoom(false); setRoomForm(ROOM_FORM_DEFAULTS); }}
+            creating={creatingRoom} onSubmit={handleCreateRoom} onCancel={() => { setShowAddRoom(false); setEditingRoom(null); setRoomForm(ROOM_FORM_DEFAULTS); }}
+            isEditing={!!editingRoom}
             t={t} formatCurrency={formatCurrency}
           />
         </DialogContent>
       </Dialog>
+
+      {/* Delete Room confirmation */}
+      <AlertDialog open={!!deleteRoomTarget} onOpenChange={(open) => { if (!open && !deletingRoom) setDeleteRoomTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-rose-600" />
+              {t("btnDeleteRoom") || "Delete Room"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("confirmDeleteRoom", {
+                number: deleteRoomTarget?.number || "",
+                defaultValue: `Delete room ${deleteRoomTarget?.number || ""}? This cannot be undone. Reservations for this room will remain in history but will no longer be linked to a room.`
+              }) || `Delete room ${deleteRoomTarget?.number || ""}? This cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingRoom}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteRoom(); }}
+              disabled={deletingRoom}
+            >{deletingRoom ? t("processing") : (t("btnDeleteRoom") || "Delete Room")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
@@ -1546,17 +1637,23 @@ function MainSystemTab({ t }: { t: (k: string) => string }) {
   );
 }
 
-function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onCheckin, onExtend, onEarlyCheckout, onClose, t, formatDate, formatCurrency, parseAmenities }: {
+function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onCheckin, onExtend, onEarlyCheckout, onEdit, onDelete, onClose, t, formatDate, formatCurrency, parseAmenities }: {
   room: Room; reservation: Reservation | null; reservations: Reservation[];
   resLoading: boolean; onReserve: () => void; onCheckin: (r: Reservation) => void;
   onExtend: (r: Reservation) => void;
-  onEarlyCheckout: (r: Reservation) => void; onClose: () => void;
+  onEarlyCheckout: (r: Reservation) => void;
+  onEdit: () => void; onDelete: () => void; onClose: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
   parseAmenities: (a: string | null | undefined) => string[];
 }) {
   const amenities = parseAmenities(room.amenities);
   const activeRes = reservations.find((r) => r.status === "ACTIVE" || r.status === "UPCOMING");
+  // Can only delete rooms that are NOT currently occupied or reserved.
+  // The API also enforces this on its side (returns 409 with active/upcoming
+  // reservations), but we hide the Delete button entirely when it would
+  // obviously fail — better UX than tapping and getting an error toast.
+  const canDelete = room.status === "AVAILABLE" || room.status === "MAINTENANCE";
 
   return (
     <div className="space-y-4">
@@ -1657,6 +1754,35 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
         <Button onClick={onReserve} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-sm font-semibold rounded-xl">
           <CalendarPlus className="mr-2 h-4 w-4" />{t("btnReserve")}
         </Button>
+      )}
+
+      {/* Edit + Delete room — available on ALL statuses for Edit (you can
+          always change a room's metadata), Delete only when not
+          occupied/reserved. */}
+      <div className="flex gap-2 pt-2 border-t border-gray-100">
+        <Button
+          onClick={onEdit}
+          variant="outline"
+          className="flex-1 py-4 text-xs font-semibold rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50"
+        >
+          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+          {t("btnEditRoom") || "Edit Room"}
+        </Button>
+        <Button
+          onClick={onDelete}
+          disabled={!canDelete}
+          variant="outline"
+          className="flex-1 py-4 text-xs font-semibold rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          title={canDelete ? (t("btnDeleteRoom") || "Delete Room") : (t("deleteDisabledActiveRes") || "Cannot delete — room is reserved or occupied")}
+        >
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          {t("btnDeleteRoom") || "Delete Room"}
+        </Button>
+      </div>
+      {!canDelete && (
+        <p className="text-[10px] text-gray-400 text-center -mt-2">
+          {t("deleteDisabledActiveRes") || "Delete unavailable while room has active reservations"}
+        </p>
       )}
     </div>
   );
@@ -1887,9 +2013,9 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
   );
 }
 
-function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCurrency }: {
+function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, t, formatCurrency }: {
   form: typeof ROOM_FORM_DEFAULTS; onUpdate: (patch: Partial<typeof ROOM_FORM_DEFAULTS>) => void;
-  creating: boolean; onSubmit: () => void; onCancel: () => void;
+  creating: boolean; onSubmit: () => void; onCancel: () => void; isEditing?: boolean;
   t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
 }) {
   // pricePerNight is optional — defaults to 0 when omitted.
@@ -1940,7 +2066,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, t, formatCu
       <DialogFooter className="gap-2 sm:gap-2">
         <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
         <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>
-          {creating ? t("processing") : t("addRoomBtn")}
+          {creating ? t("processing") : (isEditing ? (t("btnUpdateRoom") || "Update Room") : t("addRoomBtn"))}
         </Button>
       </DialogFooter>
     </div>
