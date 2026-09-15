@@ -12,7 +12,6 @@ function createPrismaClient(): PrismaClient {
         "Add it in Vercel Dashboard > Settings > Environment Variables."
     );
   }
-
   return new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["warn", "error"],
   });
@@ -27,27 +26,17 @@ function getClient(): PrismaClient {
 
 /**
  * Destroy the current PrismaClient and create a fresh one.
- * This clears Prisma's prepared-statement cache, which is needed
- * after adding a new enum value (e.g. FAMILY to RoomType) at runtime.
- * The old client's cached queries don't know about the new enum value.
+ * Clears the prepared-statement cache so new enum values are visible.
  */
 async function recreateClient(): Promise<PrismaClient> {
   if (_db) {
-    try {
-      await _db.$disconnect();
-    } catch {
-      /* ignore */
-    }
+    try { await _db.$disconnect(); } catch { /* ignore */ }
   }
   _db = createPrismaClient();
   console.log("[db] PrismaClient recreated — prepared-statement cache cleared");
   return _db;
 }
 
-/**
- * Returns a promise that resolves when DB migrations are guaranteed done.
- * Safe to call many times — only runs once per cold start.
- */
 function ensureOnce(): Promise<void> {
   if (!_ensurePromise) {
     _ensurePromise = ensureDatabase();
@@ -56,10 +45,7 @@ function ensureOnce(): Promise<void> {
 }
 
 /**
- * Check if an error is a database schema error (missing column, missing table,
- * missing type, or invalid enum value).
- * These errors indicate migrations haven't been fully applied OR Prisma's
- * prepared-statement cache is stale.
+ * Detect schema errors AND enum cache errors.
  */
 function isSchemaError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -77,13 +63,10 @@ function isSchemaError(err: unknown): boolean {
 }
 
 /**
- * Force re-run migrations (used when schema errors are detected at runtime).
- * Guards against concurrent migration runs.
- * After migrating, recreates the PrismaClient to clear cached statements.
+ * Force re-run migrations + recreate PrismaClient.
  */
 async function forceRemigrate(): Promise<void> {
   if (_migrating) {
-    // Another call is already migrating — wait for it
     while (_migrating) {
       await new Promise((r) => setTimeout(r, 200));
     }
@@ -96,9 +79,6 @@ async function forceRemigrate(): Promise<void> {
     _ensurePromise = null;
     await ensureDatabase();
     console.log("[db] Migration re-run complete.");
-
-    // Recreate the PrismaClient so the new enum value is visible
-    // to its prepared-statement cache.
     await recreateClient();
   } catch (err) {
     console.error("[db] Forced migration failed:", err instanceof Error ? err.message : String(err));
@@ -108,20 +88,20 @@ async function forceRemigrate(): Promise<void> {
 }
 
 /**
- * Execute a Prisma method with auto-retry on schema errors.
- * If the first attempt fails due to a missing column/table/enum value,
- * it re-runs migrations, recreates the PrismaClient (clearing cached
- * prepared statements), and retries once.
+ * Execute a Prisma method with auto-retry on schema/enum errors.
+ * On error: re-migrates, recreates PrismaClient, then retries using
+ * the FRESH client (fetched via getClient() inside the retry closure).
  */
-async function withSchemaRetry<T>(fn: () => Promise<T>): Promise<T> {
+async function withSchemaRetry<T>(fn: (client: PrismaClient) => Promise<T>): Promise<T> {
   await ensureOnce();
   try {
-    return await fn();
+    return await fn(getClient());
   } catch (err) {
     if (isSchemaError(err)) {
       console.log("[db] Schema/enum error caught, will retry after re-migration:", err instanceof Error ? err.message : String(err));
       await forceRemigrate();
-      return await fn(); // Retry with fresh PrismaClient
+      // getClient() now returns the FRESH client (recreated in forceRemigrate)
+      return await fn(getClient());
     }
     throw err;
   }
@@ -129,8 +109,6 @@ async function withSchemaRetry<T>(fn: () => Promise<T>): Promise<T> {
 
 /**
  * Get a PrismaClient with migrations guaranteed to have run.
- * Use at the top of API route handlers:
- *   const db = await getSafeDb();
  */
 export async function getSafeDb(): Promise<PrismaClient> {
   await ensureOnce();
@@ -138,46 +116,39 @@ export async function getSafeDb(): Promise<PrismaClient> {
 }
 
 /**
- * Wraps a Prisma model so every method call first awaits ensureDatabase
- * and auto-retries on schema errors.
- */
-function createEnsuredProxy<T>(model: T): T {
-  return new Proxy(model as object, {
-    get(target, prop) {
-      const value = (target as Record<string, unknown>)[prop as string];
-      if (typeof value === "function") {
-        return async (...args: unknown[]) => {
-          return withSchemaRetry(() =>
-            (value as Function).apply(target, args)
-          );
-        };
-      }
-      return value;
-    },
-  }) as unknown as T;
-}
-
-/**
  * Convenience proxy — auto-ensures database before every query.
- * Auto-retries once if a schema error is detected (missing column/table/enum).
- * On retry, creates a FRESH PrismaClient to clear the prepared-statement cache.
+ * Auto-retries on schema/enum errors with a FRESH PrismaClient.
+ *
+ * Key fix: the fn callback receives the client as a parameter, so
+ * when forceRemigrate() creates a new client, the retry uses it.
  */
 export const db = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    const client = getClient();
-    const value = (client as unknown as Record<string, unknown>)[prop as string];
-    if (typeof value === "function") {
-      // Prisma namespace methods like $queryRaw, $executeRaw, $transaction
+    // For function calls ($queryRaw, $executeRaw, $transaction, etc.)
+    if (typeof prop === "string" && prop.startsWith("$")) {
       return async (...args: unknown[]) => {
-        return withSchemaRetry(() =>
-          (value as Function).apply(client, args)
+        return withSchemaRetry((client) =>
+          (client as unknown as Record<string, unknown>)[prop] &&
+          ((client as unknown as Record<string, (...a: unknown[]) => unknown>)[prop]).apply(client, args)
         );
       };
     }
-    // Prisma model accessors like .user, .room, .guest — wrap with ensure proxy
-    if (value && typeof value === "object") {
-      return createEnsuredProxy(value);
-    }
-    return value;
+    // For model accessors (.room, .guest, .reservation, etc.)
+    // Return a proxy that defers client resolution to call-time
+    return new Proxy({}, {
+      get(_t, method) {
+        if (typeof method !== "string") return undefined;
+        return async (...args: unknown[]) => {
+          return withSchemaRetry((client) => {
+            const model = (client as unknown as Record<string, Record<string, unknown>>)[prop];
+            const fn = model?.[method];
+            if (typeof fn === "function") {
+              return fn.apply(model, args);
+            }
+            throw new Error(`Method ${String(method)} not found on model ${prop}`);
+          });
+        };
+      },
+    });
   },
 });
