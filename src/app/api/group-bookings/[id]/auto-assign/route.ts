@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const booking = await db.groupBooking.findFirst({
       where: { id, providerId },
-      include: { reservations: { include: { guest: true, room: true } } },
+      include: { reservations: { include: { guest: true, room: { select: { id: true, number: true, name: true, pricePerNight: true, capacity: true, status: true, floor: true } } } } },
     });
     if (!booking) return NextResponse.json({ error: "Group booking not found" }, { status: 404 });
 

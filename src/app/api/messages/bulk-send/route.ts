@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     // Get reservations matching status
     const reservations = await db.reservation.findMany({
       where: { providerId, status, guest: { phone: { not: "" } } },
-      include: { guest: true, room: true },
+      include: { guest: true, room: { select: { id: true, number: true, name: true } } },
       take: 100,
     });
 

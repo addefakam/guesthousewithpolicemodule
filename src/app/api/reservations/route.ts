@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get room to check type
-    const room = await db.room.findUnique({ where: { id: roomId } });
+    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, type: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
     if (!room) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }

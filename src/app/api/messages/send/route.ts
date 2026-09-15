@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     if (reservationId) {
       const res = await db.reservation.findFirst({
         where: { id: reservationId, providerId },
-        include: { guest: true, room: true, provider: true },
+        include: { guest: true, room: { select: { id: true, number: true, name: true } }, provider: true },
       });
       if (res) {
         vars.guestName = res.guest.name;

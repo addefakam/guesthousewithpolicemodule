@@ -159,7 +159,7 @@ export async function PUT(
         });
       }
       if (existing.status === "ACTIVE") {
-        const newRoom = await db.room.findUnique({
+        const newRoom = await db.room.findUnique({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
           where: { id: roomId },
           select: { status: true },
         });
