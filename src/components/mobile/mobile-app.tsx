@@ -1879,7 +1879,22 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
           </div>
           <div>
             <Label className="text-xs font-semibold">{t("lblGuestPhone")} *</Label>
-            <Input type="tel" value={form.directPhone} onChange={(e) => onUpdate({ directPhone: e.target.value })} placeholder={t("phGuestPhone")} className="mt-1.5 h-11 rounded-xl" />
+            <Input
+              type="tel"
+              value={form.directPhone}
+              onChange={(e) => onUpdate({ directPhone: e.target.value })}
+              placeholder={t("phGuestPhone")}
+              className={`mt-1.5 h-11 rounded-xl ${
+                form.directPhone.trim() && !isValidPhone(form.directPhone)
+                  ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500"
+                  : ""
+              }`}
+            />
+            {form.directPhone.trim() && !isValidPhone(form.directPhone) && (
+              <p className="mt-1 text-[10px] text-rose-500">
+                {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix. e.g. +251912345678"}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -2005,7 +2020,22 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
           {!form.exceptionallyReserved ? (
             <div className="space-y-2">
               <Input value={form.secondGuestName} onChange={(e) => onUpdate({ secondGuestName: e.target.value })} placeholder={t("phSecondGuestName")} className="h-10 rounded-lg text-sm" />
-              <Input type="tel" value={form.secondGuestPhone} onChange={(e) => onUpdate({ secondGuestPhone: e.target.value })} placeholder={t("phSecondGuestPhone")} className="h-10 rounded-lg text-sm" />
+              <Input
+                type="tel"
+                value={form.secondGuestPhone}
+                onChange={(e) => onUpdate({ secondGuestPhone: e.target.value })}
+                placeholder={t("phSecondGuestPhone")}
+                className={`h-10 rounded-lg text-sm ${
+                  form.secondGuestPhone?.trim() && !isValidPhone(form.secondGuestPhone)
+                    ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500"
+                    : ""
+                }`}
+              />
+              {form.secondGuestPhone?.trim() && !isValidPhone(form.secondGuestPhone) && (
+                <p className="mt-0.5 text-[9px] text-rose-500">
+                  {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix"}
+                </p>
+              )}
               <Input value={form.secondGuestIdNumber} onChange={(e) => onUpdate({ secondGuestIdNumber: e.target.value })} placeholder={t("phSecondGuestId")} className="h-10 rounded-lg text-sm" />
             </div>
           ) : (

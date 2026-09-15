@@ -1328,7 +1328,18 @@ export default function ReservationsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label>{t("labelPhone")} <span className="text-rose-500">*</span></Label>
-                      <Input type="tel" placeholder={t("placeholderPhone")} value={newGuestForm.phone} onChange={(e) => setNewGuestForm({ ...newGuestForm, phone: e.target.value })} />
+                      <Input
+                        type="tel"
+                        placeholder={t("placeholderPhone")}
+                        value={newGuestForm.phone}
+                        onChange={(e) => setNewGuestForm({ ...newGuestForm, phone: e.target.value })}
+                        className={newGuestForm.phone.trim() && !isValidPhone(newGuestForm.phone) ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500" : ""}
+                      />
+                      {newGuestForm.phone.trim() && !isValidPhone(newGuestForm.phone) && (
+                        <p className="text-[11px] text-rose-500">
+                          {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix. e.g. +251912345678"}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
