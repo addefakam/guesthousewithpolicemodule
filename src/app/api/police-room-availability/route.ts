@@ -14,15 +14,22 @@ export async function GET(req: NextRequest) {
     await ensureRoomTypeFAMILY();
 
     // ── City-wide room statistics ──
-    const totalRooms = await db.room.count();
-    const availableRooms = await db.room.count({ where: { status: "AVAILABLE" } });
-    const occupiedRooms = await db.room.count({ where: { status: "OCCUPIED" } });
-    const reservedRooms = await db.room.count({ where: { status: "RESERVED" } });
-    const maintenanceRooms = await db.room.count({ where: { status: "MAINTENANCE" } });
+    // Use raw SQL for ALL room queries to avoid Prisma's prepared-statement
+    // cache issue with the RoomType enum (FAMILY value added at runtime).
+    const statsRaw = await db.$queryRaw<{ status: string; count: bigint }[]>`
+      SELECT "status", COUNT(*)::bigint as count FROM "Room" GROUP BY "status"
+    `;
+    const statsMap: Record<string, number> = {};
+    for (const s of statsRaw) {
+      statsMap[s.status] = Number(s.count);
+    }
+    const totalRooms = Object.values(statsMap).reduce((a, b) => a + b, 0);
+    const availableRooms = statsMap["AVAILABLE"] || 0;
+    const occupiedRooms = statsMap["OCCUPIED"] || 0;
+    const reservedRooms = statsMap["RESERVED"] || 0;
+    const maintenanceRooms = statsMap["MAINTENANCE"] || 0;
 
     // ── Room type breakdown ──
-    // Use raw SQL instead of Prisma's groupBy to avoid the prepared-statement
-    // cache that may not know about the FAMILY enum value yet.
     const roomTypesRaw = await db.$queryRaw<{ type: string; count: bigint }[]>`
       SELECT type, COUNT(*)::bigint as count FROM "Room" GROUP BY type
     `;
