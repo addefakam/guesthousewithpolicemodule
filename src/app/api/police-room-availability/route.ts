@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { ensureRoomTypeFAMILY } from "@/lib/ensure-room-type-enum";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+
+    // Ensure FAMILY exists in the RoomType enum before any query.
+    // This is needed because Prisma's connection pool may have cached
+    // the old enum values from before FAMILY was added.
+    await ensureRoomTypeFAMILY();
 
     // ── City-wide room statistics ──
     const totalRooms = await db.room.count();
@@ -15,10 +21,12 @@ export async function GET(req: NextRequest) {
     const maintenanceRooms = await db.room.count({ where: { status: "MAINTENANCE" } });
 
     // ── Room type breakdown ──
-    const roomTypes = await db.room.groupBy({
-      by: ["type"],
-      _count: { id: true },
-    });
+    // Use raw SQL instead of Prisma's groupBy to avoid the prepared-statement
+    // cache that may not know about the FAMILY enum value yet.
+    const roomTypesRaw = await db.$queryRaw<{ type: string; count: bigint }[]>`
+      SELECT type, COUNT(*)::bigint as count FROM "Room" GROUP BY type
+    `;
+    const roomTypes = roomTypesRaw.map(r => ({ type: r.type, _count: { id: Number(r.count) } }));
 
     // ── Per-provider room breakdown ──
     const providers = await db.provider.findMany({

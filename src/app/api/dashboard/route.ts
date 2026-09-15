@@ -28,9 +28,15 @@ export async function GET(req: NextRequest) {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     // ── Run core queries in parallel (all roles) ──
-    const [roomStatusCounts, activeReservations, todayCheckins, todayCheckouts, revenueResult, activityLogs] =
+    // Use raw SQL for room status counts to avoid Prisma's prepared-statement
+    // cache issue with newly-added enum values (e.g. FAMILY in RoomType).
+    const [roomStatusCountsRaw, activeReservations, todayCheckins, todayCheckouts, revenueResult, activityLogs] =
       await Promise.all([
-        db.room.groupBy({ by: ["status"], where, _count: { status: true } }),
+        db.$queryRaw<{ status: string; count: bigint }[]>`
+          SELECT status, COUNT(*)::bigint as count FROM "Room"
+          ${where.providerId ? db.$queryRaw`WHERE "providerId" = ${where.providerId}` : db.$queryRaw``}
+          GROUP BY status
+        `,
         db.reservation.count({ where: { ...where, status: "ACTIVE" } }),
         // Arrivals scheduled for today: still pending (UPCOMING) or already
         // checked in (ACTIVE). Counting only UPCOMING made the number drop
@@ -106,8 +112,8 @@ export async function GET(req: NextRequest) {
     const roomsByStatus: Record<string, number> = {
       AVAILABLE: 0, OCCUPIED: 0, MAINTENANCE: 0, RESERVED: 0,
     };
-    for (const item of roomStatusCounts) {
-      roomsByStatus[item.status] = item._count.status;
+    for (const item of roomStatusCountsRaw) {
+      roomsByStatus[item.status] = Number(item.count);
     }
     const totalRooms = Object.values(roomsByStatus).reduce((a, b) => a + b, 0);
     const occupancyRate = totalRooms > 0
