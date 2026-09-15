@@ -3093,6 +3093,8 @@
     "lblRoom": "Room",
     "lblCheckIn": "Check-in",
     "lblCheckOut": "Check-out",
+    "lblDates": "Dates",
+    "selectRoomFirst": "Select a room first to choose dates.",
     "lblNotes": "Notes",
     "searchGuestPlaceholder": "Search guest by name or phone...",
     "selectRoomPlaceholder": "Select available room",

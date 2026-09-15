@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import {
   Dialog,
   DialogContent,
@@ -1029,7 +1030,14 @@ export default function MobileApp() {
                 </SelectContent>
               </Select>
             </div>
-            {/* Dates */}
+            {/* Dates — calendar disables reserved days (excluding the
+                reservation being edited, since its own dates are valid
+                for this reservation). We pass editResForm.id to the
+                calendar so it excludes the current reservation from
+                the occupied-nights set — but RoomAvailabilityCalendar
+                doesn't support that filter yet, so for the edit flow
+                we keep the date inputs as a known limitation. The
+                overlap is enforced on the API side anyway. */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">{t("lblCheckIn")} *</Label>
@@ -1795,48 +1803,30 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
           </SelectContent>
         </Select>
       </div>
-      {/* Dates */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Dates — use the same RoomAvailabilityCalendar as the web app.
+          Native <input type="date"> can't disable individual reserved
+          days (only a global min/max range), so reserved days were
+          selectable even though an 'overlap' warning fired below.
+          The calendar component disables occupied nights visually +
+          functionally — those days are inactive (can't be tapped). */}
+      {form.roomId ? (
         <div>
-          <Label className="text-xs font-semibold">{t("lblCheckIn")} *</Label>
-          <Input type="date" value={form.checkIn} min={todayStr()}
-            onChange={(e) => onUpdate({ checkIn: e.target.value, checkOut: form.checkOut < e.target.value ? addDays(e.target.value, 1) : form.checkOut })}
-            className="mt-1.5 h-11 rounded-xl" />
+          <Label className="text-xs font-semibold">{t("lblDates") || "Dates"} *</Label>
+          <RoomAvailabilityCalendar
+            roomId={form.roomId}
+            checkIn={form.checkIn}
+            checkOut={form.checkOut}
+            onChange={(next) => onUpdate(next)}
+            className="mt-1.5"
+          />
         </div>
-        <div>
-          <Label className="text-xs font-semibold">{t("lblCheckOut")} *</Label>
-          <Input type="date" value={form.checkOut} min={form.checkIn || todayStr()}
-            onChange={(e) => onUpdate({ checkOut: e.target.value })}
-            className="mt-1.5 h-11 rounded-xl" />
-        </div>
-      </div>
-      {/* Occupied ranges for the selected room */}
-      {form.roomId && (
-        <div>
-          {availLoading ? (
-            <p className="flex items-center gap-1.5 text-[10px] text-gray-400">
-              <Clock className="h-3 w-3 animate-pulse" /> {t("loadingAvailability")}
-            </p>
-          ) : bookedRanges.length === 0 ? (
-            <p className="text-[10px] text-gray-400">{t("noOccupiedDates")}</p>
-          ) : (
-            <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-2.5">
-              <p className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-700">
-                <AlertTriangle className="h-3 w-3" /> {t("occupiedDates")}
-              </p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {bookedRanges.map((r) => (
-                  <span key={r.id} className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-medium text-rose-700">
-                    {formatDate(r.checkIn)} → {formatDate(r.checkOut)}{r.guestName ? ` · ${r.guestName}` : ""}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-1 text-[9px] text-gray-400">{t("checkoutDayHint")}</p>
-            </div>
-          )}
-        </div>
+      ) : (
+        <p className="text-[11px] text-gray-400">{t("selectRoomFirst") || "Select a room first to choose dates."}</p>
       )}
-      {/* Overlap blocker */}
+
+      {/* Overlap blocker — calendar disables reserved days proactively,
+          but we keep this as a defensive backstop in case the room's
+          availability changed between load and submit. */}
       {overlapRange && (
         <div className="flex items-start gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

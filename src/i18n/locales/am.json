@@ -3093,6 +3093,8 @@
     "lblRoom": "ክፍል",
     "lblCheckIn": "የመግቢያ",
     "lblCheckOut": "የመውጣት",
+    "lblDates": "ቀኖች",
+    "selectRoomFirst": "ቀን ለመምረጥ መጀመሪያ ክፍል ይምረጡ።",
     "lblNotes": "ማስታወሻ",
     "searchGuestPlaceholder": "በስም ወይም ስልክ ፈልግ...",
     "selectRoomPlaceholder": "የቀርቶ ክፍል ምረጥ",
