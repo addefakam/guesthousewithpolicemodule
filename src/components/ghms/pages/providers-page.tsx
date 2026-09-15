@@ -301,12 +301,12 @@ export default function ProvidersPage() {
       !registerForm.phone.trim() ||
       !registerForm.email.trim() ||
       !registerForm.type ||
-      !registerForm.licenseNo.trim() ||
       !registerForm.username.trim() ||
       !registerForm.password.trim() ||
       !registerForm.subCity ||
       !registerForm.woreda
     ) {
+      // licenseNo is OPTIONAL — defaults to empty string at the API.
       toast.error(t('fillRequiredFields'));
       return;
     }
@@ -434,7 +434,7 @@ export default function ProvidersPage() {
         if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Guesthouse Name" }));
         if (!type) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Type" }));
         else if (!validTypes.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
-        if (!licenseNo) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "License No" }));
+        // licenseNo is OPTIONAL for bulk import too — defaults to empty string.
         if (!subCity) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Sub-City" }));
         else if (!validSubCities.includes(subCity)) errors.push(t('bulkRowInvalidSubCity', { row: rowNum, value: subCity, valid: validSubCities.join(", ") }));
         if (!woreda) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Woreda" }));
@@ -985,7 +985,9 @@ export default function ProvidersPage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="reg-license" className="text-sm">{t('labelLicenseNo')} <span className="text-rose-500">*</span></Label>
+                    <Label htmlFor="reg-license" className="text-sm">
+                      {t('labelLicenseNo')} <span className="text-gray-400 text-xs">(optional)</span>
+                    </Label>
                     <Input
                       id="reg-license"
                       placeholder={t('placeholderLicenseNo')}
@@ -995,62 +997,11 @@ export default function ProvidersPage() {
                     />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label className="text-sm">{t('uploadLicenseDocument')}</Label>
-                  {!registerForm.licenseFileData ? (
-                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 transition-colors hover:border-emerald-400 hover:bg-emerald-50/50">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
-                        <Upload className="size-4 text-slate-500" />
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="truncate text-sm font-medium text-slate-700">
-                          {t('clickToUploadLicense')}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {t('fileFormatHint')}
-                        </p>
-                      </div>
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] ?? null;
-                          if (file && file.size > 5 * 1024 * 1024) {
-                            toast.error(t('fileSizeExceeded'));
-                            return;
-                          }
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              setRegisterForm((f) => ({
-                                ...f,
-                                licenseFileData: reader.result as string,
-                                licenseFileName: file.name,
-                              }));
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-                  ) : (
-                    <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                      <FileText className="h-8 w-8 shrink-0 text-emerald-600" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-700">{registerForm.licenseFileName}</p>
-                        <p className="text-[11px] text-emerald-600">{t('licenseUploaded')}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setRegisterForm((f) => ({ ...f, licenseFileData: "", licenseFileName: "" }))}
-                        className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-slate-200 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5 text-slate-500" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {/* License document upload has been removed per product decision.
+                    Operators register without uploading a license file.
+                    The `licenseFileData` / `licenseFileName` fields are kept
+                    in RegisterForm state for backward compatibility with the
+                    API payload shape, but no UI is rendered for them. */}
               </div>
             </div>
 
