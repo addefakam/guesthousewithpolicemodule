@@ -59,14 +59,21 @@ export async function GET(req: NextRequest) {
       ...params
     ) as Record<string, unknown>[];
 
-    // Serialize Date objects to ISO strings for JSON response
+    // Serialize ALL fields — $queryRawUnsafe returns BigInt for INT
+    // columns and Date for TIMESTAMP columns. Both cause JSON.stringify
+    // to throw, which makes NextResponse.json() return an empty response.
     const rooms = roomsRaw.map((r) => ({
-      ...r,
+      id: String(r.id),
+      number: String(r.number),
+      name: String(r.name || ""),
+      type: String(r.type || ""),
       pricePerNight: Number(r.pricePerNight),
       floor: Number(r.floor),
       capacity: Number(r.capacity),
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
+      status: String(r.status || "AVAILABLE"),
+      providerId: r.providerId ? String(r.providerId) : null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt || ""),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt || ""),
     }));
 
     return NextResponse.json({ rooms });
