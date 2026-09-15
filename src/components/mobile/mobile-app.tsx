@@ -1402,25 +1402,33 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
                   )}
                 </div>
 
-                {/* Action button */}
+                {/* Action button — Reserve is ALWAYS available now, even when
+                    the room is RESERVED or OCCUPIED. The calendar in the
+                    reservation dialog disables only the reserved nights
+                    (red strikethrough) and protects against overlap — operators
+                    can book the same room for any non-overlapping date range.
+                    This matches the user's request: 'don't lock the room,
+                    just protect overlapping reserved days'. */}
                 <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
                   {st === "AVAILABLE" ? (
                     <button
                       onClick={() => onReserve(room)}
                       className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
                     >{t("btnReserve")}</button>
-                  ) : st === "RESERVED" ? (
-                    <button
-                      onClick={() => onRoomTap(room)}
-                      className="w-full rounded-xl bg-sky-600 text-white py-2.5 text-xs font-semibold active:bg-sky-700 transition-colors"
-                    >{t("btnManage")}</button>
+                  ) : st === "RESERVED" || st === "OCCUPIED" ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onReserve(room)}
+                        className="flex-1 rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
+                      >{t("btnReserve")}</button>
+                      <button
+                        onClick={() => onRoomTap(room)}
+                        className="flex-1 rounded-xl bg-sky-100 text-sky-700 py-2.5 text-xs font-semibold active:bg-sky-200 transition-colors"
+                      >{t("btnManage") || "Manage"}</button>
+                    </div>
                   ) : (
                     <button
-                      onClick={() => {
-                        if (res) {
-                          toast.warning(t("toastRoomOccupied", { number: room.number, from: formatDate(res.checkIn), to: formatDate(res.checkOut), guest: res.guest?.name || "" }));
-                        }
-                      }}
+                      onClick={() => onRoomTap(room)}
                       className="w-full rounded-xl bg-gray-100 text-gray-500 py-2.5 text-xs font-semibold active:bg-gray-200 transition-colors"
                     >{t("btnViewDetail")}</button>
                   )}
@@ -1749,11 +1757,19 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
         </div>
       )}
 
-      {/* Reserve button for available rooms */}
-      {room.status === "AVAILABLE" && (
-        <Button onClick={onReserve} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-sm font-semibold rounded-xl">
-          <CalendarPlus className="mr-2 h-4 w-4" />{t("btnReserve")}
-        </Button>
+      {/* Reserve button — always available now, even when the room is
+          RESERVED or OCCUPIED. The calendar will disable the reserved
+          nights (red strikethrough) and protect against overlap, but
+          the operator can book the room for any other non-overlapping
+          date range. This matches the user's request:
+          'don't lock the room, just protect overlapping reserved days'. */}
+      <Button onClick={onReserve} className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-sm font-semibold rounded-xl">
+        <CalendarPlus className="mr-2 h-4 w-4" />{t("btnReserve")}
+      </Button>
+      {(room.status === "RESERVED" || room.status === "OCCUPIED") && (
+        <p className="text-[10px] text-gray-400 text-center -mt-2">
+          {t("reserveHint") || "Tap Reserve to book this room for a different, non-overlapping date range."}
+        </p>
       )}
 
       {/* Edit + Delete room — available on ALL statuses for Edit (you can
