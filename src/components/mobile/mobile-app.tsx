@@ -736,17 +736,24 @@ export default function MobileApp() {
     setShowNewRes(true);
   };
 
-  // 3-way language cycle: EN → AM → OM → EN (matches the web admin's
-  // full trilingual support). The button label shows the NEXT language
-  // the user will switch to, so they can tap once to switch.
-  const LANG_CYCLE = ["en", "am", "or"] as const;
-  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", or: "OR" };
-  const toggleLang = () => {
-    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+  // Language selector — dropdown showing all 3 languages.
+  const LANGUAGES = [
+    { code: "en", label: "English", short: "EN" },
+    { code: "am", label: "አማርኛ", short: "አማ" },
+    { code: "or", label: "Oromoo", short: "OR" },
+  ];
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const currentLangLabel = () => {
     const current = (i18n.language || "en").slice(0, 2).toLowerCase();
-    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
-    const next = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
-    i18n.changeLanguage(next);
+    const lang = LANGUAGES.find((l) => l.code === current);
+    return lang ? lang.short : "EN";
+  };
+
+  const selectLang = (code: string) => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+    i18n.changeLanguage(code);
+    setShowLangMenu(false);
   };
 
   const handleLogout = async () => {
@@ -854,7 +861,7 @@ export default function MobileApp() {
             <h1 className="text-lg font-bold leading-tight">Bishoftu GMS</h1>
             <p className="text-[11px] text-slate-400">{currentUser?.name} &middot; {currentUser?.providerName || ""}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setShowLogoutConfirm(true)}
               className="rounded-full bg-slate-800 p-2 text-slate-400 active:bg-slate-700 transition-colors"
@@ -863,13 +870,42 @@ export default function MobileApp() {
               <Power className="h-4 w-4" />
             </button>
             <button
-              onClick={toggleLang}
-              className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors"
-              title={i18n.language === "en" ? "Switch to Amharic" : i18n.language === "am" ? "Switch to Oromo" : "Switch to English"}
+              onClick={() => setShowLangMenu(!showLangMenu)}
+              className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 active:bg-slate-700 transition-colors flex items-center gap-1"
             >
-              {/* Label shows the NEXT language in the cycle: EN→AM→OM→EN */}
-              {LANG_LABELS[LANG_CYCLE[(LANG_CYCLE.indexOf((i18n.language || "en").slice(0, 2).toLowerCase() as typeof LANG_CYCLE[number]) + 1) % LANG_CYCLE.length]] || "EN"}
+              {currentLangLabel()}
+              <span className="text-slate-500 text-[9px]">▾</span>
             </button>
+            {showLangMenu && (
+              <>
+                {/* Invisible overlay to close when tapping outside */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowLangMenu(false)}
+                />
+                {/* Language dropdown */}
+                <div className="absolute top-10 right-0 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+                  {LANGUAGES.map((lang) => {
+                    const current = (i18n.language || "en").slice(0, 2).toLowerCase();
+                    const isActive = current === lang.code;
+                    return (
+                      <button
+                        key={lang.code}
+                        onClick={() => selectLang(lang.code)}
+                        className={`w-full px-4 py-2.5 text-left text-xs font-medium transition-colors flex items-center justify-between ${
+                          isActive
+                            ? "bg-emerald-600 text-white"
+                            : "text-slate-300 active:bg-slate-700"
+                        }`}
+                      >
+                        <span>{lang.label}</span>
+                        <span className="text-[10px] opacity-70">{lang.short}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

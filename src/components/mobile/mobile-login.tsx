@@ -161,23 +161,25 @@ export function MobileLoginPage() {
     }
   };
 
-  // 3-way language cycle: EN → AM → OM → EN (matches the web admin's
-  // full trilingual support). The button label shows the NEXT language
-  // the user will switch to, so they can tap once to switch.
-  const LANG_CYCLE = ["en", "am", "or"] as const;
-  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", or: "OR" };
-  const toggleLang = () => {
-    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+  // Language selector — dropdown showing all 3 languages.
+  // User taps the button → a dropdown list appears → picks EN / AM / OR.
+  const LANGUAGES = [
+    { code: "en", label: "English", short: "EN" },
+    { code: "am", label: "አማርኛ", short: "አማ" },
+    { code: "or", label: "Oromoo", short: "OR" },
+  ];
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const currentLangLabel = () => {
     const current = (i18n.language || "en").slice(0, 2).toLowerCase();
-    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
-    const next = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
-    i18n.changeLanguage(next);
+    const lang = LANGUAGES.find((l) => l.code === current);
+    return lang ? lang.short : "EN";
   };
-  const nextLangLabel = () => {
-    const current = (i18n.language || "en").slice(0, 2).toLowerCase();
-    const idx = LANG_CYCLE.indexOf(current as typeof LANG_CYCLE[number]);
-    const nextCode = LANG_CYCLE[(idx + 1) % LANG_CYCLE.length] || "en";
-    return LANG_LABELS[nextCode] || "EN";
+
+  const selectLang = (code: string) => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+    i18n.changeLanguage(code);
+    setShowLangMenu(false);
   };
 
   const inputClass = "h-11 w-full rounded-xl border border-slate-700 bg-slate-800 px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors";
@@ -186,15 +188,45 @@ export function MobileLoginPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-900">
-      {/* Language toggle */}
-      <div className="flex justify-end px-4 pt-[env(safe-area-inset-top)] pt-4">
+      {/* Language selector — dropdown list */}
+      <div className="flex justify-end px-4 pt-[env(safe-area-inset-top)] pt-4 relative">
         <button
-          onClick={toggleLang}
-          className="rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 active:bg-slate-700 transition-colors"
+          onClick={() => setShowLangMenu(!showLangMenu)}
+          className="rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 active:bg-slate-700 transition-colors flex items-center gap-1.5"
         >
-          {/* Label shows the NEXT language in the cycle: EN→AM→OM→EN */}
-          {nextLangLabel()}
+          {currentLangLabel()}
+          <span className="text-slate-500 text-[10px]">▾</span>
         </button>
+        {showLangMenu && (
+          <>
+            {/* Invisible overlay to close the menu when tapping outside */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowLangMenu(false)}
+            />
+            {/* Language dropdown */}
+            <div className="absolute top-12 right-4 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+              {LANGUAGES.map((lang) => {
+                const current = (i18n.language || "en").slice(0, 2).toLowerCase();
+                const isActive = current === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => selectLang(lang.code)}
+                    className={`w-full px-4 py-2.5 text-left text-xs font-medium transition-colors flex items-center justify-between ${
+                      isActive
+                        ? "bg-emerald-600 text-white"
+                        : "text-slate-300 active:bg-slate-700"
+                    }`}
+                  >
+                    <span>{lang.label}</span>
+                    <span className="text-[10px] opacity-70">{lang.short}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Centered content */}
