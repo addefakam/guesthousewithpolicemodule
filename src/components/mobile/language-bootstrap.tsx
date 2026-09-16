@@ -25,15 +25,16 @@ export function MobileLanguageBootstrap() {
 
   useEffect(() => {
     // Force English on every fresh mount of the mobile app.
-    // i18next.changeLanguage() also writes to localStorage which
-    // persists across session — but this bootstrap runs again on
-    // every reload and resets it, so the operator always starts in
-    // English. (If they toggled to Amharic, then refreshed, the
-    // refresh re-runs this bootstrap → English again.)
+    // CRITICAL: dependency array is [] (empty) — must only run ONCE on
+    // mount. If [i18n] is used, every time the user switches language,
+    // this effect re-runs and forces it back to English, preventing
+    // any language switch from working.
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
     if (i18n.language !== "en") {
       i18n.changeLanguage("en");
     }
-  }, [i18n]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // ← EMPTY ARRAY: run once on mount only
 
   // Renders nothing — this is a side-effect-only component.
   return null;

@@ -10,34 +10,14 @@ import MobileApp from "@/components/mobile/mobile-app";
 import { MobileLoginPage } from "@/components/mobile/mobile-login";
 
 export default function MobilePage() {
+  // The MobileLanguageBootstrap in m/layout.tsx already handles
+  // setting English as the default on page load. No need for a
+  // duplicate here — having two bootstraps caused issues.
   return (
     <I18nextProvider i18n={i18n}>
-      <MobileLanguageBootstrap />
       <MobilePageContent />
     </I18nextProvider>
   );
-}
-
-function MobileLanguageBootstrap() {
-  // Force English as the default language for the operator mobile app on
-  // every fresh page load. Operators can still toggle to Amharic/Oromo
-  // for the current session via the language button in the header.
-  //
-  // CRITICAL: This effect must only run ONCE on mount. If [i18n] is the
-  // dependency, then every time the user taps the language button,
-  // i18n.changeLanguage() fires → i18n instance changes → this effect
-  // re-runs → forces language back to "en" → infinite loop that prevents
-  // any language switch. Using an empty dependency array [] ensures it
-  // only fires once on initial mount.
-  const { i18n } = useTranslation();
-  useEffect(() => {
-    if (!i18n || typeof i18n.changeLanguage !== "function") return;
-    if (i18n.language !== "en") {
-      i18n.changeLanguage("en");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);  // ← EMPTY ARRAY: run once on mount only, never re-run
-  return null;
 }
 
 function MobilePageContent() {
