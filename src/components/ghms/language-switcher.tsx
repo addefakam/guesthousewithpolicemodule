@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const languages = [
-  { code: "om", label: "Oromifa" },
+  { code: "or", label: "Oromifa" },
   { code: "am", label: "አማርኛ" },
   { code: "en", label: "English" },
 ];
@@ -23,7 +23,7 @@ export default function LanguageSwitcher() {
   useEffect(() => {
     setMounted(true);
     const savedLng = localStorage.getItem("i18nextLng");
-    if (savedLng && ["en", "am", "om"].includes(savedLng) && i18n && typeof i18n.changeLanguage === "function") {
+    if (savedLng && ["en", "am", "or"].includes(savedLng) && i18n && typeof i18n.changeLanguage === "function") {
       i18n.changeLanguage(savedLng);
     }
   }, []);

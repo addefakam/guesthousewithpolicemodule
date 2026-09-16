@@ -5,7 +5,7 @@ import { initReactI18next } from "react-i18next";
 
 import en from "./locales/en.json";
 import am from "./locales/am.json";
-import om from "./locales/om.json";
+import or from "./locales/om.json";
 
 i18n
   .use(initReactI18next)
@@ -13,7 +13,7 @@ i18n
     resources: {
       en: en,
       am: am,
-      om: om,
+      or: or,
     },
     fallbackLng: "en",
     defaultNS: "common",

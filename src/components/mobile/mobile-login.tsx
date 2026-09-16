@@ -164,8 +164,8 @@ export function MobileLoginPage() {
   // 3-way language cycle: EN → AM → OM → EN (matches the web admin's
   // full trilingual support). The button label shows the NEXT language
   // the user will switch to, so they can tap once to switch.
-  const LANG_CYCLE = ["en", "am", "om"] as const;
-  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", om: "OM" };
+  const LANG_CYCLE = ["en", "am", "or"] as const;
+  const LANG_LABELS: Record<string, string> = { en: "EN", am: "አማ", or: "OR" };
   const toggleLang = () => {
     if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const current = (i18n.language || "en").slice(0, 2).toLowerCase();
