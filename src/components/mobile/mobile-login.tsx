@@ -204,16 +204,20 @@ export function MobileLoginPage() {
               className="fixed inset-0 z-40"
               onClick={() => setShowLangMenu(false)}
             />
-            {/* Language dropdown */}
-            <div className="absolute top-12 right-4 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+            {/* Language dropdown — stopPropagation so the overlay doesn't close it */}
+            <div
+              className="absolute top-12 right-4 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden min-w-[140px]"
+              onClick={(e) => e.stopPropagation()}
+            >
               {LANGUAGES.map((lang) => {
                 const current = (i18n.language || "en").slice(0, 2).toLowerCase();
                 const isActive = current === lang.code;
                 return (
                   <button
                     key={lang.code}
-                    onClick={() => selectLang(lang.code)}
-                    className={`w-full px-4 py-2.5 text-left text-xs font-medium transition-colors flex items-center justify-between ${
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); selectLang(lang.code); }}
+                    className={`w-full px-4 py-3 text-left text-sm font-medium transition-colors flex items-center justify-between ${
                       isActive
                         ? "bg-emerald-600 text-white"
                         : "text-slate-300 active:bg-slate-700"
