@@ -3240,7 +3240,8 @@
     "roleSECURITY": "Security",
     "roleSERVANT": "Servant",
     "numDriver": "Number of drivers",
-    "roleDRIVER": "Driver"
+    "roleDRIVER": "Driver",
+    "noRooms": "ክፍሎች አልተገኙም"
   },
   "policeApp": {
     "appName": "GHMS Police",
