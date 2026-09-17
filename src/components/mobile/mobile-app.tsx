@@ -740,7 +740,7 @@ export default function MobileApp() {
   const LANGUAGES = [
     { code: "en", label: "English", short: "EN" },
     { code: "am", label: "አማርኛ", short: "አማ" },
-    { code: "or", label: "Oromoo", short: "OR" },
+    { code: "or", label: "Afaan Oromoo", short: "OR" },
   ];
   const [showLangMenu, setShowLangMenu] = useState(false);
 

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const languages = [
-  { code: "or", label: "Oromifa" },
+  { code: "or", label: "Afaan Oromoo" },
   { code: "am", label: "አማርኛ" },
   { code: "en", label: "English" },
 ];
