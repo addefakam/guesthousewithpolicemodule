@@ -18,6 +18,10 @@ i18n
     fallbackLng: "en",
     defaultNS: "common",
     lng: "en",
+    // CRITICAL: Don't try to async-load translations from a backend.
+    // All translations are bundled inline — this prevents i18next from
+    // falling back to English when it can't find a backend.
+    partialBundledLanguages: true,
     interpolation: {
       escapeValue: false,
     },
