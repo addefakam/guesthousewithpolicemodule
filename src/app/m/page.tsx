@@ -10,14 +10,28 @@ import MobileApp from "@/components/mobile/mobile-app";
 import { MobileLoginPage } from "@/components/mobile/mobile-login";
 
 export default function MobilePage() {
-  // The MobileLanguageBootstrap in m/layout.tsx already handles
-  // setting English as the default on page load. No need for a
-  // duplicate here — having two bootstraps caused issues.
   return (
     <I18nextProvider i18n={i18n}>
+      <MobileLanguageBootstrap />
       <MobilePageContent />
     </I18nextProvider>
   );
+}
+
+function MobileLanguageBootstrap() {
+  // Force English as the default on every fresh page load.
+  // Uses [] dependency so it only runs ONCE on mount — after that,
+  // the user can freely switch languages via the dropdown without
+  // this effect interfering.
+  const { i18n } = useTranslation();
+  useEffect(() => {
+    if (!i18n || typeof i18n.changeLanguage !== "function") return;
+    if (i18n.language !== "en") {
+      i18n.changeLanguage("en");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
 }
 
 function MobilePageContent() {

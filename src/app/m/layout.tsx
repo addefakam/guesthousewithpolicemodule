@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "@/i18n/config";
-import { MobileLanguageBootstrap } from "@/components/mobile/language-bootstrap";
 
 export const metadata: Metadata = {
   title: "Bishoftu GMS Mobile",
@@ -32,11 +31,6 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
       <link rel="icon" type="image/png" sizes="16x16" href="/m-icons/favicon-16.png?v=2" />
       <link rel="apple-touch-icon" sizes="192x192" href="/m-icons/icon-192x192.png?v=2" />
       <div className="min-h-dvh bg-gray-50 text-gray-900 antialiased">
-        {/* Force English as the default language for the operator mobile app.
-            The operator can still toggle to Amharic for the current session
-            via the language button in the header — but each fresh load of
-            /m resets to English. */}
-        <MobileLanguageBootstrap />
         {children}
       </div>
     </>
