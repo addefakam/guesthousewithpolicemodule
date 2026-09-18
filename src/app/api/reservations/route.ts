@@ -263,24 +263,33 @@ export async function POST(req: NextRequest) {
     }
 
 
-    // Background: check if guest matches any suspected person (fire-and-forget)
-    checkSuspectMatch({
-      name: reservation.guest?.name ?? "",
-      phone: reservation.guest?.phone ?? "",
-      idNumber: reservation.guest?.idNumber ?? "",
-      idType: reservation.guest?.idType ?? "",
-      matchType: "RESERVATION",
-      providerId,
-      reservationId: reservation.id,
-      extraDetails: {
-        checkIn: checkInDay,
-        checkOut: checkOutDay,
-        nights,
-        roomNumber: reservation.room?.number ?? "",
-        roomName: reservation.room?.name ?? "",
-        totalCost,
-      },
-    }).catch(() => {});
+    // Check if guest matches any suspected person SYNCHRONOUSLY so the
+    // alert appears in the suspect list BEFORE the API response returns.
+    // Previously this was fire-and-forget (.catch(() => {})) which meant
+    // the alert might not be created by the time the frontend refreshed.
+    try {
+      await checkSuspectMatch({
+        name: reservation.guest?.name ?? "",
+        phone: reservation.guest?.phone ?? "",
+        idNumber: reservation.guest?.idNumber ?? "",
+        idType: reservation.guest?.idType ?? "",
+        matchType: "RESERVATION",
+        providerId,
+        reservationId: reservation.id,
+        extraDetails: {
+          checkIn: checkInDay,
+          checkOut: checkOutDay,
+          nights,
+          roomNumber: reservation.room?.number ?? "",
+          roomName: reservation.room?.name ?? "",
+          totalCost,
+        },
+      });
+      console.log("[reservations] Suspect check completed for reservation:", reservation.id);
+    } catch (suspectErr) {
+      console.error("[reservations] Suspect check failed (non-blocking):", suspectErr instanceof Error ? suspectErr.message : String(suspectErr));
+      // Non-blocking — reservation was still created successfully
+    }
 
     // Background: run anomaly detection (fire-and-forget)
     runAnomalyDetection({

@@ -134,6 +134,16 @@ export default function SuspectAlertsPage() {
     fetchMatches();
   }, [fetchMatches, refreshKey]);
 
+  // Auto-refresh the suspect alerts list every 30 seconds so new alerts
+  // (e.g., from a new reservation with a suspect match) appear without
+  // the user needing to manually refresh the page.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMatches();
+    }, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchMatches]);
+
   const openDetail = (match: Match) => {
     setSelectedMatch(match);
     setDetailOpen(true);

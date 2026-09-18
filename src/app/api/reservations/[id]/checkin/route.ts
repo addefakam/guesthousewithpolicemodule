@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { runAnomalyDetection } from "@/lib/anomaly-engine";
-import { checkSuspectMatch } from "@/lib/suspect-check";
 import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 export async function POST(
@@ -65,22 +64,9 @@ export async function POST(
       trigger: "CHECKIN",
     }).catch(() => {});
 
-    // Background: re-check suspect match on check-in (guest info may have been updated)
-    const guestFull = await db.guest.findUnique({
-      where: { id: reservation.guestId },
-      select: { id: true, name: true, phone: true, idNumber: true, idType: true },
-    });
-    if (guestFull) {
-      checkSuspectMatch({
-        name: guestFull.name,
-        phone: guestFull.phone,
-        idNumber: guestFull.idNumber,
-        idType: guestFull.idType,
-        matchType: "CHECKIN",
-        providerId,
-        reservationId: id,
-      }).catch(() => {});
-    }
+    // Note: Suspect matching now runs at RESERVATION CREATION time (not check-in)
+    // so the alert appears in the suspect list as soon as the reservation is
+    // confirmed. No need to re-check here — the alert already exists.
 
     return NextResponse.json(updated);
   } catch (error: unknown) {
