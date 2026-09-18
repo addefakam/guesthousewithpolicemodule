@@ -65,6 +65,13 @@ interface Match {
   isRead: boolean;
   createdAt: string;
   suspectedPerson: SuspectInfo;
+  // Live reservation status — fetched from the Reservation table so
+  // the alert shows the CURRENT status (Upcoming / Checked-in / Completed / Cancelled)
+  // not the status at the time the match was created.
+  reservationStatus?: string | null;
+  reservationCheckIn?: string | null;
+  reservationCheckOut?: string | null;
+  reservationRoomNumber?: string | null;
 }
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -291,6 +298,21 @@ export default function SuspectAlertsPage() {
                         <Clock className="h-2.5 w-2.5" />
                         {formatDateTime(match.createdAt)}
                       </span>
+                      {match.reservationStatus && (
+                        <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+                          match.reservationStatus === 'UPCOMING' ? 'bg-blue-100 text-blue-800' :
+                          match.reservationStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' :
+                          match.reservationStatus === 'COMPLETED' ? 'bg-slate-100 text-slate-700' :
+                          match.reservationStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {match.reservationStatus === 'UPCOMING' ? '⏳ Upcoming' :
+                           match.reservationStatus === 'ACTIVE' ? '✓ Checked-in' :
+                           match.reservationStatus === 'COMPLETED' ? '✓ Completed' :
+                           match.reservationStatus === 'CANCELLED' ? '✗ Cancelled' :
+                           match.reservationStatus}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -439,6 +461,25 @@ export default function SuspectAlertsPage() {
                 {/* Dynamic details based on match type */}
                 {selectedMatch.matchType === "RESERVATION" && (
                   <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3">
+                    {/* Live reservation status — updates in real time */}
+                    {selectedMatch.reservationStatus && (
+                      <div className="col-span-2 flex items-center gap-2 border-b pb-2">
+                        <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                          selectedMatch.reservationStatus === 'UPCOMING' ? 'bg-blue-100 text-blue-800' :
+                          selectedMatch.reservationStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' :
+                          selectedMatch.reservationStatus === 'COMPLETED' ? 'bg-slate-100 text-slate-700' :
+                          selectedMatch.reservationStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {selectedMatch.reservationStatus === 'UPCOMING' ? '⏳ Upcoming' :
+                           selectedMatch.reservationStatus === 'ACTIVE' ? '✓ Checked-in' :
+                           selectedMatch.reservationStatus === 'COMPLETED' ? '✓ Completed' :
+                           selectedMatch.reservationStatus === 'CANCELLED' ? '✗ Cancelled' :
+                           selectedMatch.reservationStatus}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">Current status</span>
+                      </div>
+                    )}
                     {Boolean(details.checkIn) && (
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
