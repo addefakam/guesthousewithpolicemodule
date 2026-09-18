@@ -254,22 +254,57 @@ export async function checkSuspectMatch(params: {
       ...extraDetails,
     });
 
-    // Create a match record for each suspect found
+    // Create or UPDATE a match record for each suspect found.
+    // If a match already exists for this (suspectedPerson + guestName + guestPhone),
+    // update it with the NEW reservation info instead of creating a duplicate.
+    // This way the Suspect Alerts list shows ONE entry per person, with the
+    // latest reservation status — not a new entry every time they book again.
     for (const suspect of suspects) {
-      const match = await db.suspectMatch.create({
-        data: {
+      // Check if a match already exists for this suspect + guest
+      const existingMatch = await db.suspectMatch.findFirst({
+        where: {
           suspectedPersonId: suspect.id,
-          matchType,
           guestName: name,
-          guestPhone: phone || "",
-          guestIdNumber: idNumber?.trim() || "",
-          providerName: provName,
-          providerId,
-          reservationId: reservationId || null,
-          daytimeBookingId: daytimeBookingId || null,
-          details,
+          ...(phone ? { guestPhone: phone } : {}),
         },
+        orderBy: { createdAt: "desc" },
       });
+
+      let match;
+      if (existingMatch) {
+        // UPDATE the existing match with the new reservation info
+        match = await db.suspectMatch.update({
+          where: { id: existingMatch.id },
+          data: {
+            matchType, // Update to latest match type
+            reservationId: reservationId || existingMatch.reservationId,
+            daytimeBookingId: daytimeBookingId || existingMatch.daytimeBookingId,
+            providerName: provName || existingMatch.providerName,
+            providerId: providerId || existingMatch.providerId,
+            details, // Update with latest reservation details
+            // Mark as unread again since there's a new activity
+            isRead: false,
+          },
+        });
+        console.log(`[suspect-check] Updated existing match ${match.id} for suspect ${suspect.id}`);
+      } else {
+        // CREATE a new match record
+        match = await db.suspectMatch.create({
+          data: {
+            suspectedPersonId: suspect.id,
+            matchType,
+            guestName: name,
+            guestPhone: phone || "",
+            guestIdNumber: idNumber?.trim() || "",
+            providerName: provName,
+            providerId,
+            reservationId: reservationId || null,
+            daytimeBookingId: daytimeBookingId || null,
+            details,
+          },
+        });
+        console.log(`[suspect-check] Created new match ${match.id} for suspect ${suspect.id}`);
+      }
 
       // Fire-and-forget alert dispatch — never blocks or breaks normal flow
       dispatchAlertForMatch(

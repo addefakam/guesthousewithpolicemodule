@@ -1173,17 +1173,41 @@ export default function SuspectedPersonsPage() {
                 ) : !detailPerson.matches || detailPerson.matches.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">{t('noMatches')}</p>
                 ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {detailPerson.matches.map((match) => {
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {/* Main person header — shown once at top */}
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-bold">{detailPerson.name}</p>
+                        <Badge variant="outline" className={`text-[9px] ${SEVERITY_STYLES[detailPerson.severity] || ""}`}>
+                          {t('severity_' + detailPerson.severity)}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                        {detailPerson.phone && <span>📞 {detailPerson.phone}</span>}
+                        {detailPerson.idNumber && <span>🪪 {detailPerson.idNumber}</span>}
+                        {detailPerson.nationality && <span>🌍 {detailPerson.nationality}</span>}
+                      </div>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {detailPerson._count?.matches || 0} {t('matches')} · {t('matchHistory', { count: detailPerson._count?.matches || 0 }).replace(/.*· /, '')}
+                      </p>
+                    </div>
+
+                    {/* Each reservation/match shown below the main person */}
+                    {detailPerson.matches.map((match, idx) => {
                       // Parse details JSON for extra info
                       let matchDetails: Record<string, unknown> = {};
                       try { matchDetails = JSON.parse(match.details || "{}"); } catch {}
 
                       return (
-                      <div key={match.id} className="rounded-lg border p-3 space-y-2">
-                        {/* Match header: guest name + type + date */}
+                      <div key={match.id} className="rounded-lg border p-3 space-y-2 ml-3 border-l-2 border-l-amber-300">
+                        {/* Match number + header */}
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{match.guestName}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-900">
+                              {idx + 1}
+                            </span>
+                            <p className="text-sm font-medium">{match.guestName}</p>
+                          </div>
                           <Badge variant="outline" className="text-[9px]">
                             {getMatchTypeLabel(match.matchType)}
                           </Badge>

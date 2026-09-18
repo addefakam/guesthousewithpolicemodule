@@ -63,6 +63,16 @@ export async function POST(
       },
     });
 
+    // Mark SuspectMatch as unread again (status changed to COMPLETED)
+    try {
+      await db.suspectMatch.updateMany({
+        where: { reservationId: id },
+        data: { isRead: false },
+      });
+    } catch {
+      // Non-blocking
+    }
+
     return NextResponse.json(updated);
   } catch (error: unknown) {
         if (error instanceof AuthError) {

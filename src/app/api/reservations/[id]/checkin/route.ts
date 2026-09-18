@@ -68,6 +68,16 @@ export async function POST(
     // so the alert appears in the suspect list as soon as the reservation is
     // confirmed. No need to re-check here — the alert already exists.
 
+    // Update the SuspectMatch record to mark it as unread again (new activity)
+    try {
+      await db.suspectMatch.updateMany({
+        where: { reservationId: id },
+        data: { isRead: false },
+      });
+    } catch {
+      // Non-blocking
+    }
+
     return NextResponse.json(updated);
   } catch (error: unknown) {
         if (error instanceof AuthError) {
