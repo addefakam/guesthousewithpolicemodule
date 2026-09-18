@@ -118,6 +118,13 @@ interface MatchRecord {
   providerName: string;
   createdAt: string;
   details: string;
+  // Live reservation status fields
+  reservationId?: string | null;
+  reservationStatus?: string | null;
+  reservationCheckIn?: string | null;
+  reservationCheckOut?: string | null;
+  reservationRoomNumber?: string | null;
+  reservationProviderName?: string | null;
 }
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -1166,24 +1173,75 @@ export default function SuspectedPersonsPage() {
                 ) : !detailPerson.matches || detailPerson.matches.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">{t('noMatches')}</p>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {detailPerson.matches.map((match) => (
-                      <div key={match.id} className="rounded-lg border p-2.5 space-y-1.5">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {detailPerson.matches.map((match) => {
+                      // Parse details JSON for extra info
+                      let matchDetails: Record<string, unknown> = {};
+                      try { matchDetails = JSON.parse(match.details || "{}"); } catch {}
+
+                      return (
+                      <div key={match.id} className="rounded-lg border p-3 space-y-2">
+                        {/* Match header: guest name + type + date */}
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{match.guestName}</p>
                           <Badge variant="outline" className="text-[9px]">
                             {getMatchTypeLabel(match.matchType)}
                           </Badge>
                         </div>
+
+                        {/* Provider + phone + date */}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Globe className="h-2.5 w-2.5" /> {match.providerName}
+                            <Globe className="h-2.5 w-2.5" />
+                            {match.reservationProviderName || match.providerName}
                           </span>
                           {match.guestPhone && <span>{match.guestPhone}</span>}
                           <span>{formatDateTime(match.createdAt)}</span>
                         </div>
+
+                        {/* Live reservation status badge */}
+                        {match.reservationStatus && (
+                          <div className="flex items-center gap-2 pt-1 border-t">
+                            <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                              match.reservationStatus === 'UPCOMING' ? 'bg-blue-100 text-blue-800' :
+                              match.reservationStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' :
+                              match.reservationStatus === 'COMPLETED' ? 'bg-slate-100 text-slate-700' :
+                              match.reservationStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {match.reservationStatus === 'UPCOMING' ? '⏳ Upcoming' :
+                               match.reservationStatus === 'ACTIVE' ? '✓ Checked-in' :
+                               match.reservationStatus === 'COMPLETED' ? '✓ Completed' :
+                               match.reservationStatus === 'CANCELLED' ? '✗ Cancelled' :
+                               match.reservationStatus}
+                            </span>
+                            {match.reservationRoomNumber && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Room {match.reservationRoomNumber}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Dates from the reservation (live, not from the match snapshot) */}
+                        {match.reservationCheckIn && (
+                          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                            <span>Check-in: {match.reservationCheckIn}</span>
+                            {match.reservationCheckOut && <span>Check-out: {match.reservationCheckOut}</span>}
+                          </div>
+                        )}
+
+                        {/* Fallback to details JSON if no live reservation data */}
+                        {!match.reservationStatus && matchDetails.roomNumber && (
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-1 border-t">
+                            <span>Room: {String(matchDetails.roomNumber)}</span>
+                            {matchDetails.checkIn && <span>· {String(matchDetails.checkIn)}</span>}
+                            {matchDetails.checkOut && <span>→ {String(matchDetails.checkOut)}</span>}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

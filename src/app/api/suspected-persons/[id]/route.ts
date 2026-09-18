@@ -38,7 +38,61 @@ export async function GET(
       Prisma.sql`SELECT "idType", "idNumber", "id" FROM "SuspectId" WHERE "suspectedPersonId" = ${id} ORDER BY "createdAt" ASC`
     );
 
-    return NextResponse.json({ ...person, identifiers });
+    // Fetch the CURRENT reservation status for each match's reservationId
+    // so the police can see ALL places this person has been flagged, with
+    // their current status (Upcoming / Checked-in / Completed / Cancelled).
+    const reservationIds = person.matches
+      .map((m) => m.reservationId)
+      .filter((rid): rid is string => !!rid);
+
+    const reservationStatuses: Record<string, {
+      status: string; checkIn: string; checkOut: string;
+      roomNumber: string; guestName: string; providerName: string;
+    }> = {};
+
+    if (reservationIds.length > 0) {
+      const reservations = await db.reservation.findMany({
+        where: { id: { in: reservationIds } },
+        select: {
+          id: true,
+          status: true,
+          checkIn: true,
+          checkOut: true,
+          room: { select: { number: true } },
+          guest: { select: { name: true } },
+          provider: { select: { name: true } },
+        },
+      });
+      for (const r of reservations) {
+        reservationStatuses[r.id] = {
+          status: r.status,
+          checkIn: r.checkIn,
+          checkOut: r.checkOut,
+          roomNumber: r.room?.number || "",
+          guestName: r.guest?.name || "",
+          providerName: r.provider?.name || "",
+        };
+      }
+    }
+
+    // Attach the live reservation status to each match
+    const matchesWithStatus = person.matches.map((m) => {
+      const resInfo = m.reservationId ? reservationStatuses[m.reservationId] : null;
+      return {
+        ...m,
+        reservationStatus: resInfo?.status || null,
+        reservationCheckIn: resInfo?.checkIn || null,
+        reservationCheckOut: resInfo?.checkOut || null,
+        reservationRoomNumber: resInfo?.roomNumber || null,
+        reservationProviderName: resInfo?.providerName || m.providerName || "",
+      };
+    });
+
+    return NextResponse.json({
+      ...person,
+      matches: matchesWithStatus,
+      identifiers,
+    });
   } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.statusCode });
