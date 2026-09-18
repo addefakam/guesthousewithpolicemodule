@@ -671,7 +671,7 @@
     "roomLabel": "ክፍል {{number}}",
     "roomLabelWithName": "ክፍል {{number}} — {{name}}",
     "btnImportExcel": "ኤክሰል አስመጣ",
-    "btnReservations": "ቦታዎች",
+    "btnReservations": "የተያዙ አልጋዎች",
     "perNight": "/ሌሊት",
     "guest_one": "{{count}} እንግዳ",
     "guest_other": "{{count}} እንግዶች",
