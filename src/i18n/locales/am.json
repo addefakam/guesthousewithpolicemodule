@@ -3113,7 +3113,7 @@
     "btnEditRoom": "ክፍል አስተካክል",
     "btnDeleteRoom": "ክፍል ሰርዝ",
     "btnUpdateRoom": "ክፍል አዘምን",
-    "confirmDeleteRoom": "ክፍል {{number}} ይሰረዝ? ይህ መመለስ አይቻልም። ለዚህ ክፍል ያሉ ያለፉ ምዝገባዎች በታሪክ ይቆያሉ ግን ከክፍል ጋር አይገናኙም።",
+    "confirmDeleteRoom": "ክፍል {{number}} ይሰረዝ? ይህን መመለስ አይቻልም። በዚህ ክፍል ያሉ ያለፉ ምዝገባዎች አይጠፉም።",
     "deleteDisabledActiveRes": "ክፍሉ ተይዞ ሳለ መሰረዝ አይቻልም",
     "toastRoomUpdated": "ክፍል ተስተካክሏል",
     "toastRoomDeleted": "ክፍል ተሰርዟል",
