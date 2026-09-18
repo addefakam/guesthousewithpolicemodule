@@ -90,6 +90,19 @@ interface SuspectedPerson {
   updatedAt: string;
   _count: { matches: number };
   identifiers?: Identifier[];
+  // Latest match info (from the API — includes reservation status)
+  matches?: Array<{
+    id: string;
+    guestName: string;
+    guestPhone: string;
+    providerName: string;
+    reservationId: string | null;
+    matchType: string;
+    createdAt: string;
+  }>;
+  latestMatchReservationStatus?: string | null;
+  latestMatchReservationCheckIn?: string | null;
+  latestMatchReservationRoom?: string | null;
 }
 
 interface PersonWithHistory extends SuspectedPerson {
@@ -283,6 +296,16 @@ export default function SuspectedPersonsPage() {
   }, [debouncedSearch, page, pageSize, t]);
 
   useEffect(() => { fetchPersons(); }, [fetchPersons, refreshKey]);
+
+  // Auto-refresh the suspected persons list every 15 seconds so
+  // new matches (from reservations) appear without manual refresh.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPersons();
+    }, 15000); // 15 seconds — faster than suspect alerts (30s) because
+               // this is the main watchlist the police monitor
+    return () => clearInterval(interval);
+  }, [fetchPersons]);
 
   const goToPage = (p: number) => {
     setPage(Math.max(1, Math.min(p, totalPages)));
@@ -827,13 +850,36 @@ export default function SuspectedPersonsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            {person._count.matches > 0 ? (
-                              <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 text-xs">
-                                {person._count.matches}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">0</span>
-                            )}
+                            <div className="flex flex-col items-center gap-1">
+                              {person._count.matches > 0 ? (
+                                <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 text-xs">
+                                  {person._count.matches}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                              {/* Show current reservation status if this person was recently matched */}
+                              {person.latestMatchReservationStatus && (
+                                <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+                                  person.latestMatchReservationStatus === 'UPCOMING' ? 'bg-blue-100 text-blue-800' :
+                                  person.latestMatchReservationStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' :
+                                  person.latestMatchReservationStatus === 'COMPLETED' ? 'bg-slate-100 text-slate-700' :
+                                  person.latestMatchReservationStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {person.latestMatchReservationStatus === 'UPCOMING' ? '⏳ Upcoming' :
+                                   person.latestMatchReservationStatus === 'ACTIVE' ? '✓ Checked-in' :
+                                   person.latestMatchReservationStatus === 'COMPLETED' ? '✓ Completed' :
+                                   person.latestMatchReservationStatus === 'CANCELLED' ? '✗ Cancelled' :
+                                   person.latestMatchReservationStatus}
+                                </span>
+                              )}
+                              {person.latestMatchReservationRoom && (
+                                <span className="text-[9px] text-muted-foreground">
+                                  Room {person.latestMatchReservationRoom}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={person.is_active ? "outline" : "secondary"} className={person.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ""}>

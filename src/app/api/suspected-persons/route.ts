@@ -54,6 +54,19 @@ export async function GET(req: NextRequest) {
         where,
         include: {
           _count: { select: { matches: true } },
+          matches: {
+            orderBy: { createdAt: "desc" },
+            take: 1, // Latest match only — for "recently flagged" indicator
+            select: {
+              id: true,
+              guestName: true,
+              guestPhone: true,
+              providerName: true,
+              reservationId: true,
+              matchType: true,
+              createdAt: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -62,7 +75,7 @@ export async function GET(req: NextRequest) {
       db.suspectedPerson.count({ where }),
     ]);
 
-    // Fetch all IDs for the returned persons
+    // Fetch all IDs for the returned persons + latest match reservation status
     if (persons.length > 0) {
       const personIds = persons.map(p => p.id);
       const allIds = await db.$queryRaw<
@@ -78,9 +91,25 @@ export async function GET(req: NextRequest) {
         idsByPerson[sid.suspectedPersonId].push({ idType: sid.idType, idNumber: sid.idNumber });
       }
 
-      // Attach IDs to each person
+      // Attach IDs + latest match reservation status to each person
       for (const p of persons) {
         (p as Record<string, unknown>).identifiers = idsByPerson[p.id] || [];
+
+        // If this person has a latest match with a reservationId, fetch its current status
+        const latestMatch = p.matches?.[0];
+        if (latestMatch?.reservationId) {
+          try {
+            const res = await db.reservation.findUnique({
+              where: { id: latestMatch.reservationId },
+              select: { status: true, checkIn: true, checkOut: true, room: { select: { number: true } } },
+            });
+            if (res) {
+              (p as Record<string, unknown>).latestMatchReservationStatus = res.status;
+              (p as Record<string, unknown>).latestMatchReservationCheckIn = res.checkIn;
+              (p as Record<string, unknown>).latestMatchReservationRoom = res.room?.number || "";
+            }
+          } catch { /* ignore — non-critical */ }
+        }
       }
     }
 
