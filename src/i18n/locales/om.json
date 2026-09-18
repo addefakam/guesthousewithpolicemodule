@@ -2187,6 +2187,7 @@
     "roleDRIVER": "Konkolaachisaa",
     "noRooms": "Kaboo hin arganne",
     "sessionExpired": "Yeroon xumureera. Maaloo irra deebi'aa seenaa."
+9bfa556 (feat(mobile): add 'Other' option to Room Type dropdown in Add Room)
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

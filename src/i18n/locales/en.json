@@ -3242,7 +3242,8 @@
     "numDriver": "Number of drivers",
     "roleDRIVER": "Driver",
     "noRooms": "ክፍሎች አልተገኙም",
-    "sessionExpired": "Session expired. Please sign in again."
+    "sessionExpired": "Session expired. Please sign in again.",
+    "roomTypeOTHER": "Other"
   },
   "policeApp": {
     "appName": "GHMS Police",

@@ -2143,6 +2143,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
               <SelectItem value="TWIN">{t("roomTypeTWIN")}</SelectItem>
               <SelectItem value="SUITE">{t("roomTypeSUITE")}</SelectItem>
               <SelectItem value="DELUXE">{t("roomTypeDELUXE")}</SelectItem>
+              <SelectItem value="OTHER">{t("roomTypeOTHER") || "Other"}</SelectItem>
             </SelectContent>
           </Select>
         </div>

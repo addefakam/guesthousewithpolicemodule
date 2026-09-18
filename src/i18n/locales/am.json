@@ -3145,6 +3145,7 @@
     "numDriver": "የአሽከርካሪዎች ብዛት",
     "roleDRIVER": "አሽከርካሪ",
     "sessionExpired": "ክፈለ ጊዜው አልፎታል። እባክዎ እንደገና ይግቡ።"
+9bfa556 (feat(mobile): add 'Other' option to Room Type dropdown in Add Room)
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",
