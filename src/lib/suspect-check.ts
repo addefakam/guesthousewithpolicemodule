@@ -43,7 +43,7 @@ async function ensureTables() {
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")  // remove non-alphanumeric except spaces
+    .replace(/[^\p{L}\p{N}\s]/gu, "")  // remove non-alphanumeric except spaces (Unicode-aware — keeps Amharic/Oromo characters)
     .replace(/\s+/g, " ")            // collapse multiple spaces
     .trim();
 }
@@ -95,6 +95,12 @@ async function findMatchingSuspects(params: {
   const { name, phone, idNumber } = params;
   const suspectPersonIds: string[] = [];
   const matchReasons: Record<string, string> = {};
+
+  console.log("[suspect-check] Searching for matches:", { name, phone: phone || "(none)", idNumber: idNumber || "(none)" });
+
+  // Count active suspects in the database
+  const suspectCount = await db.suspectedPerson.count({ where: { is_active: true } });
+  console.log(`[suspect-check] Active suspects in database: ${suspectCount}`);
 
   // ── Strategy 1: ID Number Match (highest confidence) ──
   if (idNumber && idNumber.trim().length >= 2) {

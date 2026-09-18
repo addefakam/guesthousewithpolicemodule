@@ -250,6 +250,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         guest: { select: { id: true, name: true, phone: true, idNumber: true, idType: true } },
+        room: { select: { id: true, number: true, name: true } },
       },
     });
 
@@ -265,9 +266,12 @@ export async function POST(req: NextRequest) {
 
     // Check if guest matches any suspected person SYNCHRONOUSLY so the
     // alert appears in the suspect list BEFORE the API response returns.
-    // Previously this was fire-and-forget (.catch(() => {})) which meant
-    // the alert might not be created by the time the frontend refreshed.
     try {
+      console.log("[reservations] Running suspect check for:", {
+        name: reservation.guest?.name ?? "",
+        phone: reservation.guest?.phone ?? "",
+        idNumber: reservation.guest?.idNumber ?? "",
+      });
       await checkSuspectMatch({
         name: reservation.guest?.name ?? "",
         phone: reservation.guest?.phone ?? "",
