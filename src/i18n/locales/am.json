@@ -3143,7 +3143,8 @@
     "roleSECURITY": "ደህንነት",
     "roleSERVANT": "አገልጋይ",
     "numDriver": "የአሽከርካሪዎች ብዛት",
-    "roleDRIVER": "አሽከርካሪ"
+    "roleDRIVER": "አሽከርካሪ",
+    "sessionExpired": "ክፈል ጊዜው አልፎታል። እባክዎ እንደገና ይግቡ።"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

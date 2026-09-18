@@ -24,6 +24,35 @@ export async function req(url: string, opts: RequestInit = {}) {
     credentials: "include", // Always include cookies (JWT httpOnly)
   });
   if (!res.ok) {
+    // ── Auth expired detection ──
+    // If the server returns 401, the JWT cookie has expired or is invalid.
+    // Instead of showing a confusing "Failed to load data" error, redirect
+    // the user to the login page with a clear "session expired" message.
+    if (res.status === 401) {
+      // Clear the stored user (forces login screen)
+      useAppStore.getState().setCurrentUser(null);
+      // If we're on the mobile app, redirect to /m (which shows login)
+      // If we're on the web admin, redirect to / (which shows login)
+      if (typeof window !== "undefined") {
+        const currentPath = window.location.pathname;
+        const isMobile = currentPath.startsWith("/m");
+        const isPolice = currentPath.startsWith("/police-app");
+        // Use sessionStorage to pass a flag to the login page
+        try {
+          sessionStorage.setItem("ghms_session_expired", "1");
+        } catch {}
+        // Redirect to the appropriate login page
+        if (isMobile) {
+          window.location.href = "/m";
+        } else if (isPolice) {
+          window.location.href = "/police-app";
+        } else {
+          window.location.href = "/";
+        }
+      }
+      throw new Error("Session expired. Please sign in again.");
+    }
+
     const t = await res.text().catch(() => "");
     // Try to extract a clean error message from JSON response
     try {

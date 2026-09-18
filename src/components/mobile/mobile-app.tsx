@@ -350,8 +350,16 @@ export default function MobileApp() {
       setRoomResMap(map);
 
       setGuests(Array.isArray(gRaw) ? gRaw : []);
-    } catch {
-      toast.error(t("toastFailedLoad"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      // Check if this is a session-expired error (from the req() interceptor)
+      if (msg.includes("Session expired") || msg.includes("401") || msg.includes("Not authenticated") || msg.includes("Invalid or expired")) {
+        // The req() interceptor already redirected to login — just show a toast
+        toast.error(t("sessionExpired") || "Session expired. Please sign in again.");
+        setCurrentUser(null);
+      } else {
+        toast.error(t("toastFailedLoad"));
+      }
     } finally {
       setLoading(false);
     }

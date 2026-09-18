@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
@@ -47,6 +47,17 @@ export function MobileLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
+
+  // ── Check if redirected due to session expiry ──
+  useEffect(() => {
+    try {
+      const expired = sessionStorage.getItem("ghms_session_expired");
+      if (expired === "1") {
+        setError(t("sessionExpired") || "Session expired. Please sign in again.");
+        sessionStorage.removeItem("ghms_session_expired");
+      }
+    } catch {}
+  }, [t]);
 
   // ── Register state ──
   const [regName, setRegName] = useState("");
