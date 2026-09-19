@@ -783,7 +783,8 @@
     "infoCheckinInDays": "በ{{days}} ቀን(ዎች) ውስጥ ይግቡ",
     "capacityCapSingle": "ለነጠላ ክፍሎች ከፍተኛ 2",
     "capacityCapSingleError": "ነጠላ ክፍሎች ከፍተኛ 2 እንግዶችን መያዝ ይችላሉ",
-    "capacityCappedTo2": "ለነጠላ ክፍሎች አቅም ወደ 2 ተገድቧል"
+    "capacityCappedTo2": "ለነጠላ ክፍሎች አቅም ወደ 2 ተገድቧል",
+    "alsoReserved": "ተጨማሪ ቀጥሮ"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -3234,7 +3235,8 @@
     "singleRoomSecondGuestHint": "የሁለተኛውን እንግዳ ዝርዝር ያስገቡ:",
     "refresh": "አድስ",
     "nationalIdHint": "16 አሃዞች ያስፈልጋሉ (FAN XX XX XX XX XX XX XX XX)",
-    "toastInvalidNationalId": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN ቅርጸት)"
+    "toastInvalidNationalId": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN ቅርጸት)",
+    "alsoReserved": "ተጨማሪ ቀጥሮ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

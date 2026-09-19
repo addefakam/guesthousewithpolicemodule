@@ -783,7 +783,8 @@
     "infoCheckinInDays": "Check-in in {{days}} day(s)",
     "capacityCapSingle": "max 2 for single rooms",
     "capacityCapSingleError": "Single rooms can hold a maximum of 2 guests",
-    "capacityCappedTo2": "Capacity capped to 2 for single rooms"
+    "capacityCappedTo2": "Capacity capped to 2 for single rooms",
+    "alsoReserved": "Also reserved"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -3332,7 +3333,8 @@
     "singleRoomSecondGuestHint": "Enter the second guest's details:",
     "refresh": "Refresh",
     "nationalIdHint": "16 digits required (FAN XX XX XX XX XX XX XX XX)",
-    "toastInvalidNationalId": "National ID must be 16 digits (FAN format)"
+    "toastInvalidNationalId": "National ID must be 16 digits (FAN format)",
+    "alsoReserved": "Also reserved"
   },
   "policeApp": {
     "appName": "GHMS Police",

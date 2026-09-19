@@ -783,7 +783,8 @@
     "infoCheckinInDays": "Waggaa {{days}} guyyaa booda seenti",
     "capacityCapSingle": "kutaaa 2 dabalataa",
     "capacityCapSingleError": "Kutaaa tokko oduu 2 qofauu danda'a",
-    "capacityCappedTo2": "Kutaaf oduu 2 qofa jechuun daangaa"
+    "capacityCappedTo2": "Kutaaf oduu 2 qofa jechuun daangaa",
+    "alsoReserved": "Dabalataan qabatamaa"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -2275,7 +2276,8 @@
     "singleRoomSecondGuestHint": "Sirreeffama oduu lammaffaa galchi:",
     "refresh": "Haaraawi",
     "nationalIdHint": "Lakkoofsa 16 barbaachisa (FAN XX XX XX XX XX XX XX XX)",
-    "toastInvalidNationalId": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN format)"
+    "toastInvalidNationalId": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN format)",
+    "alsoReserved": "Dabalataan qabatamaa"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

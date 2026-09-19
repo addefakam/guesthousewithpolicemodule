@@ -643,6 +643,16 @@ export default function RoomsPage() {
     return "AVAILABLE";
   }, [activeResMap, upcomingResMap, todayKey]);
 
+  // ── Secondary status: does this room ALSO have a future reservation? ──
+  // A room can be OCCUPIED (guest currently checked in) AND simultaneously
+  // have a future UPCOMING reservation booked. The primary displayStatus
+  // is OCCUPIED, but the room should ALSO appear in the RESERVED filter
+  // list so the operator can see that the room has a future booking.
+  const hasFutureReservation = useCallback((room: Room): boolean => {
+    const up = upcomingResMap[room.id];
+    return !!up && up.checkOut > todayKey;
+  }, [upcomingResMap, todayKey]);
+
   // Status priority for the list: bookable rooms first, occupied always last.
   const STATUS_ORDER: Record<string, number> = {
     AVAILABLE: 0,
@@ -656,8 +666,18 @@ export default function RoomsPage() {
   const filteredRooms = useMemo(() => {
     return rooms
       .filter((room) => {
-        const st = displayStatus(room);
-        if (statusFilter && st !== statusFilter) return false;
+        if (statusFilter) {
+          const st = displayStatus(room);
+          // Primary status match
+          if (st !== statusFilter) {
+            // ── Dual-status: OCCUPIED rooms with future reservations ──
+            // If filtering by RESERVED, also include OCCUPIED rooms that
+            // have a future upcoming reservation.
+            if (!(statusFilter === "RESERVED" && st === "OCCUPIED" && hasFutureReservation(room))) {
+              return false;
+            }
+          }
+        }
         if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
         if (!search) return true;
         const q = search.toLowerCase();
@@ -675,18 +695,22 @@ export default function RoomsPage() {
         if (fa !== fb) return fa - fb;
         return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
       });
-  }, [rooms, statusFilter, floorFilter, search, displayStatus]);
+  }, [rooms, statusFilter, floorFilter, search, displayStatus, hasFutureReservation]);
 
   // Per-status counts for the filter chips (respect the floor filter, ignore search).
+  // OCCUPIED rooms that ALSO have a future reservation are counted in BOTH
+  // the occupied AND reserved totals — they appear in both filter lists.
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { AVAILABLE: 0, RESERVED: 0, OCCUPIED: 0, MAINTENANCE: 0 };
     rooms.forEach((r) => {
       if (floorFilter !== null && getFloorFromNumber(r.number) !== floorFilter) return;
       const st = displayStatus(r);
       if (counts[st] !== undefined) counts[st] += 1;
+      // Dual-status: also count in RESERVED if OCCUPIED + future booking
+      if (st === "OCCUPIED" && hasFutureReservation(r)) counts.RESERVED += 1;
     });
     return counts;
-  }, [rooms, floorFilter, displayStatus]);
+  }, [rooms, floorFilter, displayStatus, hasFutureReservation]);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(price);
@@ -1000,6 +1024,17 @@ export default function RoomsPage() {
                       <Badge variant="outline" className={STATUS_STYLES[st]}>
                         <span className={`mr-1 inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[st]}`} />
                         {t("status" + st.charAt(0) + st.slice(1).toLowerCase())}
+                      </Badge>
+                    )}
+                    {/* ── "Also reserved" badge ──
+                        When a room is OCCUPIED but also has a future UPCOMING
+                        reservation, show a small sky badge so the operator
+                        knows this room has a future booking. */}
+                    {st === "OCCUPIED" && hasFutureReservation(room) && (
+                      <Badge variant="outline" className="ml-1 bg-sky-50 text-sky-700 border-sky-200">
+                        <CalendarPlus className="mr-1 h-3 w-3" />
+                        {t("alsoReserved") || "Also reserved"}
+                        <span className="ml-1 opacity-70">· {formatDate(upcomingResMap[room.id]?.checkIn || "")}</span>
                       </Badge>
                     )}
                   </div>
