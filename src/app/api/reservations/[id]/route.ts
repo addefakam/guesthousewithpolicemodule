@@ -17,6 +17,9 @@ export async function PUT(
 
     const existing = await db.reservation.findFirst({
       where: { id, providerId },
+      include: {
+        room: { select: { id: true, number: true, name: true, status: true, providerId: true } },
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
@@ -68,6 +71,9 @@ export async function PUT(
           status: { in: ["UPCOMING", "ACTIVE"] },
           checkIn: { lt: outDay },
           checkOut: { gt: inDay },
+        },
+        include: {
+          room: { select: { number: true, name: true } },
         },
       });
       if (overlapping) {
@@ -156,9 +162,9 @@ export async function PUT(
         });
       }
       if (existing.status === "ACTIVE") {
-        const newRoom = await db.room.findUnique({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
+        const newRoom = await db.room.findUnique({
           where: { id: roomId },
-          select: { status: true },
+          select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
         });
         if (newRoom && (newRoom.status === "AVAILABLE" || newRoom.status === "RESERVED")) {
           await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
@@ -193,6 +199,9 @@ export async function DELETE(
 
     const existing = await db.reservation.findFirst({
       where: { id, providerId },
+      include: {
+        room: { select: { id: true, number: true, name: true, status: true, providerId: true } },
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
