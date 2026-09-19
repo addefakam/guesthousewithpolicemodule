@@ -1200,7 +1200,12 @@
     "toastGuestCheckedOut": "Keessummaan ba'e",
     "toastFailedCheckIn": "Seensuu hin danda'anne",
     "toastFailedCheckOut": "Bahuu hin danda'anne",
-    "perNight": "/halkan"
+    "perNight": "/halkan",
+    "checkinTooEarly": "Guyaa dhufuu eegalu ({{arrival}}) isa dura seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
+    "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
   },
   "operations": {
     "title": "Hojiiwwan",
@@ -1827,7 +1832,15 @@
     "roomTypeFAMILY": "Mannaa",
     "roomTypeTRIPLE": "Qunnamtii sadii",
     "roomTypeDORMITORY": "Dormitoorii",
-    "unknownGuest": "Beekamtuu"
+    "unknownGuest": "Beekamtuu",
+    "toastBulkCheckinAllBlocked": "Kabajjii hunda {{count}} dhabsiisaa: {{reason}}",
+    "toastBulkCheckinPartialBlocked": "Kabajjii {{count}} dafee: {{reason}}",
+    "toastBulkCheckinPartialFailed": "Kabajjii {{count}} hin milkoofne — {{guest}}: {{reason}}",
+    "checkinTooEarly": "Guyaa dhufuu eegalu ({{arrival}}) isa dura seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
+    "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
   },
   "messages": {
     "pageTitle": "Qaamaa Maksaa",

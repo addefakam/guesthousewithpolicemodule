@@ -1200,7 +1200,12 @@
     "toastGuestCheckedOut": "Guest checked out",
     "toastFailedCheckIn": "Failed to check in",
     "toastFailedCheckOut": "Failed to check out",
-    "perNight": "/night"
+    "perNight": "/night",
+    "checkinTooEarly": "Cannot check in before arrival date ({{arrival}}). Today is {{today}}.",
+    "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
+    "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
+    "checkinAlreadyActive": "Guest is already checked in.",
+    "checkinNotUpcoming": "Reservation is no longer upcoming."
   },
   "operations": {
     "title": "Operations",
@@ -1827,7 +1832,15 @@
     "roomTypeFAMILY": "Family",
     "roomTypeTRIPLE": "Triple",
     "roomTypeDORMITORY": "Dormitory",
-    "unknownGuest": "Unknown"
+    "unknownGuest": "Unknown",
+    "toastBulkCheckinAllBlocked": "All {{count}} reservation(s) blocked: {{reason}}",
+    "toastBulkCheckinPartialBlocked": "{{count}} reservation(s) skipped: {{reason}}",
+    "toastBulkCheckinPartialFailed": "{{count}} reservation(s) failed — {{guest}}: {{reason}}",
+    "checkinTooEarly": "Cannot check in before arrival date ({{arrival}}). Today is {{today}}.",
+    "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
+    "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
+    "checkinAlreadyActive": "Guest is already checked in.",
+    "checkinNotUpcoming": "Reservation is no longer upcoming."
   },
   "messages": {
     "pageTitle": "Guest Communication",

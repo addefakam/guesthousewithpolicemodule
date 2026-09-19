@@ -58,6 +58,47 @@ interface Reservation {
   createdAt: string;
 }
 
+// ── Check-in eligibility (mirrors the 3 backend gates on
+//    /api/reservations/[id]/checkin) ──
+//   1. Reservation must be UPCOMING
+//   2. Today's date >= scheduled checkIn   (not before arrival)
+//   3. Today's date <= scheduled checkOut   (not after planned checkout)
+// The room-occupied check is enforced by the API server-side. Local date
+// (not UTC) so the gate matches the operator's wall clock for an
+// Ethiopian guesthouse (UTC+3).
+type CheckInEligibility = {
+  canCheckIn: boolean;
+  reasonKey: string | null;
+  reasonContext: Record<string, string | number> | null;
+};
+
+function getCheckInEligibility(res: Reservation): CheckInEligibility {
+  if (res.status !== "UPCOMING") {
+    return {
+      canCheckIn: false,
+      reasonKey: res.status === "ACTIVE" ? "checkinAlreadyActive" : "checkinNotUpcoming",
+      reasonContext: { status: res.status },
+    };
+  }
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (todayStr < res.checkIn) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooEarly",
+      reasonContext: { arrival: res.checkIn, today: todayStr },
+    };
+  }
+  if (todayStr > res.checkOut) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooLate",
+      reasonContext: { checkout: res.checkOut, today: todayStr },
+    };
+  }
+  return { canCheckIn: true, reasonKey: null, reasonContext: null };
+}
+
 // ── Constants ──
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "bg-emerald-100 text-emerald-800",
@@ -427,11 +468,26 @@ export default function AccommodationGuestsPage() {
                   )}
                   {g.activeReservation && (
                     <div className="flex gap-2 pl-10">
-                      {g.activeReservation.status === "UPCOMING" && (
-                        <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(g.activeReservation!)}>
-                          <LogIn className="h-3 w-3" /> {t("btnCheckIn")}
-                        </Button>
-                      )}
+                      {g.activeReservation.status === "UPCOMING" && (() => {
+                        const eligibility = getCheckInEligibility(g.activeReservation!);
+                        if (eligibility.canCheckIn) {
+                          return (
+                            <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(g.activeReservation!)}>
+                              <LogIn className="h-3 w-3" /> {t("btnCheckIn")}
+                            </Button>
+                          );
+                        }
+                        return (
+                          <Button
+                            size="sm"
+                            disabled
+                            title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
+                            className="h-7 text-[10px] gap-1 bg-gray-200 text-gray-400 cursor-not-allowed"
+                          >
+                            <LogIn className="h-3 w-3 opacity-60" /> {t("btnCheckIn")}
+                          </Button>
+                        );
+                      })()}
                       {g.activeReservation.status === "ACTIVE" && (
                         <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
                           <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
@@ -515,11 +571,27 @@ export default function AccommodationGuestsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {g.activeReservation?.status === "UPCOMING" && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(g.activeReservation!)}>
-                              <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
-                            </Button>
-                          )}
+                          {g.activeReservation?.status === "UPCOMING" && (() => {
+                            const eligibility = getCheckInEligibility(g.activeReservation!);
+                            if (eligibility.canCheckIn) {
+                              return (
+                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(g.activeReservation!)}>
+                                  <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
+                                </Button>
+                              );
+                            }
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
+                                className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
+                              >
+                                <LogIn className="h-3 w-3 opacity-60" /> {t("btnCheckIn", "Check In")}
+                              </Button>
+                            );
+                          })()}
                           {g.activeReservation?.status === "ACTIVE" && (
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
                               <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}

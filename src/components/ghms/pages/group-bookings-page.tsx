@@ -124,6 +124,46 @@ interface Reservation {
   room?: { id: string; number: string; name: string; type: string; pricePerNight: number };
 }
 
+// ── Check-in eligibility (mirrors /api/reservations/[id]/checkin) ──
+//   1. Reservation must be UPCOMING
+//   2. Today's date >= scheduled checkIn   (not before arrival)
+//   3. Today's date <= scheduled checkOut   (not after planned checkout)
+// The room-occupied check is enforced by the API server-side — we don't
+// have all the rooms loaded here, and group check-in iterates per-reservation
+// anyway, so the structured 409 will surface any room conflicts.
+type CheckInEligibility = {
+  canCheckIn: boolean;
+  reasonKey: string | null;
+  reasonContext: Record<string, string | number> | null;
+};
+
+function getCheckInEligibility(res: Reservation): CheckInEligibility {
+  if (res.status !== "UPCOMING") {
+    return {
+      canCheckIn: false,
+      reasonKey: res.status === "ACTIVE" ? "checkinAlreadyActive" : "checkinNotUpcoming",
+      reasonContext: { status: res.status },
+    };
+  }
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (todayStr < res.checkIn) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooEarly",
+      reasonContext: { arrival: res.checkIn, today: todayStr },
+    };
+  }
+  if (todayStr > res.checkOut) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooLate",
+      reasonContext: { checkout: res.checkOut, today: todayStr },
+    };
+  }
+  return { canCheckIn: true, reasonKey: null, reasonContext: null };
+}
+
 interface GuestOption {
   id: string;
   name: string;
@@ -511,17 +551,87 @@ export default function GroupBookingsPage() {
       toast.info(t("toastNoUpcomingCheckin"));
       return;
     }
+
+    // ── Pre-check eligibility per-reservation ──
+    // Splits the upcoming list into "eligible" and "blocked" up-front so
+    // the operator sees a clear breakdown instead of silent failures:
+    //   - Eligible ones proceed to the API
+    //   - Blocked ones are listed with their reason in a single toast
+    //     (e.g. "2 guests could not be checked in: arrival date is
+    //     tomorrow, checkout date has passed"). The API also enforces
+    //     each gate server-side, so any client-side miss (e.g. room
+    //     became occupied after page load) will still surface as a
+    //     per-reservation failure below.
+    const eligible: Reservation[] = [];
+    const blocked: { res: Reservation; reasonKey: string; reasonCtx: Record<string, string | number> }[] = [];
+    for (const res of upcomingReservations) {
+      const elig = getCheckInEligibility(res);
+      if (elig.canCheckIn) {
+        eligible.push(res);
+      } else if (elig.reasonKey) {
+        blocked.push({ res, reasonKey: elig.reasonKey, reasonCtx: elig.reasonContext || {} });
+      }
+    }
+
+    if (eligible.length === 0) {
+      // All blocked — tell the user up-front rather than firing N API
+      // calls that would all 409.
+      const first = blocked[0];
+      toast.error(
+        t("toastBulkCheckinAllBlocked", {
+          count: blocked.length,
+          reason: first ? t(first.reasonKey, first.reasonCtx) : "",
+        })
+      );
+      return;
+    }
+
     try {
       let checked = 0;
-      for (const res of upcomingReservations) {
+      const apiFailures: { res: Reservation; message: string }[] = [];
+      for (const res of eligible) {
         try {
           await apiCheckin(res.id);
           checked++;
-        } catch {
-          /* skip failed ones */
+        } catch (err: unknown) {
+          // The API rejected this one — capture the structured message
+          // (e.g. "Room X is already occupied by Y") so we can surface
+          // a clear per-reservation failure toast instead of silently
+          // skipping it. Previously these were swallowed.
+          const message = err instanceof Error ? err.message : "Unknown error";
+          apiFailures.push({ res, message });
         }
       }
-      toast.success(t("toastCheckedIn", { count: checked }));
+
+      // Successes
+      if (checked > 0) {
+        toast.success(t("toastCheckedIn", { count: checked }));
+      }
+
+      // Client-side pre-check blocked ones (date window, etc.)
+      if (blocked.length > 0) {
+        const first = blocked[0];
+        toast.warning(
+          t("toastBulkCheckinPartialBlocked", {
+            count: blocked.length,
+            reason: t(first.reasonKey, first.reasonCtx),
+          })
+        );
+      }
+
+      // API-side failures (e.g. room became occupied between page load
+      // and tap — the structured 409 message explains it).
+      if (apiFailures.length > 0) {
+        const first = apiFailures[0];
+        toast.error(
+          t("toastBulkCheckinPartialFailed", {
+            count: apiFailures.length,
+            guest: first.res.guest?.name || "—",
+            reason: first.message,
+          })
+        );
+      }
+
       fetchGroupBookings();
     } catch {
       toast.error(t("toastBulkCheckinFailed"));

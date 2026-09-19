@@ -1200,7 +1200,12 @@
     "toastGuestCheckedOut": "እንግዳ ተወጥቷል",
     "toastFailedCheckIn": "መግቢያ አልተቻለም",
     "toastFailedCheckOut": "መውጫ አልተቻለም",
-    "perNight": "/ሌሊት"
+    "perNight": "/ሌሊት",
+    "checkinTooEarly": "ከቀጥሮው የመግቢያ ቀን ({{arrival}}) በፊት መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
+    "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
   },
   "operations": {
     "title": "ተግባራት",
@@ -1729,7 +1734,15 @@
     "lblphoneNumber": "ስልክ ቁጥር",
     "lblidType": "የመታወቂያ ዓይነት",
     "placeholderSelectIdType": "የመታወቂያ ዓይነት ይምረጡ",
-    "lblidNumber": "የመታወቂያ ቁጥር"
+    "lblidNumber": "የመታወቂያ ቁጥር",
+    "toastBulkCheckinAllBlocked": "ሁሉም {{count}} ቀጥሮዎች ታግደዋል፦ {{reason}}",
+    "toastBulkCheckinPartialBlocked": "{{count}} ቀጥሮዎች ዞረዋል፦ {{reason}}",
+    "toastBulkCheckinPartialFailed": "{{count}} ቀጥሮዎች አልተሳኩም — {{guest}}፦ {{reason}}",
+    "checkinTooEarly": "ከቀጥሮው የመግቢያ ቀን ({{arrival}}) በፊት መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
+    "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
   },
   "messages": {
     "pageTitle": "እኑማ ቃስማቻሃ",
