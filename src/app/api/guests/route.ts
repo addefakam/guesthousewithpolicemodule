@@ -4,6 +4,7 @@ import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } fr
 import { checkSuspectMatch } from "@/lib/suspect-check";
 import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { isValidNationalId, isNationalIdType } from "@/lib/national-id";
 
 export async function GET(req: NextRequest) {
   try {
@@ -137,6 +138,18 @@ export async function POST(req: NextRequest) {
     }
     if (idNumber.trim().length < 4) {
       return NextResponse.json({ error: "ID number is too short. Please enter a valid ID number." }, { status: 400 });
+    }
+    // National ID validation — 16 digits in "FAN XX XX XX XX XX XX XX XX" format
+    // when the ID type is National ID. Other ID types (passport, driver's license,
+    // etc.) are accepted as-is.
+    if (isNationalIdType(idType) && !isValidNationalId(idNumber)) {
+      return NextResponse.json(
+        {
+          error: "National ID must be exactly 16 digits in FAN format (e.g. FAN 12 34 56 78 90 12 34 56)",
+          code: "INVALID_NATIONAL_ID",
+        },
+        { status: 400 }
+      );
     }
 
     // Auto-compose address from normalized fields if not explicitly provided

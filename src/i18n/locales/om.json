@@ -267,7 +267,8 @@
     "guestBadgeRoomShift": "Kaba jijjiirame",
     "guestBadgeCancelled": "Haqame",
     "guestBadgeUpdated": "Haaroomsame",
-    "thHistory": "Seenaa"
+    "thHistory": "Seenaa",
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
   },
   "login": {
     "errorEmptyCredentials": "Maaloo maqaa fayyadamaa fi jecha iccitii galchaa.",
@@ -956,7 +957,8 @@
     "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
     "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
     "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
-    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru.",
+    "nationalIdHint": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN XX XX XX XX XX XX XX XX)"
   },
   "reports": {
     "pageTitle": "Gabaasaa fi Suphaa",
@@ -2271,7 +2273,9 @@
     "singleRoomGuestCount": "Lakkoofsa Oduu",
     "oneGuestOnly": "Oduu 1",
     "singleRoomSecondGuestHint": "Sirreeffama oduu lammaffaa galchi:",
-    "refresh": "Haaraawi"
+    "refresh": "Haaraawi",
+    "nationalIdHint": "Lakkoofsa 16 barbaachisa (FAN XX XX XX XX XX XX XX XX)",
+    "toastInvalidNationalId": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN format)"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

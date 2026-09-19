@@ -267,7 +267,8 @@
     "guestBadgeRoomShift": "ክፍል ተቀይሯል",
     "guestBadgeCancelled": "ተሰርዟል",
     "guestBadgeUpdated": "ተዘምኗል",
-    "thHistory": "ታሪክ"
+    "thHistory": "ታሪክ",
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
   },
   "login": {
     "errorEmptyCredentials": "እባክዎ የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ።",
@@ -956,7 +957,8 @@
     "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
     "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
     "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
-    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።",
+    "nationalIdHint": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN XX XX XX XX XX XX XX XX)"
   },
   "reports": {
     "pageTitle": "ሪፖርቶች እና ትንታኔዎች",
@@ -3230,7 +3232,9 @@
     "singleRoomGuestCount": "የእንግዶች ብዛት",
     "oneGuestOnly": "1 እንግዳ",
     "singleRoomSecondGuestHint": "የሁለተኛውን እንግዳ ዝርዝር ያስገቡ:",
-    "refresh": "አድስ"
+    "refresh": "አድስ",
+    "nationalIdHint": "16 አሃዞች ያስፈልጋሉ (FAN XX XX XX XX XX XX XX XX)",
+    "toastInvalidNationalId": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN ቅርጸት)"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

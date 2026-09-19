@@ -267,7 +267,8 @@
     "guestBadgeRoomShift": "Room shifted",
     "guestBadgeCancelled": "Cancelled",
     "guestBadgeUpdated": "Updated",
-    "thHistory": "History"
+    "thHistory": "History",
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
   },
   "login": {
     "errorEmptyCredentials": "Please enter both username and password.",
@@ -956,7 +957,8 @@
     "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
     "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
     "checkinAlreadyActive": "Guest is already checked in.",
-    "checkinNotUpcoming": "Reservation is no longer upcoming."
+    "checkinNotUpcoming": "Reservation is no longer upcoming.",
+    "nationalIdHint": "National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)"
   },
   "reports": {
     "pageTitle": "Reports & Analytics",
@@ -3328,7 +3330,9 @@
     "singleRoomGuestCount": "Number of Guests",
     "oneGuestOnly": "1 Guest",
     "singleRoomSecondGuestHint": "Enter the second guest's details:",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "nationalIdHint": "16 digits required (FAN XX XX XX XX XX XX XX XX)",
+    "toastInvalidNationalId": "National ID must be 16 digits (FAN format)"
   },
   "policeApp": {
     "appName": "GHMS Police",

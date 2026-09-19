@@ -24,6 +24,7 @@ import {
   apiGetGuestLifecycle,
 } from "@/lib/api";
 import { isValidPhone } from "@/lib/utils";
+import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER } from "@/lib/national-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -731,6 +732,10 @@ export default function MobileApp() {
       }
       if (!isValidPhone(resForm.directPhone)) {
         toast.error(t("toastInvalidPhone")); return;
+      }
+      // National ID validation — 16 digits in "FAN XX XX XX XX XX XX XX XX" format
+      if (isNationalIdType(resForm.directIdType) && !isValidNationalId(resForm.directIdNumber)) {
+        toast.error(t("toastInvalidNationalId") || "National ID must be 16 digits (FAN format)"); return;
       }
     } else {
       if (!resForm.guestId) {
@@ -2341,7 +2346,33 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
             </div>
             <div>
               <Label className="text-xs font-semibold">{t("lblGuestIdNumber")} <span className="text-rose-400">*</span></Label>
-              <Input value={form.directIdNumber} onChange={(e) => onUpdate({ directIdNumber: e.target.value })} placeholder={t("phGuestIdNumber")} className="mt-1.5 h-11 rounded-xl" />
+              <Input
+                value={form.directIdNumber}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // Auto-format as "FAN XX XX XX XX XX XX XX XX" when
+                  // the ID type is NATIONAL. For other ID types (passport,
+                  // driver's license, etc.), accept any value as-is.
+                  if (isNationalIdType(form.directIdType)) {
+                    onUpdate({ directIdNumber: formatNationalId(val) });
+                  } else {
+                    onUpdate({ directIdNumber: val });
+                  }
+                }}
+                placeholder={isNationalIdType(form.directIdType) ? NATIONAL_ID_PLACEHOLDER : t("phGuestIdNumber")}
+                className={`mt-1.5 h-11 rounded-xl ${
+                  isNationalIdType(form.directIdType) ? "font-mono" : ""
+                } ${
+                  isNationalIdType(form.directIdType) && form.directIdNumber.trim() && !isValidNationalId(form.directIdNumber)
+                    ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500"
+                    : ""
+                }`}
+              />
+              {isNationalIdType(form.directIdType) && form.directIdNumber.trim() && !isValidNationalId(form.directIdNumber) && (
+                <p className="mt-0.5 text-[9px] text-rose-500">
+                  {t("nationalIdHint") || "16 digits required (FAN XX XX XX XX XX XX XX XX)"}
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -2483,7 +2514,23 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
                   {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix"}
                 </p>
               )}
-              <Input value={form.secondGuestIdNumber} onChange={(e) => onUpdate({ secondGuestIdNumber: e.target.value })} placeholder={t("phSecondGuestId")} className="h-10 rounded-lg text-sm" />
+              <Input
+                value={form.secondGuestIdNumber}
+                onChange={(e) => {
+                  // Auto-format as FAN when the selected room is single
+                  // or double — second guests typically share the primary
+                  // guest's nationality, so we apply the same national ID
+                  // formatting for consistency.
+                  const val = e.target.value;
+                  if (isNationalIdType("NATIONAL")) {
+                    onUpdate({ secondGuestIdNumber: formatNationalId(val) });
+                  } else {
+                    onUpdate({ secondGuestIdNumber: val });
+                  }
+                }}
+                placeholder={NATIONAL_ID_PLACEHOLDER}
+                className="h-10 rounded-lg text-sm font-mono"
+              />
             </div>
           ) : (
             <Textarea value={form.exceptionReason} onChange={(e) => onUpdate({ exceptionReason: e.target.value })} placeholder={t("phExceptionReason")} className="min-h-[60px] text-sm rounded-lg" />

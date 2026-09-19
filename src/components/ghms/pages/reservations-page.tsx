@@ -15,6 +15,7 @@ import {
   apiGetRooms,
   apiCreateGuest,
 } from "@/lib/api";
+import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER } from "@/lib/national-id";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -547,6 +548,11 @@ export default function ReservationsPage() {
     }
     if (guestMode === "new" && newGuestForm.idNumber.trim().length < 4) {
       toast.error("ID number is too short. Please enter a valid ID number.");
+      return;
+    }
+    // National ID validation — 16 digits in "FAN XX XX XX XX XX XX XX XX" format
+    if (guestMode === "new" && isNationalIdType(newGuestForm.idType) && !isValidNationalId(newGuestForm.idNumber)) {
+      toast.error("National ID must be 16 digits in FAN format (e.g. FAN 12 34 56 78 90 12 34 56)");
       return;
     }
     if (guestMode !== "new" && !selectedGuestId) {
@@ -1465,8 +1471,35 @@ export default function ReservationsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t("labelIdNumber")} <span className="text-rose-500">*</span></Label>
-                      <Input placeholder={t("placeholderIdNumber")} value={newGuestForm.idNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, idNumber: e.target.value })} />
+                      <Label>
+                        {t("labelIdNumber")} <span className="text-rose-500">*</span>
+                        {isNationalIdType(newGuestForm.idType) && (
+                          <span className="ml-2 text-[10px] font-normal text-amber-600">
+                            (16 digits, FAN format)
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        placeholder={isNationalIdType(newGuestForm.idType) ? NATIONAL_ID_PLACEHOLDER : t("placeholderIdNumber")}
+                        value={newGuestForm.idNumber}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          // Auto-format as "FAN XX XX XX XX XX XX XX XX" when
+                          // the ID type is National ID. For other ID types,
+                          // accept any value as-is.
+                          if (isNationalIdType(newGuestForm.idType)) {
+                            setNewGuestForm({ ...newGuestForm, idNumber: formatNationalId(val) });
+                          } else {
+                            setNewGuestForm({ ...newGuestForm, idNumber: val });
+                          }
+                        }}
+                        className={isNationalIdType(newGuestForm.idType) ? "font-mono" : ""}
+                      />
+                      {isNationalIdType(newGuestForm.idType) && newGuestForm.idNumber.trim() && !isValidNationalId(newGuestForm.idNumber) && (
+                        <p className="text-[10px] text-rose-500">
+                          National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-1.5">
