@@ -73,6 +73,60 @@ export function asRoomStatus(status: string): RoomStatus {
   return (ROOM_STATUSES as string[]).includes(status) ? (status as RoomStatus) : "MAINTENANCE";
 }
 
+// ── Provider status presentation (used by the standalone Police App's
+//    ProvidersScreen — mirrors the main system's providers page color
+//    vocabulary so the two surfaces look consistent) ──
+
+export type ProviderStatus = "APPROVED" | "PENDING" | "REJECTED" | "SUSPENDED";
+
+export const PROVIDER_STATUSES: ProviderStatus[] = [
+  "APPROVED",
+  "PENDING",
+  "REJECTED",
+  "SUSPENDED",
+];
+
+interface ProviderStatusStyle {
+  /** solid dot color */
+  dot: string;
+  /** pastel chip background + text + border (combined className) */
+  chip: string;
+}
+
+export const PROVIDER_STATUS_STYLES: Record<ProviderStatus, ProviderStatusStyle> = {
+  APPROVED: {
+    dot: "bg-emerald-500",
+    chip: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  },
+  PENDING: {
+    dot: "bg-amber-500",
+    chip: "bg-amber-50 text-amber-700 border-amber-100",
+  },
+  REJECTED: {
+    dot: "bg-rose-500",
+    chip: "bg-rose-50 text-rose-700 border-rose-100",
+  },
+  SUSPENDED: {
+    dot: "bg-orange-500",
+    chip: "bg-orange-50 text-orange-700 border-orange-100",
+  },
+};
+
+/** i18n key per provider status (used by the ProvidersScreen). */
+export const PROVIDER_STATUS_I18N: Record<ProviderStatus, string> = {
+  APPROVED: "providers.statusApproved",
+  PENDING: "providers.statusPending",
+  REJECTED: "providers.statusRejected",
+  SUSPENDED: "providers.statusSuspended",
+};
+
+/** Normalize an arbitrary status string to a ProviderStatus. */
+export function asProviderStatus(status: string): ProviderStatus {
+  return (PROVIDER_STATUSES as string[]).includes(status)
+    ? (status as ProviderStatus)
+    : "PENDING";
+}
+
 /** Shared uniform interaction colors (the "color flow" of the app). */
 export const BRAND = {
   /** solid active state — chips, tiles, segmented controls */

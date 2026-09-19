@@ -222,7 +222,22 @@ export default function ProvidersPage() {
     try {
       setLoading(true);
       const data = await apiGetProviders();
-      setProviders(Array.isArray(data) ? data : []);
+      // Sort alphabetically by name (case-insensitive) so the providers
+      // list is browsable regardless of registration date. Matches the
+      // police app's new ProvidersScreen so both systems show the same
+      // order. Stable secondary sort by ownerName breaks ties.
+      const sorted = (Array.isArray(data) ? data : []).slice().sort((a, b) => {
+        const nameA = (a.name || "").trim().toLowerCase();
+        const nameB = (b.name || "").trim().toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        const ownerA = (a.ownerName || "").trim().toLowerCase();
+        const ownerB = (b.ownerName || "").trim().toLowerCase();
+        if (ownerA < ownerB) return -1;
+        if (ownerA > ownerB) return 1;
+        return 0;
+      });
+      setProviders(sorted);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('failedToLoad');
       toast.error(message);

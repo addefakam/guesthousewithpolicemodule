@@ -3401,6 +3401,17 @@
       "errorGeneric": "Something went wrong",
       "retry": "Retry",
       "refresh": "Refresh"
-    }
+    },
+    "nav.providers": "Guesthouses",
+    "providers.title": "All Guesthouses",
+    "providers.subtitle": "{{count}} registered guesthouses",
+    "providers.searchPlaceholder": "Search by name, owner, phone, address, license...",
+    "providers.filterAll": "All",
+    "providers.empty": "No guesthouses found",
+    "providers.showing": "Showing {{shown}} of {{total}}",
+    "providers.statusApproved": "Approved",
+    "providers.statusPending": "Pending",
+    "providers.statusRejected": "Rejected",
+    "providers.statusSuspended": "Suspended"
   }
 }

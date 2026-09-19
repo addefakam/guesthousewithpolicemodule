@@ -3303,6 +3303,17 @@
       "errorGeneric": "የሆነ ስህተት ተከስቷል",
       "retry": "እንደገና ሞክር",
       "refresh": "አድስ"
-    }
+    },
+    "nav.providers": "የእንግዳ ቤቶች",
+    "providers.title": "ሁሉም የእንግዳ ቤቶች",
+    "providers.subtitle": "{{count}} የተመዘገቡ የእንግዳ ቤቶች",
+    "providers.searchPlaceholder": "በስም፣ ባለቤት፣ ስልክ፣ አድራሻ፣ ፍቃድ ይፈልጉ...",
+    "providers.filterAll": "ሁሉም",
+    "providers.empty": "ምንም የእንግዳ ቤቶች አልተገኙም",
+    "providers.showing": "ከ{{total}} ውስጥ {{shown}} በማሳየት ላይ",
+    "providers.statusApproved": "ጸድቋል",
+    "providers.statusPending": "በመጠባበቅ ላይ",
+    "providers.statusRejected": "ውድቅ ተውሏል",
+    "providers.statusSuspended": "ተከልክሏል"
   }
 }

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BedDouble,
+  Building2,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -24,8 +25,9 @@ import {
 import HomeScreen from "@/components/police-app/screens/home-screen";
 import RoomsScreen from "@/components/police-app/screens/rooms-screen";
 import GuestsScreen from "@/components/police-app/screens/guests-screen";
+import ProvidersScreen from "@/components/police-app/screens/providers-screen";
 
-type Tab = "home" | "rooms" | "guests" | "system";
+type Tab = "home" | "rooms" | "guests" | "providers" | "system";
 
 const LANG_CYCLE = ["en", "or"];
 const LANG_LABELS: Record<string, string> = { en: "EN", or: "OR" };
@@ -77,6 +79,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
     { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" /> },
     { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" /> },
     { key: "guests", label: t("nav.guests"), icon: <Users className="h-5 w-5" /> },
+    { key: "providers", label: t("nav.providers"), icon: <Building2 className="h-5 w-5" /> },
     { key: "system", label: t("nav.system"), icon: <Monitor className="h-5 w-5" /> },
   ];
 
@@ -136,6 +139,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
           {tab === "home" && <HomeScreen onNavigate={setTab} />}
           {tab === "rooms" && <RoomsScreen />}
           {tab === "guests" && <GuestsScreen />}
+          {tab === "providers" && <ProvidersScreen />}
         </div>
       </main>
 
@@ -144,7 +148,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
         aria-label={t("appName")}
         className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-100 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
       >
-        <ul className="mx-auto grid h-16 max-w-lg grid-cols-4">
+        <ul className="mx-auto grid h-16 max-w-lg grid-cols-5">
           {tabs.map((item) => {
             const active = tab === item.key;
             return (

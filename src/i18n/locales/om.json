@@ -3401,6 +3401,17 @@
       "errorGeneric": "Something went wrong",
       "retry": "Retry",
       "refresh": "Refresh"
-    }
+    },
+    "nav.providers": "Waanzihoo Oduu",
+    "providers.title": "Waanzihoo Oduu Hunda",
+    "providers.subtitle": "{{count}} galmeessitamaan waanzihoo oduu",
+    "providers.searchPlaceholder": "Maqaa, abbaa, bilbila, teessoo, lasisaa baradhaa...",
+    "providers.filterAll": "Hunda",
+    "providers.empty": "Waanzihoo oduu hin jiru",
+    "providers.showing": "{{total}} irraa {{shown}} argisiisa",
+    "providers.statusApproved": "Eegaleera",
+    "providers.statusPending": "Eegala jira",
+    "providers.statusRejected": "Hanbisame",
+    "providers.statusSuspended": "Dhoobame"
   }
 }

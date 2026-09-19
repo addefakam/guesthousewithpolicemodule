@@ -72,7 +72,7 @@ interface BreakdownData {
   providers: BreakdownProvider[];
 }
 
-type Tab = "home" | "rooms" | "guests" | "system";
+type Tab = "home" | "rooms" | "guests" | "providers" | "system";
 
 export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { t } = useTranslation("policeApp");
@@ -142,7 +142,7 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => v
     dot: string;
     navigateTo?: Tab;
   }[] = [
-    { key: "home.totalProviders", value: data.totalProviders, dot: "bg-sky-400", navigateTo: "rooms" },
+    { key: "home.totalProviders", value: data.totalProviders, dot: "bg-sky-400", navigateTo: "providers" },
     { key: "home.totalRooms", value: data.totalRooms, dot: "bg-violet-400", navigateTo: "rooms" },
     { key: "home.activeStays", value: data.activeReservations, dot: "bg-emerald-400", navigateTo: "guests" },
     { key: "home.totalGuests", value: data.totalGuests, dot: "bg-amber-400" },
