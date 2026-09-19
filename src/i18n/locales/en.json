@@ -766,7 +766,10 @@
     "tooltipReservedFrom": "From:",
     "tooltipReservedTo": "To:",
     "toastRoomOccupied": "Room {{number}} is occupied by {{guest}} from {{from}} to {{to}}",
-    "toastRoomNotAvailable": "Room {{number}} is not available for reservation"
+    "toastRoomNotAvailable": "Room {{number}} is not available for reservation",
+    "infoStayedNights": "{{stayed}} night(s) stayed",
+    "infoNightsRemaining": "{{remaining}} night(s) remaining",
+    "infoCheckinInDays": "Check-in in {{days}} day(s)"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -3243,7 +3246,16 @@
     "roleDRIVER": "Driver",
     "noRooms": "ክፍሎች አልተገኙም",
     "sessionExpired": "Session expired. Please sign in again.",
-    "roomTypeOTHER": "Other"
+    "roomTypeOTHER": "Other",
+    "infoStayedNights": "{{stayed}} night(s) stayed",
+    "infoNightsRemaining": "{{remaining}} night(s) remaining",
+    "infoCheckoutToday": "Check-out today",
+    "infoCheckinToday": "Check-in today",
+    "infoCheckinInDays": "Check-in in {{days}} day(s)",
+    "paymentPaid": "Paid",
+    "paymentPartial": "Partial",
+    "paymentOverdue": "Overdue",
+    "paymentPending": "Unpaid"
   },
   "policeApp": {
     "appName": "GHMS Police",

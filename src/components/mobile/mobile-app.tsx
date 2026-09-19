@@ -69,6 +69,9 @@ import {
   Star,
   Search,
   CalendarPlus,
+  CalendarDays,
+  CalendarClock,
+  CreditCard,
   LogIn,
   LogOut,
   Users,
@@ -116,12 +119,19 @@ interface Reservation {
   guestId?: string;
   roomRate?: number; taxAmount?: number; discountAmount?: number;
   paymentMethod?: string | null; notes?: string;
+  // Mirror the API response shape so mobile and web admin consume the
+  // exact same fields. Previously these were missing on mobile, which
+  // caused the two surfaces to drift apart.
+  actualCheckIn?: string | null;
+  actualCheckOut?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  providerId?: string | null;
   guest: { id: string; name: string; phone: string } | null;
   room: { id: string; number: string; name: string; type: string; pricePerNight: number } | null;
   roomId?: string;
   secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
   exceptionallyReserved?: boolean; exceptionReason?: string;
-  createdAt?: string;
 }
 
 interface BookedRange {
@@ -167,6 +177,15 @@ const RES_STATUS: Record<string, { color: string; label: string }> = {
   ACTIVE: { color: "bg-emerald-100 text-emerald-800", label: "Checked In" },
   COMPLETED: { color: "bg-slate-100 text-slate-700", label: "Completed" },
   CANCELLED: { color: "bg-red-100 text-red-800", label: "Cancelled" },
+};
+
+// Mirrors the web admin's payment-status badges (rooms-page.tsx):
+// PAID=emerald, PARTIAL=amber, OVERDUE=rose, default=amber.
+const PAYMENT_STATUS: Record<string, { color: string; icon: "check" | "alert" | "warn" }> = {
+  PAID: { color: "border-emerald-300 text-emerald-700 bg-emerald-50", icon: "check" },
+  PARTIAL: { color: "border-amber-300 text-amber-700 bg-amber-50", icon: "alert" },
+  OVERDUE: { color: "border-rose-300 text-rose-700 bg-rose-50", icon: "alert" },
+  PENDING: { color: "border-amber-300 text-amber-700 bg-amber-50", icon: "alert" },
 };
 
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
@@ -216,6 +235,47 @@ function addDays(d: string, n: number) {
 function getFloorFromNumber(num: string): number | null {
   const match = num.match(/^\d/);
   return match ? parseInt(match[0], 10) : null;
+}
+
+// Mirrors the helpers on web's rooms-page.tsx so that mobile and web admin
+// display IDENTICAL "stayed / remaining / days until" values for the same
+// reservation — keeps the two surfaces in sync.
+function calcNightsStayed(checkIn: string): number {
+  try {
+    const checkInDate = new Date(checkIn + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkInDate.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - checkInDate.getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  } catch {
+    return 0;
+  }
+}
+
+function calcNightsRemaining(checkOut: string): number {
+  try {
+    const checkOutDate = new Date(checkOut + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    checkOutDate.setHours(0, 0, 0, 0);
+    const diff = checkOutDate.getTime() - today.getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  } catch {
+    return 0;
+  }
+}
+
+function calcDaysUntil(date: string): number {
+  try {
+    const target = new Date(date + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    return Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  } catch {
+    return 0;
+  }
 }
 
 function parseAmenities(amenitiesStr: string | null | undefined): string[] {
@@ -1713,12 +1773,32 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
   parseAmenities: (a: string | null | undefined) => string[];
 }) {
   const amenities = parseAmenities(room.amenities);
-  const activeRes = reservations.find((r) => r.status === "ACTIVE" || r.status === "UPCOMING");
+  // ── Correct per-room reservation source ──
+  // The `reservation` prop is built by the parent from `roomResMap[room.id]`,
+  // which is keyed by roomId — so it is ALWAYS this room's own reservation.
+  // Previously we used `reservations.find(r => r.status === 'ACTIVE' || 'UPCOMING')`
+  // but `reservations` came from `apiGetReservations("roomId=xxx")`, and the API
+  // never actually filtered by roomId — so every room returned the SAME first
+  // ACTIVE reservation. Now that the API filters correctly AND we prefer the
+  // `reservation` prop, each room shows its OWN reservation.
+  // We keep `reservations.find()` as a safety fallback (the API now filters
+  // by roomId so it would also return this room's reservations only).
+  const activeRes =
+    reservation ||
+    reservations.find((r) => r.status === "ACTIVE" || r.status === "UPCOMING") ||
+    null;
+  const isActive = activeRes?.status === "ACTIVE";
+  const isUpcoming = activeRes?.status === "UPCOMING";
+
+  // Mirror web admin's stay metrics so mobile and web show identical numbers.
+  const stayedNights = activeRes ? calcNightsStayed(activeRes.checkIn) : 0;
+  const remainingNights = activeRes ? calcNightsRemaining(activeRes.checkOut) : 0;
+  const daysUntilCheckIn = activeRes ? calcDaysUntil(activeRes.checkIn) : 0;
+
   // Can only delete rooms that are NOT currently occupied or reserved.
-  // The API also enforces this on its side (returns 409 with active/upcoming
-  // reservations), but we hide the Delete button entirely when it would
-  // obviously fail — better UX than tapping and getting an error toast.
   const canDelete = room.status === "AVAILABLE" || room.status === "MAINTENANCE";
+
+  const payStatus = activeRes ? (PAYMENT_STATUS[activeRes.paymentStatus] || PAYMENT_STATUS.PENDING) : null;
 
   return (
     <div className="space-y-4">
@@ -1735,30 +1815,99 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
         {t("status" + room.status.charAt(0) + room.status.slice(1).toLowerCase())}
       </div>
 
-      {/* Current reservation info */}
+      {/* Current reservation info — mirrors web admin's room info dialog.
+          Uses `reservation` prop (correctly keyed by roomId) so each room
+          shows its OWN reservation, not the first ACTIVE one in the list. */}
       {activeRes && (
-        <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 space-y-2">
-          <p className="text-xs font-semibold text-blue-800">{t("currentReservation")}</p>
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium">{activeRes.guest?.name || "—"}</span>
+        <div className={`rounded-xl border p-3 space-y-2 ${
+          isActive ? "bg-emerald-50 border-emerald-100" : "bg-sky-50 border-sky-100"
+        }`}>
+          <div className="flex items-center justify-between">
+            <p className={`text-xs font-semibold ${isActive ? "text-emerald-800" : "text-sky-800"}`}>
+              {t("currentReservation")}
+            </p>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${RES_STATUS[activeRes.status]?.color || ""}`}>
+              {RES_STATUS[activeRes.status]?.label || activeRes.status}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-blue-700">
-            <Clock className="h-3.5 w-3.5" />
+
+          {/* Guest name + phone — matches web admin layout */}
+          {activeRes.guest && (
+            <div className="flex items-center gap-2">
+              <Users className={`h-4 w-4 ${isActive ? "text-emerald-600" : "text-sky-600"}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{activeRes.guest.name || "—"}</p>
+                <p className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> {activeRes.guest.phone || "—"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className={`flex items-center gap-2 text-xs ${isActive ? "text-emerald-700" : "text-sky-700"}`}>
+            <CalendarDays className="h-3.5 w-3.5" />
             <span>{formatDate(activeRes.checkIn)} → {formatDate(activeRes.checkOut)}</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-blue-700">
-            <DollarSign className="h-3.5 w-3.5" />
-            <span>{formatCurrency(activeRes.totalCost)}</span>
+
+          {/* Stay metrics — identical to web admin (stayed/remaining for ACTIVE, days-until for UPCOMING) */}
+          {isActive && (
+            <div className={`flex items-center gap-2 text-xs ${remainingNights === 0 ? "text-amber-700" : "text-emerald-700"}`}>
+              <BedDouble className="h-3.5 w-3.5" />
+              {remainingNights === 0 ? (
+                <span>
+                  {t("infoStayedNights", { stayed: stayedNights })} — <span className="text-amber-600 font-medium">{t("infoCheckoutToday")}</span>
+                </span>
+              ) : (
+                <span>
+                  {t("infoStayedNights", { stayed: stayedNights })}, <strong className="text-amber-700">{remainingNights}</strong> {t("infoNightsRemaining", { remaining: remainingNights })}
+                </span>
+              )}
+            </div>
+          )}
+          {isUpcoming && (
+            <div className="flex items-center gap-2 text-xs text-sky-700">
+              <CalendarClock className="h-3.5 w-3.5" />
+              {daysUntilCheckIn <= 0 ? (
+                <span className="font-medium">{t("infoCheckinToday")}</span>
+              ) : (
+                <span className="font-medium">{t("infoCheckinInDays", { days: daysUntilCheckIn })}</span>
+              )}
+            </div>
+          )}
+
+          {/* Total cost + payment status badge — mirrors web admin's two-column layout */}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <div className={`flex items-center gap-1.5 text-xs ${isActive ? "text-emerald-700" : "text-sky-700"}`}>
+              <DollarSign className="h-3.5 w-3.5" />
+              <span>{formatCurrency(activeRes.totalCost)}</span>
+            </div>
+            {payStatus && (
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${payStatus.color}`}>
+                {payStatus.icon === "check"
+                  ? <CheckCircle2 className="h-3 w-3" />
+                  : <AlertCircle className="h-3 w-3" />}
+                {(() => {
+                  // Map the raw paymentStatus enum value (e.g. "PAID", "PARTIAL",
+                  // "OVERDUE", "PENDING") to its localized label. Falls back to
+                  // the PENDING label if the status is unknown — never renders
+                  // the raw key as user-facing text.
+                  const raw = (activeRes.paymentStatus || "PENDING").toUpperCase();
+                  const key = "payment" + (raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase());
+                  const known = ["paymentPaid", "paymentPartial", "paymentOverdue", "paymentPending"];
+                  return known.includes(key) ? t(key) : t("paymentPending");
+                })()}
+              </span>
+            )}
           </div>
+
           <div className="flex gap-2 pt-1">
-            {activeRes.status === "UPCOMING" && (
+            {isUpcoming && (
               <button
                 onClick={() => onCheckin(activeRes)}
                 className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-xs font-semibold"
               >{t("btnCheckIn")}</button>
             )}
-            {activeRes.status === "ACTIVE" && (
+            {isActive && (
               <>
                 <button onClick={() => onEarlyCheckout(activeRes)} className="flex-1 rounded-lg bg-rose-100 text-rose-700 py-2 text-xs font-semibold">{t("btnEarlyCheckout")}</button>
                 <button onClick={() => onExtend(activeRes)} className="flex-1 rounded-lg bg-sky-100 text-sky-700 py-2 text-xs font-semibold">{t("btnExtend")}</button>

@@ -66,6 +66,30 @@ export async function GET(req: NextRequest) {
         params.push(where.status);
       }
     }
+    // Per-room filter — REQUIRED for the room detail dialog (mobile + web)
+    // so that opening Room 102 only returns Room 102's reservations, not
+    // every reservation in the guesthouse. Previously this `roomId` value
+    // was stored in `where.roomId` but never appended to the SQL conditions,
+    // which caused every room's detail to display the same first ACTIVE
+    // reservation as every other room.
+    if (where.roomId) {
+      conditions.push(`r."roomId" = $${pi++}`);
+      params.push(where.roomId);
+    }
+    // Date-range filter on checkIn (YYYY-MM-DD strings compare correctly).
+    // Cast to a typed record so TS doesn't complain about `.gte` / `.lte`
+    // accessors on the loose `Record<string, unknown>` parent.
+    if (where.checkIn) {
+      const checkInFilter = where.checkIn as { gte?: string; lte?: string };
+      if (checkInFilter.gte) {
+        conditions.push(`r."checkIn" >= $${pi++}`);
+        params.push(checkInFilter.gte);
+      }
+      if (checkInFilter.lte) {
+        conditions.push(`r."checkIn" <= $${pi++}`);
+        params.push(checkInFilter.lte);
+      }
+    }
 
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
 

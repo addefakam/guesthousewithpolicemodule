@@ -766,7 +766,10 @@
     "tooltipReservedFrom": "ከ:",
     "tooltipReservedTo": "እስከ:",
     "toastRoomOccupied": "ክፍል {{number}} በ{{guest}} ከ{{from}} እስከ {{to}} ድረስ ተይዟል",
-    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም"
+    "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም",
+    "infoStayedNights": "{{stayed}} ሌሊት(ዎች) ቆይቷል",
+    "infoNightsRemaining": "{{remaining}} ሌሊት(ዎች) ይቀራል",
+    "infoCheckinInDays": "በ{{days}} ቀን(ዎች) ውስጥ ይግቡ"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -3144,8 +3147,17 @@
     "roleSERVANT": "አገልጋይ",
     "numDriver": "የአሽከርካሪዎች ብዛት",
     "roleDRIVER": "አሽከርካሪ",
-    "sessionExpired": "ክፈለ ጊዜው አልፎታል። እባክዎ እንደገና ይግቡ።"
-9bfa556 (feat(mobile): add 'Other' option to Room Type dropdown in Add Room)
+    "sessionExpired": "ክፈለ ጊዜው አልፎታል። እባክዎ እንደገና ይግቡ።",
+    "roomTypeOTHER": "ሌላ",
+    "infoStayedNights": "{{stayed}} ሌሊት(ዎች) ቆይቷል",
+    "infoNightsRemaining": "{{remaining}} ሌሊት(ዎች) ይቀራል",
+    "infoCheckoutToday": " today ይውጡ",
+    "infoCheckinToday": " today ይግቡ",
+    "infoCheckinInDays": "በ{{days}} ቀን(ዎች) ውስጥ ይግቡ",
+    "paymentPaid": "ተከፈለ",
+    "paymentPartial": "ከፊል",
+    "paymentOverdue": "ጊዜው አልፎበታል",
+    "paymentPending": "ያልተከፈለ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

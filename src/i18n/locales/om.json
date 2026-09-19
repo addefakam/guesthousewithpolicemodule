@@ -766,7 +766,10 @@
     "tooltipReservedFrom": "Kan:",
     "tooltipReservedTo": "Hanga:",
     "toastRoomOccupied": "Kunoo {{number}} {{guest}} irraa {{from}} hanga {{to}}tti qabameera",
-    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne"
+    "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne",
+    "infoStayedNights": "Hagam {{stayed}} incubee darbe",
+    "infoNightsRemaining": "{{remaining}} incubee hafe",
+    "infoCheckinInDays": "Waggaa {{days}} guyyaa booda seenti"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -2186,8 +2189,17 @@
     "numDriver": "Lakkoofsa konkolaachisaa",
     "roleDRIVER": "Konkolaachisaa",
     "noRooms": "Kaboo hin arganne",
-    "sessionExpired": "Yeroon xumureera. Maaloo irra deebi'aa seenaa."
-9bfa556 (feat(mobile): add 'Other' option to Room Type dropdown in Add Room)
+    "sessionExpired": "Yeroon xumureera. Maaloo irra deebi'aa seenaa.",
+    "roomTypeOTHER": "Kan biroo",
+    "infoStayedNights": "Hagam {{stayed}} incubee darbe",
+    "infoNightsRemaining": "{{remaining}} incubee hafe",
+    "infoCheckoutToday": "Har'a ba'i",
+    "infoCheckinToday": "Har'a seenti",
+    "infoCheckinInDays": "Waggaa {{days}} guyyaa booda seenti",
+    "paymentPaid": "Kaffale",
+    "paymentPartial": "Walakkaa",
+    "paymentOverdue": "Yero darbe",
+    "paymentPending": "Hin kaffalamne"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",
