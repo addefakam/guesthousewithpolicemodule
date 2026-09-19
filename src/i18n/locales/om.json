@@ -2267,7 +2267,10 @@
     "capacityCapSingleError": "Kutaaa tokko oduu 2 qofauu danda'a",
     "lblGuestPlateNumber": "Lakkoofsa Plaatii",
     "phGuestPlateNumber": "Fakkeenyaaf AA-123-456",
-    "optional": "filannoowwan"
+    "optional": "filannoowwan",
+    "singleRoomGuestCount": "Lakkoofsa Oduu",
+    "oneGuestOnly": "Oduu 1",
+    "singleRoomSecondGuestHint": "Sirreeffama oduu lammaffaa galchi:"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

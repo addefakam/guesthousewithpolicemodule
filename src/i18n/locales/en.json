@@ -3324,7 +3324,10 @@
     "capacityCapSingleError": "Single rooms can hold a maximum of 2 guests",
     "lblGuestPlateNumber": "Plate Number",
     "phGuestPlateNumber": "e.g. AA-123-456",
-    "optional": "optional"
+    "optional": "optional",
+    "singleRoomGuestCount": "Number of Guests",
+    "oneGuestOnly": "1 Guest",
+    "singleRoomSecondGuestHint": "Enter the second guest's details:"
   },
   "policeApp": {
     "appName": "GHMS Police",

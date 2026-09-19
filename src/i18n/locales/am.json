@@ -3226,7 +3226,10 @@
     "capacityCapSingleError": "ነጠላ ክፍሎች ከፍተኛ 2 እንግዶችን መያዝ ይችላሉ",
     "lblGuestPlateNumber": "የመኪና ሰሌዳ ቁጥር",
     "phGuestPlateNumber": "ለምሳሌ AA-123-456",
-    "optional": "አማራጭ"
+    "optional": "አማራጭ",
+    "singleRoomGuestCount": "የእንግዶች ብዛት",
+    "oneGuestOnly": "1 እንግዳ",
+    "singleRoomSecondGuestHint": "የሁለተኛውን እንግዳ ዝርዝር ያስገቡ:"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

@@ -202,6 +202,10 @@ const RES_FORM_DEFAULTS = {
   guestId: "", roomId: "", checkIn: todayStr(), checkOut: addDays(todayStr(), 1),
   notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "",
   exceptionallyReserved: false, exceptionReason: "",
+  // For SINGLE rooms: a toggle to indicate whether the booking is for
+  // 1 guest or 2 guests. When 2 is selected, second guest fields are
+  // shown + required. Mirrors the main system's `hasSecondGuest` flag.
+  hasSecondGuest: false,
   // Direct guest fields
   guestMode: "registered" as "registered" | "direct",
   directName: "", directPhone: "", directIdNumber: "", directIdType: "NATIONAL", directNationality: "Ethiopian", directPlateNumber: "",
@@ -644,6 +648,14 @@ export default function MobileApp() {
     return rm ? DOUBLE_ROOM_TYPES.includes(rm.type) : false;
   }, [resForm.roomId, rooms]);
 
+  // SINGLE rooms can hold 1 or 2 guests (max 2 per the capacity cap).
+  // When 2 guests is selected, the form prompts for second guest info —
+  // same pattern as the main system's `hasSecondGuest` toggle.
+  const selectedRoomIsSingle = useMemo(() => {
+    const rm = rooms.find((r) => r.id === resForm.roomId);
+    return rm ? rm.type === "SINGLE" : false;
+  }, [resForm.roomId, rooms]);
+
   const resNights = useMemo(() => {
     if (!resForm.checkIn || !resForm.checkOut) return 0;
     return Math.max(1, Math.ceil((new Date(resForm.checkOut).getTime() - new Date(resForm.checkIn).getTime()) / 86400000));
@@ -703,6 +715,17 @@ export default function MobileApp() {
 
 
     if (selectedRoomIsDouble && !resForm.exceptionallyReserved) {
+      if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
+        toast.error(t("toastSecondGuestRequired")); return;
+      }
+      if (!isValidPhone(resForm.secondGuestPhone)) {
+        toast.error(t("toastInvalidPhone")); return;
+      }
+    }
+    // SINGLE room + 2 guests selected → second guest info is required.
+    // Mirrors the main system's validation. The operator explicitly
+    // toggles "2 guests" on the form, so we don't silently require it.
+    if (selectedRoomIsSingle && resForm.hasSecondGuest) {
       if (!resForm.secondGuestName.trim() || !resForm.secondGuestPhone.trim()) {
         toast.error(t("toastSecondGuestRequired")); return;
       }
@@ -1175,6 +1198,7 @@ export default function MobileApp() {
             guests={guests} guestSearch={resGuestSearch} setGuestSearch={setResGuestSearch}
             guestResults={resGuestResults} availableRooms={availableRooms}
             isDouble={selectedRoomIsDouble}
+            isSingle={selectedRoomIsSingle}
             nights={resNights} rate={resRate}
             creating={creatingRes} onSubmit={handleCreateRes} onCancel={() => {
               setShowNewRes(false);
@@ -2169,10 +2193,10 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
   );
 }
 
-function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearch, guestResults, availableRooms, isDouble, nights, rate, creating, onSubmit, onCancel, t, formatCurrency }: {
+function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearch, guestResults, availableRooms, isDouble, isSingle, nights, rate, creating, onSubmit, onCancel, t, formatCurrency }: {
   form: typeof RES_FORM_DEFAULTS; onUpdate: (patch: Partial<typeof RES_FORM_DEFAULTS>) => void;
   guests: Guest[]; guestSearch: string; setGuestSearch: (s: string) => void;
-  guestResults: Guest[]; availableRooms: Room[]; isDouble: boolean;
+  guestResults: Guest[]; availableRooms: Room[]; isDouble: boolean; isSingle: boolean;
   nights: number; rate: number; creating: boolean; onSubmit: () => void; onCancel: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string; formatCurrency: (v: number) => string;
 }) {
@@ -2422,6 +2446,84 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
             </div>
           ) : (
             <Textarea value={form.exceptionReason} onChange={(e) => onUpdate({ exceptionReason: e.target.value })} placeholder={t("phExceptionReason")} className="min-h-[60px] text-sm rounded-lg" />
+          )}
+        </div>
+      )}
+      {/* ── Single room: guest count selector (1 or 2 guests) ──
+          When 2 guests is selected, the form prompts for the second
+          guest's name + phone + ID number — same fields as the double
+          room flow, but without the "exceptionally reserved" option
+          (single rooms can legitimately hold 2 guests without an
+          exception, per the new capacity cap of 2). */}
+      {isSingle && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3 space-y-3">
+          <div className="flex items-center gap-2 text-sky-800">
+            <BedSingle className="h-4 w-4" />
+            <span className="text-xs font-semibold">{t("singleRoomGuestCount") || "Number of Guests"}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="mob-single-guest-count"
+                checked={!form.hasSecondGuest}
+                onChange={() => onUpdate({
+                  hasSecondGuest: false,
+                  secondGuestName: "",
+                  secondGuestPhone: "",
+                  secondGuestIdNumber: "",
+                })}
+                className="h-3.5 w-3.5 accent-emerald-600"
+              />
+              <span className="text-xs font-medium">{t("oneGuestOnly") || "1 Guest"}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="mob-single-guest-count"
+                checked={form.hasSecondGuest}
+                onChange={() => onUpdate({ hasSecondGuest: true })}
+                className="h-3.5 w-3.5 accent-sky-600"
+              />
+              <span className="text-xs font-medium text-sky-700">{t("twoGuests")}</span>
+            </label>
+          </div>
+          {/* When 2 guests is selected, show second guest fields.
+              Same shape as the double-room second guest fields. */}
+          {form.hasSecondGuest && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-sky-600">
+                {t("singleRoomSecondGuestHint") || "Enter the second guest's details:"}
+              </p>
+              <Input
+                value={form.secondGuestName}
+                onChange={(e) => onUpdate({ secondGuestName: e.target.value })}
+                placeholder={t("phSecondGuestName")}
+                className="h-10 rounded-lg text-sm"
+              />
+              <Input
+                type="tel"
+                value={form.secondGuestPhone}
+                onChange={(e) => onUpdate({ secondGuestPhone: e.target.value })}
+                placeholder={t("phSecondGuestPhone")}
+                className={`h-10 rounded-lg text-sm ${
+                  form.secondGuestPhone?.trim() && !isValidPhone(form.secondGuestPhone)
+                    ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500"
+                    : ""
+                }`}
+              />
+              {form.secondGuestPhone?.trim() && !isValidPhone(form.secondGuestPhone) && (
+                <p className="mt-0.5 text-[9px] text-rose-500">
+                  {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix"}
+                </p>
+              )}
+              <Input
+                value={form.secondGuestIdNumber}
+                onChange={(e) => onUpdate({ secondGuestIdNumber: e.target.value })}
+                placeholder={t("phSecondGuestId")}
+                className="h-10 rounded-lg text-sm"
+              />
+            </div>
           )}
         </div>
       )}
