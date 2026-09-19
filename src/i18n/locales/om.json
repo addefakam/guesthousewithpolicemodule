@@ -3343,7 +3343,8 @@
       "rooms": "Rooms",
       "guests": "Guests",
       "more": "More",
-      "system": "Full System"
+      "system": "Full System",
+      "activeStays": "Dhaabbannoo Sochii"
     },
     "home": {
       "title": "Dashboard",
@@ -3395,8 +3396,8 @@
       "resultGuesthouses_other": "{{count}} guesthouses"
     },
     "guests": {
-      "title": "Guests & Stays",
-      "subtitle": "Active and upcoming reservations city-wide",
+      "title": "Dhaabbannoo Sochii",
+      "subtitle": "Har'a seenan jiran ykn dhufuu eegalan oduu",
       "searchPlaceholder": "Search guest, phone, ID, room…",
       "empty": "No active or upcoming reservations",
       "noMatch": "No guests match your search",
@@ -3409,7 +3410,8 @@
       "room": "Room {{room}}",
       "nights": "{{count}} nights",
       "nights_one": "{{count}} night",
-      "nights_other": "{{count}} nights"
+      "nights_other": "{{count}} nights",
+      "scopeNote": "Oduu har'a seenan (sochii) ykn dhufuu eegalan argisa. Galmeessitama oduu guutuuf sirna guutuu fayyadami."
     },
     "more": {
       "title": "Officer",

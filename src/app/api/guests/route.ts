@@ -13,7 +13,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const q = searchParams.get("q") || "";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
+    // ── Cap raised from 100 → 999 ──
+    // The frontend helper apiGetGuests() requests limit=999 to fetch ALL
+    // guests for client-side search/filter. The previous cap of 100
+    // silently truncated the list — operators with 200+ guests would
+    // see only the first 100, and the count wouldn't match the police
+    // dashboard's totalGuests KPI (which counts ALL guests with no cap).
+    // 999 is the same ceiling used by /api/reservations and is more
+    // than enough for any single guesthouse's guest list.
+    const limit = Math.min(999, Math.max(1, parseInt(searchParams.get("limit") || "999")));
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};

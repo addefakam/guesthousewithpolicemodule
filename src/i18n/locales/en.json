@@ -3343,7 +3343,8 @@
       "rooms": "Rooms",
       "guests": "Guests",
       "more": "More",
-      "system": "Full System"
+      "system": "Full System",
+      "activeStays": "Active Stays"
     },
     "home": {
       "title": "Dashboard",
@@ -3395,8 +3396,8 @@
       "resultGuesthouses_other": "{{count}} guesthouses"
     },
     "guests": {
-      "title": "Guests & Stays",
-      "subtitle": "Active and upcoming reservations city-wide",
+      "title": "Active Stays",
+      "subtitle": "Guests currently checked in or expected soon",
       "searchPlaceholder": "Search guest, phone, ID, room…",
       "empty": "No active or upcoming reservations",
       "noMatch": "No guests match your search",
@@ -3409,7 +3410,8 @@
       "room": "Room {{room}}",
       "nights": "{{count}} nights",
       "nights_one": "{{count}} night",
-      "nights_other": "{{count}} nights"
+      "nights_other": "{{count}} nights",
+      "scopeNote": "Shows guests currently checked in (ACTIVE) or expected soon (UPCOMING). For the full guest registry, use the main system's Police → Guests page."
     },
     "more": {
       "title": "Officer",

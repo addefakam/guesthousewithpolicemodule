@@ -3245,7 +3245,8 @@
       "rooms": "ክፍሎች",
       "guests": "እንግዶች",
       "more": "ተጨማሪ",
-      "system": "ሙሉ ሥርዓት"
+      "system": "ሙሉ ሥርዓት",
+      "activeStays": "ንቁዎች ቆይታዎች"
     },
     "home": {
       "title": "ዳሽቦርድ",
@@ -3297,8 +3298,8 @@
       "resultGuesthouses_other": "{{count}} አቅራቢዎች"
     },
     "guests": {
-      "title": "እንግዶችና ማረፊያዎች",
-      "subtitle": "ከመላ ከተማ  መጪ ቀጠሮዎች",
+      "title": "ንቁዎች ቆይታዎች",
+      "subtitle": "አሁን ገብተው ወይም በቅርቡ የሚጠበቁ እንግዶች",
       "searchPlaceholder": "በእንግዳ፣ በስልክ፣ በመታወቂያ፣ በክፍል ይፈልጉ…",
       "empty": "ንቁ ወይም መጪ ቀጠሮዎች የሉም",
       "noMatch": "ከፍለጋዎ ጋር የሚስማማ እንግዳ አልተገኘም",
@@ -3311,7 +3312,8 @@
       "room": "ክፍል {{room}}",
       "nights": "{{count}} ሌሊቶች",
       "nights_one": "{{count}} ሌሊት",
-      "nights_other": "{{count}} ሌሊቶች"
+      "nights_other": "{{count}} ሌሊቶች",
+      "scopeNote": "አሁን ገብተው (ንቁ) ወይም በቅርቡ የሚጠበቁ (ቀጣይ) እንግዶችን ያሳያል። ሙሉ የእንግዳ መዝገብ ለማግኘት ዋና ስርዓቱን ይጠቀሙ።"
     },
     "more": {
       "title": "ኦፊሰር",

@@ -135,6 +135,20 @@ export default function GuestsScreen() {
         <p className="mt-0.5 text-xs text-slate-400">{t("guests.subtitle")}</p>
       </header>
 
+      {/* ── Clarification banner ──
+          This screen shows ONLY guests with ACTIVE or UPCOMING
+          reservations — not the full guest registry. The count here
+          will NOT match the dashboard's totalGuests KPI (which counts
+          all registered guests city-wide). This banner prevents the
+          "why are the numbers different?" confusion. */}
+      <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2">
+        <p className="text-[10px] leading-relaxed text-indigo-700">
+          {t("guests.scopeNote", {
+            defaultValue: "Shows guests currently checked in (ACTIVE) or expected soon (UPCOMING). For the full guest registry, use the main system's Police → Guests page."
+          })}
+        </p>
+      </div>
+
       {/* Status filter chips — uniform indigo active state */}
       <section className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={t("guests.title")}>
         {FILTERS.map((f) => {

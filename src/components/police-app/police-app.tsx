@@ -78,7 +78,11 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" /> },
     { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" /> },
-    { key: "guests", label: t("nav.guests"), icon: <Users className="h-5 w-5" /> },
+    // Renamed from "Guests" to "Active Stays" — this tab shows ACTIVE +
+    // UPCOMING reservations (guests currently in-house or expected soon),
+    // NOT the full guest registry. The old label caused confusion because
+    // the count didn't match the dashboard's totalGuests KPI.
+    { key: "guests", label: t("nav.activeStays"), icon: <Users className="h-5 w-5" /> },
     { key: "providers", label: t("nav.providers"), icon: <Building2 className="h-5 w-5" /> },
     { key: "system", label: t("nav.system"), icon: <Monitor className="h-5 w-5" /> },
   ];
