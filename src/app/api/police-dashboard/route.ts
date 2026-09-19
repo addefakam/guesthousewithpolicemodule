@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+
+    // ── Lazy maintenance (global scope, throttled + idempotent) ──
+    // Police endpoints were previously reading raw SQL without running
+    // this, so they showed stale data — past-checkout reservations that
+    // the operator side had already auto-cancelled still appeared as
+    // ACTIVE on the police dashboard. Running this here (with no scope
+    // = city-wide) ensures police see the SAME fresh state the operator
+    // sees after they open their app.
+    //
+    // Throttled to max-once-per-30s in the lib — repeated reads are
+    // cheap no-ops. Never blocks reads on maintenance failures.
+    try {
+      await runReservationMaintenance({});
+    } catch {
+      // Maintenance must never break police dashboard reads.
+    }
 
     // Single $queryRaw for all city-wide stats — 1 round-trip instead of 6
     const stats = await db.$queryRawUnsafe<Array<{ count?: bigint; total?: number | null }>>(`

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,22 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+
+    // ── Lazy maintenance (global scope, throttled + idempotent) ──
+    // Without this, police would see "ghost" ACTIVE reservations that
+    // the operator side has already auto-cancelled (past-checkout
+    // reservations are auto-cancelled by runReservationMaintenance,
+    // but only the operator endpoints were triggering it). Running it
+    // here with no scope = city-wide ensures police and operator see
+    // the same live state.
+    //
+    // Throttled to max-once-per-30s in the lib — repeated reads are
+    // cheap no-ops. Never blocks reads on maintenance failures.
+    try {
+      await runReservationMaintenance({});
+    } catch {
+      // Maintenance must never break police reads.
+    }
 
     const url = new URL(req.url);
     const limit = Math.min(Number(url.searchParams.get("limit")) || 500, 500);

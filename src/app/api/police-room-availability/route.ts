@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+
+    // ── Lazy maintenance (global scope, throttled + idempotent) ──
+    // Critical for room status parity with the operator side: this is
+    // what heals stale OCCUPIED/RESERVED room flags back to AVAILABLE
+    // when the guest has already checked out (or the reservation was
+    // auto-cancelled). Without this, police would see rooms stuck in
+    // OCCUPIED that the operator side has already released.
+    //
+    // Throttled to max-once-per-30s in the lib — repeated reads are
+    // cheap no-ops. Never blocks reads on maintenance failures.
+    try {
+      await runReservationMaintenance({});
+    } catch {
+      // Maintenance must never break police room availability reads.
+    }
 
     // This is needed because Prisma's connection pool may have cached
     // the old enum values .
