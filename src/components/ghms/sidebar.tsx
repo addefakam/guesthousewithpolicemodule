@@ -38,6 +38,8 @@ import {
   MessageSquare,
   ScrollText,
   Megaphone,
+  Smartphone,
+  ExternalLink,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -787,6 +789,28 @@ export default function Sidebar() {
           </button>
         )}
       </div>
+
+      {/* ── Switch to Mobile App link ──
+          Top-left corner shortcut — lets the operator jump to the
+          mobile-optimized UI (/m) without typing the URL. Hidden when
+          the sidebar is collapsed (matches the brand block pattern);
+          the collapsed state shows just the Smartphone icon as a
+          compact button. */}
+      <a
+        href="/m"
+        title={t("Switch to Mobile App") || "Switch to Mobile App"}
+        className={`group flex items-center gap-2 px-4 py-2 text-[12px] font-medium text-slate-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700 border-b border-slate-100 ${
+          collapsed ? "justify-center" : ""
+        }`}
+      >
+        <Smartphone className="size-3.5 shrink-0" />
+        {!collapsed && (
+          <span className="flex items-center gap-1">
+            {t("Switch to Mobile App") || "Switch to Mobile App"}
+            <ExternalLink className="size-3 opacity-0 transition-opacity group-hover:opacity-60" />
+          </span>
+        )}
+      </a>
 
       <SidebarContent
         user={currentUser}
