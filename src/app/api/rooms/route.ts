@@ -114,6 +114,13 @@ export async function POST(req: NextRequest) {
           results.push({ number: String(number ?? "?"), status: "skipped", error: "Missing required fields" });
           continue;
         }
+        // ── Capacity cap for SINGLE rooms (same as the single-row path) ──
+        // Bulk import skips the row with a clear error message instead of
+        // silently capping — so the operator can see which rows failed.
+        if (type === "SINGLE" && Number(capacity) > 2) {
+          results.push({ number: String(number ?? "?"), status: "skipped", error: "Single rooms can hold max 2 guests" });
+          continue;
+        }
         try {
           const existing = await db.room.findFirst({ select: { id: true, number: true }, where: { number: String(number), providerId: auth.providerId } });
           if (existing) {
@@ -163,6 +170,26 @@ export async function POST(req: NextRequest) {
     if (!number || !type || floor == null || capacity == null) {
       return NextResponse.json(
         { error: "Missing required fields: number, type, floor, capacity" },
+        { status: 400 }
+      );
+    }
+
+    // ── Capacity cap by room type ──
+    // SINGLE rooms can hold at most 2 guests (one primary + one optional
+    // companion). DOUBLE/TWIN/SUITE/DELUXE/etc. have no hard cap here —
+    // the operator decides based on the room's physical layout.
+    // This matches the front-end validation on both the main system and
+    // mobile app, so the API is the source of truth in case a request
+    // bypasses the UI (e.g. direct API call, bulk import).
+    const SINGLE_MAX_CAPACITY = 2;
+    const capacityNum = Number(capacity);
+    if (type === "SINGLE" && capacityNum > SINGLE_MAX_CAPACITY) {
+      return NextResponse.json(
+        {
+          error: `Single rooms can hold a maximum of ${SINGLE_MAX_CAPACITY} guests. Use a DOUBLE or larger room type for higher capacity.`,
+          code: "SINGLE_ROOM_CAPACITY_EXCEEDED",
+          details: { type, requestedCapacity: capacityNum, maxCapacity: SINGLE_MAX_CAPACITY },
+        },
         { status: 400 }
       );
     }

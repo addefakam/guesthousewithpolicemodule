@@ -1134,7 +1134,21 @@ export default function RoomsPage() {
                 <Label htmlFor="room-type">{t("labelRoomType")}</Label>
                 <Select
                   value={form.type}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
+                  onValueChange={(v) => {
+                    // When switching to SINGLE, cap the existing capacity
+                    // at 2 — matches the backend validation. Otherwise
+                    // leave capacity untouched (operator can set higher
+                    // for DOUBLE/TWIN/SUITE/etc.).
+                    if (v === "SINGLE") {
+                      const currentCap = parseInt(form.capacity, 10);
+                      if (!isNaN(currentCap) && currentCap > 2) {
+                        setForm({ ...form, type: v, capacity: "2" });
+                        toast.info(t("capacityCappedTo2", { defaultValue: "Capacity capped to 2 for single rooms" }));
+                        return;
+                      }
+                    }
+                    setForm({ ...form, type: v });
+                  }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -1181,13 +1195,35 @@ export default function RoomsPage() {
               <div className="space-y-2">
                 <Label htmlFor="room-capacity">
                   {t("labelCapacity")} <span className="text-rose-500">*</span>
+                  {form.type === "SINGLE" && (
+                    <span className="ml-2 text-[10px] font-normal text-amber-600">
+                      {t("capacityCapSingle", { defaultValue: "max 2 for single rooms" })}
+                    </span>
+                  )}
                 </Label>
                 <Input
                   id="room-capacity"
                   type="number"
-                  placeholder="2"
+                  min={1}
+                  max={form.type === "SINGLE" ? 2 : undefined}
+                  placeholder={form.type === "SINGLE" ? "1 or 2" : "2"}
                   value={form.capacity}
-                  onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Hard-cap at 2 when the room type is SINGLE —
+                    // matches the backend validation in /api/rooms POST/PUT.
+                    // For other room types, no cap is enforced client-side
+                    // (the operator decides based on physical layout).
+                    if (form.type === "SINGLE") {
+                      const num = parseInt(val, 10);
+                      if (!isNaN(num) && num > 2) {
+                        setForm({ ...form, capacity: "2" });
+                        toast.error(t("capacityCapSingleError", { defaultValue: "Single rooms can hold a maximum of 2 guests" }));
+                        return;
+                      }
+                    }
+                    setForm({ ...form, capacity: val });
+                  }}
                 />
               </div>
             </div>

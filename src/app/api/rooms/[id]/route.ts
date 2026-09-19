@@ -21,9 +21,24 @@ export async function PUT(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
+    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    }
+
+    // ── Capacity cap for SINGLE rooms ──
+    // The effective room type is whichever is newer between the existing
+    // type and the type being updated to. Same cap as POST: 2 guests max.
+    const effectiveType = body.type !== undefined ? body.type : existing.type;
+    if (effectiveType === "SINGLE" && body.capacity !== undefined && Number(body.capacity) > 2) {
+      return NextResponse.json(
+        {
+          error: "Single rooms can hold a maximum of 2 guests. Use a DOUBLE or larger room type for higher capacity.",
+          code: "SINGLE_ROOM_CAPACITY_EXCEEDED",
+          details: { type: effectiveType, requestedCapacity: Number(body.capacity), maxCapacity: 2 },
+        },
+        { status: 400 }
+      );
     }
 
     // If room number is being changed, check for duplicates

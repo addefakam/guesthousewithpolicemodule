@@ -779,7 +779,10 @@
     "toastRoomNotAvailable": "ክፍል {{number}} ለማስያዝ አይገኝም",
     "infoStayedNights": "{{stayed}} ሌሊት(ዎች) ቆይቷል",
     "infoNightsRemaining": "{{remaining}} ሌሊት(ዎች) ይቀራል",
-    "infoCheckinInDays": "በ{{days}} ቀን(ዎች) ውስጥ ይግቡ"
+    "infoCheckinInDays": "በ{{days}} ቀን(ዎች) ውስጥ ይግቡ",
+    "capacityCapSingle": "ለነጠላ ክፍሎች ከፍተኛ 2",
+    "capacityCapSingleError": "ነጠላ ክፍሎች ከፍተኛ 2 እንግዶችን መያዝ ይችላሉ",
+    "capacityCappedTo2": "ለነጠላ ክፍሎች አቅም ወደ 2 ተገድቧል"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",
@@ -3218,7 +3221,12 @@
     "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።",
     "errorLicenseNoRequired": "የፍቃድ ቁጥር ያስፈልጋል",
     "errorLicenseNoTaken": "የፍቃድ ቁጥር ቀደም ሲል ለሌላ የእንግዳ ቤት ተመዝግቧል",
-    "bulkDuplicateLicense": "ተደጋጋሚ የፍቃድ ቁጥር '{{license}}' በፋይሉ ውስጥ {{count}} ጊዜ ተገኝቷል"
+    "bulkDuplicateLicense": "ተደጋጋሚ የፍቃድ ቁጥር '{{license}}' በፋይሉ ውስጥ {{count}} ጊዜ ተገኝቷል",
+    "capacityCapSingle": "ለነጠላ ክፍሎች ከፍተኛ 2",
+    "capacityCapSingleError": "ነጠላ ክፍሎች ከፍተኛ 2 እንግዶችን መያዝ ይችላሉ",
+    "lblGuestPlateNumber": "የመኪና ሰሌዳ ቁጥር",
+    "phGuestPlateNumber": "ለምሳሌ AA-123-456",
+    "optional": "አማራጭ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

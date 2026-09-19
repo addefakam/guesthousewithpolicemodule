@@ -779,7 +779,10 @@
     "toastRoomNotAvailable": "Kunoo {{number}} qabiyyee kan hin arganne",
     "infoStayedNights": "Hagam {{stayed}} incubee darbe",
     "infoNightsRemaining": "{{remaining}} incubee hafe",
-    "infoCheckinInDays": "Waggaa {{days}} guyyaa booda seenti"
+    "infoCheckinInDays": "Waggaa {{days}} guyyaa booda seenti",
+    "capacityCapSingle": "kutaaa 2 dabalataa",
+    "capacityCapSingleError": "Kutaaa tokko oduu 2 qofauu danda'a",
+    "capacityCappedTo2": "Kutaaf oduu 2 qofa jechuun daangaa"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",
@@ -2259,7 +2262,12 @@
     "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru.",
     "errorLicenseNoRequired": "Lakkoofsa lasisaa barbaachisaa dha",
     "errorLicenseNoTaken": "Lakkoofsa lasisaa haaraa qabiyyee kanaa sanaan galmaa'era",
-    "bulkDuplicateLicense": "Lakkoofsa lasisaa dabbataa '{{license}}' failii keessatti {{count}} ilaa argame"
+    "bulkDuplicateLicense": "Lakkoofsa lasisaa dabbataa '{{license}}' failii keessatti {{count}} ilaa argame",
+    "capacityCapSingle": "kutaaa 2 dabalataa",
+    "capacityCapSingleError": "Kutaaa tokko oduu 2 qofauu danda'a",
+    "lblGuestPlateNumber": "Lakkoofsa Plaatii",
+    "phGuestPlateNumber": "Fakkeenyaaf AA-123-456",
+    "optional": "filannoowwan"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

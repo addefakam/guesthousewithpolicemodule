@@ -779,7 +779,10 @@
     "toastRoomNotAvailable": "Room {{number}} is not available for reservation",
     "infoStayedNights": "{{stayed}} night(s) stayed",
     "infoNightsRemaining": "{{remaining}} night(s) remaining",
-    "infoCheckinInDays": "Check-in in {{days}} day(s)"
+    "infoCheckinInDays": "Check-in in {{days}} day(s)",
+    "capacityCapSingle": "max 2 for single rooms",
+    "capacityCapSingleError": "Single rooms can hold a maximum of 2 guests",
+    "capacityCappedTo2": "Capacity capped to 2 for single rooms"
   },
   "guests": {
     "pageTitle": "Guest Directory",
@@ -3316,7 +3319,12 @@
     "checkinNotUpcoming": "Reservation is no longer upcoming.",
     "errorLicenseNoRequired": "License No is required",
     "errorLicenseNoTaken": "License No is already registered to another guesthouse",
-    "bulkDuplicateLicense": "Duplicate License No '{{license}}' appears {{count}} time(s) in the file"
+    "bulkDuplicateLicense": "Duplicate License No '{{license}}' appears {{count}} time(s) in the file",
+    "capacityCapSingle": "max 2 for single rooms",
+    "capacityCapSingleError": "Single rooms can hold a maximum of 2 guests",
+    "lblGuestPlateNumber": "Plate Number",
+    "phGuestPlateNumber": "e.g. AA-123-456",
+    "optional": "optional"
   },
   "policeApp": {
     "appName": "GHMS Police",

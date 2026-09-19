@@ -204,7 +204,7 @@ const RES_FORM_DEFAULTS = {
   exceptionallyReserved: false, exceptionReason: "",
   // Direct guest fields
   guestMode: "registered" as "registered" | "direct",
-  directName: "", directPhone: "", directIdNumber: "", directIdType: "NATIONAL", directNationality: "Ethiopian",
+  directName: "", directPhone: "", directIdNumber: "", directIdType: "NATIONAL", directNationality: "Ethiopian", directPlateNumber: "",
 };
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -721,7 +721,9 @@ export default function MobileApp() {
           phone: resForm.directPhone.trim(),
           idNumber: resForm.directIdNumber.trim() || undefined,
           idType: resForm.directIdType,
-          nationality: resForm.directNationality.trim() || undefined,        });
+          nationality: resForm.directNationality.trim() || undefined,
+          plateNumber: resForm.directPlateNumber.trim() || undefined,
+        });
         guestId = newGuest?.id || newGuest?.guest?.id;
         if (!guestId) {
           toast.error(t("toastFailedCreateGuest")); return;
@@ -2281,6 +2283,23 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
             <Label className="text-xs font-semibold">{t("lblGuestNationality")}</Label>
             <Input value={form.directNationality} onChange={(e) => onUpdate({ directNationality: e.target.value })} placeholder={t("phGuestNationality")} className="mt-1.5 h-11 rounded-xl" />
           </div>
+          {/* Plate Number — optional. Captured for guesthouses that need
+              to track vehicle plates (e.g. for security or parking
+              allocation). Stored on the Guest record, shown in the
+              police-side guest registry. */}
+          <div>
+            <Label className="text-xs font-semibold">
+              {t("lblGuestPlateNumber") || "Plate Number"}
+              <span className="ml-1 text-[9px] font-normal text-slate-400">({t("optional") || "optional"})</span>
+            </Label>
+            <Input
+              value={form.directPlateNumber}
+              onChange={(e) => onUpdate({ directPlateNumber: e.target.value })}
+              placeholder={t("phGuestPlateNumber") || "e.g. AA-123-456"}
+              className="mt-1.5 h-11 rounded-xl font-mono"
+              autoCapitalize="characters"
+            />
+          </div>
         </div>
       ) : (
         /* Registered guest search */
@@ -2439,7 +2458,17 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
         <div>
           <Label className="text-xs font-semibold">{t("addRoomType")} *</Label>
           <Select value={form.type} onValueChange={(v) => {
+            // Default capacity by room type — keeps existing capacity
+            // for DOUBLE/TWIN/SUITE/DELUXE/OTHER, but caps SINGLE to
+            // 1 (since the operator can still bump to 2 manually if
+            // the room has an optional companion bed).
             const cap = (v === "DOUBLE" || v === "TWIN") ? "2" : "1";
+            // When switching to SINGLE, if the current capacity is
+            // already > 2, cap it down to 2 to comply with the new rule.
+            if (v === "SINGLE" && parseInt(form.capacity, 10) > 2) {
+              onUpdate({ type: v, capacity: "2" });
+              return;
+            }
             onUpdate({ type: v, capacity: cap });
           }}>
             <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
@@ -2464,8 +2493,36 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
           <Input type="number" value={form.floor} onChange={(e) => onUpdate({ floor: e.target.value })} placeholder="1" className="mt-1.5 h-11 rounded-xl" />
         </div>
         <div>
-          <Label className="text-xs font-semibold">{t("addRoomCapacity")} *</Label>
-          <Input type="number" value={form.capacity} onChange={(e) => onUpdate({ capacity: e.target.value })} placeholder="1" className="mt-1.5 h-11 rounded-xl" />
+          <Label className="text-xs font-semibold">
+            {t("addRoomCapacity")} *
+            {form.type === "SINGLE" && (
+              <span className="ml-1 text-[9px] font-normal text-amber-600">
+                {t("capacityCapSingle") || "(max 2)"}
+              </span>
+            )}
+          </Label>
+          <Input
+            type="number"
+            min={1}
+            max={form.type === "SINGLE" ? 2 : undefined}
+            value={form.capacity}
+            onChange={(e) => {
+              const val = e.target.value;
+              // Hard-cap at 2 when the room type is SINGLE — matches
+              // the backend validation in /api/rooms POST/PUT.
+              if (form.type === "SINGLE") {
+                const num = parseInt(val, 10);
+                if (!isNaN(num) && num > 2) {
+                  onUpdate({ capacity: "2" });
+                  toast.error(t("capacityCapSingleError") || "Single rooms can hold a maximum of 2 guests");
+                  return;
+                }
+              }
+              onUpdate({ capacity: val });
+            }}
+            placeholder={form.type === "SINGLE" ? "1 or 2" : "1"}
+            className="mt-1.5 h-11 rounded-xl"
+          />
         </div>
       </div>
       <div>
