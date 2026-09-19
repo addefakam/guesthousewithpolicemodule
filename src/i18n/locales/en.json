@@ -3456,6 +3456,18 @@
       "nextPage": "Next page",
       "pageOf": "Page {{page}} of {{total}}",
       "back": "Back to Active Stays"
+    },
+    "detail": {
+      "title": "Guest Details",
+      "close": "Close",
+      "totalStays": "Total Stays",
+      "totalSpent": "Total Spent",
+      "registered": "Registered",
+      "contactSection": "Contact & ID",
+      "timeline": "Activity Timeline",
+      "loading": "Loading activity...",
+      "noEvents": "No activity recorded yet",
+      "by": "By {{name}}"
     }
   }
 }

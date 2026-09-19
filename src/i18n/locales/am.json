@@ -3358,6 +3358,18 @@
       "nextPage": "ቀጣይ ገጽ",
       "pageOf": "ገጽ {{page}} ከ{{total}}",
       "back": "ወደ ንቁ ቆይታዎች ተመለስ"
+    },
+    "detail": {
+      "title": "የእንግዳ ዝርዝር",
+      "close": "ዝጋ",
+      "totalStays": "ጠቅላላ ቆይታዎች",
+      "totalSpent": "ጠቅላላ የወጣ",
+      "registered": "የተመዘገበበት",
+      "contactSection": "መለያ እና ስልክ",
+      "timeline": "የእንቅስቃሴ ጊዜ መስመር",
+      "loading": "እንቅስቃሴ በመጫን ላይ...",
+      "noEvents": "እንቅስቃሴ አልተመዘገበም",
+      "by": "በ {{name}}"
     }
   }
 }

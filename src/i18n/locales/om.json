@@ -3456,6 +3456,18 @@
       "nextPage": "Fuulaa itti aanu",
       "pageOf": "Fuulaa {{page}} {{total}} irraa",
       "back": "Gara sochii dhaabbannootti deebi'i"
+    },
+    "detail": {
+      "title": "Bal'ina Oduu",
+      "close": "Cufi",
+      "totalStays": "Qabiyyee Walitti Hidhame",
+      "totalSpent": "Baajata Walitti Hidhame",
+      "registered": "Galmeessitame",
+      "contactSection": "Qunnamtii & ID",
+      "timeline": "Sochii Yaadannoo",
+      "loading": "Sochii fe'aa jira...",
+      "noEvents": "Sochii hin galmeessifne",
+      "by": "{{name}} tiin"
     }
   }
 }
