@@ -3411,7 +3411,9 @@
       "nights": "{{count}} nights",
       "nights_one": "{{count}} night",
       "nights_other": "{{count}} nights",
-      "scopeNote": "Oduu har'a seenan (sochii) ykn dhufuu eegalan argisa. Galmeessitama oduu guutuuf sirna guutuu fayyadami."
+      "scopeNote": "Oduu har'a seenan (sochii) ykn dhufuu eegalan argisa. Galmeessitama oduu guutuuf sirna guutuu fayyadami.",
+      "viewAllGuests": "Oduu Hunda",
+      "viewAllGuestsDesc": "Galmeessa oduu guutuu magaalaa keessaa ilaali"
     },
     "more": {
       "title": "Officer",
@@ -3442,6 +3444,18 @@
     "providers.statusApproved": "Eegaleera",
     "providers.statusPending": "Eegala jira",
     "providers.statusRejected": "Hanbisame",
-    "providers.statusSuspended": "Dhoobame"
+    "providers.statusSuspended": "Dhoobame",
+    "allGuests": {
+      "title": "Oduu Hunda",
+      "subtitle": "{{count}} oduu galmeessitamaa magaalaa keessaa",
+      "searchPlaceholder": "Maqaa, bilbila, ykn ID'n baradhaa...",
+      "empty": "Oduu hin jiru",
+      "showing": "{{total}} irraa {{from}}-{{to}} argisa",
+      "stays": "{{count}} qabiyyee",
+      "prevPage": "Fuulaa darbe",
+      "nextPage": "Fuulaa itti aanu",
+      "pageOf": "Fuulaa {{page}} {{total}} irraa",
+      "back": "Gara sochii dhaabbannootti deebi'i"
+    }
   }
 }

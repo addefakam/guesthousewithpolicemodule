@@ -3313,7 +3313,9 @@
       "nights": "{{count}} ሌሊቶች",
       "nights_one": "{{count}} ሌሊት",
       "nights_other": "{{count}} ሌሊቶች",
-      "scopeNote": "አሁን ገብተው (ንቁ) ወይም በቅርቡ የሚጠበቁ (ቀጣይ) እንግዶችን ያሳያል። ሙሉ የእንግዳ መዝገብ ለማግኘት ዋና ስርዓቱን ይጠቀሙ።"
+      "scopeNote": "አሁን ገብተው (ንቁ) ወይም በቅርቡ የሚጠበቁ (ቀጣይ) እንግዶችን ያሳያል። ሙሉ የእንግዳ መዝገብ ለማግኘት ዋና ስርዓቱን ይጠቀሙ።",
+      "viewAllGuests": "ጠቅላላ እንግዶች",
+      "viewAllGuestsDesc": "ሙሉ የእንግዳ መዝገብ በከተማ ይመልከቱ"
     },
     "more": {
       "title": "ኦፊሰር",
@@ -3344,6 +3346,18 @@
     "providers.statusApproved": "ጸድቋል",
     "providers.statusPending": "በመጠባበቅ ላይ",
     "providers.statusRejected": "ውድቅ ተውሏል",
-    "providers.statusSuspended": "ተከልክሏል"
+    "providers.statusSuspended": "ተከልክሏል",
+    "allGuests": {
+      "title": "ሁሉም እንግዶች",
+      "subtitle": "{{count}} የተመዘገቡ እንግዶች በከተማ",
+      "searchPlaceholder": "በስም፣ ስልክ፣ ወይም መለያ ይፈልጉ...",
+      "empty": "ምንም እንግዶች አልተገኙም",
+      "showing": "ከ{{total}} ውስጥ {{from}}-{{to}} በማሳየት ላይ",
+      "stays": "{{count}} ቆይታዎች",
+      "prevPage": "ቀዳሚ ገጽ",
+      "nextPage": "ቀጣይ ገጽ",
+      "pageOf": "ገጽ {{page}} ከ{{total}}",
+      "back": "ወደ ንቁ ቆይታዎች ተመለስ"
+    }
   }
 }

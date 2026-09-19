@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import {
   BadgeCheck,
   CalendarDays,
+  ChevronRight,
   Clock3,
   Globe,
   IdCard,
@@ -16,11 +17,13 @@ import {
   Phone,
   Search,
   Users,
+  UserCircle,
 } from "lucide-react";
 import { apiPoliceActiveReservations, apiGetGuestLifecycle } from "@/lib/api";
 import { ErrorBox, EmptyState } from "@/components/police-app/screens/rooms-screen";
 import { BRAND } from "@/lib/police-app-status";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
+import AllGuestsScreen from "@/components/police-app/screens/all-guests-screen";
 
 interface ActiveReservation {
   id: string;
@@ -54,6 +57,10 @@ export default function GuestsScreen() {
   // Per-guest lifecycle summaries — powers the status-change badges
   // (early exit, extended, room shifted, cancelled) on each stay card.
   const [lifecycleMap, setLifecycleMap] = useState<Record<string, GuestLifecycleSummary>>({});
+  // Toggle to show the full guest registry (AllGuestsScreen) instead of
+  // the active-stays list. When true, renders AllGuestsScreen with a
+  // back button — keeps the tab structure unchanged (no new bottom-nav tab).
+  const [showAllGuests, setShowAllGuests] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,12 +135,46 @@ export default function GuestsScreen() {
     { key: "UPCOMING", label: t("guests.statusUpcoming"), count: upcomingCount, dot: "bg-sky-500" },
   ];
 
+  // ── If showAllGuests is toggled, render the AllGuestsScreen ──
+  // This replaces the active-stays list with the full guest registry
+  // view (paginated, searchable). A back button on that screen returns
+  // to the active-stays view.
+  if (showAllGuests) {
+    return <AllGuestsScreen onBack={() => setShowAllGuests(false)} />;
+  }
+
   return (
     <div className="space-y-3 px-4 pt-4">
       <header className="px-1">
         <h1 className="text-lg font-bold tracking-tight text-slate-900">{t("guests.title")}</h1>
         <p className="mt-0.5 text-xs text-slate-400">{t("guests.subtitle")}</p>
       </header>
+
+      {/* ── "Total Guests" button — opens the full guest registry ──
+          The Active Stays list only shows guests with ACTIVE or UPCOMING
+          reservations. This button lets the officer view ALL registered
+          guests city-wide (paginated, searchable) — matching the main
+          system's Police → Guests page. */}
+      <button
+        type="button"
+        onClick={() => setShowAllGuests(true)}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 text-left shadow-sm transition-all active:scale-[0.98] hover:shadow-md"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+            <UserCircle className="h-5 w-5 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-900">
+              {t("guests.viewAllGuests")}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {t("guests.viewAllGuestsDesc")}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-indigo-400" />
+      </button>
 
       {/* ── Clarification banner ──
           This screen shows ONLY guests with ACTIVE or UPCOMING

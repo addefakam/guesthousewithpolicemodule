@@ -3411,7 +3411,9 @@
       "nights": "{{count}} nights",
       "nights_one": "{{count}} night",
       "nights_other": "{{count}} nights",
-      "scopeNote": "Shows guests currently checked in (ACTIVE) or expected soon (UPCOMING). For the full guest registry, use the main system's Police → Guests page."
+      "scopeNote": "Shows guests currently checked in (ACTIVE) or expected soon (UPCOMING). For the full guest registry, use the main system's Police → Guests page.",
+      "viewAllGuests": "Total Guests",
+      "viewAllGuestsDesc": "View the full guest registry city-wide"
     },
     "more": {
       "title": "Officer",
@@ -3442,6 +3444,18 @@
     "providers.statusApproved": "Approved",
     "providers.statusPending": "Pending",
     "providers.statusRejected": "Rejected",
-    "providers.statusSuspended": "Suspended"
+    "providers.statusSuspended": "Suspended",
+    "allGuests": {
+      "title": "All Guests",
+      "subtitle": "{{count}} registered guests city-wide",
+      "searchPlaceholder": "Search by name, phone, or ID...",
+      "empty": "No guests found",
+      "showing": "Showing {{from}}-{{to}} of {{total}}",
+      "stays": "{{count}} stays",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "pageOf": "Page {{page}} of {{total}}",
+      "back": "Back to Active Stays"
+    }
   }
 }
