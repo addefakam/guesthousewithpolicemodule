@@ -258,6 +258,8 @@ export const apiImportData = (data: Record<string, unknown>) =>
 export const apiGetProviders = () => req("/api/providers");
 export const apiUpdateProvider = (id: string, data: Record<string, unknown>) =>
   req(`/api/providers/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteProvider = (id: string) =>
+  req(`/api/providers/${id}`, { method: "DELETE" });
 export const apiRegisterProvider = async (data: FormData) => {
   const res = await fetch("/api/providers", { method: "POST", body: data, credentials: "include" });
   const json = await res.json().catch(() => ({}));

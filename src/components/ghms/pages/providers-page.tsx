@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { useAppStore } from "@/lib/store";
-import { apiGetProviders, apiUpdateProvider, apiPoliceSuspendProvider, apiSuperCreateProvider, apiSuperBulkImportProviders, req } from "@/lib/api";
+import { apiGetProviders, apiUpdateProvider, apiPoliceSuspendProvider, apiSuperCreateProvider, apiSuperBulkImportProviders, apiDeleteProvider, req } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,8 @@ import {
   X,
   RotateCcw,
   Table2,
+  Search,
+  Trash2,
 } from "lucide-react";
 import InfoCard from "@/components/shared/info-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -187,6 +189,16 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Search across name / owner / phone / license / address / email —
+  // matches the police app's ProvidersScreen behavior so both systems
+  // find the same guesthouse for any given search term.
+  const [search, setSearch] = useState("");
+  // Delete-provider dialog + loading state. We require a typed
+  // confirmation (the guesthouse name) before the delete is allowed —
+  // this prevents accidental taps since the action is irreversible.
+  const [deleteDialog, setDeleteDialog] = useState<Provider | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Registration form
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -215,8 +227,26 @@ export default function ProvidersPage() {
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
-  const pagination = usePagination({ totalItems: providers.length, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
-  const paginatedProviders = useMemo(() => pagination.paginate(providers), [providers, pagination]);
+  // ── Client-side search ──
+  // Matches on name, ownerName, phone, licenseNo, address, email.
+  // Case-insensitive substring match. The provider list is already
+  // fully loaded from the API (no pagination server-side), so we filter
+  // on the client. This matches the police app's ProvidersScreen.
+  const filteredProviders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return providers;
+    return providers.filter((p) =>
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.ownerName || "").toLowerCase().includes(q) ||
+      (p.phone || "").toLowerCase().includes(q) ||
+      (p.licenseNo || "").toLowerCase().includes(q) ||
+      (p.address || "").toLowerCase().includes(q) ||
+      (p.email || "").toLowerCase().includes(q)
+    );
+  }, [providers, search]);
+
+  const pagination = usePagination({ totalItems: filteredProviders.length, initialPageSize: 5, pageSizeOptions: [5, 10, 20, 50] });
+  const paginatedProviders = useMemo(() => pagination.paginate(filteredProviders), [filteredProviders, pagination]);
 
   const fetchProviders = useCallback(async () => {
     try {
@@ -381,6 +411,41 @@ export default function ProvidersPage() {
       toast.error(err instanceof Error ? err.message : t('failedToSuspend'));
     } finally {
       setSuspending(false);
+    }
+  };
+
+  // ── Delete provider ──
+  // IRREVERSIBLE action — cascades through all related tables (Users,
+  // Rooms, Reservations, Guests, Expenses, etc.). The API refuses
+  // if any ACTIVE/UPCOMING reservations exist (operator must check
+  // out / cancel those first). The UI additionally requires the
+  // operator to type the guesthouse name to confirm.
+  const openDelete = (provider: Provider) => {
+    setDeleteDialog(provider);
+    setDeleteConfirmText("");
+  };
+
+  const handleDeleteProvider = async () => {
+    if (!deleteDialog) return;
+    // Require exact name match as typed confirmation — prevents
+    // accidental taps on a destructive irreversible action.
+    if (deleteConfirmText.trim() !== deleteDialog.name.trim()) {
+      toast.error(t('deleteConfirmNameMismatch'));
+      return;
+    }
+    try {
+      setDeleting(true);
+      await apiDeleteProvider(deleteDialog.id);
+      toast.success(t('providerDeleted', { name: deleteDialog.name }));
+      setDeleteDialog(null);
+      setDeleteConfirmText("");
+      triggerRefresh();
+    } catch (err: unknown) {
+      // API returns 409 if there are active/upcoming reservations;
+      // the error message tells the user to check those out first.
+      toast.error(err instanceof Error ? err.message : t('failedToDelete'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -609,6 +674,31 @@ export default function ProvidersPage() {
         </div>
       </div>
 
+      {/* ── Search box ──
+          Searches across name, owner, phone, licenseNo, address, email.
+          Matches the police app's ProvidersScreen so both surfaces find
+          the same guesthouse for any given search term. */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('searchProvidersPlaceholder')}
+          className="pl-9 h-10"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            aria-label={t('clearSearch') || 'Clear search'}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* Providers Table/Cards */}
       <div className="rounded-xl border bg-card shadow-sm">
         {loading ? (
@@ -638,6 +728,15 @@ export default function ProvidersPage() {
                         <span className="flex items-center gap-1"><User className="h-3 w-3" /> {provider.ownerName}</span>
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {provider.phone}</span>
                       </div>
+                      {/* License No — required + unique per the new constraint.
+                          Shown prominently in the card view so operators
+                          can quickly identify a guesthouse by its license. */}
+                      {provider.licenseNo && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <FileText className="h-3 w-3" />
+                          <span className="font-mono">{provider.licenseNo}</span>
+                        </div>
+                      )}
                       {provider.address && (
                         <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
                           <MapPin className="h-3 w-3" /> {provider.address}
@@ -673,6 +772,15 @@ export default function ProvidersPage() {
                         <Ban className="h-3.5 w-3.5" /> {t('btnSuspend')}
                       </button>
                     )}
+                    {/* Delete — irreversible. Confirmation dialog requires
+                        typing the guesthouse name to prevent accidents. */}
+                    <button
+                      className="ml-auto flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                      onClick={() => openDelete(provider)}
+                      title={t('btnDeleteProvider')}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> {t('btnDelete')}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -684,6 +792,7 @@ export default function ProvidersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('thProviderName')}</TableHead>
+                    <TableHead>{t('thLicenseNo')}</TableHead>
                     <TableHead>{t('thAddress')}</TableHead>
                     <TableHead>{t('thOwner')}</TableHead>
                     <TableHead>{t('thPhone')}</TableHead>
@@ -695,6 +804,7 @@ export default function ProvidersPage() {
                   {paginatedProviders.map((provider) => (
                     <TableRow key={provider.id} className={`cursor-pointer hover:bg-muted/50 ${provider.status === "SUSPENDED" ? "bg-orange-50/70 hover:bg-orange-100/60" : ""}`} onClick={() => openDetail(provider)}>
                       <TableCell className="font-medium">{provider.name}</TableCell>
+                      <TableCell className="font-mono text-xs">{provider.licenseNo || "—"}</TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{provider.address || "—"}</TableCell>
                       <TableCell>{provider.ownerName}</TableCell>
                       <TableCell>{provider.phone}</TableCell>
@@ -721,6 +831,20 @@ export default function ProvidersPage() {
                               <RotateCcw className="mr-1 h-4 w-4" /> {t('btnReactivate')}
                             </Button>
                           )}
+                          {/* Delete — irreversible cascade. Always
+                              available regardless of provider status
+                              (operator may want to delete a pending
+                              application OR a long-suspended guesthouse).
+                              Confirmation dialog requires typing the name. */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-rose-600 hover:bg-rose-50"
+                            onClick={() => openDelete(provider)}
+                            title={t('btnDeleteProvider')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -737,7 +861,7 @@ export default function ProvidersPage() {
         totalPages={pagination.totalPages}
         pageSize={pagination.pageSize}
         pageSizeOptions={pagination.pageSizeOptions}
-        totalItems={providers.length}
+        totalItems={filteredProviders.length}
         rangeInfo={pagination.rangeInfo}
         goToPage={pagination.goToPage}
         setPageSize={pagination.setPageSize}
@@ -1423,6 +1547,82 @@ export default function ProvidersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Delete Provider Confirmation Dialog ──
+          IRREVERSIBLE action — cascades through all related tables.
+          Requires the operator to type the guesthouse name exactly
+          to confirm, preventing accidental taps on a destructive action.
+          The API additionally refuses if there are any ACTIVE or UPCOMING
+          reservations (the operator must check out / cancel those first). */}
+      <AlertDialog open={!!deleteDialog} onOpenChange={(open) => { if (!open) { setDeleteDialog(null); setDeleteConfirmText(""); } }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rose-700">
+              <Trash2 className="h-5 w-5" />
+              {t('deleteProviderTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  {t('deleteProviderWarning', { name: deleteDialog?.name || "" })}
+                </p>
+                {/* Summary of what will be deleted */}
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  <p className="font-semibold mb-1">{t('deleteProviderCascadeTitle')}</p>
+                  <ul className="space-y-0.5 list-disc list-inside opacity-90">
+                    <li>{t('deleteProviderCascadeUsers')}</li>
+                    <li>{t('deleteProviderCascadeRooms')}</li>
+                    <li>{t('deleteProviderCascadeReservations')}</li>
+                    <li>{t('deleteProviderCascadeGuests')}</li>
+                    <li>{t('deleteProviderCascadeExpenses')}</li>
+                  </ul>
+                </div>
+                {deleteDialog?.licenseNo && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('deleteProviderLicenseNote', { license: deleteDialog.licenseNo })}
+                  </p>
+                )}
+                <p className="text-xs font-medium">
+                  {t('deleteProviderTypeToConfirm', { name: deleteDialog?.name || "" })}
+                </p>
+                <Input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={deleteDialog?.name || ""}
+                  className="h-10"
+                  autoComplete="off"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {t('cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting || deleteConfirmText.trim() !== deleteDialog?.name.trim()}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteProvider();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  {t('deleting')}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  {t('btnDeleteConfirm')}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
