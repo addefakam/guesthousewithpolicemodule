@@ -26,6 +26,19 @@ export async function GET(req: NextRequest) {
     // This is needed because Prisma's connection pool may have cached
     // the old enum values .
 
+    // ── Count ALL providers (regardless of status) ──
+    // The rooms breakdown below filters by APPROVED (since PENDING /
+    // REJECTED / SUSPENDED providers have no operational rooms to show),
+    // but the "totalProviders" KPI on the police rooms screen must match
+    // the count shown on the main system's providers page (which lists
+    // ALL providers regardless of status). Without this separate count,
+    // the police app showed 22 (APPROVED only) while the main system
+    // showed 31 (all providers) — a confusing discrepancy.
+    const allProvidersCountRaw = await db.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count FROM "Provider"
+    `;
+    const allProvidersCount = Number(allProvidersCountRaw[0].count);
+
     // ── City-wide room statistics ──
     // Use raw SQL for ALL room queries to avoid Prisma's prepared-statement
     // cache issue with the RoomType enum .
@@ -139,7 +152,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       // City-wide summary
       summary: {
-        totalProviders: providers.length,
+        // totalProviders = ALL providers (regardless of status), so the
+        // police app's "Guesthouses" KPI matches the main system's
+        // providers page total. The per-provider rooms breakdown below
+        // is filtered to APPROVED only (PENDING/REJECTED providers have
+        // no operational rooms to show), but the count shown to the user
+        // includes every registered guesthouse in the city.
+        totalProviders: allProvidersCount,
+        // approvedProviders = the count of APPROVED providers only, kept
+        // for reference so the police app can show "22 of 31 approved"
+        // if needed.
+        approvedProviders: providers.length,
         totalRooms,
         totalCapacity,
         availableRooms,
