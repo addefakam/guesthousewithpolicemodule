@@ -938,7 +938,12 @@
     "calendarLegendTurnover": "የመውጫ ቀን — ለአዲስ መግቢያ ክፍት ነው",
     "familyRoomTitle": "የቤተሰብ ቀጠሮ",
     "familyRoomSummary": "መሪ + {{total}} አብረዋቸው የሚጓዙ ({{family}} ቤተሰብ፣ {{security}} ጥበቃ፣ {{servant}} አገልጋዮች፣ {{driver}} አሽከርካሪዎች)",
-    "editCompanions": "አስተካክል"
+    "editCompanions": "አስተካክል",
+    "checkinTooEarly": "ከቀጥሮው የመግቢያ ቀን ({{arrival}}) በፊት መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
+    "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
   },
   "reports": {
     "pageTitle": "ሪፖርቶች እና ትንታኔዎች",
@@ -3157,7 +3162,12 @@
     "paymentPaid": "ተከፈለ",
     "paymentPartial": "ከፊል",
     "paymentOverdue": "ጊዜው አልፎበታል",
-    "paymentPending": "ያልተከፈለ"
+    "paymentPending": "ያልተከፈለ",
+    "checkinTooEarly": "ከቀጥሮው የመግቢያ ቀን ({{arrival}}) በፊት መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
+    "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
+    "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

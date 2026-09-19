@@ -278,6 +278,69 @@ function calcDaysUntil(date: string): number {
   }
 }
 
+// Returns today's date as YYYY-MM-DD in LOCAL time (the user's wall clock),
+// matching how the backend computes todayStr in the check-in route. Using
+// UTC here would cause false-positive "too early/late" errors at the edges
+// of the day for an Ethiopian guesthouse (UTC+3).
+function localTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// ── Check-in eligibility (mirrors the 3 backend gates) ──
+//   1. Reservation must be UPCOMING (still actionable)
+//   2. Today's date ≥ scheduled checkIn date  (not before arrival)
+//   3. Today's date ≤ scheduled checkOut date  (not after planned checkout)
+//   4. Room is not already OCCUPIED by another active reservation
+//      (passed-in room status is consulted when available — the API is
+//      the final source of truth and will return a clear 409 if the
+//      client-side check is bypassed).
+//
+// Returns an object with `canCheckIn` boolean and `reason` translation
+// key (or null) so the UI can render a helpful hint instead of just
+// hiding the button.
+type CheckInEligibility = {
+  canCheckIn: boolean;
+  reasonKey: string | null;
+  reasonContext: Record<string, string | number> | null;
+};
+
+function getCheckInEligibility(res: Reservation, roomStatus?: string): CheckInEligibility {
+  if (res.status !== "UPCOMING") {
+    return {
+      canCheckIn: false,
+      reasonKey: res.status === "ACTIVE" ? "checkinAlreadyActive" : "checkinNotUpcoming",
+      reasonContext: { status: res.status },
+    };
+  }
+  const today = localTodayStr();
+  if (today < res.checkIn) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooEarly",
+      reasonContext: { arrival: res.checkIn, today },
+    };
+  }
+  if (today > res.checkOut) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooLate",
+      reasonContext: { checkout: res.checkOut, today },
+    };
+  }
+  // Room-occupied check — only consult `roomStatus` if the caller passed it.
+  // The reservations tab doesn't have room.status readily, so it'll just
+  // rely on the API to return a clear 409 in that rare case.
+  if (roomStatus === "OCCUPIED") {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinRoomOccupied",
+      reasonContext: null,
+    };
+  }
+  return { canCheckIn: true, reasonKey: null, reasonContext: null };
+}
+
 function parseAmenities(amenitiesStr: string | null | undefined): string[] {
   if (!amenitiesStr) return [];
   try {
@@ -1022,7 +1085,8 @@ export default function MobileApp() {
         )}
         {activeTab === "reservations" && (
           <ReservationsTab
-            reservations={reservations} onCheckin={(r) => setConfirmAction({ type: "checkin", res: r })}
+            reservations={reservations} rooms={rooms}
+            onCheckin={(r) => setConfirmAction({ type: "checkin", res: r })}
             onCheckout={(r) => setConfirmAction({ type: "checkout", res: r })}
             onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
             onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
@@ -1559,8 +1623,9 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
   );
 }
 
-function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onCancel, t, formatDate, formatCurrency }: {
+function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onCancel, t, formatDate, formatCurrency }: {
   reservations: Reservation[];
+  rooms: Room[];
   onCheckin: (r: Reservation) => void; onCheckout: (r: Reservation) => void;
   onExtend: (r: Reservation) => void; onEarlyCheckout: (r: Reservation) => void;
   onEdit: (r: Reservation) => void; onCancel: (r: Reservation) => void;
@@ -1649,12 +1714,42 @@ function ReservationsTab({ reservations, onCheckin, onCheckout, onExtend, onEarl
                     className="flex-1 rounded-xl bg-violet-100 text-violet-700 py-2 text-xs font-semibold active:bg-violet-200 transition-colors"
                   >{t("btnEdit")}</button>
                 )}
-                {res.status === "UPCOMING" && (
-                  <button
-                    onClick={() => onCheckin(res)}
-                    className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors"
-                  >{t("btnCheckIn")}</button>
-                )}
+                {res.status === "UPCOMING" && (() => {
+                  // Look up the reservation's room to also enforce the
+                  // "room not already OCCUPIED" rule client-side. If the
+                  // room lookup fails (e.g. the API returned a room we
+                  // don't have in our local list), skip the room-status
+                  // check — the API will still enforce it server-side.
+                  const resRoom = res.room?.id
+                    ? rooms.find((r) => r.id === res.room!.id)
+                    : undefined;
+                  const eligibility = getCheckInEligibility(res, resRoom?.status);
+                  if (eligibility.canCheckIn) {
+                    return (
+                      <button
+                        onClick={() => onCheckin(res)}
+                        className="flex-1 rounded-xl bg-emerald-600 text-white py-2 text-xs font-semibold active:bg-emerald-700 transition-colors"
+                      >{t("btnCheckIn")}</button>
+                    );
+                  }
+                  // Blocked — show a disabled button + tiny hint. The
+                  // hint explains the reason (too early / too late /
+                  // room occupied) so the operator doesn't have to
+                  // tap and read the toast to find out.
+                  return (
+                    <div className="flex-1 min-w-0">
+                      <button
+                        disabled
+                        className="w-full rounded-xl bg-gray-200 text-gray-400 py-2 text-xs font-semibold cursor-not-allowed"
+                      >{t("btnCheckIn")}</button>
+                      {eligibility.reasonKey && (
+                        <p className="text-[10px] text-amber-700 leading-tight mt-0.5 truncate">
+                          {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {res.status === "UPCOMING" && (
                   <button
                     onClick={() => onCancel(res)}
@@ -1901,12 +1996,34 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
           </div>
 
           <div className="flex gap-2 pt-1">
-            {isUpcoming && (
-              <button
-                onClick={() => onCheckin(activeRes)}
-                className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-xs font-semibold"
-              >{t("btnCheckIn")}</button>
-            )}
+            {isUpcoming && (() => {
+              const eligibility = getCheckInEligibility(activeRes, room.status);
+              if (eligibility.canCheckIn) {
+                return (
+                  <button
+                    onClick={() => onCheckin(activeRes)}
+                    className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-xs font-semibold"
+                  >{t("btnCheckIn")}</button>
+                );
+              }
+              // Check-in is blocked — show a disabled, grayed-out button
+              // plus a hint explaining WHY (mirrors the API's structured
+              // 409 responses). Better UX than just hiding the action —
+              // the operator immediately understands what's wrong.
+              return (
+                <div className="flex-1 space-y-1">
+                  <button
+                    disabled
+                    className="w-full rounded-lg bg-gray-200 text-gray-400 py-2 text-xs font-semibold cursor-not-allowed"
+                  >{t("btnCheckIn")}</button>
+                  {eligibility.reasonKey && (
+                    <p className="text-[10px] text-amber-700 leading-tight px-1">
+                      {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
             {isActive && (
               <>
                 <button onClick={() => onEarlyCheckout(activeRes)} className="flex-1 rounded-lg bg-rose-100 text-rose-700 py-2 text-xs font-semibold">{t("btnEarlyCheckout")}</button>

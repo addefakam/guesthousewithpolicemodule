@@ -156,6 +156,51 @@ interface Reservation {
   exceptionReason?: string;
 }
 
+// ── Check-in eligibility (mirrors the 3 backend gates) ──
+//   1. Reservation must be UPCOMING
+//   2. Today's date ≥ scheduled checkIn   (not before arrival)
+//   3. Today's date ≤ scheduled checkOut   (not after planned checkout)
+//   4. Room is not already OCCUPIED (consulted when the caller passes
+//      a room status; otherwise the API enforces it server-side)
+//
+// The web admin's Reservations page doesn't have room.status readily
+// accessible for each row, so we skip the room-occupied check on the
+// client and rely on the backend's structured 409 response for that
+// rare case. Date checks are local (not UTC) to match the operator's
+// wall clock for an Ethiopian guesthouse (UTC+3).
+type CheckInEligibility = {
+  canCheckIn: boolean;
+  reasonKey: string | null;
+  reasonContext: Record<string, string | number> | null;
+};
+
+function getCheckInEligibility(res: Reservation): CheckInEligibility {
+  if (res.status !== "UPCOMING") {
+    return {
+      canCheckIn: false,
+      reasonKey: res.status === "ACTIVE" ? "checkinAlreadyActive" : "checkinNotUpcoming",
+      reasonContext: { status: res.status },
+    };
+  }
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (todayStr < res.checkIn) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooEarly",
+      reasonContext: { arrival: res.checkIn, today: todayStr },
+    };
+  }
+  if (todayStr > res.checkOut) {
+    return {
+      canCheckIn: false,
+      reasonKey: "checkinTooLate",
+      reasonContext: { checkout: res.checkOut, today: todayStr },
+    };
+  }
+  return { canCheckIn: true, reasonKey: null, reasonContext: null };
+}
+
 const STATUS_TABS = ["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED", "FREE_ROOMS"] as const;
 
 // Human-readable labels for each status — used in tab pills, table badges,
@@ -950,15 +995,40 @@ export default function ReservationsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          {res.status === "UPCOMING" && (
-                            <DropdownMenuItem
-                              onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
-                              className="text-emerald-700 focus:text-emerald-700"
-                            >
-                              <LogIn className="mr-2 h-4 w-4" />
-                              Check In
-                            </DropdownMenuItem>
-                          )}
+                          {res.status === "UPCOMING" && (() => {
+                            const eligibility = getCheckInEligibility(res);
+                            if (eligibility.canCheckIn) {
+                              return (
+                                <DropdownMenuItem
+                                  onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
+                                  className="text-emerald-700 focus:text-emerald-700"
+                                >
+                                  <LogIn className="mr-2 h-4 w-4" />
+                                  Check In
+                                </DropdownMenuItem>
+                              );
+                            }
+                            // Check-in blocked — render a disabled item with
+                            // a hint explaining why. The hint comes from the
+                            // reservations namespace and matches the
+                            // structured 409 the API returns when the client
+                            // check is bypassed.
+                            return (
+                              <DropdownMenuItem
+                                disabled
+                                className="text-gray-400 focus:text-gray-400 cursor-not-allowed"
+                                title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
+                              >
+                                <LogIn className="mr-2 h-4 w-4 opacity-40" />
+                                <span className="opacity-60">Check In</span>
+                                {eligibility.reasonKey && (
+                                  <span className="ml-1 text-[10px] text-amber-600 truncate">
+                                    · {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                                  </span>
+                                )}
+                              </DropdownMenuItem>
+                            );
+                          })()}
                           {res.status === "ACTIVE" && (
                             <DropdownMenuItem
                               onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
@@ -1150,11 +1220,32 @@ export default function ReservationsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {res.status === "UPCOMING" && (
-                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
-                        <LogIn className="mr-2 h-4 w-4" /> Check In
-                      </DropdownMenuItem>
-                    )}
+                    {res.status === "UPCOMING" && (() => {
+                      const eligibility = getCheckInEligibility(res);
+                      if (eligibility.canCheckIn) {
+                        return (
+                          <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
+                            <LogIn className="mr-2 h-4 w-4" /> Check In
+                          </DropdownMenuItem>
+                        );
+                      }
+                      // Blocked — disabled item with inline reason hint.
+                      return (
+                        <DropdownMenuItem
+                          disabled
+                          className="text-gray-400 focus:text-gray-400 cursor-not-allowed"
+                          title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
+                        >
+                          <LogIn className="mr-2 h-4 w-4 opacity-40" />
+                          <span className="opacity-60">Check In</span>
+                          {eligibility.reasonKey && (
+                            <span className="ml-1 text-[10px] text-amber-600 truncate">
+                              · {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                            </span>
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })()}
                     {res.status === "ACTIVE" && (
                       <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkout", reservation: res })}>
                         <LogOut className="mr-2 h-4 w-4" /> Check Out

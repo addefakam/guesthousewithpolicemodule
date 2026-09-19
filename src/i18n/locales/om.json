@@ -938,7 +938,12 @@
     "calendarLegendTurnover": "Guyyaa ba'ii — seenuu haaraaaf ni bana",
     "familyRoomTitle": "Qabiyyee Maatii",
     "familyRoomSummary": "Bulaa + {{total}} waliin deeman ({{family}} maatii, {{security}} eegumsa, {{servant}} tajaajilaa, {{driver}} konkolaachisaa)",
-    "editCompanions": "Gulaali"
+    "editCompanions": "Gulaali",
+    "checkinTooEarly": "Guyaa dhufuu eegalu ({{arrival}}) isa dura seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
+    "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
   },
   "reports": {
     "pageTitle": "Gabaasaa fi Suphaa",
@@ -2199,7 +2204,12 @@
     "paymentPaid": "Kaffale",
     "paymentPartial": "Walakkaa",
     "paymentOverdue": "Yero darbe",
-    "paymentPending": "Hin kaffalamne"
+    "paymentPending": "Hin kaffalamne",
+    "checkinTooEarly": "Guyaa dhufuu eegalu ({{arrival}}) isa dura seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
+    "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
+    "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

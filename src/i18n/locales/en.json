@@ -938,7 +938,12 @@
     "calendarLegendTurnover": "Checkout day — open for a new arrival",
     "familyRoomTitle": "Family Reservation",
     "familyRoomSummary": "Leader + {{total}} companions ({{family}} family, {{security}} security, {{servant}} servants, {{driver}} drivers)",
-    "editCompanions": "Edit"
+    "editCompanions": "Edit",
+    "checkinTooEarly": "Cannot check in before arrival date ({{arrival}}). Today is {{today}}.",
+    "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
+    "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
+    "checkinAlreadyActive": "Guest is already checked in.",
+    "checkinNotUpcoming": "Reservation is no longer upcoming."
   },
   "reports": {
     "pageTitle": "Reports & Analytics",
@@ -3255,7 +3260,12 @@
     "paymentPaid": "Paid",
     "paymentPartial": "Partial",
     "paymentOverdue": "Overdue",
-    "paymentPending": "Unpaid"
+    "paymentPending": "Unpaid",
+    "checkinTooEarly": "Cannot check in before arrival date ({{arrival}}). Today is {{today}}.",
+    "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
+    "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
+    "checkinAlreadyActive": "Guest is already checked in.",
+    "checkinNotUpcoming": "Reservation is no longer upcoming."
   },
   "policeApp": {
     "appName": "GHMS Police",
