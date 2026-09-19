@@ -114,7 +114,8 @@ export default function LoginPage() {
       // email is OPTIONAL — validated below only if provided.
       !regGuestHouseName.trim() ||
       !regType ||
-      // licenseNo is OPTIONAL — defaults to empty string at the API.
+      // License No is REQUIRED — legal business identifier.
+      !regLicenseNo.trim() ||
       !regUsername.trim() ||
       !regPassword.trim() ||
       !regSubCity ||
@@ -147,10 +148,8 @@ export default function LoginPage() {
       if (regSubCity) formData.append("subCity", regSubCity);
       if (regWoreda) formData.append("woreda", regWoreda);
       formData.append("type", regType);
-      // licenseNo is OPTIONAL — only append if provided.
-      if (regLicenseNo.trim()) {
-        formData.append("licenseNo", regLicenseNo.trim());
-      }
+      // License No is REQUIRED — always append.
+      formData.append("licenseNo", regLicenseNo.trim());
       formData.append("username", regUsername.trim());
       formData.append("password", regPassword);
       // License file upload was removed — no UI for it anymore.
@@ -359,13 +358,14 @@ export default function LoginPage() {
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="reg-license">
-                          {t("licenseNo")} <span className="text-gray-400 text-xs">(optional)</span>
+                          {t("licenseNo")} <span className="text-rose-500">*</span>
                         </Label>
                         <Input
                           id="reg-license"
                           placeholder={t("licensePlaceholder")}
                           value={regLicenseNo}
                           onChange={(e) => setRegLicenseNo(e.target.value)}
+                          required
                         />
                       </div>
                     </div>

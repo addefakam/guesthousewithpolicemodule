@@ -79,6 +79,15 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+      // License No is REQUIRED and must be unique across all guesthouses.
+      // This is the legal business license number issued by the government —
+      // no two guesthouses can share the same license.
+      if (!licenseNo?.trim()) {
+        return NextResponse.json(
+          { error: "License No is required", code: "LICENSE_NO_REQUIRED" },
+          { status: 400 }
+        );
+      }
       if (!isValidPhone(phone.trim())) {
         return NextResponse.json(
           { error: "Invalid phone number format. Use 7-15 digits with optional + prefix." },
@@ -98,12 +107,31 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Username uniqueness (existing check)
       const existingUser = await db.user.findUnique({
         where: { username: username.trim() },
       });
       if (existingUser) {
         return NextResponse.json(
           { error: "Username is already taken" },
+          { status: 409 }
+        );
+      }
+
+      // License No uniqueness — enforced at API layer so we can return
+      // a clean error message. The DB-level @unique constraint (added
+      // in the schema migration) provides defense-in-depth against races.
+      const existingLicense = await db.provider.findFirst({
+        where: { licenseNo: licenseNo.trim() },
+        select: { id: true, name: true },
+      });
+      if (existingLicense) {
+        return NextResponse.json(
+          {
+            error: `License No "${licenseNo.trim()}" is already registered to another guesthouse (${existingLicense.name}).`,
+            code: "LICENSE_NO_TAKEN",
+            details: { licenseNo: licenseNo.trim(), existingProviderId: existingLicense.id },
+          },
           { status: 409 }
         );
       }
@@ -125,7 +153,7 @@ export async function POST(req: NextRequest) {
             email: email?.trim() || "",
             address: address?.trim() || "",
             type: type || "GUEST_HOUSE",
-            licenseNo: licenseNo?.trim() || "",
+            licenseNo: licenseNo.trim(),
             licenseFile: licenseFileUrl,
             status: "APPROVED",
             approvedBy: auth.userId || auth.userName || "superuser",
@@ -176,6 +204,15 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    // License No is REQUIRED for public registration too — same constraint
+    // as the superuser path. The license number is the legal business
+    // identifier and must be present + unique.
+    if (!licenseNo?.trim()) {
+      return NextResponse.json(
+        { error: "License No is required", code: "LICENSE_NO_REQUIRED" },
+        { status: 400 }
+      );
+    }
 
     if (!isValidPhone(phone.trim())) {
       return NextResponse.json(
@@ -200,6 +237,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // License No uniqueness — same check as the superuser path.
+    const existingLicense = await db.provider.findFirst({
+      where: { licenseNo: licenseNo.trim() },
+      select: { id: true, name: true },
+    });
+    if (existingLicense) {
+      return NextResponse.json(
+        {
+          error: `License No "${licenseNo.trim()}" is already registered to another guesthouse (${existingLicense.name}).`,
+          code: "LICENSE_NO_TAKEN",
+          details: { licenseNo: licenseNo.trim(), existingProviderId: existingLicense.id },
+        },
+        { status: 409 }
+      );
+    }
+
     let licenseFileUrl = "";
     if (licenseFile) {
       const bytes = await licenseFile.arrayBuffer();
@@ -220,7 +273,7 @@ export async function POST(req: NextRequest) {
           latitude,
           longitude,
           type,
-          licenseNo,
+          licenseNo: licenseNo.trim(),
           licenseFile: licenseFileUrl,
           status: "PENDING",
         },
@@ -247,7 +300,11 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: error.message }, { status: error.statusCode });
         }
     const message = error instanceof Error ? error.message : "Failed to register provider";
-    const status = message.includes("required") || message.includes("taken") ? 400 : 500;
+    // 400 = missing/required fields, 409 = uniqueness conflict (username or licenseNo taken)
+    const status =
+      message.includes("required") ? 400 :
+      message.includes("taken") || message.includes("already registered") ? 409 :
+      500;
     return NextResponse.json({ error: message }, { status });
   }
 }

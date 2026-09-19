@@ -301,12 +301,14 @@ export default function ProvidersPage() {
       !registerForm.phone.trim() ||
       // email is OPTIONAL — validated below only if provided.
       !registerForm.type ||
+      // License No is REQUIRED — legal business identifier.
+      !registerForm.licenseNo.trim() ||
       !registerForm.username.trim() ||
       !registerForm.password.trim() ||
       !registerForm.subCity ||
       !registerForm.woreda
     ) {
-      // licenseNo is OPTIONAL — defaults to empty string at the API.
+      // licenseNo is REQUIRED at both the API and the form level.
       toast.error(t('fillRequiredFields'));
       return;
     }
@@ -435,7 +437,9 @@ export default function ProvidersPage() {
         if (!ghName) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Organization Name" }));
         if (!type) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Type" }));
         else if (!validTypes.includes(type)) errors.push(t('bulkRowInvalidType', { row: rowNum, value: type, valid: validTypes.join(", ") }));
-        // licenseNo is OPTIONAL for bulk import too — defaults to empty string.
+        // License No is now REQUIRED for bulk import too (matches the
+        // single-registration forms + the API enforcement).
+        if (!licenseNo) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "License No" }));
         if (!subCity) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Sub-City" }));
         else if (!validSubCities.includes(subCity)) errors.push(t('bulkRowInvalidSubCity', { row: rowNum, value: subCity, valid: validSubCities.join(", ") }));
         if (!woreda) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Woreda" }));
@@ -443,6 +447,20 @@ export default function ProvidersPage() {
         if (!username) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Username" }));
         if (!password) errors.push(t('bulkRowFieldEmpty', { row: rowNum, field: "Password" }));
         else if (password.length < 4) errors.push(t('bulkRowPasswordMinLength', { row: rowNum }));
+      });
+
+      // Detect duplicate License No values WITHIN the CSV itself —
+      // the server would catch them one by one and produce N error
+      // rows, but surfacing them up-front is a much better UX.
+      const licenseCounts: Record<string, number> = {};
+      rows.forEach((row) => {
+        const lic = (row["License No"] || "").trim();
+        if (lic) licenseCounts[lic] = (licenseCounts[lic] || 0) + 1;
+      });
+      Object.entries(licenseCounts).forEach(([lic, count]) => {
+        if (count > 1) {
+          errors.push(t('bulkDuplicateLicense', { license: lic, count }));
+        }
       });
 
       if (errors.length > 0) {
@@ -987,7 +1005,7 @@ export default function ProvidersPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="reg-license" className="text-sm">
-                      {t('labelLicenseNo')} <span className="text-gray-400 text-xs">(optional)</span>
+                      {t('labelLicenseNo')} <span className="text-rose-500">*</span>
                     </Label>
                     <Input
                       id="reg-license"
@@ -995,6 +1013,7 @@ export default function ProvidersPage() {
                       value={registerForm.licenseNo}
                       onChange={(e) => setRegisterForm((f) => ({ ...f, licenseNo: e.target.value }))}
                       className="bg-white"
+                      required
                     />
                   </div>
                 </div>

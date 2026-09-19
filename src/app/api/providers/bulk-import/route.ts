@@ -72,6 +72,14 @@ export async function POST(req: NextRequest) {
         failed++;
         continue;
       }
+      // License No is REQUIRED and must be unique — bulk import refuses
+      // rows with empty license numbers or duplicates (either within the
+      // CSV itself or against existing providers).
+      if (!licenseNo) {
+        errors.push(`Row ${rowNum}: License No is required`);
+        failed++;
+        continue;
+      }
 
       try {
         // Check for duplicate username
@@ -80,6 +88,19 @@ export async function POST(req: NextRequest) {
         });
         if (existingUser) {
           errors.push(`Row ${rowNum}: Username "${username}" is already taken`);
+          failed++;
+          continue;
+        }
+
+        // Check for duplicate license number — both against existing
+        // providers AND against earlier rows in this same CSV (which
+        // would have been inserted in a previous iteration of this loop).
+        const existingLicense = await db.provider.findFirst({
+          where: { licenseNo },
+          select: { id: true, name: true },
+        });
+        if (existingLicense) {
+          errors.push(`Row ${rowNum}: License No "${licenseNo}" is already registered to "${existingLicense.name}"`);
           failed++;
           continue;
         }

@@ -319,7 +319,10 @@
     "submitting": "በማስገባት ላይ...",
     "registerGuestHouse": "የእንግዳ ማረፊያ ይመዝገቡ",
     "reviewNotice": "ምዝገባዎ ከመጀመሩ በፊት በአስተዳዳሪ ይገመገማል።",
-    "resetPassword": "የይለፍ ቃል ዳግም አስጀምር"
+    "resetPassword": "የይለፍ ቃል ዳግም አስጀምር",
+    "errorLicenseNoRequired": "የፍቃድ ቁጥር ያስፈልጋል",
+    "errorLicenseNoTaken": "የፍቃድ ቁጥር ቀደም ሲል ለሌላ የእንግዳ ቤት ተመዝግቧል",
+    "bulkDuplicateLicense": "ተደጋጋሚ የፍቃድ ቁጥር '{{license}}' በፋይሉ ውስጥ {{count}} ጊዜ ተገኝቷል"
   },
   "dashboard": {
     "errorLoadFailed": "ዳሽቦርድ መጫን አልተሳካም",
@@ -1521,7 +1524,10 @@
     "statusPending": "በመጠባበቅ ላይ",
     "statusApproved": "ጸድቋል",
     "statusRejected": "ውድቅ የተደረገ",
-    "statusSuspended": "ታግዷል"
+    "statusSuspended": "ታግዷል",
+    "errorLicenseNoRequired": "የፍቃድ ቁጥር ያስፈልጋል",
+    "errorLicenseNoTaken": "የፍቃድ ቁጥር ቀደም ሲል ለሌላ የእንግዳ ቤት ተመዝግቧል",
+    "bulkDuplicateLicense": "ተደጋጋሚ የፍቃድ ቁጥር '{{license}}' በፋይሉ ውስጥ {{count}} ጊዜ ተገኝቷል"
   },
   "operatorFeatures": {
     "pageTitle": "የኦፕሬተር ገጽታዎች",
@@ -3181,7 +3187,10 @@
     "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
     "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
     "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
-    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።",
+    "errorLicenseNoRequired": "የፍቃድ ቁጥር ያስፈልጋል",
+    "errorLicenseNoTaken": "የፍቃድ ቁጥር ቀደም ሲል ለሌላ የእንግዳ ቤት ተመዝግቧል",
+    "bulkDuplicateLicense": "ተደጋጋሚ የፍቃድ ቁጥር '{{license}}' በፋይሉ ውስጥ {{count}} ጊዜ ተገኝቷል"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",

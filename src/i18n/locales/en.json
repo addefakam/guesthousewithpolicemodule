@@ -319,7 +319,10 @@
     "submitting": "Submitting...",
     "registerGuestHouse": "Register Guest House",
     "reviewNotice": "Your registration will be reviewed by an administrator before activation.",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "errorLicenseNoRequired": "License No is required",
+    "errorLicenseNoTaken": "License No is already registered to another guesthouse",
+    "bulkDuplicateLicense": "Duplicate License No '{{license}}' appears {{count}} time(s) in the file"
   },
   "dashboard": {
     "errorLoadFailed": "Failed to load dashboard",
@@ -1521,7 +1524,10 @@
     "statusPending": "Pending",
     "statusApproved": "Approved",
     "statusRejected": "Rejected",
-    "statusSuspended": "Suspended"
+    "statusSuspended": "Suspended",
+    "errorLicenseNoRequired": "License No is required",
+    "errorLicenseNoTaken": "License No is already registered to another guesthouse",
+    "bulkDuplicateLicense": "Duplicate License No '{{license}}' appears {{count}} time(s) in the file"
   },
   "operatorFeatures": {
     "pageTitle": "Operator Features",
@@ -3279,7 +3285,10 @@
     "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
     "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
     "checkinAlreadyActive": "Guest is already checked in.",
-    "checkinNotUpcoming": "Reservation is no longer upcoming."
+    "checkinNotUpcoming": "Reservation is no longer upcoming.",
+    "errorLicenseNoRequired": "License No is required",
+    "errorLicenseNoTaken": "License No is already registered to another guesthouse",
+    "bulkDuplicateLicense": "Duplicate License No '{{license}}' appears {{count}} time(s) in the file"
   },
   "policeApp": {
     "appName": "GHMS Police",

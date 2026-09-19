@@ -319,7 +319,10 @@
     "submitting": "Ergaa jira...",
     "registerGuestHouse": "Mana Keessummaa Galmeessi",
     "reviewNotice": "Galmeen keessan osoo hin eegalin dura bulchaadhaan ni qoratama.",
-    "resetPassword": "Jecha Darbii Haaromsi"
+    "resetPassword": "Jecha Darbii Haaromsi",
+    "errorLicenseNoRequired": "Lakkoofsa lasisaa barbaachisaa dha",
+    "errorLicenseNoTaken": "Lakkoofsa lasisaa haaraa qabiyyee kanaa sanaan galmaa'era",
+    "bulkDuplicateLicense": "Lakkoofsa lasisaa dabbataa '{{license}}' failii keessatti {{count}} ilaa argame"
   },
   "dashboard": {
     "errorLoadFailed": "Daashboordii fiduun hin milkoofne",
@@ -1521,7 +1524,10 @@
     "statusPending": "Eegaa jira",
     "statusApproved": "Mirkanaa'e",
     "statusRejected": "Fodame",
-    "statusSuspended": "Cufameera"
+    "statusSuspended": "Cufameera",
+    "errorLicenseNoRequired": "Lakkoofsa lasisaa barbaachisaa dha",
+    "errorLicenseNoTaken": "Lakkoofsa lasisaa haaraa qabiyyee kanaa sanaan galmaa'era",
+    "bulkDuplicateLicense": "Lakkoofsa lasisaa dabbataa '{{license}}' failii keessatti {{count}} ilaa argame"
   },
   "operatorFeatures": {
     "pageTitle": "Amaloota Hojjettootaa",
@@ -2223,7 +2229,10 @@
     "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
     "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
     "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
-    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru.",
+    "errorLicenseNoRequired": "Lakkoofsa lasisaa barbaachisaa dha",
+    "errorLicenseNoTaken": "Lakkoofsa lasisaa haaraa qabiyyee kanaa sanaan galmaa'era",
+    "bulkDuplicateLicense": "Lakkoofsa lasisaa dabbataa '{{license}}' failii keessatti {{count}} ilaa argame"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",

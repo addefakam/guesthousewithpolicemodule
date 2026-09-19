@@ -115,7 +115,11 @@ model Provider {
   email       String          @default("")
   address     String          @default("")
   type        String          @default("GUEST_HOUSE")
-  licenseNo   String          @default("")
+  // License No is the legal business identifier issued by the government.
+  // Required + unique — no two guesthouses can share the same license.
+  // The DB-level @unique provides defense-in-depth against race conditions
+  // on top of the API-level check in /api/providers POST.
+  licenseNo   String          @unique
   licenseFile String          @default("")
   status      ProviderStatus  @default(PENDING)
   latitude    Float           @default(9.02)

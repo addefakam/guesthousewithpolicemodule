@@ -102,7 +102,8 @@ export function MobileLoginPage() {
     e.preventDefault();
     setRegError("");
 
-    // Required fields validation (email + licenseNo are optional).
+    // Required fields validation (only email is optional now — licenseNo
+    // is REQUIRED since it's the legal business identifier).
     if (
       !regName.trim() ||
       !regPhone.trim() ||
@@ -111,7 +112,8 @@ export function MobileLoginPage() {
       !regUsername.trim() ||
       !regPassword.trim() ||
       !regSubCity ||
-      !regWoreda
+      !regWoreda ||
+      !regLicenseNo.trim()
     ) {
       setRegError(t("regErrorEmptyFields") || "Please fill all required fields.");
       return;
@@ -144,10 +146,8 @@ export function MobileLoginPage() {
       if (regSubCity) formData.append("subCity", regSubCity);
       if (regWoreda) formData.append("woreda", regWoreda);
       formData.append("type", regType);
-      // License No is OPTIONAL.
-      if (regLicenseNo.trim()) {
-        formData.append("licenseNo", regLicenseNo.trim());
-      }
+      // License No is now REQUIRED — always append.
+      formData.append("licenseNo", regLicenseNo.trim());
       formData.append("username", regUsername.trim());
       formData.append("password", regPassword);
 
@@ -464,10 +464,10 @@ export function MobileLoginPage() {
                   </div>
                 </div>
 
-                {/* License No (optional) */}
+                {/* License No (required + unique) */}
                 <div>
                   <label className={labelClass}>
-                    {t("regLicenseNo") || "License No"} <span className="text-slate-500 text-[10px]">(optional)</span>
+                    {t("regLicenseNo") || "License No"} <span className="text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -475,6 +475,7 @@ export function MobileLoginPage() {
                     onChange={(e) => setRegLicenseNo(e.target.value)}
                     placeholder={t("regLicenseNoPh") || "GH/2024/0001"}
                     className={inputClass}
+                    required
                   />
                 </div>
 
