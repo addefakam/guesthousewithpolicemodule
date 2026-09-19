@@ -261,7 +261,13 @@
     "previous": "ቀዳሚ",
     "next": "ቀጣይ",
     "active": "ንቁ",
-    "inactive": "የማይንቀሳቀስ"
+    "inactive": "የማይንቀሳቀስ",
+    "guestBadgeEarlyCheckout": "ቀዳሚ መውጣት",
+    "guestBadgeExtended": "ተራዝሟል",
+    "guestBadgeRoomShift": "ክፍል ተቀይሯል",
+    "guestBadgeCancelled": "ተሰርዟል",
+    "guestBadgeUpdated": "ተዘምኗል",
+    "thHistory": "ታሪክ"
   },
   "login": {
     "errorEmptyCredentials": "እባክዎ የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ።",
@@ -1209,7 +1215,8 @@
     "checkinTooLate": "ከቀጥሮው የመውጫ ቀን ({{checkout}}) በኋላ መግባት አይቻልም። ዛሬ {{today}} ነው።",
     "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
     "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
-    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።"
+    "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።",
+    "thHistory": "ታሪክ"
   },
   "operations": {
     "title": "ተግባራት",
@@ -2237,7 +2244,8 @@
     "detailAddress": "አድራሻ",
     "detailRegistered": "የተመዘገበ",
     "detailNotes": "ማስታወሻዎች",
-    "new": "አዲስ"
+    "new": "አዲስ",
+    "thHistory": "ታሪክ"
   },
   "suspectAlerts": {
     "pageTitle": "ተጠርጣሪ ማስጠንቀቂያ",

@@ -261,7 +261,13 @@
     "previous": "Previous",
     "next": "Next",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "guestBadgeEarlyCheckout": "Ba'iinsa dabalee",
+    "guestBadgeExtended": "Dheerateera",
+    "guestBadgeRoomShift": "Kaba jijjiirame",
+    "guestBadgeCancelled": "Haqame",
+    "guestBadgeUpdated": "Haaroomsame",
+    "thHistory": "Seenaa"
   },
   "login": {
     "errorEmptyCredentials": "Maaloo maqaa fayyadamaa fi jecha iccitii galchaa.",
@@ -1209,7 +1215,8 @@
     "checkinTooLate": "Guyaa ba'iinsaa ({{checkout}}) isa booda seenuu hin danda'u. Har'a {{today}} dha.",
     "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
     "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
-    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru."
+    "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru.",
+    "thHistory": "Seenaa"
   },
   "operations": {
     "title": "Hojiiwwan",
@@ -2567,7 +2574,8 @@
     "detailAddress": "Address",
     "detailRegistered": "Registered",
     "detailNotes": "Notes",
-    "new": "new"
+    "new": "new",
+    "thHistory": "Seenaa"
   },
   "suspectAlerts": {
     "pageTitle": "Suspect Alerts",

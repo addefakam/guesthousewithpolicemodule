@@ -17,9 +17,10 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { apiPoliceActiveReservations } from "@/lib/api";
+import { apiPoliceActiveReservations, apiGetGuestLifecycle } from "@/lib/api";
 import { ErrorBox, EmptyState } from "@/components/police-app/screens/rooms-screen";
 import { BRAND } from "@/lib/police-app-status";
+import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
 interface ActiveReservation {
   id: string;
@@ -27,6 +28,7 @@ interface ActiveReservation {
   checkIn: string;
   checkOut: string;
   nights: number;
+  guestId: string;
   guestName: string;
   guestPhone: string;
   guestIdNumber: string;
@@ -49,13 +51,45 @@ export default function GuestsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StayFilter>("ALL");
+  // Per-guest lifecycle summaries — powers the status-change badges
+  // (early exit, extended, room shifted, cancelled) on each stay card.
+  const [lifecycleMap, setLifecycleMap] = useState<Record<string, GuestLifecycleSummary>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await apiPoliceActiveReservations();
-      setItems(res?.items ?? []);
+      const list = res?.items ?? [];
+      setItems(list);
+
+      // ── Fetch lifecycle summaries per unique guest ──
+      // Deduplicate by guestId since one guest can have at most one
+      // ACTIVE + one UPCOMING reservation. Non-blocking on failure.
+      try {
+        // Deduplicate by guestId — one guest can have at most one ACTIVE
+        // + one UPCOMING reservation, so we only need to fetch lifecycle
+        // once per guest. Cast to string[] for safe indexing below.
+        const uniqueGuestIds: string[] = Array.from(
+          new Set(list.map((r) => r.guestId).filter(Boolean))
+        ) as string[];
+        const summaries: Record<string, GuestLifecycleSummary> = {};
+        const BATCH = 8;
+        for (let i = 0; i < uniqueGuestIds.length; i += BATCH) {
+          const batch = uniqueGuestIds.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map((gid) => apiGetGuestLifecycle(gid))
+          );
+          results.forEach((r, idx) => {
+            if (r.status === "fulfilled" && r.value?.summary) {
+              summaries[batch[idx]] = r.value.summary as GuestLifecycleSummary;
+            }
+          });
+        }
+        setLifecycleMap(summaries);
+      } catch {
+        setLifecycleMap({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.errorGeneric"));
     } finally {
@@ -250,6 +284,19 @@ export default function GuestsScreen() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Status-change badges (early exit, extended stay,
+                        room shifted, cancelled) — derived from the
+                        guest's full reservation history via the
+                        lifecycle endpoint. Compact so multiple badges
+                        can fit on a single line. */}
+                    {lifecycleMap[r.guestId] && (
+                      <div className="mt-3 border-t border-slate-100 pt-2">
+                        <GuestLifecycleBadges
+                          summary={lifecycleMap[r.guestId]}
+                        />
+                      </div>
+                    )}
                   </div>
                 </li>
               );

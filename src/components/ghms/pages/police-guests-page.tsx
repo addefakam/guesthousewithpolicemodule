@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
-import { apiPoliceGuests } from "@/lib/api";
+import { apiPoliceGuests, apiGetGuestLifecycle } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { AddressDisplay } from "@/components/shared/address-fields";
+import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
 interface Guest {
   id: string;
@@ -96,6 +97,9 @@ export default function PoliceGuestsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Per-guest lifecycle summaries — powers the status-change badges
+  // (early exit, extended, room shifted, cancelled) in the History column.
+  const [lifecycleMap, setLifecycleMap] = useState<Record<string, GuestLifecycleSummary>>({});
 
   // Debounce search input (300ms) to avoid firing a request on every keystroke
   useEffect(() => {
@@ -115,9 +119,31 @@ export default function PoliceGuestsPage() {
         page,
         pageSize,
       });
-      setGuests(Array.isArray(data.guests) ? data.guests : []);
+      const list: Guest[] = Array.isArray(data.guests) ? data.guests : [];
+      setGuests(list);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
+
+      // ── Fetch lifecycle summaries for the current page of guests ──
+      // Non-blocking — failures just mean badges don't show. Batches of 8.
+      try {
+        const summaries: Record<string, GuestLifecycleSummary> = {};
+        const BATCH = 8;
+        for (let i = 0; i < list.length; i += BATCH) {
+          const batch = list.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map((g) => apiGetGuestLifecycle(g.id))
+          );
+          results.forEach((r, idx) => {
+            if (r.status === "fulfilled" && r.value?.summary) {
+              summaries[batch[idx].id] = r.value.summary as GuestLifecycleSummary;
+            }
+          });
+        }
+        setLifecycleMap(summaries);
+      } catch {
+        setLifecycleMap({});
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('failedToLoad');
       toast.error(message);
@@ -239,6 +265,7 @@ export default function PoliceGuestsPage() {
                     <TableHead>{t('common:thprovider')}</TableHead>
                     <TableHead>{t('common:thtotalSpent')}</TableHead>
                     <TableHead>{t('common:thstays')}</TableHead>
+                    <TableHead>{t('policeGuests:thHistory', 'History')}</TableHead>
                     <TableHead>{t('common:thvip')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -283,6 +310,12 @@ export default function PoliceGuestsPage() {
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(guest.totalSpent)}</TableCell>
                       <TableCell className="text-center">{guest.totalStays}</TableCell>
+                      <TableCell>
+                        <GuestLifecycleBadges
+                          summary={lifecycleMap[guest.id]}
+                          compact
+                        />
+                      </TableCell>
                       <TableCell className="text-center">
                         {guest.vip ? (
                           <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">

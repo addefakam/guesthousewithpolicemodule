@@ -10,6 +10,7 @@ import {
   apiCheckout,
   apiGetRooms,
   apiCreateReservation,
+  apiGetGuestLifecycle,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone } from "@/lib/utils";
@@ -38,6 +39,7 @@ import {
 } from "lucide-react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
+import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
 // ── Types ──
 interface Guest {
@@ -156,6 +158,10 @@ export default function AccommodationGuestsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  // Lifecycle summaries per guest — keys are guest IDs. Used to show
+  // status-change badges (early exit, extended, cancelled, room shifted)
+  // inline on each row of the guest search table.
+  const [lifecycleSummaries, setLifecycleSummaries] = useState<Record<string, GuestLifecycleSummary>>({});
 
   // Search & filter
   const [search, setSearch] = useState("");
@@ -188,12 +194,40 @@ export default function AccommodationGuestsPage() {
         apiGetReservations(),
         apiGetRooms(),
       ]);
-      setGuests(Array.isArray(gData) ? gData : []);
+      const gArr = Array.isArray(gData) ? gData : [];
+      setGuests(gArr);
       const rArr = Array.isArray(rData?.data) ? rData.data : Array.isArray(rData) ? rData : [];
       setReservations(rArr);
       // apiGetRooms already unwraps { rooms: [...] } to a plain array
       const raw = Array.isArray(rmData) ? rmData : Array.isArray(rmData?.rooms) ? rmData.rooms : [];
       setRooms(raw);
+
+      // ── Fetch lifecycle summaries for each guest ──
+      // This powers the status-change badges (early exit, extended,
+      // room shifted, cancelled) on the guest search table. Fetched
+      // in parallel with a small concurrency cap to avoid hammering
+      // the API — failures are non-blocking (badges simply don't show).
+      try {
+        const summaries: Record<string, GuestLifecycleSummary> = {};
+        // Process in batches of 8 to avoid spawning too many requests
+        // at once on guesthouses with hundreds of guests.
+        const BATCH = 8;
+        for (let i = 0; i < gArr.length; i += BATCH) {
+          const batch = gArr.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map((g) => apiGetGuestLifecycle(g.id))
+          );
+          results.forEach((res, idx) => {
+            if (res.status === "fulfilled" && res.value?.summary) {
+              summaries[batch[idx].id] = res.value.summary as GuestLifecycleSummary;
+            }
+          });
+        }
+        setLifecycleSummaries(summaries);
+      } catch {
+        // Non-blocking — badges just won't show.
+        setLifecycleSummaries({});
+      }
     } catch {
       toast.error(t("toastFailedLoadGuests"));
     } finally {
@@ -453,6 +487,10 @@ export default function AccommodationGuestsPage() {
                           {resStatusLabel(g.activeReservation.status)}
                         </Badge>
                       )}
+                      <GuestLifecycleBadges
+                        summary={lifecycleSummaries[g.id]}
+                        compact
+                      />
                     </div>
                   </div>
                   {g.activeReservation && g.activeReservation.room && (
@@ -507,6 +545,7 @@ export default function AccommodationGuestsPage() {
                     <TableHead>{t("thGuest", "Guest")}</TableHead>
                     <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
                     <TableHead>{t("thStatus", "Status")}</TableHead>
+                    <TableHead>{t("thHistory", "History")}</TableHead>
                     <TableHead>{t("thRoom", "Room")}</TableHead>
                     <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
                     <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
@@ -545,6 +584,12 @@ export default function AccommodationGuestsPage() {
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <GuestLifecycleBadges
+                          summary={lifecycleSummaries[g.id]}
+                          compact
+                        />
                       </TableCell>
                       <TableCell className="text-sm">
                         {g.activeReservation?.room ? (

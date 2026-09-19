@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       id: string; status: string; checkIn: string; checkOut: string;
       nights: number; totalCost: number; paidAmount: number; balance: number;
       secondGuestName: string | null; secondGuestIdNumber: string | null;
+      guestId: string | null;
       guestName: string; guestPhone: string; guestIdNumber: string; guestNationality: string;
       roomNumber: string; roomName: string; roomType: string;
       providerId: string; providerName: string; providerPhone: string; providerAddress: string;
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
         r."id", r."status", r."checkIn", r."checkOut",
         r."nights", r."totalCost", r."paidAmount", r."balance",
         r."secondGuestName", r."secondGuestIdNumber",
+        g."id" AS "guestId",
         g."name" AS "guestName", g."phone" AS "guestPhone",
         g."idNumber" AS "guestIdNumber", g."nationality" AS "guestNationality",
         rm."number" AS "roomNumber", rm."name" AS "roomName",
@@ -72,6 +74,7 @@ export async function GET(req: NextRequest) {
       totalCost: r.totalCost,
       paidAmount: r.paidAmount,
       balance: r.balance,
+      guestId: r.guestId || "",
       guestName: r.guestName || "—",
       guestPhone: r.guestPhone || "",
       guestIdNumber: r.guestIdNumber || "",

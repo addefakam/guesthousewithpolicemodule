@@ -261,7 +261,13 @@
     "previous": "Previous",
     "next": "Next",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "guestBadgeEarlyCheckout": "Early exit",
+    "guestBadgeExtended": "Extended",
+    "guestBadgeRoomShift": "Room shifted",
+    "guestBadgeCancelled": "Cancelled",
+    "guestBadgeUpdated": "Updated",
+    "thHistory": "History"
   },
   "login": {
     "errorEmptyCredentials": "Please enter both username and password.",
@@ -1209,7 +1215,8 @@
     "checkinTooLate": "Cannot check in after checkout date ({{checkout}}). Today is {{today}}.",
     "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
     "checkinAlreadyActive": "Guest is already checked in.",
-    "checkinNotUpcoming": "Reservation is no longer upcoming."
+    "checkinNotUpcoming": "Reservation is no longer upcoming.",
+    "thHistory": "History"
   },
   "operations": {
     "title": "Operations",
@@ -2335,7 +2342,8 @@
     "detailAddress": "Address",
     "detailRegistered": "Registered",
     "detailNotes": "Notes",
-    "new": "new"
+    "new": "new",
+    "thHistory": "History"
   },
   "suspectAlerts": {
     "pageTitle": "Suspect Alerts",

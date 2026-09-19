@@ -160,6 +160,13 @@ export const apiUpdateGuest = (id: string, data: Record<string, unknown>) =>
 export const apiDeleteGuest = (id: string) =>
   req(`/api/guests/${id}`, { method: "DELETE" });
 
+// Guest lifecycle — full status-change history for a guest across all
+// their reservations (check-ins, check-outs, early exits, cancellations,
+// extensions, room shifts, payments). Used by the guest search table
+// to surface "what happened to this guest" beyond the current status.
+export const apiGetGuestLifecycle = (id: string) =>
+  req(`/api/guests/${id}/lifecycle`);
+
 // Reservations
 export const apiGetReservations = async (q?: string) => {
   // Always fetch all records (limit=999) so frontend can client-side filter

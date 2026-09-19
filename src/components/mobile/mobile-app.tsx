@@ -21,6 +21,7 @@ import {
   apiUpdateReservation,
   apiUpdateRoomStatus,
   apiGetRoomAvailability,
+  apiGetGuestLifecycle,
 } from "@/lib/api";
 import { isValidPhone } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,7 @@ import {
   Trash2,
   Ban,
 } from "lucide-react";
+import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
 
 // ── Types ──
@@ -377,6 +379,9 @@ export default function MobileApp() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [roomResMap, setRoomResMap] = useState<Record<string, Reservation>>({});
+  // Lifecycle summaries per guest — powers the status-change badges
+  // (early exit, extended, room shifted, cancelled) on the Guests tab.
+  const [guestLifecycle, setGuestLifecycle] = useState<Record<string, GuestLifecycleSummary>>({});
 
   // Guest search
   const [guestSearch, setGuestSearch] = useState("");
@@ -472,7 +477,30 @@ export default function MobileApp() {
       }
       setRoomResMap(map);
 
-      setGuests(Array.isArray(gRaw) ? gRaw : []);
+      const gArr = Array.isArray(gRaw) ? gRaw : [];
+      setGuests(gArr);
+
+      // ── Fetch lifecycle summaries for each guest (in parallel batches) ──
+      // Powers the status-change badges on the Guests tab. Non-blocking —
+      // if it fails, badges just don't show.
+      try {
+        const summaries: Record<string, GuestLifecycleSummary> = {};
+        const BATCH = 8;
+        for (let i = 0; i < gArr.length; i += BATCH) {
+          const batch = gArr.slice(i, i + BATCH);
+          const results = await Promise.allSettled(
+            batch.map((g) => apiGetGuestLifecycle(g.id))
+          );
+          results.forEach((res, idx) => {
+            if (res.status === "fulfilled" && res.value?.summary) {
+              summaries[batch[idx].id] = res.value.summary as GuestLifecycleSummary;
+            }
+          });
+        }
+        setGuestLifecycle(summaries);
+      } catch {
+        setGuestLifecycle({});
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       // Check if this is a session-expired error (from the req() interceptor)
@@ -1099,6 +1127,7 @@ export default function MobileApp() {
           <GuestsTab
             guests={filteredGuests} search={guestSearch} setSearch={setGuestSearch}
             guestResMap={guestResMap} onReserve={handleReserveFromRoom}
+            guestLifecycle={guestLifecycle}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency}
           />
         )}
@@ -1777,9 +1806,11 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
   );
 }
 
-function GuestsTab({ guests, search, setSearch, guestResMap, onReserve, t, formatDate, formatCurrency }: {
+function GuestsTab({ guests, search, setSearch, guestResMap, guestLifecycle, onReserve, t, formatDate, formatCurrency }: {
   guests: Guest[]; search: string; setSearch: (s: string) => void;
-  guestResMap: Map<string, Reservation>; onReserve: (r: Room) => void;
+  guestResMap: Map<string, Reservation>;
+  guestLifecycle: Record<string, GuestLifecycleSummary>;
+  onReserve: (r: Room) => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
 }) {
@@ -1832,6 +1863,15 @@ function GuestsTab({ guests, search, setSearch, guestResMap, onReserve, t, forma
                     <span>{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</span>
                   </div>
                 )}
+                {/* Status-change badges (early exit, extended, room
+                    shifted, cancelled) — fetched from the lifecycle
+                    endpoint. Compact mode so they fit on mobile. */}
+                <div className="mt-2 pl-14">
+                  <GuestLifecycleBadges
+                    summary={guestLifecycle[g.id]}
+                    compact
+                  />
+                </div>
               </div>
             );
           })}
