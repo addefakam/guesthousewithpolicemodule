@@ -42,6 +42,7 @@ import {
 import { apiPoliceGuests, apiGetGuestLifecycle } from "@/lib/api";
 import { ErrorBox, EmptyState } from "@/components/police-app/screens/rooms-screen";
 import { BRAND } from "@/lib/police-app-status";
+import { useAppStore } from "@/lib/store";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
 interface Guest {
@@ -106,6 +107,9 @@ function formatDate(dateStr: string): string {
 
 export default function AllGuestsScreen({ onBack }: Props) {
   const { t } = useTranslation("policeApp");
+  // Subscribe to the global refreshKey so the header's refresh button
+  // triggers a re-fetch on this screen.
+  const refreshKey = useAppStore((s) => s.refreshKey);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -175,7 +179,7 @@ export default function AllGuestsScreen({ onBack }: Props) {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   // ── Open guest detail ──
   // Fetches the full lifecycle (events array) for the tapped guest so

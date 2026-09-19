@@ -22,6 +22,7 @@ import {
 import { apiPoliceActiveReservations, apiGetGuestLifecycle } from "@/lib/api";
 import { ErrorBox, EmptyState } from "@/components/police-app/screens/rooms-screen";
 import { BRAND } from "@/lib/police-app-status";
+import { useAppStore } from "@/lib/store";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 import AllGuestsScreen from "@/components/police-app/screens/all-guests-screen";
 
@@ -49,6 +50,9 @@ type StayFilter = "ALL" | "ACTIVE" | "UPCOMING";
 
 export default function GuestsScreen() {
   const { t } = useTranslation("policeApp");
+  // Subscribe to the global refreshKey so the header's refresh button
+  // triggers a re-fetch on this screen.
+  const refreshKey = useAppStore((s) => s.refreshKey);
   const [items, setItems] = useState<ActiveReservation[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +110,7 @@ export default function GuestsScreen() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const filtered = useMemo(() => {
     if (!items) return [];

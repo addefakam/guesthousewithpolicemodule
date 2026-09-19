@@ -28,6 +28,7 @@ import {
   BRAND,
   type ProviderStatus,
 } from "@/lib/police-app-status";
+import { useAppStore } from "@/lib/store";
 
 interface Provider {
   id: string;
@@ -62,6 +63,9 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ProvidersScreen() {
   const { t } = useTranslation("policeApp");
+  // Subscribe to the global refreshKey so the header's refresh button
+  // triggers a re-fetch on this screen.
+  const refreshKey = useAppStore((s) => s.refreshKey);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +106,7 @@ export default function ProvidersScreen() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   // ── Filtered + searched view ──
   // Search matches name OR ownerName OR phone OR address OR licenseNo —

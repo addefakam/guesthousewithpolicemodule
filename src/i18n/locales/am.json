@@ -3229,7 +3229,8 @@
     "optional": "አማራጭ",
     "singleRoomGuestCount": "የእንግዶች ብዛት",
     "oneGuestOnly": "1 እንግዳ",
-    "singleRoomSecondGuestHint": "የሁለተኛውን እንግዳ ዝርዝር ያስገቡ:"
+    "singleRoomSecondGuestHint": "የሁለተኛውን እንግዳ ዝርዝር ያስገቡ:",
+    "refresh": "አድስ"
   },
   "policeApp": {
     "appName": "GHMS ፖሊስ",
@@ -3334,7 +3335,8 @@
       "language": "ቋንቋ",
       "about": "ስለ መተግበሪያው",
       "aboutText": "የክፍሎች ዝግጁነትንና የተመዘገቡ እንግዶችን ከመላ ከተማ ለመቆጣጠር የተነደፈ የፖሊስ ሞዱል መተግበሪያ።",
-      "logout": "ውጣ"
+      "logout": "ውጣ",
+      "refresh": "አድስ"
     },
     "rank": {
       "ADMIN": "የፖሊስ አስተዳዳሪ",

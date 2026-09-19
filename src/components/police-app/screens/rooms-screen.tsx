@@ -27,6 +27,7 @@ import {
   BRAND,
   type RoomStatus,
 } from "@/lib/police-app-status";
+import { useAppStore } from "@/lib/store";
 
 interface Room {
   id: string;
@@ -76,6 +77,9 @@ type StatusFilter = "ALL" | RoomStatus;
 
 export default function RoomsScreen() {
   const { t } = useTranslation("policeApp");
+  // Subscribe to the global refreshKey so the header's refresh button
+  // triggers a re-fetch on this screen.
+  const refreshKey = useAppStore((s) => s.refreshKey);
   const [data, setData] = useState<AvailabilityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +104,7 @@ export default function RoomsScreen() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const summary = data?.summary;
 

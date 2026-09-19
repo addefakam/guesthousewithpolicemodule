@@ -2270,7 +2270,8 @@
     "optional": "filannoowwan",
     "singleRoomGuestCount": "Lakkoofsa Oduu",
     "oneGuestOnly": "Oduu 1",
-    "singleRoomSecondGuestHint": "Sirreeffama oduu lammaffaa galchi:"
+    "singleRoomSecondGuestHint": "Sirreeffama oduu lammaffaa galchi:",
+    "refresh": "Haaraawi"
   },
   "subscription": {
     "pageTitle": "Subscription & Payments",
@@ -3432,7 +3433,8 @@
       "language": "Language",
       "about": "About",
       "aboutText": "Standalone police module app for monitoring guesthouse room availability and registered guests across the city.",
-      "logout": "Sign Out"
+      "logout": "Sign Out",
+      "refresh": "Haaraawi"
     },
     "rank": {
       "ADMIN": "Police Admin",

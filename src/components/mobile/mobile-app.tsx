@@ -100,6 +100,7 @@ import {
   Pencil,
   Trash2,
   Ban,
+  RefreshCw,
 } from "lucide-react";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
@@ -364,6 +365,9 @@ export default function MobileApp() {
   const [activeTab, setActiveTab] = useState<Tab>("rooms");
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  // Refresh button spinner state — separate from `loading` so the refresh
+  // button can show a brief spin animation without blanking the whole UI.
+  const [refreshing, setRefreshing] = useState(false);
 
   // Add / Edit / Delete room
   // - showAddRoom: controls the Add Room dialog (also reused for Edit Room)
@@ -531,6 +535,30 @@ export default function MobileApp() {
     } catch { setRoomReservations([]); }
     finally { setRoomResLoading(false); }
   }, []);
+
+  // ── Manual refresh handler ──
+  // Called from the header's refresh button. Re-fetches all data
+  // (rooms + reservations + guests + lifecycle summaries) and bumps
+  // the global refreshKey so other surfaces (e.g. main system, if the
+  // user switches between them) also re-fetch on their next read.
+  // Declared AFTER fetchData + fetchRoomReservations so it can reference
+  // them in its dependency array.
+  const handleManualRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      triggerRefresh();
+      await fetchData();
+      // If a room detail is open, refresh its reservations too so the
+      // operator sees the latest booking state without re-tapping.
+      if (selectedRoom) {
+        await fetchRoomReservations(selectedRoom.id);
+      }
+    } finally {
+      // Small delay so the spinner is visible even on fast networks —
+      // gives the user visual feedback that the refresh happened.
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  }, [fetchData, triggerRefresh, selectedRoom, fetchRoomReservations]);
 
   // Open room detail
   const openRoomDetail = useCallback((room: Room) => {
@@ -1046,6 +1074,19 @@ export default function MobileApp() {
             <p className="text-[11px] text-slate-400">{currentUser?.name} &middot; {currentUser?.providerName || ""}</p>
           </div>
           <div className="flex items-center gap-2 relative">
+            {/* ── Refresh button ──
+                Triggers a full data re-fetch (rooms + reservations +
+                guests + lifecycle) without leaving the current tab or
+                losing the open dialog. Shows a spinner during refresh. */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="rounded-full bg-slate-800 p-2 text-slate-300 active:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("refresh") || "Refresh"}
+              aria-label={t("refresh") || "Refresh"}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
             <button
               onClick={() => setShowLogoutConfirm(true)}
               className="rounded-full bg-slate-800 p-2 text-slate-400 active:bg-slate-700 transition-colors"

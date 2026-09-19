@@ -22,6 +22,7 @@ import {
 } from "@/lib/police-app-status";
 import { StatusDot } from "@/components/police-app/visuals";
 import { ErrorBox } from "@/components/police-app/screens/rooms-screen";
+import { useAppStore } from "@/lib/store";
 
 interface ProviderRow {
   id: string;
@@ -76,6 +77,9 @@ type Tab = "home" | "rooms" | "guests" | "providers" | "system";
 
 export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { t } = useTranslation("policeApp");
+  // Subscribe to the global refreshKey so the header's refresh button
+  // (in police-app.tsx) triggers a re-fetch on this screen.
+  const refreshKey = useAppStore((s) => s.refreshKey);
   const [data, setData] = useState<DashboardData | null>(null);
   const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +102,7 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => v
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (loading) {
     return (

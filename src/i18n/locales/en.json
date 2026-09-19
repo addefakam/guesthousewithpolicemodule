@@ -3327,7 +3327,8 @@
     "optional": "optional",
     "singleRoomGuestCount": "Number of Guests",
     "oneGuestOnly": "1 Guest",
-    "singleRoomSecondGuestHint": "Enter the second guest's details:"
+    "singleRoomSecondGuestHint": "Enter the second guest's details:",
+    "refresh": "Refresh"
   },
   "policeApp": {
     "appName": "GHMS Police",
@@ -3432,7 +3433,8 @@
       "language": "Language",
       "about": "About",
       "aboutText": "Standalone police module app for monitoring guesthouse room availability and registered guests across the city.",
-      "logout": "Sign Out"
+      "logout": "Sign Out",
+      "refresh": "Refresh"
     },
     "rank": {
       "ADMIN": "Police Admin",

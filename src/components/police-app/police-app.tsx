@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LogOut,
   Monitor,
+  RefreshCw,
   Users,
 } from "lucide-react";
 import { useAppStore, type CurrentUser } from "@/lib/store";
@@ -36,7 +37,21 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   const { t, i18n } = useTranslation("policeApp");
   const setCurrentPage = useAppStore((s) => s.setCurrentPage);
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);
+  const triggerRefresh = useAppStore((s) => s.triggerRefresh);
   const [tab, setTab] = useState<Tab>("rooms"); // flagship screen first
+  // Brief spinner state on the header refresh button — gives the user
+  // visual feedback that the refresh happened, even on fast networks.
+  // The actual data refresh is driven by `refreshKey` (bumped by
+  // triggerRefresh) which each screen subscribes to in its own effect.
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    triggerRefresh();
+    // Brief delay so the spinner is visible — the actual re-fetch
+    // happens inside each screen's useEffect when refreshKey changes.
+    setTimeout(() => setRefreshing(false), 500);
+  };
 
   // SUPERUSER (system admin) has no police rank — show the ADMIN badge for them
   const rank = (user.role === "SUPERUSER" ? "ADMIN" : user.policeRank || "OFFICER") as PoliceRank;
@@ -118,6 +133,20 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
               className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 transition-colors active:bg-slate-100"
             >
               {LANG_LABELS[i18n.language] || "EN"}
+            </button>
+            {/* ── Refresh button ──
+                Bumps the global refreshKey, which each screen's useEffect
+                watches to re-fetch its data. Shows a spinner during the
+                brief delay so the user gets visual feedback. */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              aria-label={t("more.refresh") || "Refresh"}
+              title={t("more.refresh") || "Refresh"}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors active:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </button>
             <button
               type="button"
