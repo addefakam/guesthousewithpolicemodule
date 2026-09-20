@@ -226,7 +226,11 @@ export default function PoliceDashboardPage() {
     ? [
         {
           title: t("kpiProviders"),
-          value: dashboard.totalProviders,
+          // Use the breakdown array length for the Total card so it
+          // always matches the sum of Approved + Pending + Rejected +
+          // Suspended shown in the other cards. The raw totalProviders
+          // from COUNT(*) should match, but this guarantees consistency.
+          value: dashboard.providers.length,
           icon: Building2,
           color: "text-slate-600",
           bg: "bg-slate-100",
