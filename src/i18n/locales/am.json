@@ -3183,7 +3183,7 @@
     "regErrorInvalidEmail": "የኢሜይል  የተሳሳተ ነው።",
     "regErrorGeneral": "ምዝገባ አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
     "regSuccessTitle": "ምዝገባ ተሳክቷል",
-    "regSuccessDesc": "የድርጅትዎ ምዝገባ ቀርቧል። አስተዳዳሪ ያገለግላል። ከጸደቀ በኋላ መግባት ይችላሉ።",
+    "regSuccessDesc": "ድርጅትዎ ገብቷል። አስተዳዳሪ አካውንትዎን ገምግሞ ይለቃል። ከጸደቀ በኋላ መግባት ይችላሉ። ትንሽ ይጠብቁ ና ይሞክሩ።",
     "directResTitle": "አዲስ እንግዳ",
     "directResDesc": "ዝርዝር በቀጥታ ያስገቡ",
     "lblGuestName": "ሙሉ ስም",
