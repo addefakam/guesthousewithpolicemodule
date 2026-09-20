@@ -2057,7 +2057,12 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           {ROOM_TYPE_ICONS[room.type] || <BedSingle className="h-5 w-5" />}
-          {room.name ? `${room.number} — ${room.name}` : room.number}
+          {/* Show "105 — CustomName" only when name is a genuinely custom
+              name. When name is the auto-generated default "Room 105" or
+              equals the number, show just "105" to avoid "105 — Room 105". */}
+          {room.name && room.name !== `Room ${room.number}` && room.name !== room.number
+            ? `${room.number} — ${room.name}`
+            : room.number}
         </DialogTitle>
         <DialogDescription>{t("roomType" + room.type.charAt(0) + room.type.slice(1).toLowerCase())} &middot; {t("floorLabel", { floor: getFloorFromNumber(room.number) ?? room.floor })}</DialogDescription>
       </DialogHeader>

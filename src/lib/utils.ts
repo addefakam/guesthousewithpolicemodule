@@ -27,3 +27,29 @@ export function isValidEmail(email: string): boolean {
   if (!email || !email.trim()) return true; // email is optional — only validate if provided
   return EMAIL_REGEX.test(email.trim());
 }
+
+// ── Room name helper ──
+// The API auto-generates room.name as "Room {number}" when the operator
+// doesn't provide a custom name. This causes duplicate labels like
+// "Room 105 — Room 105" in the UI. This helper detects whether the
+// stored name is just the auto-generated default (so the UI can fall
+// back to showing just the room number).
+//
+// Cases detected:
+//   - name is empty/null
+//   - name === number (e.g. name="105", number="105")
+//   - name === `Room ${number}` (case-insensitive, trimmed)
+//   - name === `Room${number}` (no space variant)
+export function isDefaultRoomName(name: string | null | undefined, number: string): boolean {
+  if (!name || !name.trim()) return true;
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+  const num = (number || "").trim();
+  return (
+    trimmed === num ||
+    lower === `room ${num}` ||
+    lower === `room${num}` ||
+    lower === `room ${num.toLowerCase()}` ||
+    lower === `room${num.toLowerCase()}`
+  );
+}

@@ -13,7 +13,7 @@ import {
   apiGetGuestLifecycle,
 } from "@/lib/api";
 import { toast } from "sonner";
-import { isValidPhone } from "@/lib/utils";
+import { isValidPhone, isDefaultRoomName } from "@/lib/utils";
 import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -495,7 +495,7 @@ export default function AccommodationGuestsPage() {
                   </div>
                   {g.activeReservation && g.activeReservation.room && (
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground pl-10">
-                      <span>{g.activeReservation.room.name ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
+                      <span>{g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
                       <span>{formatDate(g.activeReservation.checkIn)} → {formatDate(g.activeReservation.checkOut)}</span>
                     </div>
                   )}
@@ -593,7 +593,7 @@ export default function AccommodationGuestsPage() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {g.activeReservation?.room ? (
-                          <span>{g.activeReservation.room.name ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
+                          <span>{g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
                         ) : "—"}
                       </TableCell>
                       <TableCell className="text-xs">
