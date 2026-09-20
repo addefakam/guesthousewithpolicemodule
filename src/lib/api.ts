@@ -327,7 +327,16 @@ export const apiUpdateDaytimeService = (id: string, data: Record<string, unknown
   req(`/api/daytime-services/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const apiDeleteDaytimeService = (id: string) =>
   req(`/api/daytime-services/${id}`, { method: "DELETE" });
-export const apiGetDaytimeBookings = (q?: string) => req(`/api/daytime-bookings${q ? `?${q}` : ""}`);
+export const apiGetDaytimeBookings = async (q?: string) => {
+  const res = await req(`/api/daytime-bookings${q ? `?${q}` : ""}`);
+  // API returns a paginated envelope { data: [...], total, page, limit, totalPages }
+  // — extract the .data array so the frontend gets a plain array (same
+  // shape as apiGetDaytimeServices). Without this extraction, the
+  // frontend's Array.isArray() check fails and the bookings list is
+  // always empty even though records exist in the DB.
+  if (res && Array.isArray(res.data)) return res.data;
+  return Array.isArray(res) ? res : [];
+};
 export const apiCreateDaytimeBooking = (data: Record<string, unknown>) =>
   req("/api/daytime-bookings", { method: "POST", body: JSON.stringify(data) });
 export const apiUpdateDaytimeBooking = (id: string, data: Record<string, unknown>) =>

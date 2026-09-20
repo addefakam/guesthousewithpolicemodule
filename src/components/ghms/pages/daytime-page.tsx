@@ -162,7 +162,7 @@ export default function DaytimePage() {
   // Payment dialog
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Booking | null>(null);
-  const [payForm, setPayForm] = useState({ amount: "", method: t("payMethodCash") });
+  const [payForm, setPayForm] = useState({ amount: "", method: "CASH" });
   const [paySaving, setPaySaving] = useState(false);
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
@@ -183,7 +183,9 @@ export default function DaytimePage() {
   const fetchBookings = useCallback(async () => {
     try {
       setBkLoading(true);
-      const data = await apiGetDaytimeBookings();
+      // Pass limit=999 so all bookings are fetched (no pagination UI yet).
+      // The API defaults to limit=20 which silently truncates older records.
+      const data = await apiGetDaytimeBookings("limit=999");
       setBookings(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("toastFailedLoadBookings");
