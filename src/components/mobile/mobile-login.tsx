@@ -351,7 +351,7 @@ export function MobileLoginPage() {
                   {t("regSuccessTitle") || "Registration Submitted"}
                 </p>
                 <p className="text-xs text-slate-400 mb-4">
-                  {t("regSuccessDesc") || "Your guesthouse registration has been submitted. An admin will review and activate your account. You can sign in once approved."}
+                  {t("regSuccessDesc") || "Your organization registration has been submitted. An admin will review and activate your account. You can sign in once approved."}
                 </p>
                 <button
                   type="button"
@@ -473,7 +473,6 @@ export function MobileLoginPage() {
                     type="text"
                     value={regLicenseNo}
                     onChange={(e) => setRegLicenseNo(e.target.value)}
-                    placeholder={t("regLicenseNoPh") || "GH/2024/0001"}
                     className={inputClass}
                     required
                   />
@@ -525,7 +524,7 @@ export function MobileLoginPage() {
                       {t("regSubmitting") || "Submitting..."}
                     </span>
                   ) : (
-                    t("regBtn") || "Register Guesthouse"
+                    t("regBtn") || "Register"
                   )}
                 </button>
 

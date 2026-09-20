@@ -1560,7 +1560,12 @@
     "deleteConfirmNameMismatch": "The typed name doesn't match. Please type the exact guesthouse name to confirm.",
     "providerDeleted": "{{name}} has been permanently deleted.",
     "failedToDelete": "Failed to delete guesthouse",
-    "deleting": "Deleting..."
+    "deleting": "Deleting...",
+    "btnDeleteSelected": "Delete Selected",
+    "bulkDeleteTitle": "Delete Multiple Providers",
+    "bulkDeleteWarning": "You are about to permanently delete {{count}} provider(s). This action CANNOT be undone.",
+    "bulkDeleteNote": "Providers with active/upcoming reservations will be skipped (the API refuses to delete them). Check out those guests first.",
+    "selectAll": "Select all"
   },
   "operatorFeatures": {
     "pageTitle": "Operator Features",
@@ -3266,7 +3271,7 @@
     "regUsername": "Username",
     "regUsernamePh": "abebe_bekele",
     "regPassword": "Password",
-    "regBtn": "Register Guesthouse",
+    "regBtn": "Register",
     "regSubmitting": "Submitting...",
     "regHelperText": "After registration, an admin will review and activate your account before you can sign in.",
     "regErrorEmptyFields": "Please fill all required fields.",
@@ -3275,7 +3280,7 @@
     "regErrorInvalidEmail": "Invalid email format.",
     "regErrorGeneral": "Registration failed. Please try again.",
     "regSuccessTitle": "Registration Submitted",
-    "regSuccessDesc": "Your guesthouse registration has been submitted. An admin will review and activate your account. You can sign in once approved.",
+    "regSuccessDesc": "Your organization registration has been submitted. An admin will review and activate your account. You can sign in once approved.",
     "directResTitle": "New Guest",
     "directResDesc": "Enter guest details directly",
     "lblGuestName": "Full Name",

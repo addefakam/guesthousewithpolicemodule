@@ -1560,7 +1560,12 @@
     "deleteConfirmNameMismatch": "የተተወው ስም አይገጥምም። እባክዎ ትክክለኛውን ስም ይተይቡ።",
     "providerDeleted": "{{name}} በቋሚነት ተሰርዟል።",
     "failedToDelete": "የእንግዳ ቤት ለሰረዝ አልተሳካም",
-    "deleting": "በሰረዝ ላይ..."
+    "deleting": "በሰረዝ ላይ...",
+    "btnDeleteSelected": "የተመረጡን ሰርዝ",
+    "bulkDeleteTitle": "በርካታ አቅራቢዎችን ሰርዝ",
+    "bulkDeleteWarning": "{{count}} አቅራቢ(ዎች)ን በቋሚነት ለመሰረዝ ነዎት። ይህ እርምጃ መመለስ አይቻልም።",
+    "bulkDeleteNote": "ንቁ ወይም ቀጣይ ቀጥሮዎች ያላቸው አቅራቢዎች ይዘለሉናል።",
+    "selectAll": "ሁሉንም ምረጥ"
   },
   "operatorFeatures": {
     "pageTitle": "የኦፕሬተር ገጽታዎች",
@@ -3169,7 +3174,7 @@
     "regUsername": "የተጠቃሚ ስም",
     "regUsernamePh": "abebe_bekele",
     "regPassword": "የይለፍ ቃል",
-    "regBtn": "እንግዳ ቤት ይመዝገቡ",
+    "regBtn": "ይመዝገቡ",
     "regSubmitting": "በማስገባት ላይ...",
     "regHelperText": "ከመመዝገብ በኋላ አስተዳዳሪ መለያዎን ያገለግላል። ከተፈቀደ በኋላ መግባት ይችላሉ።",
     "regErrorEmptyFields": "እባክዎ ሁሉንም አስፈላጊ ከፍሎች  ይሙሉ።",
@@ -3178,7 +3183,7 @@
     "regErrorInvalidEmail": "የኢሜይል  የተሳሳተ ነው።",
     "regErrorGeneral": "ምዝገባ አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
     "regSuccessTitle": "ምዝገባ ተሳክቷል",
-    "regSuccessDesc": "የእንግዳ ቤት ምዝገባዎ ቀርቧል። አስተዳዳሪ ያገለግላል። ከጸደቀ በኋላ መግባት ይችላሉ።",
+    "regSuccessDesc": "የድርጅትዎ ምዝገባ ቀርቧል። አስተዳዳሪ ያገለግላል። ከጸደቀ በኋላ መግባት ይችላሉ።",
     "directResTitle": "አዲስ እንግዳ",
     "directResDesc": "ዝርዝር በቀጥታ ያስገቡ",
     "lblGuestName": "ሙሉ ስም",

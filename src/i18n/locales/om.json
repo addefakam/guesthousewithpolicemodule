@@ -1560,7 +1560,12 @@
     "deleteConfirmNameMismatch": "Maqaan barreeffame hin walfaana. Maqaa sirriitti barreessi.",
     "providerDeleted": "{{name}} dhaabbataadhaan haqameera.",
     "failedToDelete": "Waanzihoo oduu haquu hin dandeene",
-    "deleting": "Haqaa jira..."
+    "deleting": "Haqaa jira...",
+    "btnDeleteSelected": "Filataman Haqi",
+    "bulkDeleteTitle": "Kennitoota Dabalataa Haqi",
+    "bulkDeleteWarning": "Kennitoota {{count}} dhaabbataadhaan haquuf jirta. Kun irra deebi'uu hin danda'u.",
+    "bulkDeleteNote": "Kennitoota kabajjii sochii qaban ni darbatama.",
+    "selectAll": "Hunda filadhu"
   },
   "operatorFeatures": {
     "pageTitle": "Amaloota Hojjettootaa",
@@ -2209,7 +2214,7 @@
     "regUsername": "Maqaa Fayyadamaa",
     "regUsernamePh": "maqaa dhuunfaa",
     "regPassword": "Jecha Iccitii",
-    "regBtn": "Dhaabbataa Galmeessi",
+    "regBtn": "Galmeessi",
     "regSubmitting": "Galmeessaa jira...",
     "regHelperText": "Galmeessaa booda, bulchaan herrega kee ni qorata. Yoo mirkanaa'e, seenii ni danda'ama.",
     "regErrorEmptyFields": "Maaloo dirqama qabu hunda guutaa.",

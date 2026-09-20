@@ -1242,7 +1242,6 @@ export default function RoomsPage() {
                   type="number"
                   min={1}
                   max={form.type === "SINGLE" ? 2 : undefined}
-                  placeholder={form.type === "SINGLE" ? "1 or 2" : "2"}
                   value={form.capacity}
                   onChange={(e) => {
                     const val = e.target.value;

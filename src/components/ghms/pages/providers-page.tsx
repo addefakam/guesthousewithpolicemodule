@@ -189,16 +189,16 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  // Search across name / owner / phone / license / address / email —
-  // matches the police app's ProvidersScreen behavior so both systems
-  // find the same guesthouse for any given search term.
   const [search, setSearch] = useState("");
-  // Delete-provider dialog + loading state. We require a typed
-  // confirmation (the guesthouse name) before the delete is allowed —
-  // this prevents accidental taps since the action is irreversible.
+  // Single delete
   const [deleteDialog, setDeleteDialog] = useState<Provider | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // ── Bulk delete ──
+  // Select multiple providers via checkboxes, then delete them all at once.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Registration form
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -449,7 +449,56 @@ export default function ProvidersPage() {
     }
   };
 
-  // ── Bulk Import handlers ──
+  // ── Bulk delete handlers ──
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (prev.size === filteredProviders.length) return new Set();
+      return new Set(filteredProviders.map((p) => p.id));
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setBulkDeleting(true);
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      for (const id of selectedIds) {
+        try {
+          await apiDeleteProvider(id);
+          success++;
+        } catch (err: unknown) {
+          failed++;
+          const provider = providers.find((p) => p.id === id);
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          errors.push(`${provider?.name || id}: ${msg}`);
+        }
+      }
+      if (success > 0) {
+        toast.success(`${success} provider(s) deleted successfully`);
+      }
+      if (failed > 0) {
+        toast.error(`${failed} provider(s) failed: ${errors.slice(0, 3).join("; ")}${errors.length > 3 ? "..." : ""}`);
+      }
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      triggerRefresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('failedToDelete'));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
   const handleDownloadTemplate = () => {
     import("xlsx").then((XLSX) => {
       const headers = ["Full Name", "Phone", "Email", "Organization Name", "Type", "License No", "Sub-City", "Woreda", "Username", "Password"];
@@ -699,6 +748,32 @@ export default function ProvidersPage() {
         )}
       </div>
 
+      {/* ── Bulk delete bar (shown when providers are selected) ── */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5">
+          <span className="text-sm font-medium text-rose-700">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              {t('cancel') || 'Cancel'}
+            </Button>
+            <Button
+              size="sm"
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              {t('btnDeleteSelected') || 'Delete Selected'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Providers Table/Cards */}
       <div className="rounded-xl border bg-card shadow-sm">
         {loading ? (
@@ -791,6 +866,15 @@ export default function ProvidersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === filteredProviders.length && filteredProviders.length > 0}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300"
+                        aria-label={t('selectAll') || 'Select all'}
+                      />
+                    </TableHead>
                     <TableHead>{t('thProviderName')}</TableHead>
                     <TableHead>{t('thLicenseNo')}</TableHead>
                     <TableHead>{t('thAddress')}</TableHead>
@@ -803,6 +887,15 @@ export default function ProvidersPage() {
                 <TableBody>
                   {paginatedProviders.map((provider) => (
                     <TableRow key={provider.id} className={`cursor-pointer hover:bg-muted/50 ${provider.status === "SUSPENDED" ? "bg-orange-50/70 hover:bg-orange-100/60" : ""}`} onClick={() => openDetail(provider)}>
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(provider.id)}
+                          onChange={() => toggleSelect(provider.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                          aria-label={`Select ${provider.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{provider.name}</TableCell>
                       <TableCell className="font-mono text-xs">{provider.licenseNo || "—"}</TableCell>
                       <TableCell className="max-w-[150px] truncate text-xs">{provider.address || "—"}</TableCell>
@@ -1617,6 +1710,60 @@ export default function ProvidersPage() {
                 <>
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   {t('btnDeleteConfirm')}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Bulk Delete Confirmation ── */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => { if (!open) setBulkDeleteOpen(false); }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rose-700">
+              <Trash2 className="h-5 w-5" />
+              {t('bulkDeleteTitle') || 'Delete Multiple Providers'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  {t('bulkDeleteWarning', { count: selectedIds.size }) || `You are about to permanently delete ${selectedIds.size} provider(s). This action CANNOT be undone.`}
+                </p>
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  <p className="font-semibold mb-1">{t('deleteProviderCascadeTitle')}</p>
+                  <ul className="space-y-0.5 list-disc list-inside opacity-90">
+                    <li>{t('deleteProviderCascadeUsers')}</li>
+                    <li>{t('deleteProviderCascadeRooms')}</li>
+                    <li>{t('deleteProviderCascadeReservations')}</li>
+                    <li>{t('deleteProviderCascadeGuests')}</li>
+                    <li>{t('deleteProviderCascadeExpenses')}</li>
+                  </ul>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('bulkDeleteNote') || 'Providers with active/upcoming reservations will be skipped (the API refuses to delete them). Check out those guests first.'}
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>
+              {t('cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleting}
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {bulkDeleting ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  {t('deleting')}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  {t('btnDeleteSelected') || 'Delete Selected'} ({selectedIds.size})
                 </>
               )}
             </AlertDialogAction>
