@@ -942,7 +942,11 @@ export default function RoomsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 leading-tight">
-                          {room.name
+                          {/* Show "Room {number} — {name}" only when the name is a
+                              CUSTOM name (not the auto-generated default "Room {number}").
+                              When name === "Room {number}" or is empty, show just
+                              "Room {number}" to avoid "Room 105 — Room 105". */}
+                          {room.name && room.name !== `Room ${room.number}` && room.name !== room.number
                             ? t("roomLabelWithName", { number: room.number, name: room.name })
                             : t("roomLabel", { number: room.number })}
                         </h3>
@@ -1441,7 +1445,7 @@ export default function RoomsPage() {
                       {ROOM_TYPE_ICONS[infoRoom.type]}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span>{infoRoom.name
+                      <span>{infoRoom.name && infoRoom.name !== `Room ${infoRoom.number}` && infoRoom.name !== infoRoom.number
                         ? t("roomLabelWithName", { number: infoRoom.number, name: infoRoom.name })
                         : t("roomLabel", { number: infoRoom.number })}</span>
                       <Badge variant="outline" className={STATUS_STYLES[infoRoom.status]}>
