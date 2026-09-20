@@ -748,29 +748,44 @@ export default function ProvidersPage() {
         )}
       </div>
 
-      {/* ── Bulk delete bar (shown when providers are selected) ── */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5">
-          <span className="text-sm font-medium text-rose-700">
-            {selectedIds.size} selected
-          </span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              {t('cancel') || 'Cancel'}
-            </Button>
-            <Button
-              size="sm"
-              className="bg-rose-600 hover:bg-rose-700"
-              onClick={() => setBulkDeleteOpen(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              {t('btnDeleteSelected') || 'Delete Selected'}
-            </Button>
+      {/* ── Bulk delete bar (shown when providers are selected OR to enable selection) ── */}
+      {providers.length > 0 && (
+        <div className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+          selectedIds.size > 0 ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-slate-50"
+        }`}>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === filteredProviders.length && filteredProviders.length > 0}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-gray-300"
+              aria-label={t('selectAll') || 'Select all'}
+            />
+            <span className="text-sm font-medium text-slate-700">
+              {selectedIds.size > 0
+                ? `${selectedIds.size} selected`
+                : (t('selectAll') || 'Select all')}
+            </span>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                {t('cancel') || 'Cancel'}
+              </Button>
+              <Button
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                {t('btnDeleteSelected') || 'Delete Selected'} ({selectedIds.size})
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -794,6 +809,14 @@ export default function ProvidersPage() {
               {paginatedProviders.map((provider) => (
                 <div key={provider.id} className={`p-3 sm:p-4 ${provider.status === "SUSPENDED" ? "bg-orange-50/60" : ""}`}>
                   <div className="flex items-start justify-between gap-2">
+                    {/* Checkbox for bulk delete on mobile/card view */}
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(provider.id)}
+                      onChange={() => toggleSelect(provider.id)}
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300"
+                      aria-label={`Select ${provider.name}`}
+                    />
                     <button className="min-w-0 flex-1 text-left" onClick={() => openDetail(provider)}>
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-medium">{provider.name}</p>
