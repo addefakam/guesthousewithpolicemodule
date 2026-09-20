@@ -12,6 +12,11 @@ import {
   apiCreateDaytimeBooking,
   apiUpdateDaytimeBooking,
   apiDeleteDaytimeBooking,
+  apiGetDaytimeRoomBookings,
+  apiCreateDaytimeRoomBooking,
+  apiUpdateDaytimeRoomBooking,
+  apiDeleteDaytimeRoomBooking,
+  apiGetRooms,
   apiCreatePayment,
 } from "@/lib/api";
 import { toast } from "sonner";
@@ -76,6 +81,7 @@ import {
   CreditCard,
   CalendarDays,
   Tag,
+  BedDouble,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -105,6 +111,34 @@ interface Booking {
   paymentMethod: string | null;
   notes: string;
   service?: { id: string; name: string; category: string };
+}
+
+interface RoomBooking {
+  id: string;
+  roomId: string;
+  guestName: string;
+  guestPhone: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  totalHours: number;
+  roomRate: number;
+  totalCost: number;
+  paidAmount: number;
+  paymentStatus: string;
+  paymentMethod: string | null;
+  notes: string;
+  status: string;
+  room?: { id: string; number: string; name: string; type: string };
+}
+
+interface RoomOption {
+  id: string;
+  number: string;
+  name: string;
+  type: string;
+  pricePerNight: number;
+  status: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -165,6 +199,20 @@ export default function DaytimePage() {
   const [payForm, setPayForm] = useState({ amount: "", method: "CASH" });
   const [paySaving, setPaySaving] = useState(false);
 
+  // ── Room booking state (time-based, max 12 hours) ──
+  const [roomBookings, setRoomBookings] = useState<RoomBooking[]>([]);
+  const [rmLoading, setRmLoading] = useState(true);
+  const [rmDialogOpen, setRmDialogOpen] = useState(false);
+  const [editingRmBk, setEditingRmBk] = useState<RoomBooking | null>(null);
+  const [rmForm, setRmForm] = useState({
+    roomId: "", guestName: "", guestPhone: "", date: "",
+    startTime: "09:00", endTime: "15:00", roomRate: "", notes: "",
+  });
+  const [rmSaving, setRmSaving] = useState(false);
+  const [rmDeleteTarget, setRmDeleteTarget] = useState<RoomBooking | null>(null);
+  const [rmDeleting, setRmDeleting] = useState(false);
+  const [rooms, setRooms] = useState<RoomOption[]>([]);
+
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
   const fetchServices = useCallback(async () => {
@@ -197,6 +245,32 @@ export default function DaytimePage() {
 
   useEffect(() => { fetchServices(); }, [fetchServices, refreshKey]);
   useEffect(() => { fetchBookings(); }, [fetchBookings, refreshKey]);
+
+  // ── Room bookings fetch ──
+  const fetchRoomBookings = useCallback(async () => {
+    try {
+      setRmLoading(true);
+      const data = await apiGetDaytimeRoomBookings("limit=999");
+      setRoomBookings(Array.isArray(data) ? data : []);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("toastFailedLoadRoomBookings") || "Failed to load room bookings";
+      toast.error(msg);
+    } finally {
+      setRmLoading(false);
+    }
+  }, []);
+
+  const fetchRooms = useCallback(async () => {
+    try {
+      const data = await apiGetRooms();
+      setRooms(Array.isArray(data) ? data : []);
+    } catch {
+      setRooms([]);
+    }
+  }, []);
+
+  useEffect(() => { fetchRoomBookings(); }, [fetchRoomBookings, refreshKey]);
+  useEffect(() => { fetchRooms(); }, [fetchRooms]);
 
   // ─── Service CRUD ─────────────────────────────────────────────────────────
 
@@ -354,6 +428,121 @@ export default function DaytimePage() {
     }
   };
 
+  // ── Room booking CRUD (time-based, max 12 hours) ──
+
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+
+  const openCreateRmBk = () => {
+    setEditingRmBk(null);
+    setRmForm({
+      roomId: "", guestName: "", guestPhone: "", date: todayStr(),
+      startTime: "09:00", endTime: "15:00", roomRate: "", notes: "",
+    });
+    setRmDialogOpen(true);
+  };
+
+  const openEditRmBk = (bk: RoomBooking) => {
+    setEditingRmBk(bk);
+    setRmForm({
+      roomId: bk.roomId,
+      guestName: bk.guestName,
+      guestPhone: bk.guestPhone,
+      date: bk.date,
+      startTime: bk.startTime,
+      endTime: bk.endTime,
+      roomRate: String(bk.roomRate),
+      notes: bk.notes,
+    });
+    setRmDialogOpen(true);
+  };
+
+  // Compute total hours from the form's start/end time
+  const rmTotalHours = (() => {
+    if (!rmForm.startTime || !rmForm.endTime) return 0;
+    const [sh, sm] = rmForm.startTime.split(":").map(Number);
+    const [eh, em] = rmForm.endTime.split(":").map(Number);
+    const diff = (eh * 60 + em - sh * 60 - sm) / 60;
+    return diff > 0 ? diff : 0;
+  })();
+
+  const rmHourlyRate = rmForm.roomRate ? Number(rmForm.roomRate) : 0;
+  const rmTotalCost = Math.round(rmTotalHours * rmHourlyRate * 100) / 100;
+
+  // Auto-fill hourly rate when a room is selected
+  const handleRmRoomChange = (roomId: string) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (room && !rmForm.roomRate) {
+      // Default: pricePerNight / 12 (rounded to 2 decimals)
+      const hourly = Math.round((room.pricePerNight / 12) * 100) / 100;
+      setRmForm((f) => ({ ...f, roomId, roomRate: String(hourly) }));
+    } else {
+      setRmForm((f) => ({ ...f, roomId }));
+    }
+  };
+
+  const handleSaveRmBk = async () => {
+    if (!rmForm.roomId || !rmForm.guestName.trim() || !rmForm.date || !rmForm.startTime || !rmForm.endTime) {
+      toast.error(t("rmValRequired") || "Please fill all required fields");
+      return;
+    }
+    if (rmForm.guestPhone.trim() && !isValidPhone(rmForm.guestPhone)) {
+      toast.error(t("toastInvalidPhone") || "Invalid phone format");
+      return;
+    }
+    if (rmTotalHours <= 0) {
+      toast.error(t("rmValEndTimeBeforeStart") || "End time must be after start time");
+      return;
+    }
+    if (rmTotalHours > 12) {
+      toast.error(t("rmValMaxHours") || "Maximum booking duration is 12 hours");
+      return;
+    }
+    try {
+      setRmSaving(true);
+      const payload = {
+        roomId: rmForm.roomId,
+        guestName: rmForm.guestName.trim(),
+        guestPhone: rmForm.guestPhone.trim(),
+        date: rmForm.date,
+        startTime: rmForm.startTime,
+        endTime: rmForm.endTime,
+        roomRate: Number(rmForm.roomRate) || 0,
+        notes: rmForm.notes,
+      };
+      if (editingRmBk) {
+        await apiUpdateDaytimeRoomBooking(editingRmBk.id, payload);
+        toast.success(t("toastRoomBookingUpdated") || "Room booking updated");
+      } else {
+        await apiCreateDaytimeRoomBooking(payload);
+        toast.success(t("toastRoomBookingCreated") || "Room booking created");
+      }
+      setRmDialogOpen(false);
+      setEditingRmBk(null);
+      triggerRefresh();
+      fetchRoomBookings();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : (t("toastFailedSaveRoomBooking") || "Failed to save room booking"));
+    } finally {
+      setRmSaving(false);
+    }
+  };
+
+  const handleDeleteRmBk = async () => {
+    if (!rmDeleteTarget) return;
+    try {
+      setRmDeleting(true);
+      await apiDeleteDaytimeRoomBooking(rmDeleteTarget.id);
+      toast.success(t("toastRoomBookingDeleted") || "Room booking deleted");
+      setRmDeleteTarget(null);
+      triggerRefresh();
+      fetchRoomBookings();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : (t("toastFailedDeleteRoomBooking") || "Failed to delete"));
+    } finally {
+      setRmDeleting(false);
+    }
+  };
+
   // ─── Payment Recording ────────────────────────────────────────────────────
 
   const openPayDialog = (bk: Booking) => {
@@ -410,11 +599,11 @@ export default function DaytimePage() {
           </p>
         </div>
         <Button
-          onClick={activeTab === "services" ? openCreateSvc : openCreateBk}
+          onClick={activeTab === "services" ? openCreateSvc : activeTab === "bookings" ? openCreateBk : openCreateRmBk}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
-          {activeTab === "services" ? t("btnAddService") : t("btnNewBooking")}
+          {activeTab === "services" ? t("btnAddService") : activeTab === "bookings" ? t("btnNewBooking") : (t("btnNewRoomBooking") || "New Room Booking")}
         </Button>
       </div>
 
@@ -427,6 +616,10 @@ export default function DaytimePage() {
           <TabsTrigger value="bookings" className="gap-2">
             <CalendarDays className="h-4 w-4" />
             {t("tabBookings")} ({bookings.length})
+          </TabsTrigger>
+          <TabsTrigger value="rooms" className="gap-2">
+            <BedDouble className="h-4 w-4" />
+            {t("tabRoomBookings") || "Room Bookings"} ({roomBookings.length})
           </TabsTrigger>
         </TabsList>
 
@@ -821,6 +1014,201 @@ export default function DaytimePage() {
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteBk} disabled={bkDeleting}>
               {bkDeleting ? t("btnDeleting") : t("btnDelete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── Room Bookings Tab Content ─────────────────────────────────── */}
+      <TabsContent value="rooms">
+        {rmLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-xl" />
+            ))}
+          </div>
+        ) : roomBookings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+            <BedDouble className="h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-lg font-medium text-gray-500">{t("noRoomBookingsYet") || "No room bookings yet"}</p>
+            <p className="mt-1 text-sm text-gray-400">{t("noRoomBookingsYetDesc") || "Create a daytime room booking for short stays (max 12 hours)."}</p>
+            <Button onClick={openCreateRmBk} variant="outline" className="mt-4 gap-2">
+              <Plus className="h-4 w-4" /> {t("btnNewRoomBooking") || "New Room Booking"}
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-xl border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("rmThRoom") || "Room"}</TableHead>
+                  <TableHead>{t("rmThGuest") || "Guest"}</TableHead>
+                  <TableHead>{t("rmThDate") || "Date"}</TableHead>
+                  <TableHead>{t("rmThStart") || "Start"}</TableHead>
+                  <TableHead>{t("rmThEnd") || "End"}</TableHead>
+                  <TableHead>{t("rmThHours") || "Hours"}</TableHead>
+                  <TableHead>{t("rmThTotal") || "Total"}</TableHead>
+                  <TableHead>{t("rmThPayment") || "Payment"}</TableHead>
+                  <TableHead className="text-right">{t("thActions") || "Actions"}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {roomBookings.map((bk) => (
+                  <TableRow key={bk.id}>
+                    <TableCell className="font-medium">
+                      {bk.room ? `${bk.room.number}` : "—"}
+                      <span className="text-xs text-gray-400 ml-1">{bk.room?.type || ""}</span>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium">{bk.guestName}</p>
+                      {bk.guestPhone && <p className="text-xs text-gray-400">{bk.guestPhone}</p>}
+                    </TableCell>
+                    <TableCell className="text-sm">{bk.date}</TableCell>
+                    <TableCell className="text-sm">{bk.startTime}</TableCell>
+                    <TableCell className="text-sm">{bk.endTime}</TableCell>
+                    <TableCell className="text-sm">{bk.totalHours.toFixed(1)}h</TableCell>
+                    <TableCell className="text-sm font-medium">{formatPrice(bk.totalCost)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={
+                        bk.paymentStatus === "PAID" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                        bk.paymentStatus === "PARTIAL" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                        "bg-slate-50 text-slate-600 border-slate-200"
+                      }>
+                        {bk.paymentStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditRmBk(bk)}>
+                            <Pencil className="mr-2 h-4 w-4" /> {t("btnEdit") || "Edit"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-rose-600" onClick={() => setRmDeleteTarget(bk)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> {t("btnDelete") || "Delete"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </TabsContent>
+
+      {/* ─── Room Booking Dialog (Create / Edit) ────────────────────────── */}
+      <Dialog open={rmDialogOpen} onOpenChange={(open) => { if (!open) { setRmDialogOpen(false); setEditingRmBk(null); } }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BedDouble className="h-5 w-5" />
+              {editingRmBk ? (t("dlgEditRoomBookingTitle") || "Edit Room Booking") : (t("dlgNewRoomBookingTitle") || "New Room Booking")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("dlgRoomBookingDesc") || "Time-based room reservation (max 12 hours)"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Room selection */}
+            <div className="space-y-2">
+              <Label>{t("rmLblRoom") || "Room"} <span className="text-rose-500">*</span></Label>
+              <Select value={rmForm.roomId} onValueChange={handleRmRoomChange}>
+                <SelectTrigger><SelectValue placeholder={t("rmPhSelectRoom") || "Select a room"} /></SelectTrigger>
+                <SelectContent>
+                  {rooms.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.number} — {r.type} ({formatPrice(r.pricePerNight)}/night)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date + Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t("rmLblDate") || "Date"} <span className="text-rose-500">*</span></Label>
+                <Input type="date" value={rmForm.date} onChange={(e) => setRmForm((f) => ({ ...f, date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rmLblHours") || "Duration"}</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="time" value={rmForm.startTime} onChange={(e) => setRmForm((f) => ({ ...f, startTime: e.target.value }))} className="flex-1" />
+                  <span className="text-gray-400">→</span>
+                  <Input type="time" value={rmForm.endTime} onChange={(e) => setRmForm((f) => ({ ...f, endTime: e.target.value }))} className="flex-1" />
+                </div>
+              </div>
+            </div>
+
+            {/* Hours summary + rate */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-gray-50 p-2.5 text-center">
+                <p className="text-[10px] text-gray-400">{t("rmLblTotalHours") || "Total Hours"}</p>
+                <p className="text-sm font-bold">{rmTotalHours.toFixed(1)}h</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("rmLblHourlyRate") || "Hourly Rate"}</Label>
+                <Input type="number" value={rmForm.roomRate} onChange={(e) => setRmForm((f) => ({ ...f, roomRate: e.target.value }))} placeholder="0" />
+              </div>
+              <div className="rounded-lg bg-emerald-50 p-2.5 text-center">
+                <p className="text-[10px] text-emerald-600">{t("rmLblTotalCost") || "Total Cost"}</p>
+                <p className="text-sm font-bold text-emerald-700">{formatPrice(rmTotalCost)}</p>
+              </div>
+            </div>
+
+            {rmTotalHours > 12 && (
+              <p className="text-xs text-rose-500">{t("rmValMaxHours") || "Maximum booking duration is 12 hours"}</p>
+            )}
+
+            {/* Guest info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("rmLblGuestName") || "Guest Name"} <span className="text-rose-500">*</span></Label>
+                <Input value={rmForm.guestName} onChange={(e) => setRmForm((f) => ({ ...f, guestName: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("rmLblGuestPhone") || "Guest Phone"}</Label>
+                <Input type="tel" value={rmForm.guestPhone} onChange={(e) => setRmForm((f) => ({ ...f, guestPhone: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label>{t("rmLblNotes") || "Notes"}</Label>
+              <Textarea value={rmForm.notes} onChange={(e) => setRmForm((f) => ({ ...f, notes: e.target.value }))} rows={2} />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRmDialogOpen(false); setEditingRmBk(null); }}>{t("cancel") || "Cancel"}</Button>
+            <Button onClick={handleSaveRmBk} disabled={rmSaving || rmTotalHours <= 0 || rmTotalHours > 12}>
+              {rmSaving ? (t("btnSaving") || "Saving...") : editingRmBk ? (t("btnUpdate") || "Update") : (t("btnCreate") || "Create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Delete Room Booking Alert ─────────────────────────────────── */}
+      <AlertDialog open={!!rmDeleteTarget} onOpenChange={() => setRmDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("rmAlertDeleteTitle") || "Delete Room Booking"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("rmAlertDeleteDesc") || "Are you sure you want to delete this room booking? This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel") || "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteRmBk} disabled={rmDeleting}>
+              {rmDeleting ? (t("btnDeleting") || "Deleting...") : (t("btnDelete") || "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

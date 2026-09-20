@@ -145,6 +145,7 @@ model Provider {
   expenses    Expense[]
   daytimeServices  DaytimeService[]
   daytimeBookings DaytimeBooking[]
+  daytimeRoomBookings DaytimeRoomBooking[]
   resources   Resource[]
   housekeepingTasks HousekeepingTask[]
   settings    Settings[]
@@ -202,6 +203,7 @@ model Room {
   provider           Provider       @relation(fields: [providerId], references: [id])
   reservations       Reservation[]
   housekeepingTasks  HousekeepingTask[]
+  daytimeRoomBookings DaytimeRoomBooking[]
 
   @@unique([number, providerId])
   @@index([providerId])
@@ -343,6 +345,42 @@ model DaytimeBooking {
   @@index([createdAt])
 }
 
+// ── Daytime Room Booking — time-based room reservation (max 12 hours) ──
+// Separate from overnight Reservation: no check-in/check-out lifecycle,
+// no bed-night accounting. Used for day-use rooms (meetings, rest,
+// short stays). Hourly rate, max 12 hours per booking.
+model DaytimeRoomBooking {
+  id             String            @id @default(cuid())
+  roomId         String
+  guestName      String
+  guestPhone     String            @default("")
+  date           String            // YYYY-MM-DD
+  startTime      String            // HH:mm (e.g. "09:00")
+  endTime        String            // HH:mm (e.g. "15:00")
+  totalHours     Float             // computed (max 12, enforced server-side)
+  roomRate       Float             // hourly rate (ETB/hour)
+  totalCost      Float             // totalHours * roomRate
+  paidAmount     Float             @default(0)
+  paymentStatus  PaymentStatusType @default(PENDING)
+  paymentMethod  PaymentMethodType?
+  notes          String            @default("")
+  status         ReservationStatus @default(UPCOMING)
+  providerId     String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  provider Provider   @relation(fields: [providerId], references: [id])
+  room     Room      @relation(fields: [roomId], references: [id])
+  payments Payment[]
+
+  @@index([providerId])
+  @@index([roomId])
+  @@index([guestPhone])
+  @@index([date])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model Expense {
   id            String            @id @default(cuid())
   date          String
@@ -397,6 +435,7 @@ model Payment {
   id               String            @id @default(cuid())
   reservationId    String?
   daytimeBookingId String?
+  daytimeRoomBookingId String?
   amount           Float
   method           PaymentMethodType
   referenceNo      String            @default("")
@@ -406,10 +445,12 @@ model Payment {
 
   reservation    Reservation?    @relation(fields: [reservationId], references: [id])
   daytimeBooking DaytimeBooking? @relation(fields: [daytimeBookingId], references: [id])
+  daytimeRoomBooking DaytimeRoomBooking? @relation(fields: [daytimeRoomBookingId], references: [id])
 
   @@index([providerId])
   @@index([reservationId])
   @@index([daytimeBookingId])
+  @@index([daytimeRoomBookingId])
   @@index([createdAt])
 }
 

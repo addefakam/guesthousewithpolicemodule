@@ -344,6 +344,19 @@ export const apiUpdateDaytimeBooking = (id: string, data: Record<string, unknown
 export const apiDeleteDaytimeBooking = (id: string) =>
   req(`/api/daytime-bookings/${id}`, { method: "DELETE" });
 
+// ── Daytime Room Bookings (time-based, max 12 hours) ──
+export const apiGetDaytimeRoomBookings = async (q?: string) => {
+  const res = await req(`/api/daytime-room-bookings${q ? `?${q}` : ""}`);
+  if (res && Array.isArray(res.data)) return res.data;
+  return Array.isArray(res) ? res : [];
+};
+export const apiCreateDaytimeRoomBooking = (data: Record<string, unknown>) =>
+  req("/api/daytime-room-bookings", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateDaytimeRoomBooking = (id: string, data: Record<string, unknown>) =>
+  req(`/api/daytime-room-bookings/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const apiDeleteDaytimeRoomBooking = (id: string) =>
+  req(`/api/daytime-room-bookings/${id}`, { method: "DELETE" });
+
 // Reviews
 export const apiGetReviews = (q?: string) => req(`/api/reviews${q ? `?${q}` : ""}`);
 export const apiCreateReview = (data: Record<string, unknown>) =>
