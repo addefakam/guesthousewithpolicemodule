@@ -67,7 +67,15 @@ export async function GET(req: NextRequest) {
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "status" IN ('UPCOMING','ACTIVE') GROUP BY "providerId") ar ON ar."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", SUM("paidAmount") AS total FROM "Reservation" GROUP BY "providerId") rr ON rr."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", SUM("paidAmount") AS total FROM "DaytimeBooking" GROUP BY "providerId") dr ON dr."providerId" = p."id"
-      ORDER BY p."name" ASC
+      ORDER BY
+        CASE p."status"
+          WHEN 'PENDING' THEN 0
+          WHEN 'REJECTED' THEN 1
+          WHEN 'SUSPENDED' THEN 2
+          WHEN 'APPROVED' THEN 3
+          ELSE 4
+        END ASC,
+        p."createdAt" DESC
     `);
 
     return NextResponse.json({

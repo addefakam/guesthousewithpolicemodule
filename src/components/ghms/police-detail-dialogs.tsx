@@ -198,10 +198,21 @@ function ProvidersDetail({
   const [query, setQuery] = useState("");
 
   const all = useMemo(
-    () =>
-      filterStatus
+    () => {
+      // Filter by status if specified (e.g. "approved" shows only APPROVED)
+      const list = filterStatus
         ? dashboard.providers.filter((p) => p.status === filterStatus)
-        : dashboard.providers,
+        : dashboard.providers;
+      // Sort: PENDING first, then REJECTED, SUSPENDED, APPROVED — newest first within each
+      const statusPriority: Record<string, number> = { PENDING: 0, REJECTED: 1, SUSPENDED: 2, APPROVED: 3 };
+      return [...list].sort((a, b) => {
+        const sa = statusPriority[a.status] ?? 9;
+        const sb = statusPriority[b.status] ?? 9;
+        if (sa !== sb) return sa - sb;
+        // Within same status, keep original order (already sorted by API)
+        return 0;
+      });
+    },
     [dashboard.providers, filterStatus]
   );
 
