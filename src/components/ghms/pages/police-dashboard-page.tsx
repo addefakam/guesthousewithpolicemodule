@@ -176,7 +176,7 @@ export default function PoliceDashboardPage() {
     fetchAnomalyStatus();
   }, [fetchAnomalyStatus]);
 
-  const providerPagination = usePagination({ totalItems: dashboard?.providers?.length || 0, initialPageSize: 10, pageSizeOptions: [10, 20, 50] });
+  const providerPagination = usePagination({ totalItems: dashboard?.providers?.length || 0, initialPageSize: 10, pageSizeOptions: [10, 20, 50, 100] });
   const paginatedProviders = useMemo(() => providerPagination.paginate(dashboard?.providers || []), [dashboard?.providers, providerPagination]);
 
   const fetchData = useCallback(async () => {
