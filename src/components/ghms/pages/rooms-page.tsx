@@ -350,8 +350,10 @@ export default function RoomsPage() {
   }, [search, t]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchRooms(), 300);
-    return () => clearTimeout(timer);
+    // Remove the 300ms debounce — it was causing delayed updates after
+    // actions (check-in, checkout, create reservation). The refreshKey
+    // change should trigger an immediate re-fetch.
+    fetchRooms();
   }, [fetchRooms, refreshKey]);
 
   // Fetch reservations for the room when info dialog opens

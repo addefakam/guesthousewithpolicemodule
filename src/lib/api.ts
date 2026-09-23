@@ -23,6 +23,7 @@ export async function req(url: string, opts: RequestInit = {}) {
     headers: { ...getHeaders(), ...opts.headers },
     credentials: "include", // Always include cookies (JWT httpOnly)
     cache: "no-store", // Never cache API responses — always fetch fresh data
+    next: { revalidate: 0 }, // Also disable Next.js fetch cache
   });
   if (!res.ok) {
     // ── Auth expired detection ──
