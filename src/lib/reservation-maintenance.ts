@@ -219,12 +219,20 @@ async function performMaintenance(
   }
 
   // ── (c) Reconcile stale room flags ──────────────────────────────────────
-  // Heal any room still flagged OCCUPIED/RESERVED with no ACTIVE (checked-in)
+  // Heal any room still flagged OCCUPIED with no ACTIVE (checked-in)
   // reservation. This covers rooms left behind by manually cancelled
   // reservations, data imports, or any missed transition — whatever the case,
   // a room without an in-house guest must be bookable again.
+  //
+  // IMPORTANT: Only release OCCUPIED rooms — NOT RESERVED rooms!
+  // RESERVED means there's an UPCOMING booking that hasn't been checked in yet.
+  // If we release RESERVED rooms, the room status shows AVAILABLE even though
+  // there's a valid booking — causing the "Reserved (0)" bug.
+  // A RESERVED room should only be released if the reservation is cancelled
+  // (handled by the cancel endpoint) or if the checkout has passed (handled
+  // by section (b) above which cancels the reservation first).
   const stuckRooms = await db.room.findMany({
-    where: { ...scopeWhere, status: { in: ["OCCUPIED", "RESERVED"] } },
+    where: { ...scopeWhere, status: "OCCUPIED" },
     select: { id: true },
     take: 500,
   });
