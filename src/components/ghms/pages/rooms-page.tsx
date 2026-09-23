@@ -636,21 +636,28 @@ export default function RoomsPage() {
   // Date-aware display status per room (what the filter buttons mean):
   // - OCCUPIED: a guest is checked in right now (ACTIVE reservation)
   // - MAINTENANCE: room taken out of service
-  // - RESERVED: booked for today or upcoming days — guest has not checked in yet
+  // - RESERVED: room.status is RESERVED in the database OR has an UPCOMING
+  //   reservation with checkOut >= today
   // - AVAILABLE: free for today — nothing blocks today's date
+  //
+  // IMPORTANT: We check room.status FIRST (before the reservation maps)
+  // because the reservation maintenance auto-cancels past-checkout
+  // UPCOMING reservations, which would clear the RESERVED flag. But the
+  // room.status field is set to RESERVED when a reservation is created
+  // and only cleared when the guest checks out or the reservation is
+  // cancelled. So room.status is the "sticky" indicator that survives
+  // the maintenance cleanup.
   const displayStatus = useCallback((room: Room): string => {
     if (activeResMap[room.id]) return "OCCUPIED";
     if (room.status === "MAINTENANCE") return "MAINTENANCE";
+    // Check room.status first — if the DB says RESERVED, trust it
+    if (room.status === "RESERVED") return "RESERVED";
+    // Also check if there's an UPCOMING reservation for this room
     const up = upcomingResMap[room.id];
-    // A room is RESERVED if it has an UPCOMING reservation with:
-    // - checkOut >= today (the booking hasn't ended yet — covers today's
-    //   check-in that hasn't been activated yet)
-    // - checkIn <= today (the booking starts today or earlier — the
-    //   guest is expected to arrive)
-    // Previously only checked checkOut > today which missed same-day
-    // reservations where checkIn = today but checkOut is also today
-    // or later. Changed to checkOut >= today to include those.
     if (up && up.checkOut >= todayKey) return "RESERVED";
+    // If room.status is OCCUPIED but no ACTIVE reservation found, still
+    // show as OCCUPIED (the reservation map may not have loaded yet)
+    if (room.status === "OCCUPIED") return "OCCUPIED";
     return "AVAILABLE";
   }, [activeResMap, upcomingResMap, todayKey]);
 

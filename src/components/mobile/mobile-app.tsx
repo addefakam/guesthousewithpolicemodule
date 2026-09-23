@@ -603,9 +603,14 @@ export default function MobileApp() {
   const displayStatus = useCallback((room: Room): string => {
     if (activeResMap[room.id]) return "OCCUPIED";
     if (room.status === "MAINTENANCE") return "MAINTENANCE";
+    // Check room.status first — if the DB says RESERVED, trust it
+    if (room.status === "RESERVED") return "RESERVED";
+    // Also check if there's an UPCOMING reservation for this room
     const up = upcomingResMap[room.id];
-    // checkOut >= today (was > today) — includes same-day reservations
     if (up && up.checkOut >= todayKey) return "RESERVED";
+    // If room.status is OCCUPIED but no ACTIVE reservation found, still
+    // show as OCCUPIED (the reservation map may not have loaded yet)
+    if (room.status === "OCCUPIED") return "OCCUPIED";
     return "AVAILABLE";
   }, [activeResMap, upcomingResMap, todayKey]);
 
