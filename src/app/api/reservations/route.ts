@@ -49,7 +49,13 @@ export async function GET(req: NextRequest) {
 
     // Pagination
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+    // ── Cap raised from 100 → 999 ──
+    // The frontend helper apiGetReservations() requests limit=999 to fetch
+    // ALL reservations for client-side search/filter. The previous cap of
+    // 100 silently truncated the list — guesthouses with 200+ reservations
+    // would only see the first 100, causing rooms to appear AVAILABLE when
+    // they actually had a RESERVED booking that was cut off.
+    const limit = Math.min(999, Math.max(1, parseInt(searchParams.get("limit") || "999")));
     const skip = (page - 1) * limit;
 
     // Use raw SQL to avoid Prisma's enum cache issue with RoomType (FAMILY).

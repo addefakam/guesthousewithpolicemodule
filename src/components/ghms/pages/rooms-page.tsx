@@ -316,8 +316,8 @@ export default function RoomsPage() {
       setLoading(true);
       const [raw, upcomingRes, activeRes] = await Promise.all([
         apiGetRooms(search),
-        apiGetReservations("status=UPCOMING&limit=100").catch(() => []),
-        apiGetReservations("status=ACTIVE&limit=100").catch(() => []),
+        apiGetReservations("status=UPCOMING&limit=999").catch(() => []),
+        apiGetReservations("status=ACTIVE&limit=999").catch(() => []),
       ]);
       const list = Array.isArray(raw.rooms) ? raw.rooms : Array.isArray(raw) ? raw : [];
       setRooms(list);
@@ -640,7 +640,15 @@ export default function RoomsPage() {
     if (activeResMap[room.id]) return "OCCUPIED";
     if (room.status === "MAINTENANCE") return "MAINTENANCE";
     const up = upcomingResMap[room.id];
-    if (up && up.checkOut > todayKey) return "RESERVED";
+    // A room is RESERVED if it has an UPCOMING reservation with:
+    // - checkOut >= today (the booking hasn't ended yet — covers today's
+    //   check-in that hasn't been activated yet)
+    // - checkIn <= today (the booking starts today or earlier — the
+    //   guest is expected to arrive)
+    // Previously only checked checkOut > today which missed same-day
+    // reservations where checkIn = today but checkOut is also today
+    // or later. Changed to checkOut >= today to include those.
+    if (up && up.checkOut >= todayKey) return "RESERVED";
     return "AVAILABLE";
   }, [activeResMap, upcomingResMap, todayKey]);
 

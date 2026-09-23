@@ -604,7 +604,8 @@ export default function MobileApp() {
     if (activeResMap[room.id]) return "OCCUPIED";
     if (room.status === "MAINTENANCE") return "MAINTENANCE";
     const up = upcomingResMap[room.id];
-    if (up && up.checkOut > todayKey) return "RESERVED";
+    // checkOut >= today (was > today) — includes same-day reservations
+    if (up && up.checkOut >= todayKey) return "RESERVED";
     return "AVAILABLE";
   }, [activeResMap, upcomingResMap, todayKey]);
 
