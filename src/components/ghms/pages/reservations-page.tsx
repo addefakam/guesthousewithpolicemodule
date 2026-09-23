@@ -244,9 +244,8 @@ export default function ReservationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
-  // Create dialog — 2-step wizard
+  // Create dialog — single page form (guest + booking on one screen)
   const [createOpen, setCreateOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
 
   // Step 1 — guest selection / creation
   const [guestMode, setGuestMode] = useState<"existing" | "new">("existing");
@@ -383,11 +382,10 @@ export default function ReservationsPage() {
             ? f
             : { ...f, roomId: preselectedRoom.id }
         );
-        // Start the wizard on the guest step so the user can register/select
-        // the guest right away (room is already chosen).
-        setWizardStep(1);
+        // Reset guest selection so the form starts fresh.
         setGuestMode("existing");
         setSelectedGuestId("");
+        setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
         setCreateOpen(true);
       }
     }
@@ -665,7 +663,6 @@ export default function ReservationsPage() {
       if (raw === "ROOM_CONFLICT" || (parsed?.code === "ROOM_CONFLICT" && parsed.conflict)) {
         const chosen = allRooms.find((x) => x.id === createForm.roomId);
         setCreateOpen(false);
-        setWizardStep(1);
         setConflictInfo({
           roomNumber: parsed?.conflict?.roomNumber || chosen?.number || "",
           roomName: parsed?.conflict?.roomName || chosen?.name || "",
@@ -682,7 +679,6 @@ export default function ReservationsPage() {
 
   const closeCreateDialog = () => {
     setCreateOpen(false);
-    setWizardStep(1);
     setGuestMode("existing");
     setSelectedGuestId("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
@@ -1380,63 +1376,52 @@ export default function ReservationsPage() {
       </div>
       )}
 
-      {/* New Reservation Wizard Dialog */}
+      {/* New Reservation Dialog — single page form */}
       <Dialog open={createOpen} onOpenChange={closeCreateDialog}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {wizardStep === 1 ? (
-                <><User className="h-5 w-5 text-violet-500" /> Step 1 of 2 — Guest Information</>
-              ) : (
-                <><BedDouble className="h-5 w-5 text-emerald-500" /> Step 2 of 2 — Booking Details</>
-              )}
+              <CalendarPlus className="h-5 w-5 text-emerald-500" />
+              {t("btnNewReservation")}
             </DialogTitle>
-            <DialogDescription>
-              {wizardStep === 1
-                ? "Select an existing guest or register a new one."
-                : "Choose a room and set the dates for this reservation."}
-            </DialogDescription>
+            <DialogDescription>{t("newResDesc")}</DialogDescription>
           </DialogHeader>
 
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 py-1">
-            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ wizardStep === 1 ? "bg-violet-600 text-white" : "bg-emerald-100 text-emerald-700" }`}>1</div>
-            <div className={`h-0.5 flex-1 rounded ${ wizardStep === 2 ? "bg-emerald-400" : "bg-gray-200" }`} />
-            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${ wizardStep === 2 ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-400" }`}>2</div>
-          </div>
-
-          {/* ── STEP 1: Guest ── */}
-          {wizardStep === 1 && (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              {/* Preselected room banner — visible when the user came from
-                  a "Reserve" click on the Rooms page, so they know which
-                  room this new reservation is for. */}
-              {preselectedRoom && preselectedRoom.intent !== "manage" && (
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
-                      <BedDouble className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-emerald-700">
-                        {t("labelSelectedRoom") || "Selected room"}
-                      </div>
-                      <div className="truncate text-sm font-semibold text-emerald-900">
-                        {preselectedRoom.number} · {preselectedRoom.name} · {preselectedRoom.type}
-                      </div>
-                    </div>
+          <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
+            {/* ── Preselected room banner (when launched from Rooms page) ── */}
+            {preselectedRoom && preselectedRoom.intent !== "manage" && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+                    <BedDouble className="h-5 w-5" />
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs text-emerald-700">{t("frNight", "night")}</div>
-                    <div className="text-sm font-semibold text-emerald-900">
-                      {formatCurrency(preselectedRoom.pricePerNight)}
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-emerald-700">
+                      {t("labelRoom")}
+                    </div>
+                    <div className="truncate text-sm font-semibold text-emerald-900">
+                      {preselectedRoom.number} · {preselectedRoom.name} · {preselectedRoom.type}
                     </div>
                   </div>
                 </div>
-              )}
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-emerald-700">{t("frNight", "night")}</div>
+                  <div className="text-sm font-semibold text-emerald-900">
+                    {formatCurrency(preselectedRoom.pricePerNight)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Section: Guest ── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-violet-500" />
+                <h3 className="text-sm font-semibold text-gray-800">{t("labelGuest")}</h3>
+              </div>
 
               {/* Mode toggle */}
-              <div className="flex p-1 rounded-full bg-gray-100 mb-4">
+              <div className="flex p-1 rounded-full bg-gray-100">
                 <Button variant={guestMode === "existing" ? "default" : "ghost"} onClick={() => setGuestMode("existing")} className="flex-1 rounded-full shadow-sm">
                   <Search className="mr-2 h-4 w-4" />
                   {t("btnExistingGuest")}
@@ -1453,18 +1438,30 @@ export default function ReservationsPage() {
                   <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" role="combobox" aria-expanded={comboboxOpen} className="w-full justify-between font-normal">
-                        {selectedGuestId ? allGuests.find((g) => g.id === selectedGuestId)?.name : t("placeholderSearchGuest")}
+                        {selectedGuestId
+                          ? (() => {
+                              const sel = allGuests.find((g) => g.id === selectedGuestId);
+                              return sel ? `${sel.name} · ${sel.phone}` : t("placeholderSearchGuest");
+                            })()
+                          : t("placeholderSearchGuest")}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command shouldFilter={true}>
+                      <Command shouldFilter>
                         <CommandInput placeholder={t("placeholderSearchGuest")} />
                         <CommandList>
                           <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
                           <CommandGroup>
                             {allGuests.map((g) => (
-                              <CommandItem key={g.id} value={`${g.name} ${g.phone}`} onSelect={() => { setSelectedGuestId(g.id); setComboboxOpen(false); }}>
+                              <CommandItem
+                                key={g.id}
+                                value={`${g.name} ${g.phone}`}
+                                onSelect={() => {
+                                  setSelectedGuestId(g.id);
+                                  setComboboxOpen(false);
+                                }}
+                              >
                                 <User className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
                                 <span className="flex-1 truncate">{g.name}</span>
                                 <span className="ml-2 text-xs text-muted-foreground">{g.phone}</span>
@@ -1475,6 +1472,31 @@ export default function ReservationsPage() {
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  {selectedGuestId && (
+                    <div className="flex items-center justify-between rounded-md border border-violet-100 bg-violet-50 px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-200 text-violet-700 text-xs font-bold">
+                          {allGuests.find((g) => g.id === selectedGuestId)?.name?.charAt(0).toUpperCase() || "?"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-violet-900">
+                            {allGuests.find((g) => g.id === selectedGuestId)?.name}
+                          </p>
+                          <p className="text-xs text-violet-600">
+                            {allGuests.find((g) => g.id === selectedGuestId)?.phone}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedGuestId("")}
+                        className="h-7 px-2 text-xs text-violet-700 hover:bg-violet-100"
+                      >
+                        {t("btnCancel")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1535,9 +1557,6 @@ export default function ReservationsPage() {
                         value={newGuestForm.idNumber}
                         onChange={(e) => {
                           const val = e.target.value;
-                          // Auto-format as "FAN XX XX XX XX XX XX XX XX" when
-                          // the ID type is National ID. For other ID types,
-                          // accept any value as-is.
                           if (isNationalIdType(newGuestForm.idType)) {
                             setNewGuestForm({ ...newGuestForm, idNumber: formatNationalId(val) });
                           } else {
@@ -1581,31 +1600,15 @@ export default function ReservationsPage() {
                 </div>
               )}
             </div>
-          )}
 
-          {/* ── STEP 2: Booking ── */}
-          {wizardStep === 2 && (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              {/* Selected guest preview */}
-              {(() => {
-                const g = guestMode === "existing" ? allGuests.find((x) => x.id === selectedGuestId) : null;
-                return (
-                  <div className="flex items-center gap-2 rounded-lg bg-violet-50 border border-violet-100 px-3 py-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-200 text-violet-700 text-xs font-bold">
-                      {guestMode === "new" ? newGuestForm.name.charAt(0).toUpperCase() || "N" : g?.name.charAt(0).toUpperCase() || "?"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-violet-900">
-                        {guestMode === "new" ? newGuestForm.name : g?.name}
-                      </p>
-                      <p className="text-xs text-violet-600">
-                        {guestMode === "new" ? newGuestForm.phone : g?.phone}
-                        {guestMode === "new" && ` · ${t("newGuestLabel")}`}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
+            <Separator />
+
+            {/* ── Section: Booking ── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <BedDouble className="h-4 w-4 text-emerald-500" />
+                <h3 className="text-sm font-semibold text-gray-800">{t("labelRoom")}</h3>
+              </div>
 
               <div className="space-y-2">
                 <Label>{t("labelRoom")} <span className="text-rose-500">*</span></Label>
@@ -1637,7 +1640,6 @@ export default function ReservationsPage() {
                 const isSingle = selRoom.type === "SINGLE";
                 if (!isDouble && !isSingle) return null;
 
-                // For SINGLE rooms: show toggle to add second guest
                 if (isSingle) {
                   return (
                     <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-3 space-y-3">
@@ -1678,7 +1680,6 @@ export default function ReservationsPage() {
                   );
                 }
 
-                // For DOUBLE/TWIN rooms: existing behavior with exception option
                 return (
                   <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                     <div className="flex items-center gap-2 text-amber-800">
@@ -1729,8 +1730,7 @@ export default function ReservationsPage() {
                 );
               })()}
 
-              {/* Availability calendar — occupied days are disabled (not clickable);
-                  a checkout day stays open as the next arrival */}
+              {/* Availability calendar */}
               <RoomAvailabilityCalendar
                 roomId={createForm.roomId || undefined}
                 checkIn={createForm.checkIn}
@@ -1754,29 +1754,14 @@ export default function ReservationsPage() {
                 <Textarea id="res-notes" placeholder={t("placeholderNotes")} rows={2} value={createForm.notes} onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })} />
               </div>
             </div>
-          )}
+          </div>
 
           <DialogFooter className="flex-row gap-2">
-            {wizardStep === 1 ? (
-              <>
-                <Button variant="outline" onClick={closeCreateDialog}>{t("btnCancel")}</Button>
-                <Button onClick={() => setWizardStep(2)} disabled={!step1Valid} className="gap-1.5">
-                  {t("btnNextBookingDetails")}
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setWizardStep(1)} className="gap-1.5">
-                  <ChevronLeft className="h-4 w-4" />
-                  {t("btnBack")}
-                </Button>
-                <Button onClick={handleCreate} disabled={creating} className="gap-1.5">
-                  {creating ? t("btnCreating") : t("btnCreateReservation")}
-                  <CheckCircle2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+            <Button variant="outline" onClick={closeCreateDialog}>{t("btnCancel")}</Button>
+            <Button onClick={handleCreate} disabled={creating || !step1Valid} className="gap-1.5">
+              {creating ? t("btnCreating") : t("btnCreateReservation")}
+              <CheckCircle2 className="h-4 w-4" />
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
