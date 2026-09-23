@@ -1,14 +1,9 @@
 "use client";
 
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationPrevious,
-  PaginationNext,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -111,43 +106,55 @@ export function PaginationControls({
 
       {/* Right: page navigation (only when more than 1 page) */}
       {hasMultiplePages && (
-        <Pagination className="order-1 sm:order-2 mx-0 w-auto">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => goToPage(currentPage - 1)}
-                className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage <= 1}
-              />
-            </PaginationItem>
+        <div className="order-1 sm:order-2 flex items-center gap-2">
+          {/* Previous button */}
+          <button
+            type="button"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Previous page"
+          >
+            <ChevronLeftIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
 
+          {/* Page numbers */}
+          <div className="flex items-center gap-1">
             {pageNumbers.map((page, idx) =>
               page === "ellipsis" ? (
-                <PaginationItem key={`ellipsis-${idx}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
+                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground">
+                  …
+                </span>
               ) : (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    isActive={page === currentPage}
-                    onClick={() => goToPage(page)}
-                    className="cursor-pointer"
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => goToPage(page)}
+                  className={`min-w-[32px] rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                    page === currentPage
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {page}
+                </button>
               )
             )}
+          </div>
 
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => goToPage(currentPage + 1)}
-                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage >= totalPages}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+          {/* Next button */}
+          <button
+            type="button"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Next page"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRightIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
