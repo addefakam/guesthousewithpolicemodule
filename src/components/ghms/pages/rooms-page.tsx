@@ -1151,6 +1151,28 @@ export default function RoomsPage() {
                       </Button>
                     )}
                   </div>
+
+                  {/* Edit + Delete Room — always available on ALL statuses */}
+                  <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50"
+                      onClick={() => openEdit(room)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {t("btnEdit")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                      onClick={() => setDeleteDialog(room)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {t("btnDelete")}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
