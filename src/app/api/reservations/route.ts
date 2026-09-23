@@ -6,6 +6,10 @@ import { runAnomalyDetection } from "@/lib/anomaly-engine";
 import { isValidPhone } from "@/lib/utils";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
+// ── Force dynamic rendering ──
+// Prevents Vercel from caching stale reservation data at the edge.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);

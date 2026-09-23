@@ -6,6 +6,10 @@ import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { isValidNationalId, isNationalIdType } from "@/lib/national-id";
 
+// ── Force dynamic rendering ──
+// Prevents Vercel from caching stale guest data at the edge.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);

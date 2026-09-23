@@ -6,6 +6,10 @@ import { hashPassword } from "@/lib/auth-utils";
 import { uploadFile } from "@/lib/storage";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 
+// ── Force dynamic rendering ──
+// Prevents Vercel from caching stale provider data at the edge.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     await ensureDatabase();

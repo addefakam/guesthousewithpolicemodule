@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
+// ── Force dynamic rendering ──
+// Prevents Vercel from caching stale dashboard data at the edge.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);

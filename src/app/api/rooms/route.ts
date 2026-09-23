@@ -8,6 +8,13 @@ import {
 } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
+// ── Force dynamic rendering ──
+// Without this, Vercel may cache the API response at the edge, causing
+// stale data (old room statuses, old reservations) to be served even
+// after the operator makes changes. force-dynamic ensures every request
+// hits the server fresh.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
