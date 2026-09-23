@@ -372,17 +372,24 @@ export default function ReservationsPage() {
   useEffect(() => {
     if (preselectedRoom) {
       setHighlightRoomId(preselectedRoom.id);
-      setCreateForm((f) =>
-        f.roomId === preselectedRoom.id
-          ? f
-          : { ...f, roomId: preselectedRoom.id }
-      );
-      // Start the wizard on the guest step so the user can register/select
-      // the guest right away (room is already chosen).
-      setWizardStep(1);
-      setGuestMode("existing");
-      setSelectedGuestId("");
-      setCreateOpen(true);
+      // Only auto-open the create dialog when the user clicked "Reserve" on
+      // an available room (intent === "create", the default). When they
+      // clicked "Manage Reservations" on an already-reserved room
+      // (intent === "manage"), just highlight the matching reservations —
+      // they want to see existing ones, not start a new booking.
+      if (preselectedRoom.intent !== "manage") {
+        setCreateForm((f) =>
+          f.roomId === preselectedRoom.id
+            ? f
+            : { ...f, roomId: preselectedRoom.id }
+        );
+        // Start the wizard on the guest step so the user can register/select
+        // the guest right away (room is already chosen).
+        setWizardStep(1);
+        setGuestMode("existing");
+        setSelectedGuestId("");
+        setCreateOpen(true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedRoom]);

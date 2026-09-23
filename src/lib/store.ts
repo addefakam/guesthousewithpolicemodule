@@ -19,6 +19,17 @@ interface PreselectedRoom {
   name: string;
   type: string;
   pricePerNight: number;
+  /**
+   * Distinguishes the user's intent when navigating to the reservations page
+   * with a preselected room:
+   * - "create": user clicked "Reserve" on an available room → auto-open the
+   *   new-reservation dialog with that room prefilled.
+   * - "manage": user clicked "Manage Reservations" on an already-reserved
+   *   room → just highlight the matching reservations; do NOT auto-open the
+   *   create dialog.
+   * Defaults to "create" when omitted.
+   */
+  intent?: "create" | "manage";
 }
 
 export interface SubscriptionInfo {

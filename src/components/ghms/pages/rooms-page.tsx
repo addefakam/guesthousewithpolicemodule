@@ -467,6 +467,7 @@ export default function RoomsPage() {
       name: room.name,
       type: room.type,
       pricePerNight: room.pricePerNight,
+      intent: "create",
     });
     setCurrentPage("reservations");
   };
@@ -1122,7 +1123,7 @@ export default function RoomsPage() {
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"
-                        onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight }); setCurrentPage("reservations"); }}
+                        onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight, intent: "manage" }); setCurrentPage("reservations"); }}
                       >
                         <ClipboardList className="h-3.5 w-3.5" />
                         {t("btnManageReservations")}
@@ -1803,7 +1804,7 @@ export default function RoomsPage() {
                   ) : infoRoom.status === "RESERVED" ? (
                     <Button
                       className="gap-2 bg-sky-600 hover:bg-sky-700"
-                      onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight }); setInfoRoom(null); setRoomReservations([]); setCurrentPage("reservations"); }}
+                      onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight, intent: "manage" }); setInfoRoom(null); setRoomReservations([]); setCurrentPage("reservations"); }}
                     >
                       <ClipboardList className="h-4 w-4" />
                       {t("btnManageReservations")}
