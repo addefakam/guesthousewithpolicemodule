@@ -363,13 +363,28 @@ export default function ReservationsPage() {
     fetchAll();
   }, [fetchAll, refreshKey]);
 
-  // When a room is pre-selected from the Rooms page, highlight matching reservations
+  // When a room is pre-selected from the Rooms page, open the create
+  // reservation dialog directly with that room pre-filled — matching the
+  // mobile app's behavior of landing the user straight on the guest
+  // registration form for the chosen room.
   const [highlightRoomId, setHighlightRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     if (preselectedRoom) {
       setHighlightRoomId(preselectedRoom.id);
+      setCreateForm((f) =>
+        f.roomId === preselectedRoom.id
+          ? f
+          : { ...f, roomId: preselectedRoom.id }
+      );
+      // Start the wizard on the guest step so the user can register/select
+      // the guest right away (room is already chosen).
+      setWizardStep(1);
+      setGuestMode("existing");
+      setSelectedGuestId("");
+      setCreateOpen(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedRoom]);
 
   // Clear highlight on user interaction (tab change, status filter, search)
@@ -665,6 +680,8 @@ export default function ReservationsPage() {
     setSelectedGuestId("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
+    // Clear any preselected room so the dialog doesn't auto-reopen on remount.
+    setPreselectedRoom(null);
   };
 
   const handleAction = async () => {
