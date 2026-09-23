@@ -1408,6 +1408,33 @@ export default function ReservationsPage() {
           {/* ── STEP 1: Guest ── */}
           {wizardStep === 1 && (
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Preselected room banner — visible when the user came from
+                  a "Reserve" click on the Rooms page, so they know which
+                  room this new reservation is for. */}
+              {preselectedRoom && preselectedRoom.intent !== "manage" && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+                      <BedDouble className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-emerald-700">
+                        {t("labelSelectedRoom") || "Selected room"}
+                      </div>
+                      <div className="truncate text-sm font-semibold text-emerald-900">
+                        {preselectedRoom.number} · {preselectedRoom.name} · {preselectedRoom.type}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xs text-emerald-700">{t("frNight", "night")}</div>
+                    <div className="text-sm font-semibold text-emerald-900">
+                      {formatCurrency(preselectedRoom.pricePerNight)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Mode toggle */}
               <div className="flex p-1 rounded-full bg-gray-100 mb-4">
                 <Button variant={guestMode === "existing" ? "default" : "ghost"} onClick={() => setGuestMode("existing")} className="flex-1 rounded-full shadow-sm">
