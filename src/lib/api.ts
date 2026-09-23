@@ -22,6 +22,7 @@ export async function req(url: string, opts: RequestInit = {}) {
     ...opts,
     headers: { ...getHeaders(), ...opts.headers },
     credentials: "include", // Always include cookies (JWT httpOnly)
+    cache: "no-store", // Never cache API responses — always fetch fresh data
   });
   if (!res.ok) {
     // ── Auth expired detection ──
