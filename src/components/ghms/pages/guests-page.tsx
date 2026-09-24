@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
   apiGetGuests,
+  apiGetReservations,
   apiCreateGuest,
   apiUpdateGuest,
   apiDeleteGuest,
@@ -127,6 +128,9 @@ export default function GuestsPage() {
   const { t } = useTranslation("guests");
   const { refreshKey, triggerRefresh } = useAppStore();
   const [guests, setGuests] = useState<Guest[]>([]);
+  // Set of guest IDs that have at least one reservation. Used to filter
+  // out guests who have never reserved any room.
+  const [guestsWithReservations, setGuestsWithReservations] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -140,8 +144,24 @@ export default function GuestsPage() {
   const fetchGuests = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await apiGetGuests(search);
-      setGuests(Array.isArray(data) ? data : []);
+      const [data, resData] = await Promise.all([
+        apiGetGuests(search),
+        apiGetReservations(),
+      ]);
+      const guestList = Array.isArray(data) ? data : [];
+      // Build a set of guest IDs that appear in at least one reservation
+      // (any status — UPCOMING, ACTIVE, COMPLETED, CANCELLED, DELETED).
+      // Guests not in this set are filtered out of the list.
+      const resSet = new Set<string>();
+      if (Array.isArray(resData)) {
+        for (const r of resData) {
+          if (r && typeof r.guestId === "string" && r.guestId) {
+            resSet.add(r.guestId);
+          }
+        }
+      }
+      setGuestsWithReservations(resSet);
+      setGuests(guestList);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load guests";
       toast.error(message);
@@ -271,6 +291,8 @@ export default function GuestsPage() {
     new Intl.NumberFormat("en-US", { style: "currency", currency: "ETB", maximumFractionDigits: 0 }).format(val);
 
   const filteredGuests = guests.filter((g) => {
+    // Exclude guests who have never reserved any room.
+    if (!guestsWithReservations.has(g.id)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (

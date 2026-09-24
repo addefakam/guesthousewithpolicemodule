@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 interface UsePaginationOptions {
   /** Total number of items */
@@ -42,6 +42,22 @@ export function usePagination({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(initialPageSize);
   const [totalItemsState, setTotalItemsState] = useState(totalItems);
+
+  // Sync totalItemsState with the prop whenever it changes.
+  // Without this, the hook keeps the INITIAL totalItems value forever,
+  // so totalPages stays stale and the Next/Previous buttons stop working
+  // after the filtered list grows or shrinks.
+  // We DON'T call setTotalItems() here because that resets to page 1 —
+  // instead we update the count directly and clamp the current page if
+  // it's now out of range (e.g. user was on page 5 but the list shrank
+  // to 2 pages).
+  useEffect(() => {
+    setTotalItemsState(totalItems);
+    const newTotalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages);
+    }
+  }, [totalItems, pageSize, currentPage]);
 
   const totalPages = Math.max(1, Math.ceil(totalItemsState / pageSize));
 
