@@ -97,7 +97,7 @@ import {
 } from "lucide-react";
 
 import AddressFields from "@/components/shared/address-fields";
-import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { isValidPhone } from "@/lib/utils";
 
 interface GuestOption {
   id: string;
@@ -739,10 +739,6 @@ export default function ReservationsPage() {
     }
     if (guestMode === "new" && !isValidPhone(newGuestForm.phone)) {
       toast.error("Invalid guest phone number format (7-15 digits)");
-      return;
-    }
-    if (guestMode === "new" && !isValidEmail(newGuestForm.email)) {
-      toast.error("Invalid guest email address format");
       return;
     }
     if (guestMode === "new" && (!newGuestForm.nationality || !newGuestForm.nationality.trim())) {
@@ -1725,15 +1721,9 @@ export default function ReservationsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t("labelEmail")}</Label>
-                      <Input type="email" placeholder={t("placeholderEmail")} value={newGuestForm.email} onChange={(e) => setNewGuestForm({ ...newGuestForm, email: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>{t("labelNationality")} <span className="text-rose-500">*</span></Label>
-                      <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("labelNationality")} <span className="text-rose-500">*</span></Label>
+                    <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
