@@ -821,6 +821,31 @@ export default function ReservationsPage() {
     [allRooms]
   );
 
+  // When the selected room changes, auto-set hasSecondGuest based on capacity.
+  // Rooms with capacity >= 2 default to "Two guests" (second guest shown).
+  // Rooms with capacity 1 default to "One guest only".
+  // The user can still toggle manually afterward.
+  useEffect(() => {
+    if (!createForm.roomId) return;
+    const selRoom = allRooms.find((r) => r.id === createForm.roomId);
+    if (!selRoom) return;
+    const cap = Number(selRoom.capacity) || 1;
+    const shouldHaveSecond = cap >= 2;
+    // Only update if the current toggle doesn't match the default for this
+    // room capacity — avoids resetting fields the user already filled in.
+    if (shouldHaveSecond && !createForm.hasSecondGuest) {
+      setCreateForm((f) => ({ ...f, hasSecondGuest: true }));
+    } else if (!shouldHaveSecond && createForm.hasSecondGuest) {
+      setCreateForm((f) => ({
+        ...f,
+        hasSecondGuest: false,
+        secondGuestName: "",
+        secondGuestPhone: "",
+        secondGuestIdNumber: "",
+      }));
+    }
+  }, [createForm.roomId, allRooms, createForm.hasSecondGuest]);
+
   // Client-side filtered guest list for the existing-guest search dropdown.
   // Searches across name, phone, and ID number (case-insensitive).
   // Limited to 50 results to keep the dropdown snappy on large guest lists.
