@@ -325,32 +325,33 @@ function CollapsibleAddressFields({
   return (
     <>
       {/* Toggle row — always visible.
-          Designed to fit inline with other fields in a parent grid. */}
+          Designed to fit inline with other fields in a parent grid.
+          Layout: bullet + label on top, summary/placeholder below. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-left hover:bg-gray-100 transition-colors h-[38px]"
+        className="flex w-full flex-col items-stretch gap-0.5 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-left hover:bg-gray-100 transition-colors min-h-[38px]"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className={`h-2 w-2 shrink-0 rounded-full ${hasAny ? "bg-emerald-500" : "bg-gray-300"}`}
-            aria-hidden
-          />
-          <span className="text-xs font-medium text-gray-800 shrink-0">
-            {labelGuestAddress}
-          </span>
-          {hasAny && (
-            <span className="text-[11px] text-gray-500 truncate">
-              · {summaryParts.join(", ")}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${hasAny ? "bg-emerald-500" : "bg-gray-300"}`}
+              aria-hidden
+            />
+            <span className="text-xs font-semibold text-gray-800 shrink-0">
+              {labelGuestAddress}
             </span>
-          )}
-          {!hasAny && (
-            <span className="text-[11px] text-gray-400">(optional)</span>
-          )}
+          </div>
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`}
+          />
         </div>
-        <ChevronRight
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`}
-        />
+        {/* Summary line — shows either filled values or the placeholder */}
+        <span className="text-[11px] text-gray-500 truncate pl-4">
+          {hasAny
+            ? summaryParts.join(", ")
+            : "Record detail guest information"}
+        </span>
       </button>
 
       {/* Expanded body — full-width below the parent grid row.
