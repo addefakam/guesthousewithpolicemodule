@@ -4,7 +4,7 @@
  * handles ONLY top-level navigations with a network-first passthrough
  * (offline fallback: cached shell if present, otherwise 503). API calls,
  * assets and everything else are left untouched. */
-const CACHE = "ghms-shell-v2";
+const CACHE = "ghms-shell-v3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
