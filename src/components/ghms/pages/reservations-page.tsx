@@ -264,6 +264,7 @@ function CollapsibleAddressFields({
   houseNumber,
   streetName,
   plateNumber,
+  weapon,
   onChange,
   labelGuestAddress,
   labelPlateNumber,
@@ -273,6 +274,8 @@ function CollapsibleAddressFields({
   placeholderKebele,
   placeholderHouseNumber,
   placeholderStreetName,
+  labelSecurityWeapon,
+  placeholderSecurityWeapon,
 }: {
   region: string;
   zone: string;
@@ -281,6 +284,7 @@ function CollapsibleAddressFields({
   houseNumber: string;
   streetName: string;
   plateNumber: string;
+  weapon: string;
   onChange: (patch: Partial<{
     region: string;
     zone: string;
@@ -289,6 +293,7 @@ function CollapsibleAddressFields({
     houseNumber: string;
     streetName: string;
     plateNumber: string;
+    weapon: string;
   }>) => void;
   labelGuestAddress: string;
   labelPlateNumber: string;
@@ -298,6 +303,8 @@ function CollapsibleAddressFields({
   placeholderKebele: string;
   placeholderHouseNumber: string;
   placeholderStreetName: string;
+  labelSecurityWeapon: string;
+  placeholderSecurityWeapon: string;
 }) {
   const [open, setOpen] = useState(false);
   const level2Label = region ? getLevel2Label(region) : "Zone/Sub-city";
@@ -311,6 +318,7 @@ function CollapsibleAddressFields({
     houseNumber,
     streetName,
     plateNumber && `Plate ${plateNumber}`,
+    weapon && `Weapon ${weapon}`,
   ].filter((x) => typeof x === "string" && x.trim().length > 0);
   const hasAny = summaryParts.length > 0;
 
@@ -433,6 +441,17 @@ function CollapsibleAddressFields({
               placeholder={placeholderPlateNumber}
               value={plateNumber}
               onChange={(e) => onChange({ plateNumber: e.target.value })}
+              className="h-9"
+            />
+          </div>
+
+          {/* Security weapon — last field inside the address block */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">{labelSecurityWeapon}</Label>
+            <Input
+              placeholder={placeholderSecurityWeapon}
+              value={weapon}
+              onChange={(e) => onChange({ weapon: e.target.value })}
               className="h-9"
             />
           </div>
@@ -1989,13 +2008,10 @@ export default function ReservationsPage() {
                       placeholderKebele="e.g. 01, 02, 03"
                       placeholderHouseNumber="e.g. H-124"
                       placeholderStreetName="e.g. Bole Road"
+                      labelSecurityWeapon={t("labelSecurityWeapon")}
+                      placeholderSecurityWeapon={t("placeholderSecurityWeapon")}
+                      weapon={newGuestForm.weapon}
                     />
-                  </div>
-
-                  {/* Security weapon field — separate from address */}
-                  <div className="space-y-1.5">
-                    <Label>{t("labelSecurityWeapon")}</Label>
-                    <Input placeholder={t("placeholderSecurityWeapon")} value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
                   </div>
 
                   {/* Live preview of the new guest's address info — only
