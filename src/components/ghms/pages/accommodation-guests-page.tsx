@@ -53,6 +53,7 @@ interface Room { id: string; number: string; name: string; type: string; status:
 interface Reservation {
   id: string; status: string; checkIn: string; checkOut: string; nights: number;
   totalCost: number; paidAmount: number; balance: number; paymentStatus: string;
+  guestId?: string;
   guest?: { id: string; name: string; phone: string; idNumber: string };
   room?: { id: string; number: string; name: string; type: string };
   secondGuestName?: string; secondGuestPhone?: string; secondGuestIdNumber?: string;
@@ -237,7 +238,18 @@ export default function AccommodationGuestsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
 
-  // ── Computed: active guests (have ACTIVE reservation) ──
+  // ── Computed: guests with at least one reservation (any status) ──
+  // Used to filter out guests who have never reserved any room.
+  const guestIdsWithAnyReservation = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of reservations) {
+      // Reservations may expose guestId directly OR via guest.id (enriched).
+      const gid = r.guestId || r.guest?.id;
+      if (typeof gid === "string" && gid) ids.add(gid);
+    }
+    return ids;
+  }, [reservations]);
+
   const activeReservations = useMemo(() =>
     reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
     [reservations]
@@ -263,9 +275,18 @@ export default function AccommodationGuestsPage() {
   // ── Filtered list ──
   const filtered = useMemo(() => {
     let list = enrichedGuests;
-    if (statusFilter === "CHECKED_IN") list = list.filter((g) => g.activeReservation?.status === "ACTIVE");
-    else if (statusFilter === "UPCOMING") list = list.filter((g) => g.activeReservation?.status === "UPCOMING");
-    else if (statusFilter === "NO_RESERVATION") list = list.filter((g) => !g.activeReservation);
+    // By default (ALL filter), exclude guests who have never reserved any
+    // room — they shouldn't clutter the guests list. The user can still
+    // explicitly select "No Reservation" to see ONLY those guests.
+    if (statusFilter === "ALL") {
+      list = list.filter((g) => guestIdsWithAnyReservation.has(g.id));
+    } else if (statusFilter === "CHECKED_IN") {
+      list = list.filter((g) => g.activeReservation?.status === "ACTIVE");
+    } else if (statusFilter === "UPCOMING") {
+      list = list.filter((g) => g.activeReservation?.status === "UPCOMING");
+    } else if (statusFilter === "NO_RESERVATION") {
+      list = list.filter((g) => !guestIdsWithAnyReservation.has(g.id));
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
