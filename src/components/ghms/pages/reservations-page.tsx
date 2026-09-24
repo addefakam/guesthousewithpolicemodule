@@ -103,6 +103,9 @@ interface GuestOption {
   id: string;
   name: string;
   phone: string;
+  idNumber?: string;
+  address?: string;
+  nationality?: string;
 }
 
 /** Shape of the JSON error body surfaced by the API client (thrown as message). */
@@ -240,6 +243,7 @@ export default function ReservationsPage() {
   const [allGuests, setAllGuests] = useState<GuestOption[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOption[]>([]);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [guestSearch, setGuestSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -337,6 +341,9 @@ export default function ReservationsPage() {
         id: g.id,
         name: g.name,
         phone: g.phone,
+        idNumber: g.idNumber,
+        address: g.address,
+        nationality: g.nationality,
       })));
       // apiGetRooms already unwraps { rooms: [...] } to a plain array
       const rawRooms = Array.isArray(roomData) ? roomData : [];
@@ -385,6 +392,7 @@ export default function ReservationsPage() {
         // Reset guest selection so the form starts fresh.
         setGuestMode("existing");
         setSelectedGuestId("");
+        setGuestSearch("");
         setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
         setCreateOpen(true);
       }
@@ -398,6 +406,29 @@ export default function ReservationsPage() {
     setPreselectedRoom(null);
   };
 
+  // The room banner at the top of the dialog reflects the CURRENTLY selected
+  // room (from the room dropdown), not just the preselected one. When the
+  // user changes the room via the dropdown, the banner updates to match.
+  const bannerRoom = useMemo(() => {
+    if (createForm.roomId) {
+      const r = allRooms.find((x) => x.id === createForm.roomId);
+      if (r) {
+        return {
+          id: r.id,
+          number: r.number,
+          name: r.name,
+          type: r.type,
+          pricePerNight: r.pricePerNight,
+        };
+      }
+    }
+    // Fall back to preselectedRoom if no room is selected in the form yet
+    if (preselectedRoom && preselectedRoom.intent !== "manage") {
+      return preselectedRoom;
+    }
+    return null;
+  }, [createForm.roomId, allRooms, preselectedRoom]);
+
   // Rooms offered for new reservations: every bookable room. Availability is
   // date-driven — occupied days are disabled in the calendar and the server
   // rejects overlapping stays — so a room flagged OCCUPIED/RESERVED (stale or
@@ -407,6 +438,22 @@ export default function ReservationsPage() {
     () => allRooms.filter((r) => r.status !== "MAINTENANCE"),
     [allRooms]
   );
+
+  // Client-side filtered guest list for the existing-guest search dropdown.
+  // Searches across name, phone, and ID number (case-insensitive).
+  // Limited to 50 results to keep the dropdown snappy on large guest lists.
+  const filteredGuests = useMemo(() => {
+    const q = guestSearch.trim().toLowerCase();
+    if (!q) return allGuests.slice(0, 50);
+    return allGuests
+      .filter((g) => {
+        const name = (g.name || "").toLowerCase();
+        const phone = (g.phone || "").toLowerCase();
+        const idNum = (g.idNumber || "").toLowerCase();
+        return name.includes(q) || phone.includes(q) || idNum.includes(q);
+      })
+      .slice(0, 50);
+  }, [allGuests, guestSearch]);
 
   // Computed nights and total for create form
   const createNights = useMemo(() => {
@@ -681,6 +728,7 @@ export default function ReservationsPage() {
     setCreateOpen(false);
     setGuestMode("existing");
     setSelectedGuestId("");
+    setGuestSearch("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
     // Clear any preselected room so the dialog doesn't auto-reopen on remount.
@@ -1388,8 +1436,9 @@ export default function ReservationsPage() {
           </DialogHeader>
 
           <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
-            {/* ── Preselected room banner (when launched from Rooms page) ── */}
-            {preselectedRoom && preselectedRoom.intent !== "manage" && (
+            {/* ── Room banner — reflects the CURRENTLY selected room ──
+                Updates when the user changes the room dropdown below. */}
+            {bannerRoom && (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
@@ -1400,14 +1449,14 @@ export default function ReservationsPage() {
                       {t("labelRoom")}
                     </div>
                     <div className="truncate text-sm font-semibold text-emerald-900">
-                      {preselectedRoom.number} · {preselectedRoom.name} · {preselectedRoom.type}
+                      {bannerRoom.number} · {bannerRoom.name} · {bannerRoom.type}
                     </div>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xs text-emerald-700">{t("frNight", "night")}</div>
                   <div className="text-sm font-semibold text-emerald-900">
-                    {formatCurrency(preselectedRoom.pricePerNight)}
+                    {formatCurrency(bannerRoom.pricePerNight)}
                   </div>
                 </div>
               </div>
@@ -1435,67 +1484,112 @@ export default function ReservationsPage() {
               {guestMode === "existing" ? (
                 <div className="space-y-2">
                   <Label>{t("labelSearchGuest")} <span className="text-rose-500">*</span></Label>
-                  <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" role="combobox" aria-expanded={comboboxOpen} className="w-full justify-between font-normal">
-                        {selectedGuestId
-                          ? (() => {
-                              const sel = allGuests.find((g) => g.id === selectedGuestId);
-                              return sel ? `${sel.name} · ${sel.phone}` : t("placeholderSearchGuest");
-                            })()
-                          : t("placeholderSearchGuest")}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command shouldFilter>
-                        <CommandInput placeholder={t("placeholderSearchGuest")} />
-                        <CommandList>
-                          <CommandEmpty>{t("noGuestsFound")}</CommandEmpty>
-                          <CommandGroup>
-                            {allGuests.map((g) => (
-                              <CommandItem
-                                key={g.id}
-                                value={`${g.name} ${g.phone}`}
-                                onSelect={() => {
-                                  setSelectedGuestId(g.id);
-                                  setComboboxOpen(false);
-                                }}
-                              >
-                                <User className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                                <span className="flex-1 truncate">{g.name}</span>
-                                <span className="ml-2 text-xs text-muted-foreground">{g.phone}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {selectedGuestId && (
-                    <div className="flex items-center justify-between rounded-md border border-violet-100 bg-violet-50 px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-200 text-violet-700 text-xs font-bold">
-                          {allGuests.find((g) => g.id === selectedGuestId)?.name?.charAt(0).toUpperCase() || "?"}
+
+                  {/* Selected guest preview chip — shown when a guest is picked. */}
+                  {selectedGuestId ? (
+                    <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-200 text-violet-700 text-sm font-bold">
+                            {allGuests.find((g) => g.id === selectedGuestId)?.name?.charAt(0).toUpperCase() || "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-violet-900 truncate">
+                              {allGuests.find((g) => g.id === selectedGuestId)?.name || "—"}
+                            </p>
+                            <p className="text-xs text-violet-600 truncate">
+                              {allGuests.find((g) => g.id === selectedGuestId)?.phone}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-violet-900">
-                            {allGuests.find((g) => g.id === selectedGuestId)?.name}
-                          </p>
-                          <p className="text-xs text-violet-600">
-                            {allGuests.find((g) => g.id === selectedGuestId)?.phone}
-                          </p>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setSelectedGuestId(""); setGuestSearch(""); }}
+                          className="h-7 px-2 text-xs text-violet-700 hover:bg-violet-100"
+                        >
+                          {t("btnCancel")}
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedGuestId("")}
-                        className="h-7 px-2 text-xs text-violet-700 hover:bg-violet-100"
-                      >
-                        {t("btnCancel")}
-                      </Button>
+                      {/* Guest address bullet — only shown when the selected
+                          guest has an address on file. */}
+                      {(() => {
+                        const sel = allGuests.find((g) => g.id === selectedGuestId);
+                        const addr = sel?.address?.trim();
+                        const nat = sel?.nationality?.trim();
+                        const idNum = sel?.idNumber?.trim();
+                        if (!addr && !nat && !idNum) return null;
+                        return (
+                          <div className="border-t border-violet-200 pt-1.5 mt-1 space-y-0.5">
+                            {nat && (
+                              <div className="flex items-start gap-1.5 text-xs text-violet-700">
+                                <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
+                                <span>{nat}{idNum ? ` · ${idNum}` : ""}</span>
+                              </div>
+                            )}
+                            {addr && (
+                              <div className="flex items-start gap-1.5 text-xs text-violet-600">
+                                <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
+                                <span className="text-violet-500">{t("labelGuestAddress")}:</span>
+                                <span className="flex-1">{addr}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
+                  ) : (
+                    /* Search input + filterable dropdown — replaces the
+                       cmdk Combobox which had empty-value filtering issues
+                       when guests had blank names or phones. */
+                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" aria-expanded={comboboxOpen} className="w-full justify-between font-normal">
+                          {t("placeholderSearchGuest")}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <div className="flex flex-col">
+                          <div className="flex items-center border-b px-3">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <input
+                              autoFocus
+                              placeholder={t("placeholderSearchGuest")}
+                              value={guestSearch}
+                              onChange={(e) => setGuestSearch(e.target.value)}
+                              className="flex h-9 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                            />
+                          </div>
+                          <div className="max-h-60 overflow-y-auto p-1">
+                            {filteredGuests.length === 0 ? (
+                              <div className="py-6 text-center text-sm text-muted-foreground">
+                                {allGuests.length === 0
+                                  ? "Loading guests…"
+                                  : t("noGuestsFound")}
+                              </div>
+                            ) : (
+                              filteredGuests.map((g) => (
+                                <button
+                                  key={g.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedGuestId(g.id);
+                                    setComboboxOpen(false);
+                                    setGuestSearch("");
+                                  }}
+                                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                >
+                                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                  <span className="flex-1 truncate font-medium">{g.name || "(no name)"}</span>
+                                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">{g.phone}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               ) : (
@@ -1597,6 +1691,39 @@ export default function ReservationsPage() {
                       <Input placeholder={t("placeholderSecurityWeapon")} value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
                     </div>
                   </div>
+
+                  {/* Live preview of the new guest's address info — only
+                      shows bullets for fields the user has filled in. */}
+                  {(() => {
+                    const nat = newGuestForm.nationality.trim();
+                    const idNum = newGuestForm.idNumber.trim();
+                    const addrParts = [
+                      newGuestForm.region,
+                      newGuestForm.zone,
+                      newGuestForm.woreda,
+                      newGuestForm.kebele,
+                      newGuestForm.houseNumber,
+                      newGuestForm.streetName,
+                    ].filter((x) => x && x.trim()).map((x) => x.trim());
+                    if (!nat && !idNum && addrParts.length === 0) return null;
+                    return (
+                      <div className="rounded-md border border-violet-100 bg-violet-50 px-3 py-2 space-y-0.5">
+                        {nat && (
+                          <div className="flex items-start gap-1.5 text-xs text-violet-700">
+                            <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
+                            <span>{nat}{idNum ? ` · ${idNum}` : ""}</span>
+                          </div>
+                        )}
+                        {addrParts.length > 0 && (
+                          <div className="flex items-start gap-1.5 text-xs text-violet-600">
+                            <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full bg-violet-400" />
+                            <span className="text-violet-500">{t("labelGuestAddress")}:</span>
+                            <span className="flex-1">{addrParts.join(", ")}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
