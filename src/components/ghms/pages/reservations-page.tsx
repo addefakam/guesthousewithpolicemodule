@@ -97,6 +97,7 @@ import {
 } from "lucide-react";
 
 import AddressFields from "@/components/shared/address-fields";
+import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone } from "@/lib/utils";
 
 interface GuestOption {
@@ -243,6 +244,201 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 };
 
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
+
+/**
+ * Collapsible address block.
+ *
+ * All address fields (region, zone/sub-city, woreda, kebele, house number,
+ * street name) AND plate number are bundled under a single toggle row.
+ * When collapsed (default), only the toggle is shown. When expanded, all
+ * the fields render in a 3-column grid.
+ *
+ * The toggle bullet shows a live summary of filled fields, so the user can
+ * see at a glance what they've entered without expanding.
+ */
+function CollapsibleAddressFields({
+  region,
+  zone,
+  woreda,
+  kebele,
+  houseNumber,
+  streetName,
+  plateNumber,
+  onChange,
+  labelGuestAddress,
+  labelPlateNumber,
+  placeholderPlateNumber,
+  placeholderZone,
+  placeholderWoreda,
+  placeholderKebele,
+  placeholderHouseNumber,
+  placeholderStreetName,
+}: {
+  region: string;
+  zone: string;
+  woreda: string;
+  kebele: string;
+  houseNumber: string;
+  streetName: string;
+  plateNumber: string;
+  onChange: (patch: Partial<{
+    region: string;
+    zone: string;
+    woreda: string;
+    kebele: string;
+    houseNumber: string;
+    streetName: string;
+    plateNumber: string;
+  }>) => void;
+  labelGuestAddress: string;
+  labelPlateNumber: string;
+  placeholderPlateNumber: string;
+  placeholderZone: string;
+  placeholderWoreda: string;
+  placeholderKebele: string;
+  placeholderHouseNumber: string;
+  placeholderStreetName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const level2Label = region ? getLevel2Label(region) : "Zone/Sub-city";
+
+  // Build a summary string of all filled address fields (used in the toggle).
+  const summaryParts = [
+    region,
+    zone,
+    woreda,
+    kebele && `Kebele ${kebele}`,
+    houseNumber,
+    streetName,
+    plateNumber && `Plate ${plateNumber}`,
+  ].filter((x) => typeof x === "string" && x.trim().length > 0);
+  const hasAny = summaryParts.length > 0;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50/50 overflow-hidden">
+      {/* Toggle row — always visible */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${hasAny ? "bg-emerald-500" : "bg-gray-300"}`}
+            aria-hidden
+          />
+          <span className="text-sm font-medium text-gray-800 shrink-0">
+            {labelGuestAddress}
+          </span>
+          {hasAny && (
+            <span className="text-xs text-gray-500 truncate">
+              · {summaryParts.join(", ")}
+            </span>
+          )}
+          {!hasAny && (
+            <span className="text-xs text-gray-400">(optional)</span>
+          )}
+        </div>
+        <ChevronRight
+          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </button>
+
+      {/* Fields — only rendered when expanded */}
+      {open && (
+        <div className="border-t border-gray-200 bg-white p-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Region */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Region</Label>
+              <Select
+                value={region}
+                onValueChange={(v) => onChange({ region: v })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ethiopianRegions.map((r) => (
+                    <SelectItem key={r.name} value={r.name}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Zone / Sub-city */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{level2Label}</Label>
+              <Input
+                placeholder={placeholderZone}
+                value={zone}
+                onChange={(e) => onChange({ zone: e.target.value })}
+                className="h-9"
+              />
+            </div>
+
+            {/* Woreda */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Woreda</Label>
+              <Input
+                placeholder={placeholderWoreda}
+                value={woreda}
+                onChange={(e) => onChange({ woreda: e.target.value })}
+                className="h-9"
+              />
+            </div>
+
+            {/* Kebele */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kebele</Label>
+              <Input
+                placeholder={placeholderKebele}
+                value={kebele}
+                onChange={(e) => onChange({ kebele: e.target.value })}
+                className="h-9"
+              />
+            </div>
+
+            {/* House Number */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">House No.</Label>
+              <Input
+                placeholder={placeholderHouseNumber}
+                value={houseNumber}
+                onChange={(e) => onChange({ houseNumber: e.target.value })}
+                className="h-9"
+              />
+            </div>
+
+            {/* Street Name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Street Name</Label>
+              <Input
+                placeholder={placeholderStreetName}
+                value={streetName}
+                onChange={(e) => onChange({ streetName: e.target.value })}
+                className="h-9"
+              />
+            </div>
+          </div>
+
+          {/* Plate number — on its own row, still inside the address block */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">{labelPlateNumber}</Label>
+            <Input
+              placeholder={placeholderPlateNumber}
+              value={plateNumber}
+              onChange={(e) => onChange({ plateNumber: e.target.value })}
+              className="h-9"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Self-contained guest search box with always-visible filtered dropdown.
@@ -1766,30 +1962,34 @@ export default function ReservationsPage() {
                       )}
                     </div>
                   </div>
+                  {/* Guest address section — collapsible.
+                      Bundles region, zone, woreda, kebele, house number,
+                      street name, AND plate number under a single toggle.
+                      When collapsed, only the toggle row is shown.
+                      When expanded, all address+plate fields appear. */}
+                  <CollapsibleAddressFields
+                    region={newGuestForm.region}
+                    zone={newGuestForm.zone}
+                    woreda={newGuestForm.woreda}
+                    kebele={newGuestForm.kebele}
+                    houseNumber={newGuestForm.houseNumber}
+                    streetName={newGuestForm.streetName}
+                    plateNumber={newGuestForm.plateNumber}
+                    onChange={(patch) => setNewGuestForm({ ...newGuestForm, ...patch })}
+                    labelGuestAddress={t("labelGuestAddress")}
+                    labelPlateNumber={t("labelPlateNumber")}
+                    placeholderPlateNumber={t("placeholderPlateNumber")}
+                    placeholderZone="Enter zone/sub-city"
+                    placeholderWoreda="Enter woreda"
+                    placeholderKebele="e.g. 01, 02, 03"
+                    placeholderHouseNumber="e.g. H-124"
+                    placeholderStreetName="e.g. Bole Road"
+                  />
+
+                  {/* Security weapon field — separate from address */}
                   <div className="space-y-1.5">
-                    <Label>{t("labelGuestAddress")}</Label>
-                    <AddressFields
-                      value={{
-                        region: newGuestForm.region,
-                        zone: newGuestForm.zone,
-                        woreda: newGuestForm.woreda,
-                        kebele: newGuestForm.kebele,
-                        houseNumber: newGuestForm.houseNumber,
-                        streetName: newGuestForm.streetName,
-                      }}
-                      onChange={(addr) => setNewGuestForm({ ...newGuestForm, ...addr })}
-                      columns={3}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t("labelPlateNumber")}</Label>
-                      <Input placeholder={t("placeholderPlateNumber")} value={newGuestForm.plateNumber} onChange={(e) => setNewGuestForm({ ...newGuestForm, plateNumber: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>{t("labelSecurityWeapon")}</Label>
-                      <Input placeholder={t("placeholderSecurityWeapon")} value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
-                    </div>
+                    <Label>{t("labelSecurityWeapon")}</Label>
+                    <Input placeholder={t("placeholderSecurityWeapon")} value={newGuestForm.weapon} onChange={(e) => setNewGuestForm({ ...newGuestForm, weapon: e.target.value })} />
                   </div>
 
                   {/* Live preview of the new guest's address info — only
