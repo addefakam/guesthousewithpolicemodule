@@ -146,7 +146,7 @@ function addDays(d: string, n: number) {
 // ── Component ──
 export default function AccommodationGuestsPage() {
   const { t } = useTranslation("accommodation");
-  const { refreshKey, triggerRefresh } = useAppStore();
+  const { refreshKey, triggerRefresh, setCurrentPage } = useAppStore();
 
   function resStatusLabel(status: string) {
     const key = `resStatus${status.charAt(0)}${status.slice(1).toLowerCase()}`;
@@ -436,15 +436,20 @@ export default function AccommodationGuestsPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — clickable cards that filter the list (or navigate to rooms) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: t("totalGuests", "Total Guests"), value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50" },
-          { label: t("checkedIn", "Checked In"), value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50" },
-          { label: t("upcoming", "Upcoming"), value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50" },
-          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50" },
+          { label: t("totalGuests", "Total Guests"), value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50", onClick: () => { setStatusFilter("ALL"); pagination.resetToFirst(); } },
+          { label: t("checkedIn", "Checked In"), value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50", onClick: () => { setStatusFilter("CHECKED_IN"); pagination.resetToFirst(); } },
+          { label: t("upcoming", "Upcoming"), value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50", onClick: () => { setStatusFilter("UPCOMING"); pagination.resetToFirst(); } },
+          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50", onClick: () => setCurrentPage("rooms") },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border p-3">
+          <button
+            key={s.label}
+            type="button"
+            onClick={s.onClick}
+            className="rounded-lg border p-3 text-left transition-all hover:border-slate-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 cursor-pointer"
+          >
             <div className="flex items-center gap-2">
               <div className={`flex h-8 w-8 items-center justify-center rounded-md ${s.color}`}>{s.icon}</div>
               <div>
@@ -452,7 +457,7 @@ export default function AccommodationGuestsPage() {
                 <p className="text-[10px] text-muted-foreground">{s.label}</p>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
