@@ -246,6 +246,35 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
 /**
+ * Room types where the second-guest section is shown (and required unless
+ * the room is marked "exceptionally reserved" for single occupancy).
+ *
+ * All multi-occupancy room types are included so they behave consistently
+ * like DOUBLE/TWIN: the second guest form appears, and the user must
+ * either fill it in or explicitly mark the reservation as an exception
+ * (single occupancy for a multi-occupancy room).
+ *
+ * SINGLE is excluded — it's the only type that natively accommodates one
+ * guest, so it keeps the optional "add second guest" toggle.
+ */
+const REQUIRES_SECOND_GUEST_TYPES = [
+  "DOUBLE",
+  "TWIN",
+  "SUITE",
+  "DELUXE",
+  "KING",
+  "STANDARD",
+  "STANDARD_SUITE",
+  "JUNIOR_SUITE",
+  "EXECUTIVE_SUITE",
+] as const;
+
+function requiresSecondGuest(type: string | undefined): boolean {
+  if (!type) return false;
+  return (REQUIRES_SECOND_GUEST_TYPES as readonly string[]).includes(type);
+}
+
+/**
  * Collapsible address block.
  *
  * All address fields (region, zone/sub-city, woreda, kebele, house number,
@@ -985,12 +1014,13 @@ export default function ReservationsPage() {
       return;
     }
     const selRoom = allRooms.find((r) => r.id === createForm.roomId);
-    const isDoubleRoom = selRoom && (selRoom.type === "DOUBLE" || selRoom.type === "TWIN");
+    const isDoubleRoom = selRoom && requiresSecondGuest(selRoom.type);
     const isSingleRoom = selRoom && selRoom.type === "SINGLE";
-    // Double/TWIN: second guest required unless exceptionally reserved
+    // Multi-occupancy rooms (DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD, etc.):
+    // second guest required unless exceptionally reserved for single occupancy.
     if (isDoubleRoom && !createForm.exceptionallyReserved) {
       if (!createForm.secondGuestName.trim() || !createForm.secondGuestPhone.trim()) {
-        toast.error("Second guest name and phone are required for double/twin rooms");
+        toast.error("Second guest name and phone are required for multi-occupancy rooms");
         return;
       }
       if (!isValidPhone(createForm.secondGuestPhone)) {
@@ -2086,7 +2116,7 @@ export default function ReservationsPage() {
               {(() => {
                 const selRoom = allRooms.find((r) => r.id === createForm.roomId);
                 if (!selRoom) return null;
-                const isDouble = selRoom.type === "DOUBLE" || selRoom.type === "TWIN";
+                const isDouble = requiresSecondGuest(selRoom.type);
                 const isSingle = selRoom.type === "SINGLE";
                 if (!isDouble && !isSingle) return null;
 
