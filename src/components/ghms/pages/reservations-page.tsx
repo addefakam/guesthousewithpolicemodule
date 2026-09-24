@@ -293,22 +293,32 @@ function GuestSearchBox({
   }, [open]);
 
   return (
-    <div className="relative" ref={wrapperRef}>
-      <div className="flex items-center border border-input rounded-md bg-background px-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
-        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <div className="relative w-full" ref={wrapperRef}>
+      <div className="flex items-center border border-input rounded-md bg-white px-3 h-10 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 pointer-events-none" />
         <input
           type="text"
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setOpen(true)}
-          className="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+          onClick={() => setOpen(true)}
+          style={{
+            height: "36px",
+            width: "100%",
+            backgroundColor: "transparent",
+            border: "none",
+            outline: "none",
+            fontSize: "14px",
+            color: "inherit",
+          }}
+          className="placeholder:text-muted-foreground"
         />
         {value && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="ml-2 text-xs text-muted-foreground hover:text-foreground"
+            className="ml-2 text-xs text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
             aria-label="Clear search"
           >
             ✕
@@ -317,7 +327,10 @@ function GuestSearchBox({
       </div>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-popover shadow-md">
+        <div
+          className="absolute z-[10000] mt-1 w-full rounded-md border border-input bg-white shadow-lg"
+          style={{ minWidth: "100%" }}
+        >
           <div className="max-h-60 overflow-y-auto p-1">
             {guests.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -332,7 +345,7 @@ function GuestSearchBox({
                     onPick(g);
                     setOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 >
                   <User className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 truncate font-medium">{g.name || "(no name)"}</span>
