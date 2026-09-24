@@ -1924,11 +1924,13 @@ export default function ReservationsPage() {
                     <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
                   </div>
                   {/* ID Type, ID Number, and Guest Address — all on one row.
-                      The address block (collapsible toggle) sits in the 3rd
-                      column, so the user can see all three sections at a glance. */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+                      ID Type is narrower (dropdown with short text), ID Number
+                      is wider (text input), Guest Address toggle takes the
+                      remaining space. Custom grid template keeps ID Type and
+                      ID Number visually grouped close together. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_1.5fr] gap-3 items-start">
                     <div className="space-y-1.5">
-                      <Label>{t("labelIdType")} <span className="text-rose-500">*</span></Label>
+                      <Label className="whitespace-nowrap">{t("labelIdType")} <span className="text-rose-500">*</span></Label>
                       <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1939,10 +1941,10 @@ export default function ReservationsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>
+                      <Label className="whitespace-nowrap">
                         {t("labelIdNumber")} <span className="text-rose-500">*</span>
                         {isNationalIdType(newGuestForm.idType) && (
-                          <span className="ml-2 text-[10px] font-normal text-amber-600">
+                          <span className="ml-1.5 text-[10px] font-normal text-amber-600 whitespace-nowrap">
                             (16 digits, FAN)
                           </span>
                         )}
