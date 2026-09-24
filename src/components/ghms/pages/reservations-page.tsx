@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import {
@@ -106,6 +106,14 @@ interface GuestOption {
   idNumber?: string;
   address?: string;
   nationality?: string;
+  // Individual address fields — present in the raw /api/guests response
+  // and used to compose `address` above.
+  region?: string;
+  zone?: string;
+  woreda?: string;
+  kebele?: string;
+  houseNumber?: string;
+  streetName?: string;
 }
 
 /** Shape of the JSON error body surfaced by the API client (thrown as message). */
@@ -236,6 +244,114 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
+/**
+ * Self-contained guest search box with always-visible filtered dropdown.
+ *
+ * Replaces the Radix Popover + cmdk Command pattern, which:
+ * - had empty-value filtering issues when guests had blank name/phone
+ * - lost input focus when nested inside a Dialog (Radix focus trap)
+ *
+ * This component manages its own "open" state based on focus + click-outside,
+ * so it works reliably inside dialogs.
+ */
+function GuestSearchBox({
+  value,
+  onChange,
+  onPick,
+  guests,
+  totalGuests,
+  loading,
+  placeholder,
+  emptyText,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onPick: (g: GuestOption) => void;
+  guests: GuestOption[];
+  totalGuests: number;
+  loading: boolean;
+  placeholder: string;
+  emptyText: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close on click-outside. Use mousedown (not click) so we catch the
+  // event before focus moves elsewhere.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <div className="flex items-center border border-input rounded-md bg-background px-3 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          className="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="ml-2 text-xs text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-popover shadow-md">
+          <div className="max-h-60 overflow-y-auto p-1">
+            {guests.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {loading ? "Loading guests…" : emptyText}
+              </div>
+            ) : (
+              guests.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    onPick(g);
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                >
+                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 truncate font-medium">{g.name || "(no name)"}</span>
+                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">{g.phone}</span>
+                </button>
+              ))
+            )}
+          </div>
+          {totalGuests > 50 && (
+            <div className="border-t px-2 py-1 text-[10px] text-muted-foreground">
+              Showing first 50 of {totalGuests} guests. Refine your search to see more.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReservationsPage() {
   const { t } = useTranslation("reservations");
   const { refreshKey, triggerRefresh, preselectedRoom, setPreselectedRoom } = useAppStore();
@@ -337,14 +453,29 @@ export default function ReservationsPage() {
         apiGetRooms(),
       ]);
       setReservations(Array.isArray(resData) ? resData : []);
-      setAllGuests((Array.isArray(guestData) ? guestData : []).map((g: GuestOption) => ({
-        id: g.id,
-        name: g.name,
-        phone: g.phone,
-        idNumber: g.idNumber,
-        address: g.address,
-        nationality: g.nationality,
-      })));
+      setAllGuests((Array.isArray(guestData) ? guestData : []).map((g: GuestOption) => {
+        // Compose a single address string from individual fields returned
+        // by /api/guests (region, zone, woreda, kebele, houseNumber, streetName).
+        // The API does not return a pre-composed 'address' field.
+        const addrParts = [
+          g.region,
+          g.zone,
+          g.woreda,
+          g.kebele,
+          g.houseNumber,
+          g.streetName,
+        ]
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+          .map((x) => x.trim());
+        return {
+          id: g.id,
+          name: g.name,
+          phone: g.phone,
+          idNumber: g.idNumber,
+          address: addrParts.length > 0 ? addrParts.join(", ") : "",
+          nationality: g.nationality,
+        };
+      }));
       // apiGetRooms already unwraps { rooms: [...] } to a plain array
       const rawRooms = Array.isArray(roomData) ? roomData : [];
       setAllRooms(
@@ -1539,57 +1670,23 @@ export default function ReservationsPage() {
                       })()}
                     </div>
                   ) : (
-                    /* Search input + filterable dropdown — replaces the
-                       cmdk Combobox which had empty-value filtering issues
-                       when guests had blank names or phones. */
-                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" aria-expanded={comboboxOpen} className="w-full justify-between font-normal">
-                          {t("placeholderSearchGuest")}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                        <div className="flex flex-col">
-                          <div className="flex items-center border-b px-3">
-                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                            <input
-                              autoFocus
-                              placeholder={t("placeholderSearchGuest")}
-                              value={guestSearch}
-                              onChange={(e) => setGuestSearch(e.target.value)}
-                              className="flex h-9 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
-                            />
-                          </div>
-                          <div className="max-h-60 overflow-y-auto p-1">
-                            {filteredGuests.length === 0 ? (
-                              <div className="py-6 text-center text-sm text-muted-foreground">
-                                {allGuests.length === 0
-                                  ? "Loading guests…"
-                                  : t("noGuestsFound")}
-                              </div>
-                            ) : (
-                              filteredGuests.map((g) => (
-                                <button
-                                  key={g.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedGuestId(g.id);
-                                    setComboboxOpen(false);
-                                    setGuestSearch("");
-                                  }}
-                                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                                >
-                                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                  <span className="flex-1 truncate font-medium">{g.name || "(no name)"}</span>
-                                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">{g.phone}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    /* Search input with always-visible dropdown.
+                       Replaces the Radix Popover + cmdk Command approach
+                       which had focus issues inside the dialog. */
+                    <GuestSearchBox
+                      value={guestSearch}
+                      onChange={setGuestSearch}
+                      onPick={(g) => {
+                        setSelectedGuestId(g.id);
+                        setComboboxOpen(false);
+                        setGuestSearch("");
+                      }}
+                      guests={filteredGuests}
+                      totalGuests={allGuests.length}
+                      loading={allGuests.length === 0}
+                      placeholder={t("placeholderSearchGuest")}
+                      emptyText={t("noGuestsFound")}
+                    />
                   )}
                 </div>
               ) : (
