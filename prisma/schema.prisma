@@ -29,6 +29,11 @@ enum RoomType {
   TWIN
   SUITE
   DELUXE
+  KING
+  STANDARD
+  STANDARD_SUITE
+  JUNIOR_SUITE
+  EXECUTIVE_SUITE
 }
 
 enum RoomStatus {

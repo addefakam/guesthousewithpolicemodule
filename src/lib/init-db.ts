@@ -8,7 +8,7 @@ const { Client } = pg;
 const ENUMS_SQL = `
 DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('POLICE','SUPERUSER','OPERATOR','STAFF'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "ProviderStatus" AS ENUM ('PENDING','APPROVED','REJECTED','SUSPENDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE "RoomType" AS ENUM ('SINGLE','DOUBLE','TWIN','SUITE','DELUXE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "RoomType" AS ENUM ('SINGLE','DOUBLE','TWIN','SUITE','DELUXE','KING','STANDARD','STANDARD_SUITE','JUNIOR_SUITE','EXECUTIVE_SUITE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE','OCCUPIED','MAINTENANCE','RESERVED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "PaymentStatusType" AS ENUM ('PAID','PARTIAL','PENDING'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "PaymentMethodType" AS ENUM ('CASH','TRANSFER','CARD','MOBILE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -617,6 +617,16 @@ CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "PasswordResetToken_token_key" ON "PasswordResetToken" ("token");
 CREATE INDEX IF NOT EXISTS "PasswordResetToken_userId_idx" ON "PasswordResetToken" ("userId");
+
+-- ─── RoomType enum — add new values for existing databases ──────────
+-- The CREATE TYPE in ENUMS_SQL only runs on fresh databases. For existing
+-- databases, we ALTER TYPE ADD VALUE to add the new room types.
+-- IF NOT EXISTS prevents errors on re-run (PostgreSQL 9.3+).
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'KING'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'STANDARD'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'STANDARD_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'JUNIOR_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'EXECUTIVE_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 `;

@@ -133,7 +133,7 @@ interface RoomReservation {
   roomId?: string;
 }
 
-const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE"] as const;
+const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE", "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE"] as const;
 
 const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   SINGLE: <BedSingle className="h-4 w-4" />,
