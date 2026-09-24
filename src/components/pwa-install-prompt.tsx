@@ -120,7 +120,39 @@ export default function PwaInstallPrompt({
   useEffect(() => {
     // Register the passthrough service worker (PWA installability).
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Listen for new SW versions and force-activate them immediately,
+          // so the user never gets stuck on a stale cached navigation shell
+          // after a deployment.
+          reg.addEventListener("updatefound", () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                // A new SW took over — wipe ALL caches and reload once.
+                caches.keys().then((keys) =>
+                  Promise.all(keys.map((k) => caches.delete(k)))
+                ).then(() => {
+                  newWorker.postMessage("SKIP_WAITING");
+                });
+              }
+            });
+          });
+        })
+        .catch(() => {});
+
+      // Also: when the page loads, if a new SW is already waiting, take it
+      // over right away and reload so the user sees the latest UI.
+      navigator.serviceWorker.getRegistration("/sw.js").then((reg) => {
+        if (reg && reg.waiting) {
+          reg.waiting.postMessage("SKIP_WAITING");
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            window.location.reload();
+          }, { once: true });
+        }
+      });
     }
 
     const onPrompt = (e: Event) => {
