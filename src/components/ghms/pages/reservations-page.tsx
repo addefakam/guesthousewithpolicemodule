@@ -315,28 +315,29 @@ function CollapsibleAddressFields({
   const hasAny = summaryParts.length > 0;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/50 overflow-hidden">
-      {/* Toggle row — always visible */}
+    <>
+      {/* Toggle row — always visible.
+          Designed to fit inline with other fields in a parent grid. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-100 transition-colors"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-left hover:bg-gray-100 transition-colors h-[38px]"
       >
         <div className="flex items-center gap-2 min-w-0">
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${hasAny ? "bg-emerald-500" : "bg-gray-300"}`}
             aria-hidden
           />
-          <span className="text-sm font-medium text-gray-800 shrink-0">
+          <span className="text-xs font-medium text-gray-800 shrink-0">
             {labelGuestAddress}
           </span>
           {hasAny && (
-            <span className="text-xs text-gray-500 truncate">
+            <span className="text-[11px] text-gray-500 truncate">
               · {summaryParts.join(", ")}
             </span>
           )}
           {!hasAny && (
-            <span className="text-xs text-gray-400">(optional)</span>
+            <span className="text-[11px] text-gray-400">(optional)</span>
           )}
         </div>
         <ChevronRight
@@ -344,9 +345,10 @@ function CollapsibleAddressFields({
         />
       </button>
 
-      {/* Fields — only rendered when expanded */}
+      {/* Expanded body — full-width below the parent grid row.
+          Uses col-span-full so it always takes the full row of the parent grid. */}
       {open && (
-        <div className="border-t border-gray-200 bg-white p-3 space-y-3">
+        <div className="sm:col-span-3 mt-2 rounded-lg border border-gray-200 bg-white p-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Region */}
             <div className="space-y-1.5">
@@ -436,7 +438,7 @@ function CollapsibleAddressFields({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -1921,7 +1923,10 @@ export default function ReservationsPage() {
                     <Label>{t("labelNationality")} <span className="text-rose-500">*</span></Label>
                     <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* ID Type, ID Number, and Guest Address — all on one row.
+                      The address block (collapsible toggle) sits in the 3rd
+                      column, so the user can see all three sections at a glance. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                     <div className="space-y-1.5">
                       <Label>{t("labelIdType")} <span className="text-rose-500">*</span></Label>
                       <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
@@ -1938,7 +1943,7 @@ export default function ReservationsPage() {
                         {t("labelIdNumber")} <span className="text-rose-500">*</span>
                         {isNationalIdType(newGuestForm.idType) && (
                           <span className="ml-2 text-[10px] font-normal text-amber-600">
-                            (16 digits, FAN format)
+                            (16 digits, FAN)
                           </span>
                         )}
                       </Label>
@@ -1961,30 +1966,28 @@ export default function ReservationsPage() {
                         </p>
                       )}
                     </div>
+                    {/* Guest Address block — the toggle fills this 3rd
+                        column; when expanded, the body spans the full
+                        width below (sm:col-span-3 inside the component). */}
+                    <CollapsibleAddressFields
+                      region={newGuestForm.region}
+                      zone={newGuestForm.zone}
+                      woreda={newGuestForm.woreda}
+                      kebele={newGuestForm.kebele}
+                      houseNumber={newGuestForm.houseNumber}
+                      streetName={newGuestForm.streetName}
+                      plateNumber={newGuestForm.plateNumber}
+                      onChange={(patch) => setNewGuestForm({ ...newGuestForm, ...patch })}
+                      labelGuestAddress={t("labelGuestAddress")}
+                      labelPlateNumber={t("labelPlateNumber")}
+                      placeholderPlateNumber={t("placeholderPlateNumber")}
+                      placeholderZone="Enter zone/sub-city"
+                      placeholderWoreda="Enter woreda"
+                      placeholderKebele="e.g. 01, 02, 03"
+                      placeholderHouseNumber="e.g. H-124"
+                      placeholderStreetName="e.g. Bole Road"
+                    />
                   </div>
-                  {/* Guest address section — collapsible.
-                      Bundles region, zone, woreda, kebele, house number,
-                      street name, AND plate number under a single toggle.
-                      When collapsed, only the toggle row is shown.
-                      When expanded, all address+plate fields appear. */}
-                  <CollapsibleAddressFields
-                    region={newGuestForm.region}
-                    zone={newGuestForm.zone}
-                    woreda={newGuestForm.woreda}
-                    kebele={newGuestForm.kebele}
-                    houseNumber={newGuestForm.houseNumber}
-                    streetName={newGuestForm.streetName}
-                    plateNumber={newGuestForm.plateNumber}
-                    onChange={(patch) => setNewGuestForm({ ...newGuestForm, ...patch })}
-                    labelGuestAddress={t("labelGuestAddress")}
-                    labelPlateNumber={t("labelPlateNumber")}
-                    placeholderPlateNumber={t("placeholderPlateNumber")}
-                    placeholderZone="Enter zone/sub-city"
-                    placeholderWoreda="Enter woreda"
-                    placeholderKebele="e.g. 01, 02, 03"
-                    placeholderHouseNumber="e.g. H-124"
-                    placeholderStreetName="e.g. Bole Road"
-                  />
 
                   {/* Security weapon field — separate from address */}
                   <div className="space-y-1.5">
