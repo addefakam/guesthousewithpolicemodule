@@ -1,5 +1,13 @@
 "use client";
 
+// Force server-rendering on every request so the HTML shell always
+// references the latest JS chunk URLs. Without this, Vercel serves a
+// statically-prerendered HTML that points at OLD chunk URLs, and the
+// browser happily serves both the old HTML and the old chunks from its
+// HTTP cache — making deployed changes invisible until the cache
+// expires or the user manually clears site data.
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
