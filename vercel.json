@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm install --force",
-  "buildCommand": "npx prisma generate && node scripts/fix-prisma-sql.js && next build",
+  "buildCommand": "npx prisma generate && node scripts/fix-prisma-sql.js && rm -rf .next && next build",
   "crons": [
     {
       "path": "/api/cron/reservation-maintenance",
