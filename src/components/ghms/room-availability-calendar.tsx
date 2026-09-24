@@ -244,7 +244,7 @@ export function RoomAvailabilityCalendar({ roomId, checkIn, checkOut, onChange, 
               booked: "!bg-rose-50 !text-rose-300 line-through decoration-rose-300",
               turnover: "!bg-amber-50 !text-amber-600 ring-1 ring-amber-300",
             }}
-            className="w-full max-w-[320px] [--cell-size:--spacing(9)]"
+            className="w-full max-w-[260px] p-2 [--cell-size:--spacing(7)]"
           />
         )}
       </div>
