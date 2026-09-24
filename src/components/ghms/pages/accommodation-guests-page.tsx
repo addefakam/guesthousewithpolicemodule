@@ -35,7 +35,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Search, LogIn, LogOut, Users, BedDouble, CalendarDays, AlertTriangle, UserPlus,
+  Search, LogIn, LogOut, Users, BedDouble, CalendarDays, AlertTriangle, UserPlus, Download,
 } from "lucide-react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -46,6 +46,9 @@ interface Guest {
   id: string; name: string; phone: string; idNumber: string; idType: string;
   nationality: string; email: string; vip: boolean; totalStays: number; totalSpent: number;
   createdAt: string;
+  // Address fields (returned by /api/guests but optional here for backwards compat)
+  region?: string; zone?: string; woreda?: string; kebele?: string;
+  houseNumber?: string; streetName?: string;
 }
 
 interface Room { id: string; number: string; name: string; type: string; status: string; pricePerNight: number; }
@@ -182,6 +185,130 @@ export default function AccommodationGuestsPage() {
     type: "checkin" | "checkout"; reservation: Reservation;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // ── Export dialog state ──
+  // Lets the user pick a date range + guest state, then downloads an .xlsx
+  // of matching guests (with their reservation info).
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exportState, setExportState] = useState<"ALL" | "CHECKED_IN" | "UPCOMING" | "COMPLETED" | "CANCELLED" | "NO_RESERVATION">("ALL");
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      // Re-use already-loaded guests + reservations. If the user picked a
+      // date range, filter by reservation checkIn/checkOut overlapping the
+      // range. If the user picked a state, filter by it.
+      const from = exportFrom ? exportFrom : null;
+      const to = exportTo ? exportTo : null;
+
+      // Build a map of guestId → reservations (any status) for date filtering.
+      const reservationsByGuest = new Map<string, Reservation[]>();
+      for (const r of reservations) {
+        const gid = r.guestId || r.guest?.id;
+        if (!gid) continue;
+        if (!reservationsByGuest.has(gid)) reservationsByGuest.set(gid, []);
+        reservationsByGuest.get(gid)!.push(r);
+      }
+
+      const rows: Record<string, string | number>[] = [];
+
+      for (const g of guests) {
+        const gReservations = reservationsByGuest.get(g.id) || [];
+
+        // ── State filter ──
+        if (exportState === "NO_RESERVATION") {
+          if (gReservations.length > 0) continue;
+        } else if (exportState === "CHECKED_IN") {
+          if (!gReservations.some((r) => r.status === "ACTIVE")) continue;
+        } else if (exportState === "UPCOMING") {
+          if (!gReservations.some((r) => r.status === "UPCOMING")) continue;
+        } else if (exportState === "COMPLETED") {
+          if (!gReservations.some((r) => r.status === "COMPLETED")) continue;
+        } else if (exportState === "CANCELLED") {
+          if (!gReservations.some((r) => r.status === "CANCELLED")) continue;
+        }
+
+        // ── Date range filter ──
+        // If a range is set, require at least one reservation whose
+        // [checkIn, checkOut] overlaps with [from, to].
+        if (from || to) {
+          const inRange = gReservations.some((r) => {
+            const ci = r.checkIn?.slice(0, 10) || "";
+            const co = r.checkOut?.slice(0, 10) || "";
+            if (!ci || !co) return false;
+            // Overlap test: ci <= to && co >= from
+            const okFrom = !from || co >= from;
+            const okTo = !to || ci <= to;
+            return okFrom && okTo;
+          });
+          // For NO_RESERVATION guests, date filter doesn't apply — they
+          // have no dates. Skip them if a range is set.
+          if (!inRange && exportState !== "NO_RESERVATION") continue;
+          if (exportState === "NO_RESERVATION" && (from || to)) {
+            // Show no-reservation guests only if no date filter is set.
+            continue;
+          }
+        }
+
+        // Compose address string
+        const addrParts = [g.region, g.zone, g.woreda, g.kebele, g.houseNumber, g.streetName]
+          .filter((x) => x && String(x).trim())
+          .map((x) => String(x).trim());
+
+        // Pick the "primary" reservation for the row (most recent check-in)
+        const primary = gReservations
+          .slice()
+          .sort((a, b) => (b.checkIn || "").localeCompare(a.checkIn || ""))[0];
+
+        rows.push({
+          Name: g.name || "",
+          Phone: g.phone || "",
+          Email: g.email || "",
+          Nationality: g.nationality || "",
+          IDType: g.idType || "",
+          IDNumber: g.idNumber || "",
+          Address: addrParts.join(", "),
+          TotalStays: g.totalStays ?? 0,
+          TotalSpent: g.totalSpent ?? 0,
+          VIP: g.vip ? "Yes" : "No",
+          RegisteredAt: g.createdAt ? new Date(g.createdAt).toLocaleString() : "",
+          ReservationStatus: primary?.status || "—",
+          CheckIn: primary?.checkIn?.slice(0, 10) || "—",
+          CheckOut: primary?.checkOut?.slice(0, 10) || "—",
+          RoomNumber: primary?.room?.number || "—",
+          RoomType: primary?.room?.type || "—",
+          ReservationCount: gReservations.length,
+        });
+      }
+
+      if (rows.length === 0) {
+        toast.error("No guests match the selected filters.");
+        return;
+      }
+
+      // Dynamic import to keep the initial bundle small.
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // Auto-size columns based on header length + a few rows
+      const colWidths = Object.keys(rows[0]).map((k) => ({
+        wch: Math.max(k.length, ...rows.map((r) => String(r[k] ?? "").length)) + 2,
+      }));
+      ws["!cols"] = colWidths;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Guests");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `guests_export_${dateStamp}.xlsx`);
+      toast.success(`Exported ${rows.length} guest(s) to Excel.`);
+      setExportOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Pagination
   const pagination = usePagination({ totalItems: 0, initialPageSize: 10, pageSizeOptions: [10, 20, 50] });
@@ -434,6 +561,9 @@ export default function AccommodationGuestsPage() {
           <p className="text-xs sm:text-sm text-muted-foreground">{t("manageGuestsDesc", "Manage guest check-in & check-out and reservations")}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} className="h-8 text-xs gap-1.5">
+            <Download className="h-3.5 w-3.5" /> {t("export", "Export")}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setResDialogOpen(true)} className="h-8 text-xs gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" /> {t("newReservation", "New Reservation")}
           </Button>
@@ -869,6 +999,79 @@ export default function AccommodationGuestsPage() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {/* ── Export Dialog — filter guests by date range + state, then download .xlsx ── */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="max-w-md mx-4 w-[calc(100%-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-emerald-600" />
+              {t("exportGuests", "Export Guests")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("exportDesc", "Filter guests by date range and state, then download as Excel (.xlsx).")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Date range */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">{t("dateRange", "Date Range")}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("from", "From")}</Label>
+                  <Input
+                    type="date"
+                    value={exportFrom}
+                    onChange={(e) => setExportFrom(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t("to", "To")}</Label>
+                  <Input
+                    type="date"
+                    value={exportTo}
+                    onChange={(e) => setExportTo(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {t("dateRangeHint", "Filters by reservation check-in/check-out overlap. Leave empty to include all dates.")}
+              </p>
+            </div>
+
+            {/* Guest state filter */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">{t("guestState", "Guest State")}</Label>
+              <Select value={exportState} onValueChange={(v) => setExportState(v as typeof exportState)}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">{t("allGuests", "All Guests")}</SelectItem>
+                  <SelectItem value="CHECKED_IN">{t("checkedIn", "Checked In")}</SelectItem>
+                  <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
+                  <SelectItem value="COMPLETED">{t("completed", "Completed")}</SelectItem>
+                  <SelectItem value="CANCELLED">{t("cancelled", "Cancelled")}</SelectItem>
+                  <SelectItem value="NO_RESERVATION">{t("noReservation", "No Reservation")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setExportOpen(false)} disabled={exporting}>
+              {t("cancel")}
+            </Button>
+            <Button size="sm" onClick={handleExport} disabled={exporting} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? t("exporting", "Exporting…") : t("export", "Export")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
