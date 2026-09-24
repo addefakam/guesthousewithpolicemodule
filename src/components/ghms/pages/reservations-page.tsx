@@ -1898,13 +1898,14 @@ export default function ReservationsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Full Name, Phone, Nationality — all on one horizontal line. */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
-                      <Label>{t("labelFullName")} <span className="text-rose-500">*</span></Label>
+                      <Label className="whitespace-nowrap">{t("labelFullName")} <span className="text-rose-500">*</span></Label>
                       <Input placeholder={t("placeholderFullName")} value={newGuestForm.name} onChange={(e) => setNewGuestForm({ ...newGuestForm, name: e.target.value })} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{t("labelPhone")} <span className="text-rose-500">*</span></Label>
+                      <Label className="whitespace-nowrap">{t("labelPhone")} <span className="text-rose-500">*</span></Label>
                       <Input
                         type="tel"
                         placeholder={t("placeholderPhone")}
@@ -1918,10 +1919,10 @@ export default function ReservationsPage() {
                         </p>
                       )}
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>{t("labelNationality")} <span className="text-rose-500">*</span></Label>
-                    <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                    <div className="space-y-1.5">
+                      <Label className="whitespace-nowrap">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
+                      <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                    </div>
                   </div>
                   {/* ID Type, ID Number, and Guest Address — all on one row.
                       ID Type is narrower (dropdown with short text), ID Number
