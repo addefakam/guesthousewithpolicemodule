@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Bed, Sun, Users } from "lucide-react";
+import { Bed, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import RoomsPage from "./rooms-page";
-import DaytimePage from "./daytime-page";
 import AccommodationGuestsPage from "./accommodation-guests-page";
 
-type TabType = "guests" | "rooms" | "daytime";
+type TabType = "guests" | "rooms";
 
 export default function AccommodationPage() {
   const { t } = useTranslation("accommodation");
@@ -17,7 +16,6 @@ export default function AccommodationPage() {
   const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
     { key: "guests", label: t("guestsTab", "Guests"), icon: Users },
     { key: "rooms", label: t("roomsTab", "Rooms"), icon: Bed },
-    { key: "daytime", label: t("daytimeTab", "Daytime Services"), icon: Sun },
   ];
 
   return (
@@ -30,7 +28,7 @@ export default function AccommodationPage() {
               {t("title", "Accommodation")}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {t("subtitle", "Manage guests, room inventory and daytime service bookings.")}
+              {t("subtitle", "Manage guests and room inventory.")}
             </p>
           </div>
         </div>
@@ -56,7 +54,6 @@ export default function AccommodationPage() {
       <div className="flex-1 min-h-0">
         {activeTab === "guests" && <AccommodationGuestsPage />}
         {activeTab === "rooms" && <RoomsPage />}
-        {activeTab === "daytime" && <DaytimePage />}
       </div>
     </div>
   );

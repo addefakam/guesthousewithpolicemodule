@@ -167,7 +167,10 @@ const SUPERUSER_NAV_ITEMS: NavItem[] = [
 const OPERATOR_EXCLUDED = new Set<string>(["owner-accounts"]);
 
 // ── Permission → page mapping for STAFF role ──
-// Supports both legacy keys (rooms, daytime) and new keys (rooms_view, daytime_view)
+// Note: 'daytime' / 'daytime_view' permissions are deprecated — the
+// Daytime Services tab has been deactivated. These keys now map to
+// the main 'accommodation' page so legacy STAFF permissions still
+// resolve to a valid destination.
 const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   // New keys with _view suffix
   rooms_view: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
