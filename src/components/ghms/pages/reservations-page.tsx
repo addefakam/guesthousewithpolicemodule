@@ -1005,22 +1005,9 @@ export default function ReservationsPage() {
       return;
     }
     const selRoom = allRooms.find((r) => r.id === createForm.roomId);
-    const isDoubleRoom = selRoom && requiresSecondGuest(selRoom);
-    const isSingleRoom = selRoom && selRoom.type === "SINGLE";
-    // Multi-occupancy rooms (DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD, etc.):
-    // second guest required unless exceptionally reserved for single occupancy.
-    if (isDoubleRoom && !createForm.exceptionallyReserved) {
-      if (!createForm.secondGuestName.trim() || !createForm.secondGuestPhone.trim()) {
-        toast.error("Second guest name and phone are required for multi-occupancy rooms");
-        return;
-      }
-      if (!isValidPhone(createForm.secondGuestPhone)) {
-        toast.error("Invalid second guest phone number format (7-15 digits)");
-        return;
-      }
-    }
-    // SINGLE: second guest required only if hasSecondGuest is toggled on
-    if (isSingleRoom && createForm.hasSecondGuest) {
+    // Second guest is NOT mandatory for any room type. It's only required
+    // if the user explicitly toggled "Two guests" on.
+    if (createForm.hasSecondGuest) {
       if (!createForm.secondGuestName.trim() || !createForm.secondGuestPhone.trim()) {
         toast.error("Second guest name and phone are required");
         return;
@@ -2103,71 +2090,32 @@ export default function ReservationsPage() {
                 </Select>
               </div>
 
-              {/* Second Guest Section */}
+              {/* Second Guest Section — shown for ALL room types.
+                  The second guest is NOT mandatory. The user chooses
+                  "One guest only" (default) or "Two guests". If "Two guests"
+                  is selected, the second guest fields appear and become
+                  required. This applies uniformly to every room type
+                  regardless of capacity. */}
               {(() => {
                 const selRoom = allRooms.find((r) => r.id === createForm.roomId);
                 if (!selRoom) return null;
-                const isDouble = requiresSecondGuest(selRoom);
-                const isSingle = !isDouble; // capacity == 1 → optional toggle
-                if (!isDouble && !isSingle) return null;
-
-                if (isSingle) {
-                  return (
-                    <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-3 space-y-3">
-                      <div className="flex items-center gap-2 text-sky-800">
-                        <Users className="h-4 w-4" />
-                        <span className="text-xs font-semibold">{t("additionalOccupant")}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="single-guest-count" checked={!createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: false, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
-                          <span className="text-xs font-medium">{t("oneGuestOnly")}</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="single-guest-count" checked={createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: true })} className="h-3.5 w-3.5 accent-sky-600" />
-                          <span className="text-xs font-medium text-sky-700">{t("twoGuests")}</span>
-                        </label>
-                      </div>
-                      {createForm.hasSecondGuest && (
-                        <div className="space-y-2">
-                          <p className="text-[10px] text-muted-foreground">{t("descSecondGuestSingleRoom")}</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <Label>{t("labelSecondGuestName")} <span className="text-rose-500">*</span></Label>
-                              <Input placeholder={t("placeholderSecondGuestName")} value={createForm.secondGuestName} onChange={(e) => setCreateForm({ ...createForm, secondGuestName: e.target.value })} />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label>{t("labelSecondGuestPhone")} <span className="text-rose-500">*</span></Label>
-                              <Input type="tel" placeholder={t("placeholderPhone")} value={createForm.secondGuestPhone} onChange={(e) => setCreateForm({ ...createForm, secondGuestPhone: e.target.value })} />
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label>{t("labelSecondGuestIdNumber")}</Label>
-                            <Input placeholder={t("placeholderId")} value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
                 return (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
-                    <div className="flex items-center gap-2 text-amber-800">
-                      <BedDouble className="h-4 w-4" />
-                      <span className="text-xs font-semibold">{t("doubleRoomSecondGuestReq")}</span>
+                  <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-3 space-y-3">
+                    <div className="flex items-center gap-2 text-sky-800">
+                      <Users className="h-4 w-4" />
+                      <span className="text-xs font-semibold">{t("additionalOccupant")}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="res-exception" checked={!createForm.exceptionallyReserved} onChange={() => setCreateForm({ ...createForm, exceptionallyReserved: false, exceptionReason: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
-                        <span className="text-xs font-medium">{t("twoGuests")}</span>
+                        <input type="radio" name="guest-count" checked={!createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: false, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-emerald-600" />
+                        <span className="text-xs font-medium">{t("oneGuestOnly")}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="res-exception" checked={createForm.exceptionallyReserved} onChange={() => setCreateForm({ ...createForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })} className="h-3.5 w-3.5 accent-amber-600" />
-                        <span className="text-xs font-medium text-amber-700">{t("labelExceptionallyReserved")}</span>
+                        <input type="radio" name="guest-count" checked={createForm.hasSecondGuest} onChange={() => setCreateForm({ ...createForm, hasSecondGuest: true })} className="h-3.5 w-3.5 accent-sky-600" />
+                        <span className="text-xs font-medium text-sky-700">{t("twoGuests")}</span>
                       </label>
                     </div>
-                    {!createForm.exceptionallyReserved ? (
+                    {createForm.hasSecondGuest && (
                       <div className="space-y-2">
                         <p className="text-[10px] text-muted-foreground">{t("descSecondGuestDetails")}</p>
                         <div className="grid grid-cols-2 gap-3">
@@ -2183,17 +2131,6 @@ export default function ReservationsPage() {
                         <div className="space-y-1.5">
                           <Label>{t("labelSecondGuestIdNumber")}</Label>
                           <Input placeholder={t("placeholderId")} value={createForm.secondGuestIdNumber} onChange={(e) => setCreateForm({ ...createForm, secondGuestIdNumber: e.target.value })} />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-amber-700">
-                          <AlertCircle className="h-3.5 w-3.5" />
-                          <p className="text-[10px] font-medium">{t("descSingleOccupancyException")}</p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label>{t("labelExceptionReason")} <span className="text-rose-500">*</span></Label>
-                          <Textarea placeholder={t("placeholderExceptionReason")} rows={2} value={createForm.exceptionReason} onChange={(e) => setCreateForm({ ...createForm, exceptionReason: e.target.value })} />
                         </div>
                       </div>
                     )}

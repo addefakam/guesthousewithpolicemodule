@@ -459,14 +459,9 @@ export default function GroupBookingsPage() {
       toast.error(t("toastCheckinCheckoutRequired"));
       return;
     }
-    // Validate multi-occupancy room requirements (capacity >= 2)
+    // Second guest is NOT mandatory. Only validate if the user provided one.
     const selRoom = rooms.find((r) => r.id === resRoomId);
-    const isDoubleRoom = selRoom && Number(selRoom.capacity || 0) >= 2;
-    if (isDoubleRoom && !resExceptionallyReserved) {
-      if (!resSecondGuestName.trim() || !resSecondGuestPhone.trim()) {
-        toast.error(t("toastSecondGuestRequired"));
-        return;
-      }
+    if (resSecondGuestName.trim() && resSecondGuestPhone.trim()) {
       if (!isValidPhone(resSecondGuestPhone)) {
         toast.error(t("toastInvalidSecondPhone"));
         return;

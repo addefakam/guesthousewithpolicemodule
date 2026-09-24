@@ -199,19 +199,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
 
-    // Rooms with capacity >= 2 require second guest data unless
-    // exceptionally reserved for single occupancy.
-    // This applies regardless of room type — DOUBLE, TWIN, SUITE, DELUXE,
-    // KING, STANDARD, STANDARD_SUITE, JUNIOR_SUITE, EXECUTIVE_SUITE, etc.
-    // all qualify as long as their capacity field is 2 or more.
-    const requiresTwoGuests = Number(room.capacity) >= 2;
-    if (requiresTwoGuests && !exceptionallyReserved) {
-      if (!secondGuestName || !secondGuestName.trim()) {
-        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest name is required for rooms with capacity 2+. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
-      }
-      if (!secondGuestPhone || !secondGuestPhone.trim()) {
-        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest phone is required for rooms with capacity 2+. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
-      }
+    // Second guest is NOT mandatory for any room type or capacity.
+    // The frontend sends secondGuestName/Phone only when the user explicitly
+    // chose "Two guests". If provided, validate the phone format.
+    if (secondGuestName && secondGuestName.trim() && secondGuestPhone && secondGuestPhone.trim()) {
       if (!isValidPhone(secondGuestPhone.trim())) {
         return NextResponse.json({ error: "Invalid second guest phone number format. Use 7-15 digits with optional + prefix." }, { status: 400 });
       }
