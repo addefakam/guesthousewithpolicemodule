@@ -959,7 +959,8 @@
     "checkinRoomOccupied": "ክፍሉ ቀድሞ የተያዘ ነው — አሁን ያለውን እንግዳ አስወጡ።",
     "checkinAlreadyActive": "እንግዱ ቀድሞ ገብቷል።",
     "checkinNotUpcoming": "ቀጥሮው ከመግቢያ ቀን አልፏል።",
-    "nationalIdHint": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN XX XX XX XX XX XX XX XX)"
+    "nationalIdHint": "የብሔራዊ መለያ ቁጥር 16 አሃዞች መሆን አለበት (FAN XX XX XX XX XX XX XX XX)",
+    "newResDesc": "ለእንግዳ ክፍል ያስይዙ"
   },
   "reports": {
     "pageTitle": "ሪፖርቶች እና ትንታኔዎች",

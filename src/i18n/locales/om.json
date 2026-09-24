@@ -959,7 +959,8 @@
     "checkinRoomOccupied": "Kabichi haaraa qabatama — kan jiru baasi jedhii ba'i.",
     "checkinAlreadyActive": "Dhaabbanni haaraa seeneera.",
     "checkinNotUpcoming": "Kabajni eegalamuufi hin jiru.",
-    "nationalIdHint": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN XX XX XX XX XX XX XX XX)"
+    "nationalIdHint": "Lakkoofsa ID biyyaalessaa lakkoofsa 16 ta'uu qaba (FAN XX XX XX XX XX XX XX XX)",
+    "newResDesc": "Beellama kutaa keessummaaf uumi"
   },
   "reports": {
     "pageTitle": "Gabaasaa fi Suphaa",

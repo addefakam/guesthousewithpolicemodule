@@ -959,7 +959,8 @@
     "checkinRoomOccupied": "Room is already occupied — check out the current guest first.",
     "checkinAlreadyActive": "Guest is already checked in.",
     "checkinNotUpcoming": "Reservation is no longer upcoming.",
-    "nationalIdHint": "National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)"
+    "nationalIdHint": "National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)",
+    "newResDesc": "Create a room reservation for a guest"
   },
   "reports": {
     "pageTitle": "Reports & Analytics",
