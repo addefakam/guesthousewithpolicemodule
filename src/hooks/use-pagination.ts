@@ -12,7 +12,7 @@ interface UsePaginationOptions {
 }
 
 interface UsePaginationReturn {
-  /** Current page index (0-based internally, but 1-based for display) */
+  /** Current page index (1-based) */
   currentPage: number;
   /** Number of items per page */
   pageSize: number;
@@ -41,34 +41,29 @@ export function usePagination({
 }: UsePaginationOptions): UsePaginationReturn {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(initialPageSize);
-  const [totalItemsState, setTotalItemsState] = useState(totalItems);
 
-  // Sync totalItemsState with the prop whenever it changes.
-  // Without this, the hook keeps the INITIAL totalItems value forever,
-  // so totalPages stays stale and the Next/Previous buttons stop working
-  // after the filtered list grows or shrinks.
-  // We DON'T call setTotalItems() here because that resets to page 1 —
-  // instead we update the count directly and clamp the current page if
-  // it's now out of range (e.g. user was on page 5 but the list shrank
-  // to 2 pages).
+  // Use the prop directly — no separate state to get out of sync.
+  // totalPages is derived, so it always reflects the latest count.
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  // Keep currentPage in valid range when totalItems or pageSize changes.
+  // e.g. user was on page 5, list shrank to 2 pages → clamp to page 2.
+  // Runs AFTER render, so the derived totalPages is already up to date.
   useEffect(() => {
-    setTotalItemsState(totalItems);
-    const newTotalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-    if (currentPage > newTotalPages) {
-      setCurrentPage(newTotalPages);
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
-  }, [totalItems, pageSize, currentPage]);
-
-  const totalPages = Math.max(1, Math.ceil(totalItemsState / pageSize));
+  }, [currentPage, totalPages]);
 
   const rangeInfo = useMemo(() => {
-    const from = totalItemsState === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-    const to = Math.min(currentPage * pageSize, totalItemsState);
-    return { from, to, total: totalItemsState };
-  }, [currentPage, pageSize, totalItemsState]);
+    const from = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const to = Math.min(currentPage * pageSize, totalItems);
+    return { from, to, total: totalItems };
+  }, [currentPage, pageSize, totalItems]);
 
   const goToPage = useCallback(
     (page: number) => {
+      // Clamp the target page to the valid range [1, totalPages].
       const clamped = Math.max(1, Math.min(page, totalPages));
       setCurrentPage(clamped);
     },
@@ -84,15 +79,17 @@ export function usePagination({
     setCurrentPage(1);
   }, []);
 
-  const setTotalItems = useCallback((count: number) => {
-    setTotalItemsState(count);
-    setCurrentPage(1);
+  const setTotalItems = useCallback((_count: number) => {
+    // No-op — totalItems is now driven by the prop, not state.
+    // Kept for backwards compatibility with callers that use it.
   }, []);
 
   const paginate = useCallback(
     <T>(items: T[]): T[] => {
       const start = (currentPage - 1) * pageSize;
-      return items.slice(start, start + pageSize);
+      // Guard against start being out of range (e.g. when items shrink)
+      const safeStart = Math.min(start, Math.max(0, items.length));
+      return items.slice(safeStart, safeStart + pageSize);
     },
     [currentPage, pageSize]
   );
@@ -110,4 +107,3 @@ export function usePagination({
     resetToFirst,
   };
 }
-
