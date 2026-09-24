@@ -423,12 +423,6 @@ export default function AccommodationGuestsPage() {
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">
-      {/* Version stamp — visible indicator of which build is running.
-          If you see vClickCards, you have the latest code (clickable stat cards).
-          If you see an older version or nothing, your browser is serving stale cached code. */}
-      <div className="fixed bottom-1 right-1 z-[99999] rounded bg-emerald-600/80 px-1.5 py-0.5 text-[9px] font-mono text-white pointer-events-none">
-        vClickCards
-      </div>
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
