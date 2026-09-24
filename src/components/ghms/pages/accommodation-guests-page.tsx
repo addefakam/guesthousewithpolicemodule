@@ -247,8 +247,12 @@ export default function AccommodationGuestsPage() {
       const gid = r.guestId || r.guest?.id;
       if (typeof gid === "string" && gid) ids.add(gid);
     }
+    // Debug log — helps verify the set is built correctly
+    if (typeof console !== "undefined") {
+      console.log("[AccommodationGuests] reservations:", reservations.length, "guestsWithRes:", ids.size, "totalGuests:", guests.length);
+    }
     return ids;
-  }, [reservations]);
+  }, [reservations, guests.length]);
 
   const activeReservations = useMemo(() =>
     reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
