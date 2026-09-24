@@ -138,6 +138,7 @@ interface RoomOption {
   type: string;
   status: string;
   pricePerNight: number;
+  capacity: number;
 }
 
 interface Reservation {
@@ -246,32 +247,21 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
 const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
 
 /**
- * Room types where the second-guest section is shown (and required unless
- * the room is marked "exceptionally reserved" for single occupancy).
+ * Whether a room requires the second-guest section (and the second guest
+ * is required unless exceptionally reserved for single occupancy).
  *
- * All multi-occupancy room types are included so they behave consistently
- * like DOUBLE/TWIN: the second guest form appears, and the user must
- * either fill it in or explicitly mark the reservation as an exception
- * (single occupancy for a multi-occupancy room).
+ * Rule: any room with capacity >= 2 requires a second guest. This applies
+ * regardless of room type — DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD,
+ * STANDARD_SUITE, JUNIOR_SUITE, EXECUTIVE_SUITE, etc. all qualify as long
+ * as their capacity field is 2 or more.
  *
- * SINGLE is excluded — it's the only type that natively accommodates one
- * guest, so it keeps the optional "add second guest" toggle.
+ * SINGLE rooms typically have capacity 1 and don't trigger this rule, but
+ * if a SINGLE room is configured with capacity 2 (allowed up to max 2), it
+ * will also require a second guest for consistency.
  */
-const REQUIRES_SECOND_GUEST_TYPES = [
-  "DOUBLE",
-  "TWIN",
-  "SUITE",
-  "DELUXE",
-  "KING",
-  "STANDARD",
-  "STANDARD_SUITE",
-  "JUNIOR_SUITE",
-  "EXECUTIVE_SUITE",
-] as const;
-
-function requiresSecondGuest(type: string | undefined): boolean {
-  if (!type) return false;
-  return (REQUIRES_SECOND_GUEST_TYPES as readonly string[]).includes(type);
+function requiresSecondGuest(opts: { type?: string; capacity?: number }): boolean {
+  const cap = Number(opts?.capacity) || 0;
+  return cap >= 2;
 }
 
 /**
@@ -746,6 +736,7 @@ export default function ReservationsPage() {
           type: r.type,
           status: r.status,
           pricePerNight: r.pricePerNight,
+          capacity: Number(r.capacity) || 1,
         }))
       );
     } catch (err: unknown) {
@@ -1014,7 +1005,7 @@ export default function ReservationsPage() {
       return;
     }
     const selRoom = allRooms.find((r) => r.id === createForm.roomId);
-    const isDoubleRoom = selRoom && requiresSecondGuest(selRoom.type);
+    const isDoubleRoom = selRoom && requiresSecondGuest(selRoom);
     const isSingleRoom = selRoom && selRoom.type === "SINGLE";
     // Multi-occupancy rooms (DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD, etc.):
     // second guest required unless exceptionally reserved for single occupancy.
@@ -2116,8 +2107,8 @@ export default function ReservationsPage() {
               {(() => {
                 const selRoom = allRooms.find((r) => r.id === createForm.roomId);
                 if (!selRoom) return null;
-                const isDouble = requiresSecondGuest(selRoom.type);
-                const isSingle = selRoom.type === "SINGLE";
+                const isDouble = requiresSecondGuest(selRoom);
+                const isSingle = !isDouble; // capacity == 1 → optional toggle
                 if (!isDouble && !isSingle) return null;
 
                 if (isSingle) {

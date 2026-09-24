@@ -177,6 +177,7 @@ interface RoomOption {
   type: string;
   status: string;
   pricePerNight: number;
+  capacity?: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -458,13 +459,9 @@ export default function GroupBookingsPage() {
       toast.error(t("toastCheckinCheckoutRequired"));
       return;
     }
-    // Validate multi-occupancy room requirements
+    // Validate multi-occupancy room requirements (capacity >= 2)
     const selRoom = rooms.find((r) => r.id === resRoomId);
-    const REQUIRES_SECOND_GUEST_TYPES = [
-      "DOUBLE", "TWIN", "SUITE", "DELUXE",
-      "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE",
-    ];
-    const isDoubleRoom = selRoom && REQUIRES_SECOND_GUEST_TYPES.includes(selRoom.type);
+    const isDoubleRoom = selRoom && Number(selRoom.capacity || 0) >= 2;
     if (isDoubleRoom && !resExceptionallyReserved) {
       if (!resSecondGuestName.trim() || !resSecondGuestPhone.trim()) {
         toast.error(t("toastSecondGuestRequired"));
@@ -1324,12 +1321,11 @@ export default function GroupBookingsPage() {
               </Select>
             </div>
 
-            {/* Second Guest — shown for multi-occupancy rooms (DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD, etc.) */}
+            {/* Second Guest — shown for rooms with capacity >= 2 */}
             {(() => {
               const r = rooms.find((x) => x.id === resRoomId);
-              if (!r) return null;
-              const MULTI_OCCUPANCY_TYPES = ["DOUBLE", "TWIN", "SUITE", "DELUXE", "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE"];
-              return MULTI_OCCUPANCY_TYPES.includes(r.type);
+              if (!r) return false;
+              return Number(r.capacity || 0) >= 2;
             })() && (
               <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
                 <div className="flex items-center gap-2 text-amber-800">

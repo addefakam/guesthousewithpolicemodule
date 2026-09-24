@@ -199,21 +199,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
 
-    // Multi-occupancy rooms (DOUBLE, TWIN, SUITE, DELUXE, KING, STANDARD,
-    // STANDARD_SUITE, JUNIOR_SUITE, EXECUTIVE_SUITE) require second guest
-    // data unless exceptionally reserved for single occupancy.
-    // SINGLE rooms don't require a second guest.
-    const REQUIRES_SECOND_GUEST_TYPES = [
-      "DOUBLE", "TWIN", "SUITE", "DELUXE",
-      "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE",
-    ];
-    const requiresTwoGuests = REQUIRES_SECOND_GUEST_TYPES.includes(room.type);
+    // Rooms with capacity >= 2 require second guest data unless
+    // exceptionally reserved for single occupancy.
+    // This applies regardless of room type — DOUBLE, TWIN, SUITE, DELUXE,
+    // KING, STANDARD, STANDARD_SUITE, JUNIOR_SUITE, EXECUTIVE_SUITE, etc.
+    // all qualify as long as their capacity field is 2 or more.
+    const requiresTwoGuests = Number(room.capacity) >= 2;
     if (requiresTwoGuests && !exceptionallyReserved) {
       if (!secondGuestName || !secondGuestName.trim()) {
-        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest name is required for multi-occupancy rooms. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
+        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest name is required for rooms with capacity 2+. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
       }
       if (!secondGuestPhone || !secondGuestPhone.trim()) {
-        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest phone is required for multi-occupancy rooms. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
+        return NextResponse.json({ error: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", code: "DOUBLE_ROOM_SECOND_GUEST_REQUIRED", message: "Second guest phone is required for rooms with capacity 2+. Select 'Exceptionally Reserved' if only one guest." }, { status: 400 });
       }
       if (!isValidPhone(secondGuestPhone.trim())) {
         return NextResponse.json({ error: "Invalid second guest phone number format. Use 7-15 digits with optional + prefix." }, { status: 400 });
