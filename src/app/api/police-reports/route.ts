@@ -170,9 +170,10 @@ export async function GET(req: NextRequest) {
     // ── 5. Provider-level guest distribution ──
     const providerBreakdown = providerId
       ? []
-      : await db.$queryRaw<{ name: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number }[]>(Prisma.sql`
+      : await db.$queryRaw<{ name: string; address: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number }[]>(Prisma.sql`
         SELECT
           p."name",
+          COALESCE(p."address", '') AS "address",
           COALESCE(g.c, 0)::int AS "guests",
           COALESCE(ci.c, 0)::int AS "checkIns",
           COALESCE(co.c, 0)::int AS "checkOuts",

@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "react-i18next";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiPoliceReports } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, UserCheck, UserMinus, AlertTriangle, Building2, BedDouble,
   CalendarDays, RefreshCw, Download, Clock,
-  Globe, CreditCard, BarChart3,
+  Globe, CreditCard, BarChart3, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -33,7 +33,7 @@ interface Summary {
   totalProviders: number; totalRooms: number;
 }
 interface NameCount { name: string; count: number; }
-interface ProviderRow { name: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; }
+interface ProviderRow { name: string; address?: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; }
 interface OccupancyRow { name: string; total: number; occupied: number; available: number; reserved: number; maintenance: number; rate: number; }
 interface FreqStay { id: string; guestName: string; guestPhone: string; guestIdNumber: string; providerNames: string; stayCount: number; avgDaysBetween: number; riskLevel: string; isReviewed: boolean; createdAt: string; }
 
@@ -90,6 +90,44 @@ function InlineBar({ value, max, color = "bg-primary" }: { value: number; max: n
   );
 }
 
+// ── Sortable table header ──
+// Renders a TableHead that, when clicked, toggles sort by the given column.
+// Shows an up/down arrow indicator when the column is the active sort key.
+function SortableTh({
+  label,
+  col,
+  sortKey,
+  sortDir,
+  onToggle,
+  align = "center",
+}: {
+  label: string;
+  col: keyof ProviderRow;
+  sortKey: keyof ProviderRow;
+  sortDir: "asc" | "desc";
+  onToggle: (k: keyof ProviderRow) => void;
+  align?: "left" | "center" | "right";
+}) {
+  const isActive = sortKey === col;
+  const alignClass = align === "left" ? "" : align === "right" ? "text-right" : "text-center";
+  return (
+    <TableHead className={alignClass}>
+      <button
+        type="button"
+        onClick={() => onToggle(col)}
+        className={`inline-flex items-center gap-1 ${isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"} transition-colors`}
+      >
+        {label}
+        {isActive && (
+          sortDir === "asc"
+            ? <ArrowUp className="h-3 w-3" />
+            : <ArrowDown className="h-3 w-3" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 // ── Skeleton ──
 function SkeletonGrid() {
   return (
@@ -113,6 +151,72 @@ export default function PoliceReportsPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [providerId, setProviderId] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+
+  // ── Providers tab: sortable columns ──
+  // Sort key can be: name, address, guests, checkIns, checkOuts, matches, rooms
+  const [sortKey, setSortKey] = useState<keyof ProviderRow>("guests");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const toggleSort = (key: keyof ProviderRow) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  // Sorted provider breakdown — used for both the table and the Excel export.
+  const sortedProviders = useMemo(() => {
+    if (!data?.providerBreakdown) return [];
+    const arr = [...data.providerBreakdown];
+    arr.sort((a, b) => {
+      const av = a[sortKey] ?? "";
+      const bv = b[sortKey] ?? "";
+      let cmp: number;
+      if (typeof av === "number" && typeof bv === "number") {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv));
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [data?.providerBreakdown, sortKey, sortDir]);
+
+  // ── Excel export for the providers tab ──
+  const exportProvidersExcel = useCallback(async () => {
+    if (!data || sortedProviders.length === 0) {
+      toast.error("No provider data to export.");
+      return;
+    }
+    try {
+      const XLSX = await import("xlsx");
+      const rows = sortedProviders.map((p, i) => ({
+        "#": i + 1,
+        Provider: p.name,
+        Address: p.address || "",
+        Rooms: p.rooms,
+        Guests: p.guests,
+        CheckIns: p.checkIns,
+        CheckOuts: p.checkOuts,
+        SuspectMatches: p.matches,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // Auto-size columns
+      const colWidths = Object.keys(rows[0]).map((k) => ({
+        wch: Math.max(k.length, ...rows.map((r) => String(r[k as keyof typeof r] ?? "").length)) + 2,
+      }));
+      ws["!cols"] = colWidths;
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Providers");
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `police_providers_${stamp}.xlsx`);
+      toast.success(`Exported ${rows.length} provider(s) to Excel.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
+  }, [data, sortedProviders]);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -441,26 +545,41 @@ export default function PoliceReportsPage() {
           {/* ═══════════════ PROVIDERS TAB ═══════════════ */}
           <TabsContent value="providers" className="space-y-4 mt-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('providerActivitySummary')}</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm font-semibold">{t('providerActivitySummary')}</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportProvidersExcel}
+                    disabled={!data || sortedProviders.length === 0}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <Download className="h-3.5 w-3.5" /> {t('exportExcel', 'Export Excel')}
+                  </Button>
+                </div>
+              </CardHeader>
               <CardContent>
-                {data.providerBreakdown.length > 0 ? (
+                {sortedProviders.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('thkey', '#')}</TableHead>
-                        <TableHead>{t('thprovider', 'Provider')}</TableHead>
-                        <TableHead>{t('throoms', 'Rooms')}</TableHead>
-                        <TableHead>{t('thguests', 'Guests')}</TableHead>
-                        <TableHead>{t('thcheckins', 'Check-Ins')}</TableHead>
-                        <TableHead>{t('thcheckouts', 'Check-Outs')}</TableHead>
-                        <TableHead>{t('thsuspectMatches', 'Suspect Matches')}</TableHead>
+                        <SortableTh label={t('thprovider', 'Provider')} col="name" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('thAddress', 'Address')} col="address" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('throoms', 'Rooms')} col="rooms" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('thguests', 'Guests')} col="guests" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('thcheckins', 'Check-Ins')} col="checkIns" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('thcheckouts', 'Check-Outs')} col="checkOuts" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('thsuspectMatches', 'Suspect Matches')} col="matches" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.providerBreakdown.map((p, i) => (
+                      {sortedProviders.map((p, i) => (
                         <TableRow key={i}>
                           <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                           <TableCell className="text-xs font-medium">{p.name}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{p.address || "—"}</TableCell>
                           <TableCell className="text-xs text-center">{p.rooms}</TableCell>
                           <TableCell className="text-xs text-center font-semibold">{p.guests}</TableCell>
                           <TableCell className="text-xs text-center text-blue-600">{p.checkIns}</TableCell>
