@@ -266,6 +266,25 @@ export async function POST(req: NextRequest) {
       licenseFileUrl = await uploadFile(base64Uri, "licenses");
     }
 
+    // ── Check the auto-approve system config setting ──
+    // When autoApproveGuesthouses is enabled, new registrations are
+    // immediately APPROVED (skip manual review). Otherwise PENDING.
+    let autoApprove = false;
+    try {
+      const sysSettings = await db.settings.findFirst({
+        where: { providerId: null },
+      });
+      if (sysSettings?.configJson && typeof sysSettings.configJson === "object") {
+        const config = sysSettings.configJson as Record<string, unknown>;
+        const guesthouse = config.guesthouse as Record<string, unknown> | undefined;
+        if (guesthouse && typeof guesthouse.autoApproveGuesthouses === "boolean") {
+          autoApprove = guesthouse.autoApproveGuesthouses;
+        }
+      }
+    } catch {
+      // Non-blocking — if we can't read the setting, default to PENDING.
+    }
+
     const provider = await db.$transaction(async (tx) => {
       const p = await tx.provider.create({
         data: {
@@ -279,7 +298,8 @@ export async function POST(req: NextRequest) {
           type,
           licenseNo: licenseNo.trim(),
           licenseFile: licenseFileUrl,
-          status: "PENDING",
+          status: autoApprove ? "APPROVED" : "PENDING",
+          ...(autoApprove ? { approvedBy: "SYSTEM", approvedAt: new Date() } : {}),
         },
       });
 
