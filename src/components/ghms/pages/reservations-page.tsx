@@ -1377,9 +1377,7 @@ export default function ReservationsPage() {
                 <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
                 <TableHead>{t('thcheckout', 'Check-out')}</TableHead>
                 <TableHead>{t('thnights', 'Nights')}</TableHead>
-                <TableHead>{t('thtotal', 'Total')}</TableHead>
-                <TableHead>{t('thpaid', 'Paid')}</TableHead>
-                <TableHead>{t('thbalance', 'Balance')}</TableHead>
+                {/* Total, Paid, Balance columns removed per request. */}
                 <TableHead>{t('thstatus', 'Status')}</TableHead>
                 <TableHead>{t('thpayment', 'Payment')}</TableHead>
                 <TableHead className="w-12"></TableHead>
@@ -1431,17 +1429,7 @@ export default function ReservationsPage() {
                     <TableCell className="text-center">
                       <Badge variant="secondary">{res.nights}</Badge>
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium">
-                      {formatCurrency(res.totalCost)}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-emerald-700 font-medium">
-                      {formatCurrency(res.paidAmount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={`text-sm font-medium ${res.balance > 0 ? "text-rose-600" : "text-gray-500"}`}>
-                        {formatCurrency(res.balance)}
-                      </span>
-                    </TableCell>
+                    {/* Total, Paid, Balance cells removed per request. */}
                     <TableCell>
                       <Badge variant="outline" className={STATUS_BADGE[res.status] || ""}>
                         {STATUS_LABEL[res.status] || res.status}
@@ -1747,21 +1735,12 @@ export default function ReservationsPage() {
               <Separator />
 
               <div className="flex items-center justify-between text-sm">
-                <div>
-                  <p className="text-xs text-gray-400">Total</p>
-                  <p className="font-semibold">{formatCurrency(res.totalCost)}</p>
-                </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1.5">
                     <Badge variant="outline" className={PAYMENT_STATUS_BADGE[res.paymentStatus]}>
                       {res.paymentStatus}
                     </Badge>
                   </div>
-                  {res.balance > 0 && (
-                    <p className="text-xs text-rose-600 font-medium mt-1">
-                      Balance: {formatCurrency(res.balance)}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
