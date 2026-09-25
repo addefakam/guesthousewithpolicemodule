@@ -822,21 +822,29 @@ export default function ReservationsPage() {
     [allRooms]
   );
 
-  // When the selected room changes, auto-set hasSecondGuest based on capacity.
-  // Rooms with capacity >= 2 default to "Two guests" (second guest shown).
+  // When the selected ROOM changes, auto-set hasSecondGuest based on capacity.
+  // Rooms with capacity >= 2 default to "Two guests" (second guest fields shown).
   // Rooms with capacity 1 default to "One guest only".
-  // The user can still toggle manually afterward.
+  // The user can still toggle manually afterward — this effect only fires
+  // when the room ID actually changes, NOT when hasSecondGuest changes.
+  // (If hasSecondGuest were in the deps, the effect would re-run every time
+  // the user toggles, immediately overriding their manual choice — a
+  // feedback loop that makes it impossible to switch to "One guest only"
+  // on a capacity-2 room.)
+  const prevRoomIdRef = useRef<string>("");
   useEffect(() => {
     if (!createForm.roomId) return;
+    // Only run when the room ID actually changed — skip if it's the same.
+    if (prevRoomIdRef.current === createForm.roomId) return;
+    prevRoomIdRef.current = createForm.roomId;
+
     const selRoom = allRooms.find((r) => r.id === createForm.roomId);
     if (!selRoom) return;
     const cap = Number(selRoom.capacity) || 1;
     const shouldHaveSecond = cap >= 2;
-    // Only update if the current toggle doesn't match the default for this
-    // room capacity — avoids resetting fields the user already filled in.
-    if (shouldHaveSecond && !createForm.hasSecondGuest) {
+    if (shouldHaveSecond) {
       setCreateForm((f) => ({ ...f, hasSecondGuest: true }));
-    } else if (!shouldHaveSecond && createForm.hasSecondGuest) {
+    } else {
       setCreateForm((f) => ({
         ...f,
         hasSecondGuest: false,
@@ -845,7 +853,7 @@ export default function ReservationsPage() {
         secondGuestIdNumber: "",
       }));
     }
-  }, [createForm.roomId, allRooms, createForm.hasSecondGuest]);
+  }, [createForm.roomId, allRooms]);
 
   // Client-side filtered guest list for the existing-guest search dropdown.
   // Searches across name, phone, and ID number (case-insensitive).
