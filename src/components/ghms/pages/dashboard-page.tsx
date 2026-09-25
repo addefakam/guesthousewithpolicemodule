@@ -157,21 +157,14 @@ export default function DashboardPage() {
       border: "border-violet-100",
       subtitle: t("kpiCheckinsToday", { count: data?.todayCheckins ?? 0 }),
     },
-    {
-      title: t("kpiMonthlyRevenue"),
-      value: formatCurrency(data?.totalRevenue ?? 0),
-      icon: <DollarSign className="h-5 w-5" />,
-      color: "text-amber-600",
-      bg: "bg-amber-50",
-      border: "border-amber-100",
-    },
+    // Monthly Revenue card removed per request.
   ];
 
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
@@ -193,7 +186,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {kpis.map((kpi) => (
           <Card key={kpi.title} className="gap-0 overflow-hidden py-0">
             <CardContent className="p-4">
@@ -216,40 +209,7 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Revenue Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4 text-amber-500" />
-              {t("chartRevenueTitle")}
-            </CardTitle>
-            <CardDescription>{t("chartRevenueDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {revenueData.length === 0 || revenueData.every((d) => d.value === 0) ? (
-              <div className="flex items-center justify-center h-[180px] text-sm text-gray-400">
-                {t("chartRevenueEmpty")}
-              </div>
-            ) : (
-              <div className="flex items-end justify-between gap-2" style={{ height: 180 }}>
-                {revenueData.map((item) => (
-                  <div key={item.day} className="flex flex-1 flex-col items-center gap-1">
-                    <span className="text-xs font-medium text-gray-500">
-                      {formatCurrency(item.value).replace("ETB", "")}
-                    </span>
-                    <div
-                      className="w-full max-w-[48px] rounded-t-md bg-gradient-to-t from-amber-500 to-amber-300 transition-all duration-500 hover:from-amber-600 hover:to-amber-400"
-                      style={{
-                        height: `${Math.max(8, (item.value / maxRevenue) * 140)}px`,
-                      }}
-                    />
-                    <span className="text-xs text-gray-500">{item.day}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Revenue Bar Chart removed per request. */}
 
         {/* Occupancy Display */}
         <Card>

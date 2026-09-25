@@ -271,7 +271,6 @@ function ProvidersDetail({
                 <TableHead>{t("colStatus")}</TableHead>
                 <TableHead className="text-center">{t("colRooms")}</TableHead>
                 <TableHead className="text-center">{t("detail.colActive")}</TableHead>
-                <TableHead className="text-right">{t("monthlyRevenue")}</TableHead>
                 <TableHead className="text-right">{t("detail.colAction", { defaultValue: "Action" })}</TableHead>
               </TableRow>
             </TableHeader>
@@ -298,9 +297,6 @@ function ProvidersDetail({
                     >
                       {p.activeReservations}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(p.revenue)}
                   </TableCell>
                   <TableCell className="text-right">
                     {p.status === "PENDING" ? (
@@ -576,65 +572,7 @@ function ActiveReservationsDetail() {
 
 // ── Revenue breakdown ────────────────────────────────────────────────────────
 
-function RevenueDetail({ dashboard }: { dashboard: DashboardPayload }) {
-  const { t } = useTranslation("policeDashboard");
-
-  const providers = useMemo(
-    () =>
-      [...dashboard.providers]
-        .filter((p) => p.revenue > 0)
-        .sort((a, b) => b.revenue - a.revenue),
-    [dashboard.providers]
-  );
-
-  const total = dashboard.revenue || 0;
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">
-          {t("detail.totalRevenueLabel")}
-        </p>
-        <p className="mt-0.5 text-xl font-bold text-emerald-800">{formatCurrency(total)}</p>
-      </div>
-
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {t("detail.perProviderLabel")}
-      </p>
-
-      {providers.length === 0 ? (
-        <EmptyState message={t("detail.emptyRevenue")} />
-      ) : (
-        <div className="max-h-[45vh] space-y-1.5 overflow-y-auto pr-0.5">
-          {providers.map((p) => {
-            const share = total > 0 ? Math.round((p.revenue / total) * 100) : 0;
-            return (
-              <div key={p.id} className="rounded-lg border p-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm font-medium">{p.name}</p>
-                  <p className="shrink-0 text-sm font-semibold text-emerald-600">
-                    {formatCurrency(p.revenue)}
-                  </p>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{ width: `${Math.min(share, 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-9 shrink-0 text-right text-[10px] text-muted-foreground">
-                    {share}%
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+// ── Revenue breakdown removed per request. ──
 
 // ── Main dialog wrapper ──────────────────────────────────────────────────────
 
@@ -720,12 +658,6 @@ export function PoliceDetailDialog({
           <RoomsDetail />
         ) : kind === "active" ? (
           <ActiveReservationsDetail />
-        ) : kind === "revenue" ? (
-          dashboard ? (
-            <RevenueDetail dashboard={dashboard} />
-          ) : (
-            <DialogSkeleton rows={4} />
-          )
         ) : null}
       </DialogContent>
     </Dialog>

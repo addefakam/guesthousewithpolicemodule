@@ -516,16 +516,7 @@ export default function SuperDataReportsPage() {
       bg: "bg-amber-50",
       border: "border-amber-100",
     },
-    {
-      label: "Total Revenue",
-      value: summary.totalRevenue
-        ? `${(summary.totalRevenue).toLocaleString()} ETB`
-        : "2,847,500 ETB",
-      icon: <DollarSign className="h-5 w-5" />, 
-      color: "text-emerald-600",
-      bg: "bg-emerald-50",
-      border: "border-emerald-100",
-    },
+    // Total Revenue card removed per request.
     {
       label: "Active Users",
       value: summary.activeUsers || stats.totalUsers || 89,

@@ -709,7 +709,7 @@ export default function AccommodationGuestsPage() {
                     <TableHead>{t("thRoom", "Room")}</TableHead>
                     <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
                     <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
-                    <TableHead>{t("thAmount", "Amount")}</TableHead>
+                    {/* Amount column header removed per request. */}
                     <TableHead className="text-right">{t("thActions", "Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -771,9 +771,7 @@ export default function AccommodationGuestsPage() {
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {g.activeReservation ? `${formatDate(g.activeReservation.checkIn)} → ${formatDate(g.activeReservation.checkOut)}` : "—"}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {g.activeReservation ? formatCurrency(g.activeReservation.totalCost) : "—"}
-                      </TableCell>
+                      {/* Amount column removed per request. */}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {g.activeReservation?.status === "UPCOMING" && (() => {

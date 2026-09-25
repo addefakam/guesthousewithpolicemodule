@@ -192,29 +192,7 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => v
         })}
       </section>
 
-      {/* Revenue */}
-      <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          {t("home.totalRevenue")}
-        </p>
-        <p className={`mt-1.5 text-2xl font-bold tracking-tight ${BRAND.gradientText}`}>
-          {formatEtb(data.revenue)}
-        </p>
-        <div className="mt-3.5 grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-              {t("home.reservationRevenue")}
-            </p>
-            <p className="mt-1 text-sm font-bold text-slate-800">{formatEtb(data.reservationRevenue)}</p>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-              {t("home.daytimeRevenue")}
-            </p>
-            <p className="mt-1 text-sm font-bold text-slate-800">{formatEtb(data.daytimeRevenue)}</p>
-          </div>
-        </div>
-      </section>
+      {/* Revenue section removed per request. */}
 
       {/* ── Provider Room Breakdown — every guesthouse with its room status list ── */}
       {breakdownProviders.length > 0 && (

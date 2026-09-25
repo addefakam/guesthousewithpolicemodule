@@ -898,19 +898,8 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
           )}
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(data.revenue)}</p>
-              </CardContent>
-            </Card>
+          {/* Summary Cards — Total Revenue card removed per request. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -1042,7 +1031,7 @@ export default function ReportsPage() {
                         <TableRow>
                           <TableHead>{t('thstatus', 'Status')}</TableHead>
                           <TableHead>{t('thcount', 'Count')}</TableHead>
-                          <TableHead>{t('threvenue', 'Revenue')}</TableHead>
+                          {/* Revenue column removed per request. */}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1057,9 +1046,6 @@ export default function ReportsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">{row.count}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(row.revenue)}
-                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1070,40 +1056,7 @@ export default function ReportsPage() {
             </Card>
           </div>
 
-          {/* Daily Revenue Trend Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("titleDailyRevenueTrend")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {data.dailyRevenue.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No daily data available.
-                </p>
-              ) : (
-                <div className="rounded-lg border max-h-72 overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('thdate', 'Date')}</TableHead>
-                        <TableHead>{t('threvenue', 'Revenue')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.dailyRevenue.map((d) => (
-                        <TableRow key={d.date}>
-                          <TableCell>{d.date}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(d.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Daily Revenue Trend Table removed per request. */}
         </>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
