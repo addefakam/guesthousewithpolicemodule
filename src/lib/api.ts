@@ -18,13 +18,28 @@ export function getHeaders(): Record<string, string> {
 }
 
 export async function req(url: string, opts: RequestInit = {}) {
-  const res = await fetch(url, {
-    ...opts,
-    headers: { ...getHeaders(), ...opts.headers },
-    credentials: "include", // Always include cookies (JWT httpOnly)
-    cache: "no-store", // Never cache API responses — always fetch fresh data
-    next: { revalidate: 0 }, // Also disable Next.js fetch cache
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...opts,
+      headers: { ...getHeaders(), ...opts.headers },
+      credentials: "include", // Always include cookies (JWT httpOnly)
+      cache: "no-store", // Never cache API responses — always fetch fresh data
+      next: { revalidate: 0 }, // Also disable Next.js fetch cache
+    });
+  } catch (networkErr) {
+    // fetch() itself threw — this is a NETWORK-LEVEL failure, not an HTTP
+    // error response. Common causes:
+    //   - No internet connection (offline)
+    //   - Server unreachable (DNS failure, server down, firewall)
+    //   - CORS error
+    //   - Request blocked by browser extension
+    // Browsers throw a TypeError with message "Failed to fetch" in all
+    // these cases. Replace it with a user-friendly message so users see
+    // actionable guidance instead of a cryptic technical error.
+    void networkErr; // suppress unused-var lint
+    throw new Error("Failed to fetch data. Please check your internet connection.");
+  }
   if (!res.ok) {
     // ── Auth expired detection ──
     // If the server returns 401, the JWT cookie has expired or is invalid.
