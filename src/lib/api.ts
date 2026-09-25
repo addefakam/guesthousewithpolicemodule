@@ -30,7 +30,18 @@ export async function req(url: string, opts: RequestInit = {}) {
     // If the server returns 401, the JWT cookie has expired or is invalid.
     // Instead of showing a confusing "Failed to load data" error, redirect
     // the user to the login page with a clear "session expired" message.
-    if (res.status === 401) {
+    //
+    // IMPORTANT: We skip this redirect for AUTH endpoints (/api/auth*),
+    // because those return 401 for INVALID CREDENTIALS (not expired
+    // sessions). Redirecting to login when the user just typed a wrong
+    // password in the Joint Login dialog would log out the primary user
+    // and lose their session — the error should be shown in the dialog
+    // instead.
+    const isAuthEndpoint =
+      url.startsWith("/api/auth") ||
+      url === "/api/auth" ||
+      url.startsWith("/api/auth/");
+    if (res.status === 401 && !isAuthEndpoint) {
       // Clear the stored user (forces login screen)
       useAppStore.getState().setCurrentUser(null);
       // If we're on the mobile app, redirect to /m (which shows login)
