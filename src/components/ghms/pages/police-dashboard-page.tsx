@@ -340,9 +340,10 @@ export default function PoliceDashboardPage() {
               </Card>
             ))
           : kpiCards.map((kpi) => {
-              // Only the "Active" card is clickable — it drills into the
-              // active reservations detail view. Other cards are display-only.
-              const isClickable = kpi.kind === "active";
+              // The "Active" card is NOT clickable — it's display-only.
+              // All other cards remain clickable and drill into their
+              // respective detail views.
+              const isClickable = kpi.kind !== "active";
               return (
               <Card
                 key={kpi.title}
