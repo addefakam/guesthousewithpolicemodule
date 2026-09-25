@@ -98,6 +98,7 @@ import {
 
 import AddressFields from "@/components/shared/address-fields";
 import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
+import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
 import { isValidPhone } from "@/lib/utils";
 
 interface GuestOption {
@@ -626,7 +627,7 @@ export default function ReservationsPage() {
     email: "",
     idNumber: "",
     idType: "National ID",
-    nationality: "",
+    nationality: DEFAULT_NATIONALITY,
     region: "",
     zone: "",
     woreda: "",
@@ -775,7 +776,7 @@ export default function ReservationsPage() {
         setGuestMode("existing");
         setSelectedGuestId("");
         setGuestSearch("");
-        setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
+        setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: DEFAULT_NATIONALITY, region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
         setCreateOpen(true);
       }
     }
@@ -1120,7 +1121,7 @@ export default function ReservationsPage() {
     setGuestMode("existing");
     setSelectedGuestId("");
     setGuestSearch("");
-    setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: "", region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
+    setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: DEFAULT_NATIONALITY, region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
     // Clear any preselected room so the dialog doesn't auto-reopen on remount.
     setPreselectedRoom(null);
@@ -1953,7 +1954,21 @@ export default function ReservationsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="whitespace-nowrap">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
-                      <Input placeholder={t("placeholderNationality")} value={newGuestForm.nationality} onChange={(e) => setNewGuestForm({ ...newGuestForm, nationality: e.target.value })} />
+                      <Select
+                        value={newGuestForm.nationality || DEFAULT_NATIONALITY}
+                        onValueChange={(v) => setNewGuestForm({ ...newGuestForm, nationality: v })}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("placeholderNationality")} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {COUNTRIES.map((c) => (
+                            <SelectItem key={c.code} value={c.name}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   {/* ID Type, ID Number, and Guest Address — all on one row.
