@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { apiPoliceRoomAvailability, apiPoliceActiveReservations } from "@/lib/api";
+import { apiPoliceRoomAvailability, apiPoliceActiveReservations, apiUpdateProvider } from "@/lib/api";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +33,8 @@ import {
   Banknote,
   AlertCircle,
   Phone,
+  Check,
+  Loader2,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,12 +194,29 @@ function SearchInput({
 function ProvidersDetail({
   dashboard,
   filterStatus,
+  onProviderUpdated,
 }: {
   dashboard: DashboardPayload;
   filterStatus?: "APPROVED" | "PENDING";
+  onProviderUpdated?: () => void;
 }) {
   const { t } = useTranslation("policeDashboard");
   const [query, setQuery] = useState("");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const handleApprove = async (providerId: string, providerName: string) => {
+    setApprovingId(providerId);
+    try {
+      await apiUpdateProvider(providerId, { status: "APPROVED" });
+      toast.success(t("detail.approveSuccess", { name: providerName, defaultValue: `${providerName} approved successfully` }));
+      // Refresh the dashboard data so the pending count drops and approved count rises.
+      onProviderUpdated?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("detail.approveFailed", { defaultValue: "Failed to approve provider" }));
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const all = useMemo(
     () => {
@@ -251,6 +272,7 @@ function ProvidersDetail({
                 <TableHead className="text-center">{t("colRooms")}</TableHead>
                 <TableHead className="text-center">{t("detail.colActive")}</TableHead>
                 <TableHead className="text-right">{t("monthlyRevenue")}</TableHead>
+                <TableHead className="text-right">{t("detail.colAction", { defaultValue: "Action" })}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -279,6 +301,26 @@ function ProvidersDetail({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(p.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {p.status === "PENDING" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-[10px]"
+                        disabled={approvingId === p.id}
+                        onClick={() => handleApprove(p.id, p.name)}
+                      >
+                        {approvingId === p.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Check className="h-3 w-3" />
+                        )}
+                        {t("detail.approve", { defaultValue: "Approve" })}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -601,11 +643,13 @@ export function PoliceDetailDialog({
   open,
   onOpenChange,
   dashboard,
+  onProviderUpdated,
 }: {
   kind: KpiDetailKind | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dashboard: DashboardPayload | null;
+  onProviderUpdated?: () => void;
 }) {
   const { t } = useTranslation("policeDashboard");
 
@@ -667,6 +711,7 @@ export function PoliceDetailDialog({
               key={kind}
               dashboard={dashboard}
               filterStatus={kind === "approved" ? "APPROVED" : kind === "pending" ? "PENDING" : undefined}
+              onProviderUpdated={onProviderUpdated}
             />
           ) : (
             <DialogSkeleton rows={5} />

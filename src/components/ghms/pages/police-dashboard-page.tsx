@@ -644,6 +644,7 @@ export default function PoliceDashboardPage() {
           if (!o) setDetailKind(null);
         }}
         dashboard={dashboard}
+        onProviderUpdated={fetchData}
       />
     </div>
   );
