@@ -39,6 +39,7 @@ interface GuesthouseSettings {
   defaultCheckInTime: string;
   defaultCheckOutTime: string;
   autoApproveGuesthouses: boolean;
+  autoCheckout: boolean;
   requireLicenseUpload: boolean;
 }
 
@@ -104,6 +105,7 @@ const DEFAULT_GUESTHOUSE: GuesthouseSettings = {
   defaultCheckInTime: "14:00",
   defaultCheckOutTime: "10:00",
   autoApproveGuesthouses: false,
+  autoCheckout: false,
   requireLicenseUpload: true,
 };
 
@@ -545,6 +547,25 @@ function GuesthouseTab({
               <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                 <AlertTriangle className="w-3 h-3" />
                 Bypasses review
+              </span>
+            )}
+          </div>
+        </SettingRow>
+
+        <SettingRow
+          label="Auto Check-out"
+          description="Automatically check out guests whose check-out date/time has passed, without staff manually clicking 'Check Out'"
+        >
+          <div className="flex items-center gap-3">
+            <ToggleSwitch
+              id="autoCheckout"
+              checked={settings.autoCheckout}
+              onChange={(v) => onChange({ autoCheckout: v })}
+            />
+            {settings.autoCheckout && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <CheckCircle2 className="w-3 h-3" />
+                Active
               </span>
             )}
           </div>

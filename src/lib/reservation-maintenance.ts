@@ -176,13 +176,57 @@ async function performMaintenance(
   if (stale.length > 0) {
     const ids = stale.map((r) => r.id);
 
+    // ── Check the auto-checkout system config setting ──
+    // When autoCheckout is enabled, ACTIVE reservations that have passed
+    // their checkout day are marked COMPLETED (proper checkout) instead
+    // of CANCELLED. UPCOMING reservations that never checked in are still
+    // CANCELLED regardless of the setting.
+    let autoCheckout = false;
+    try {
+      const sysSettings = await db.settings.findFirst({
+        where: { providerId: null },
+      });
+      if (sysSettings?.configJson && typeof sysSettings.configJson === "object") {
+        const config = sysSettings.configJson as Record<string, unknown>;
+        const guesthouse = config.guesthouse as Record<string, unknown> | undefined;
+        if (guesthouse && typeof guesthouse.autoCheckout === "boolean") {
+          autoCheckout = guesthouse.autoCheckout;
+        }
+      }
+    } catch {
+      // Non-blocking — if we can't read the setting, default to false.
+    }
+
+    // Split: ACTIVE reservations (checked-in guests) vs UPCOMING (never checked in)
+    const activeIds = stale.filter((r) => r.status === "ACTIVE").map((r) => r.id);
+
+    // When autoCheckout is ON: ACTIVE → COMPLETED (proper checkout).
+    // When autoCheckout is OFF: ACTIVE → CANCELLED (same as before).
+    if (activeIds.length > 0 && autoCheckout) {
+      const completed = await db.reservation.updateMany({
+        where: { id: { in: activeIds }, status: "ACTIVE" },
+        data: {
+          status: "COMPLETED",
+          actualCheckOut: new Date(),
+        },
+      });
+      releasedReservations += completed.count;
+    }
+
     // Guarded transition — re-checks status so a concurrent check-in/checkout
     // (or a parallel maintenance run) cannot double-apply.
+    // - When autoCheckout is ON: only UPCOMING reservations get CANCELLED
+    //   (ACTIVE ones were already marked COMPLETED above).
+    // - When autoCheckout is OFF: both UPCOMING and ACTIVE get CANCELLED
+    //   (original behavior).
+    const cancelWhere = autoCheckout
+      ? { id: { in: ids }, status: "UPCOMING" }
+      : { id: { in: ids }, status: { in: ["UPCOMING", "ACTIVE"] } };
     const cancelled = await db.reservation.updateMany({
-      where: { id: { in: ids }, status: { in: ["UPCOMING", "ACTIVE"] } },
+      where: cancelWhere,
       data: { status: "CANCELLED" },
     });
-    releasedReservations = cancelled.count;
+    releasedReservations += cancelled.count;
 
     // Release each affected room that no checked-in guest holds.
     // IMPORTANT: only an ACTIVE reservation (guest physically in the room)
