@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { username, password } = body;
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required." },
+        { error: "Username or password is not correct. Check it and try again." },
         { status: 400 }
       );
     }
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     if (!secondUser) {
       return NextResponse.json(
-        { error: "Invalid username or password." },
+        { error: "Username or password is not correct. Check it and try again." },
         { status: 401 }
       );
     }
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const valid = await verifyPassword(password, secondUser.password);
     if (!valid) {
       return NextResponse.json(
-        { error: "Invalid username or password." },
+        { error: "Username or password is not correct. Check it and try again." },
         { status: 401 }
       );
     }
