@@ -90,3 +90,56 @@ export function isNationalIdType(idType: string | undefined | null): boolean {
   const normalized = idType.trim().toUpperCase().replace(/[\s_]+/g, "");
   return normalized === "NATIONALID" || normalized === "NATIONAL";
 }
+
+// ── ID type configuration ───────────────────────────────────────────────────
+
+export interface IdTypeConfig {
+  /** The label shown above the ID number input field. */
+  label: string;
+  /** The placeholder shown inside the ID number input field. */
+  placeholder: string;
+}
+
+/**
+ * Get the label and placeholder for the ID number field based on the
+ * selected ID type. Each ID type has its own label so the user knows
+ * exactly what to enter:
+ *
+ * - National ID     → "National ID Number" / "FAN 00 00 00 00 00 00 00 00"
+ * - Kebele ID       → "Kebele ID Number"   / "e.g. 01/23/4567"
+ * - Passport        → "Passport Number"    / "e.g. A1234567"
+ * - Driver's License→ "License Number"    / "e.g. DL-1234567"
+ *
+ * Falls back to "ID Number" with a generic placeholder for unknown types.
+ */
+export function getIdFieldConfig(idType: string | undefined | null): IdTypeConfig {
+  if (!idType) return { label: "ID Number", placeholder: "Enter ID number" };
+
+  const normalized = idType.trim().toUpperCase().replace(/[\s_]+/g, "");
+
+  if (normalized === "NATIONALID" || normalized === "NATIONAL") {
+    return { label: "National ID Number", placeholder: NATIONAL_ID_PLACEHOLDER };
+  }
+  if (normalized === "KEBELEID" || normalized === "KEBELE") {
+    return { label: "Kebele ID Number", placeholder: "e.g. 01/23/4567" };
+  }
+  if (normalized === "PASSPORT") {
+    return { label: "Passport Number", placeholder: "e.g. A1234567" };
+  }
+  if (normalized === "DRIVERSLICENSE" || normalized === "DRIVERLICENSE") {
+    return { label: "License Number", placeholder: "e.g. DL-1234567" };
+  }
+
+  return { label: "ID Number", placeholder: "Enter ID number" };
+}
+
+/**
+ * The list of ID types shown in the dropdown.
+ * "Other" has been removed — only specific ID types are listed.
+ */
+export const ID_TYPES = [
+  "National ID",
+  "Kebele ID",
+  "Passport",
+  "Driver's License",
+] as const;

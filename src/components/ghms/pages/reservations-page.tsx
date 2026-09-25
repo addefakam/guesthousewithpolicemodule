@@ -15,7 +15,7 @@ import {
   apiGetRooms,
   apiCreateGuest,
 } from "@/lib/api";
-import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER } from "@/lib/national-id";
+import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER, getIdFieldConfig, ID_TYPES } from "@/lib/national-id";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1990,39 +1990,46 @@ export default function ReservationsPage() {
                       <Select value={newGuestForm.idType} onValueChange={(v) => setNewGuestForm({ ...newGuestForm, idType: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {["National ID", "Passport", "Driver's License", "Other"].map((x) => (
+                          {ID_TYPES.map((x) => (
                             <SelectItem key={x} value={x}>{x}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="whitespace-nowrap">
-                        {t("labelIdNumber")} <span className="text-rose-500">*</span>
-                        {isNationalIdType(newGuestForm.idType) && (
-                          <span className="ml-1.5 text-[10px] font-normal text-amber-600 whitespace-nowrap">
-                            (16 digits, FAN)
-                          </span>
-                        )}
-                      </Label>
-                      <Input
-                        placeholder={isNationalIdType(newGuestForm.idType) ? NATIONAL_ID_PLACEHOLDER : t("placeholderIdNumber")}
-                        value={newGuestForm.idNumber}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (isNationalIdType(newGuestForm.idType)) {
-                            setNewGuestForm({ ...newGuestForm, idNumber: formatNationalId(val) });
+                      {(() => {
+                        const cfg = getIdFieldConfig(newGuestForm.idType);
+                        return (
+                          <>
+                            <Label className="whitespace-nowrap">
+                              {cfg.label} <span className="text-rose-500">*</span>
+                              {isNationalIdType(newGuestForm.idType) && (
+                                <span className="ml-1.5 text-[10px] font-normal text-amber-600 whitespace-nowrap">
+                                  (16 digits, FAN)
+                                </span>
+                              )}
+                            </Label>
+                            <Input
+                              placeholder={cfg.placeholder}
+                              value={newGuestForm.idNumber}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (isNationalIdType(newGuestForm.idType)) {
+                                  setNewGuestForm({ ...newGuestForm, idNumber: formatNationalId(val) });
                           } else {
                             setNewGuestForm({ ...newGuestForm, idNumber: val });
                           }
                         }}
-                        className={isNationalIdType(newGuestForm.idType) ? "font-mono" : ""}
-                      />
-                      {isNationalIdType(newGuestForm.idType) && newGuestForm.idNumber.trim() && !isValidNationalId(newGuestForm.idNumber) && (
-                        <p className="text-[10px] text-rose-500">
-                          National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)
-                        </p>
-                      )}
+                              className={isNationalIdType(newGuestForm.idType) ? "font-mono" : ""}
+                            />
+                            {isNationalIdType(newGuestForm.idType) && newGuestForm.idNumber.trim() && !isValidNationalId(newGuestForm.idNumber) && (
+                              <p className="text-[10px] text-rose-500">
+                                National ID must be 16 digits (FAN XX XX XX XX XX XX XX XX)
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     {/* Guest Address block — the toggle fills this 3rd
                         column; when expanded, the body spans the full

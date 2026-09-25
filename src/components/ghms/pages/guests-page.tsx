@@ -79,6 +79,7 @@ import {
 } from "lucide-react";
 import AddressFields, { getEmptyAddress, AddressDisplay } from "@/components/shared/address-fields";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
+import { ID_TYPES, getIdFieldConfig } from "@/lib/national-id";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -106,7 +107,7 @@ interface Guest {
   updatedAt: string;
 }
 
-const ID_TYPES = ["National ID", "Passport", "Driver's License", "Other"];
+// ID_TYPES is now imported from @/lib/national-id (includes Kebele ID, no "Other")
 const emptyForm = {
   name: "",
   phone: "",
@@ -708,13 +709,20 @@ export default function GuestsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="guest-id-number">{t("labelIdNumber")} <span className="text-rose-500">*</span></Label>
-                <Input
-                  id="guest-id-number"
-                  placeholder="Enter ID number"
-                  value={form.idNumber}
-                  onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
-                />
+                {(() => {
+                  const cfg = getIdFieldConfig(form.idType);
+                  return (
+                    <>
+                      <Label htmlFor="guest-id-number">{cfg.label} <span className="text-rose-500">*</span></Label>
+                      <Input
+                        id="guest-id-number"
+                        placeholder={cfg.placeholder}
+                        value={form.idNumber}
+                        onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
+                      />
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
