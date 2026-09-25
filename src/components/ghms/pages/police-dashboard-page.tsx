@@ -37,7 +37,6 @@ import {
   Clock,
   DoorOpen,
   Users,
-  Banknote,
   TrendingUp,
   AlertCircle,
   ChevronDown,
@@ -268,14 +267,8 @@ export default function PoliceDashboardPage() {
           bg: "bg-violet-50",
           kind: "active" as KpiDetailKind,
         },
-        {
-          title: t("kpiTotalRevenue"),
-          value: formatCurrency(dashboard.revenue),
-          icon: Banknote,
-          color: "text-emerald-600",
-          bg: "bg-emerald-50",
-          kind: "revenue" as KpiDetailKind,
-        },
+        // Total Revenue card removed per request — police dashboard no longer
+        // shows revenue figures.
       ]
     : [];
 
@@ -334,11 +327,11 @@ export default function PoliceDashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards — 2 cols on mobile, 3 on tablet, 6 on desktop. Click any card to drill into its details. */}
+      {/* KPI Cards — 2 cols on mobile, 3 on tablet, 5 on desktop. Only the "Active" card is clickable. */}
       <div className="space-y-1.5">
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
         {loading
-          ? Array.from({ length: 6 }).map((_, i) => (
+          ? Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="shadow-sm">
                 <CardContent className="p-3 sm:p-4">
                   <Skeleton className="mb-2 h-3 w-16" />
@@ -346,20 +339,28 @@ export default function PoliceDashboardPage() {
                 </CardContent>
               </Card>
             ))
-          : kpiCards.map((kpi) => (
+          : kpiCards.map((kpi) => {
+              // Only the "Active" card is clickable — it drills into the
+              // active reservations detail view. Other cards are display-only.
+              const isClickable = kpi.kind === "active";
+              return (
               <Card
                 key={kpi.title}
-                role="button"
-                tabIndex={0}
-                onClick={() => setDetailKind(kpi.kind)}
-                onKeyDown={(e) => {
+                role={isClickable ? "button" : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                onClick={isClickable ? () => setDetailKind(kpi.kind) : undefined}
+                onKeyDown={isClickable ? (e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setDetailKind(kpi.kind);
                   }
-                }}
-                className="cursor-pointer shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 active:translate-y-0"
-                title={t("detail.hint")}
+                } : undefined}
+                className={
+                  isClickable
+                    ? "cursor-pointer shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 active:translate-y-0"
+                    : "shadow-sm"
+                }
+                title={isClickable ? t("detail.hint") : undefined}
               >
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -373,7 +374,8 @@ export default function PoliceDashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
         </div>
         {!loading && kpiCards.length > 0 && (
           <p className="text-[11px] text-muted-foreground/70">{t("detail.hint")}</p>
@@ -423,10 +425,7 @@ export default function PoliceDashboardPage() {
                         {getStatusLabel(p.status)}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex items-center justify-between border-t pt-2">
-                      <span className="text-[10px] text-muted-foreground">{t("monthlyRevenue")}</span>
-                      <span className="text-xs font-semibold text-emerald-600">{formatCurrency(p.revenue)}</span>
-                    </div>
+                    {/* Monthly Revenue row removed per request. */}
                   </div>
                 ))}
               </div>
@@ -440,7 +439,7 @@ export default function PoliceDashboardPage() {
                       <TableHead>{t("colStatus")}</TableHead>
                       <TableHead className="text-center">{t("colRooms")}</TableHead>
                       <TableHead className="text-center">{t("colActiveReservations")}</TableHead>
-                      <TableHead className="text-right">{t("monthlyRevenue")}</TableHead>
+                      {/* Monthly Revenue column removed per request. */}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -458,7 +457,6 @@ export default function PoliceDashboardPage() {
                             {p.activeReservations}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(p.revenue)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
