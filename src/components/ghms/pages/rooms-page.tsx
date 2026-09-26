@@ -330,15 +330,19 @@ export default function RoomsPage() {
       setRooms(list);
       const upList: RoomReservation[] = Array.isArray(upcomingRes?.data) ? upcomingRes.data : Array.isArray(upcomingRes) ? upcomingRes : [];
       const acList: RoomReservation[] = Array.isArray(activeRes?.data) ? activeRes.data : Array.isArray(activeRes) ? activeRes : [];
+      // Helper: get roomId from either roomId field or room.id (enriched)
+      const getResRoomId = (r: RoomReservation): string | undefined => r.roomId || r.room?.id;
       // Earliest-arriving UPCOMING booking per room
       const upMap: Record<string, RoomReservation> = {};
       for (const r of [...upList].sort((a, b) => a.checkIn.localeCompare(b.checkIn))) {
-        if (r.roomId && !upMap[r.roomId]) upMap[r.roomId] = r;
+        const rid = getResRoomId(r);
+        if (rid && !upMap[rid]) upMap[rid] = r;
       }
       // Checked-in (ACTIVE) reservation per room
       const acMap: Record<string, RoomReservation> = {};
       for (const r of acList) {
-        if (r.roomId && !acMap[r.roomId]) acMap[r.roomId] = r;
+        const rid = getResRoomId(r);
+        if (rid && !acMap[rid]) acMap[rid] = r;
       }
       setUpcomingResMap(upMap);
       setActiveResMap(acMap);
