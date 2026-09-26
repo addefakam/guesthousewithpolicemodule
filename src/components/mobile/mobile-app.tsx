@@ -900,9 +900,39 @@ export default function MobileApp() {
       if (selectedRoom) fetchRoomReservations(selectedRoom.id);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("toastFailedAction");
-      toast.error(msg);
-      // Keep the dialog open on error so the user can see what went wrong
-      // and retry. Only close on success (above) or cancel.
+      // ── Stale-state detection ──
+      // If the API says the reservation can't be cancelled (because it was
+      // already cancelled by another tab/device/cron between the time the
+      // user loaded the page and clicked Cancel), the raw error message
+      // ("Cannot cancel a reservation with status 'CANCELLED'") is cryptic
+      // and unactionable. Replace it with a friendly explanation, CLOSE the
+      // confirm dialog (retrying won't help — the state is now terminal),
+      // and trigger a refresh so the list reflects the actual status.
+      // Same treatment for check-in / check-out on already-terminal states.
+      const isStaleCancel = type === "cancel"
+        && /Cannot cancel a reservation with status/i.test(msg);
+      const isStaleCheckin = type === "checkin"
+        && /Cannot check.?in a reservation with status/i.test(msg);
+      const isStaleCheckout = type === "checkout"
+        && /Cannot check.?out a reservation with status/i.test(msg);
+      if (isStaleCancel || isStaleCheckin || isStaleCheckout) {
+        const friendlyKey = isStaleCancel
+          ? "toastCancelStaleState"
+          : isStaleCheckin
+            ? "toastCheckinStaleState"
+            : "toastCheckoutStaleState";
+        toast.error(
+          t(friendlyKey, { defaultValue: "This reservation's status has changed. Refreshing the list…" })
+        );
+        setConfirmAction(null);
+        triggerRefresh();
+        await fetchData();
+        if (selectedRoom) fetchRoomReservations(selectedRoom.id);
+      } else {
+        toast.error(msg);
+        // Keep the dialog open on error so the user can see what went wrong
+        // and retry. Only close on success (above) or cancel.
+      }
     } finally { setActionLoading(false); }
   };
 

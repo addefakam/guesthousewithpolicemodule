@@ -1261,7 +1261,35 @@ export default function ReservationsPage() {
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed to ${type}`;
-      toast.error(message);
+      // ── Stale-state detection ──
+      // If the API says the reservation can't be cancelled / checked-in /
+      // checked-out because its status already changed (cancelled by
+      // another tab/device/cron, or already checked in/out elsewhere),
+      // the raw error message ("Cannot cancel a reservation with status
+      // 'CANCELLED'") is cryptic and unactionable. Replace it with a
+      // friendly explanation, CLOSE the confirm dialog (retrying won't
+      // help — the state is now terminal), and trigger a refresh so the
+      // list reflects the actual status.
+      const isStaleCancel = type === "cancel"
+        && /Cannot cancel a reservation with status/i.test(message);
+      const isStaleCheckin = type === "checkin"
+        && /Cannot check.?in a reservation with status/i.test(message);
+      const isStaleCheckout = type === "checkout"
+        && /Cannot check.?out a reservation with status/i.test(message);
+      if (isStaleCancel || isStaleCheckin || isStaleCheckout) {
+        const friendlyKey = isStaleCancel
+          ? "toastCancelStaleState"
+          : isStaleCheckin
+            ? "toastCheckinStaleState"
+            : "toastCheckoutStaleState";
+        toast.error(t(friendlyKey, { defaultValue: "This reservation's status has changed. Refreshing the list…" }));
+        setConfirmAction(null);
+        triggerRefresh();
+      } else {
+        toast.error(message);
+        // Keep the dialog open on error so the user can see what went wrong
+        // and retry. Only close on success (above) or cancel.
+      }
     } finally {
       setActionLoading(false);
     }
