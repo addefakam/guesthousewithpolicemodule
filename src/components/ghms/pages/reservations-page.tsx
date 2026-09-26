@@ -1188,7 +1188,7 @@ export default function ReservationsPage() {
     const currentPreselected = useAppStore.getState().preselectedRoom;
     if (currentPreselected && currentPreselected.id === "" && currentPreselected.intent === "create") {
       useAppStore.getState().setAccommodationTab("reservations");
-      useAppStore.getState().setCurrentPage("guests-reservations");
+      useAppStore.getState().setCurrentPage("accommodation");
     }
     setPreselectedRoom(null);
   };
