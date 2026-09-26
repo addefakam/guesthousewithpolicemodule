@@ -728,7 +728,7 @@ export default function Sidebar() {
         </button>
 
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="w-72 p-0 flex flex-col overflow-hidden">
+          <SheetContent side="left" className="w-64 p-0 flex flex-col overflow-hidden">
             <SheetHeader className="border-b border-slate-100 px-4 py-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
@@ -761,7 +761,7 @@ export default function Sidebar() {
   return (
     <aside
       className={`relative flex h-full flex-col min-h-0 border-r border-slate-200 bg-white transition-all duration-300 ease-in-out ${
-        collapsed ? "w-[68px]" : "w-64"
+        collapsed ? "w-[60px]" : "w-56"
       }`}
     >
       {/* ── Logo / Brand ── */}
