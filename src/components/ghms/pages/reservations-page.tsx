@@ -1435,9 +1435,7 @@ export default function ReservationsPage() {
                 <TableHead>{t('thguest', 'Guest')}</TableHead>
                 <TableHead className="w-[140px]">Second Guest</TableHead>
                 <TableHead>{t('throom', 'Room')}</TableHead>
-                <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
-                <TableHead>{t('thcheckout', 'Check-out')}</TableHead>
-                <TableHead>{t('thnights', 'Nights')}</TableHead>
+                <TableHead className="w-[180px]">Stay Date</TableHead>
                 {/* Total, Paid, Balance columns removed per request. */}
                 <TableHead className="w-[110px]">{t('thstatus', 'Status')}</TableHead>
                 {/* Payment column removed per request. */}
@@ -1447,7 +1445,7 @@ export default function ReservationsPage() {
             <TableBody>
               {pagedReservations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center">
+                  <TableCell colSpan={6} className="h-32 text-center">
                     <div className="flex flex-col items-center text-gray-400">
                       <CalendarRange className="h-8 w-8 mb-2" />
                       <p className="font-medium text-lg">
@@ -1499,10 +1497,17 @@ export default function ReservationsPage() {
                         <p className="text-xs text-gray-400">{res.room?.name}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">{formatDate(res.checkIn)}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{formatDate(res.checkOut)}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{res.nights}</Badge>
+                    {/* Stay Date — merged Check-in + Check-out + Nights
+                        into a single column for a cleaner table. */}
+                    <TableCell className="text-sm text-gray-600">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-gray-700">
+                          {formatDate(res.checkIn)} → {formatDate(res.checkOut)}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {res.nights} night{res.nights !== 1 ? "s" : ""}
+                        </span>
+                      </div>
                     </TableCell>
                     {/* Total, Paid, Balance cells removed per request. */}
                     <TableCell>
