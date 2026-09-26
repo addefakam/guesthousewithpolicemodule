@@ -413,19 +413,19 @@ export default function AccommodationGuestsPage() {
 
   // ── Computed: guests with at least one reservation (any status) ──
   // Used to filter out guests who have never reserved any room.
+  // Only include guests who have at least one ACTIVE or UPCOMING
+  // reservation. Guests whose reservations are all COMPLETED/CANCELLED/
+  // DELETED are excluded from the list entirely — they don't need
+  // check-in/check-out actions and just clutter the table.
   const guestIdsWithAnyReservation = useMemo(() => {
     const ids = new Set<string>();
     for (const r of reservations) {
-      // Reservations may expose guestId directly OR via guest.id (enriched).
+      if (r.status !== "ACTIVE" && r.status !== "UPCOMING") continue;
       const gid = r.guestId || r.guest?.id;
       if (typeof gid === "string" && gid) ids.add(gid);
     }
-    // Debug log — helps verify the set is built correctly
-    if (typeof console !== "undefined") {
-      console.log("[AccommodationGuests] reservations:", reservations.length, "guestsWithRes:", ids.size, "totalGuests:", guests.length);
-    }
     return ids;
-  }, [reservations, guests.length]);
+  }, [reservations]);
 
   const activeReservations = useMemo(() =>
     reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
