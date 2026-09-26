@@ -233,62 +233,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Revenue Bar Chart removed per request. */}
-
-        {/* Occupancy Display */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              {t("chartOccupancyTitle")}
-            </CardTitle>
-            <CardDescription>{t("chartOccupancyDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-6">
-              {/* Pie Chart (conic-gradient) */}
-              <div className="relative">
-                <div
-                  className="h-40 w-40 rounded-full"
-                  style={{
-                    background: occupancySegments.length > 0
-                      ? `conic-gradient(${occupancySegments.map((s, i) => {
-                          const start = occupancySegments.slice(0, i).reduce((acc, seg) => acc + seg.pct, 0);
-                          const end = start + s.pct;
-                          return `${s.color} ${start}% ${end}%`;
-                        }).join(", ")})`
-                      : "#e5e7eb",
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-sm">
-                    <span className="text-2xl font-bold text-gray-900">{data?.occupancyRate ?? 0}%</span>
-                    <span className="text-xs text-gray-500">{t("chartOccupancyLabel")}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="grid grid-cols-2 gap-3 w-full">
-                {occupancySegments.map((seg) => (
-                  <div key={seg.status} className="flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-sm ${seg.color} shrink-0`} />
-                    <span className="text-sm text-gray-600">
-                      {seg.label}
-                    </span>
-                    <span className="ml-auto text-sm font-semibold text-gray-900">{seg.count}</span>
-                  </div>
-                ))}
-                {occupancySegments.length === 0 && (
-                  <p className="col-span-2 text-center text-sm text-gray-400">{t("chartOccupancyEmpty")}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Charts Row — Revenue bar chart and Occupancy pie chart both removed. */}
 
       {/* Today's Schedule */}
       <Card>
