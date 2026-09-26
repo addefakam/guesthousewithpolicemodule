@@ -99,7 +99,7 @@ import {
 import AddressFields from "@/components/shared/address-fields";
 import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
-import { isValidPhone } from "@/lib/utils";
+import { isValidPhone, isCheckoutDue } from "@/lib/utils";
 
 interface GuestOption {
   id: string;
@@ -1576,16 +1576,28 @@ export default function ReservationsPage() {
                           );
                         })()}
 
-                        {/* ACTIVE → Check Out button (inline) */}
+                        {/* ACTIVE → Check Out or Early Checkout button (inline)
+                            depending on whether the scheduled checkout date has arrived. */}
                         {res.status === "ACTIVE" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
-                            onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
-                          >
-                            <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
-                          </Button>
+                          isCheckoutDue(res.checkOut) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
+                              onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
+                            >
+                              <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50"
+                              onClick={() => setEarlyCheckoutDialog(res)}
+                            >
+                              <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
+                            </Button>
+                          )
                         )}
 
                         {/* COMPLETED / CANCELLED / DELETED → no primary action */}
@@ -1622,8 +1634,10 @@ export default function ReservationsPage() {
                                 </DropdownMenuItem>
                               )}
 
-                              {/* Early Checkout — only for ACTIVE */}
-                              {res.status === "ACTIVE" && (
+                              {/* Early Checkout — only for ACTIVE when checkout date
+                                  is still in the future (when checkout is due,
+                                  the inline Check Out button covers it instead). */}
+                              {res.status === "ACTIVE" && !isCheckoutDue(res.checkOut) && (
                                 <DropdownMenuItem
                                   onClick={() => setEarlyCheckoutDialog(res)}
                                   className="text-rose-700 focus:text-rose-700"
@@ -1859,9 +1873,15 @@ export default function ReservationsPage() {
                   );
                 })()}
                 {res.status === "ACTIVE" && (
-                  <Button size="sm" className="flex-1 bg-sky-600 hover:bg-sky-700 py-2 text-xs font-semibold" onClick={() => setConfirmAction({ type: "checkout", reservation: res })}>
-                    <LogOut className="mr-1.5 h-3 w-3" /> {t("btnCheckOut", "Check Out")}
-                  </Button>
+                  isCheckoutDue(res.checkOut) ? (
+                    <Button size="sm" className="flex-1 bg-sky-600 hover:bg-sky-700 py-2 text-xs font-semibold" onClick={() => setConfirmAction({ type: "checkout", reservation: res })}>
+                      <LogOut className="mr-1.5 h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 py-2 text-xs font-semibold" onClick={() => setEarlyCheckoutDialog(res)}>
+                      <LogOut className="mr-1.5 h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
+                    </Button>
+                  )
                 )}
               </div>
 

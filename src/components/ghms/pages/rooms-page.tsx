@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { formatDaysRemaining, formatCycle } from "@/lib/subscription";
-import { isDefaultRoomName } from "@/lib/utils";
+import { isDefaultRoomName, isCheckoutDue } from "@/lib/utils";
 import {
   apiGetRooms,
   apiCreateRoom,
@@ -1874,18 +1874,32 @@ export default function RoomsPage() {
                                   <XCircle className="h-3 w-3" /> Cancel
                                 </Button>
                               )}
-                              {/* Early Checkout — only for ACTIVE */}
+                              {/* Check Out / Early Checkout — only for ACTIVE.
+                                  Label depends on whether checkout date has arrived. */}
                               {res.status === "ACTIVE" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 text-[10px] gap-1 text-amber-700 border-amber-200 hover:bg-amber-50"
-                                  onClick={() => {
-                                    setEarlyCheckoutDialog(res);
-                                  }}
-                                >
-                                  <LogOut className="h-3 w-3" /> Early Checkout
-                                </Button>
+                                isCheckoutDue(res.checkOut) ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
+                                    onClick={() => {
+                                      setEarlyCheckoutDialog(res);
+                                    }}
+                                  >
+                                    <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px] gap-1 text-amber-700 border-amber-200 hover:bg-amber-50"
+                                    onClick={() => {
+                                      setEarlyCheckoutDialog(res);
+                                    }}
+                                  >
+                                    <LogOut className="h-3 w-3" /> Early Checkout
+                                  </Button>
+                                )
                               )}
                             </div>
                           )}
@@ -1939,7 +1953,12 @@ export default function RoomsPage() {
                         }}
                       >
                         <LogOut className="h-4 w-4" />
-                        {t("btnEarlyOut")}
+                        {(() => {
+                          const active = roomReservations.find((r) => r.status === "ACTIVE");
+                          return active && isCheckoutDue(active.checkOut)
+                            ? t("btnCheckOut", "Check Out")
+                            : t("btnEarlyOut");
+                        })()}
                       </Button>
                       <Button
                         variant="outline"

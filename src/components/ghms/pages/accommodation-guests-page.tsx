@@ -14,7 +14,7 @@ import {
   apiCancelReservation,
 } from "@/lib/api";
 import { toast } from "sonner";
-import { isValidPhone, isDefaultRoomName } from "@/lib/utils";
+import { isValidPhone, isDefaultRoomName, isCheckoutDue } from "@/lib/utils";
 import { normalizeIdType } from "@/lib/national-id";
 import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import { Button } from "@/components/ui/button";
@@ -727,9 +727,15 @@ export default function AccommodationGuestsPage() {
                         );
                       })()}
                       {g.activeReservation.status === "ACTIVE" && (
-                        <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
-                          <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
-                        </Button>
+                        isCheckoutDue(g.activeReservation.checkOut) ? (
+                          <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
+                            <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(g.activeReservation!)}>
+                            <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
+                          </Button>
+                        )
                       )}
                     </div>
                   )}
@@ -836,9 +842,15 @@ export default function AccommodationGuestsPage() {
                             );
                           })()}
                           {g.activeReservation?.status === "ACTIVE" && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
-                              <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
-                            </Button>
+                            isCheckoutDue(g.activeReservation.checkOut) ? (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
+                                <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(g.activeReservation!)}>
+                                <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
+                              </Button>
+                            )
                           )}
                           {!g.activeReservation && (
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }}>
@@ -866,7 +878,7 @@ export default function AccommodationGuestsPage() {
                                     <CalendarPlus className="mr-2 h-4 w-4" /> Extend Stay
                                   </DropdownMenuItem>
                                 )}
-                                {g.activeReservation.status === "ACTIVE" && (
+                                {g.activeReservation.status === "ACTIVE" && !isCheckoutDue(g.activeReservation.checkOut) && (
                                   <DropdownMenuItem onClick={() => setEarlyCheckoutDialog(g.activeReservation!)} className="text-rose-700 focus:text-rose-700">
                                     <LogOut className="mr-2 h-4 w-4" /> Early Checkout
                                   </DropdownMenuItem>

@@ -23,7 +23,7 @@ import {
   apiGetRoomAvailability,
   apiGetGuestLifecycle,
 } from "@/lib/api";
-import { isValidPhone } from "@/lib/utils";
+import { isValidPhone, isCheckoutDue } from "@/lib/utils";
 import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER, ID_TYPES } from "@/lib/national-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1276,6 +1276,7 @@ export default function MobileApp() {
               reservations={roomReservations} resLoading={roomResLoading}
               onReserve={() => handleReserveFromRoom(selectedRoom)}
               onCheckin={(r) => { onClose(); setConfirmAction({ type: "checkin", res: r }); }}
+              onCheckout={(r) => { onClose(); setConfirmAction({ type: "checkout", res: r }); }}
               onExtend={(r) => { setExtendRes(r); setExtendDate(addDays(r.checkOut, 1)); setShowExtend(true); }}
               onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
               onEdit={() => openEditRoom(selectedRoom)}
@@ -1904,16 +1905,25 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
                   >{t("btnCancel") || "Cancel"}</button>
                 )}
                 {res.status === "ACTIVE" && (
-                  <>
+                  isCheckoutDue(res.checkOut) ? (
+                    // Checkout day has arrived/passed → normal Check Out button.
+                    <button
+                      onClick={() => onCheckout(res)}
+                      className="flex-1 rounded-xl bg-sky-600 text-white py-2 text-xs font-semibold active:bg-sky-700 transition-colors"
+                    >{t("btnCheckOut")}</button>
+                  ) : (
+                    // Checkout day is still in the future → Early Checkout.
                     <button
                       onClick={() => onEarlyCheckout(res)}
                       className="flex-1 rounded-xl bg-rose-100 text-rose-700 py-2 text-xs font-semibold active:bg-rose-200 transition-colors"
                     >{t("btnEarlyCheckout")}</button>
-                    <button
-                      onClick={() => onExtend(res)}
-                      className="flex-1 rounded-xl bg-sky-100 text-sky-700 py-2 text-xs font-semibold active:bg-sky-200 transition-colors"
-                    >{t("btnExtend")}</button>
-                  </>
+                  )
+                )}
+                {res.status === "ACTIVE" && (
+                  <button
+                    onClick={() => onExtend(res)}
+                    className="flex-1 rounded-xl bg-sky-100 text-sky-700 py-2 text-xs font-semibold active:bg-sky-200 transition-colors"
+                  >{t("btnExtend")}</button>
                 )}
               </div>
             </div>
@@ -2015,9 +2025,10 @@ function MainSystemTab({ t }: { t: (k: string) => string }) {
   );
 }
 
-function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onCheckin, onExtend, onEarlyCheckout, onEdit, onDelete, onClose, t, formatDate, formatCurrency, parseAmenities }: {
+function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserve, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onDelete, onClose, t, formatDate, formatCurrency, parseAmenities }: {
   room: Room; reservation: Reservation | null; reservations: Reservation[];
   resLoading: boolean; onReserve: () => void; onCheckin: (r: Reservation) => void;
+  onCheckout: (r: Reservation) => void;
   onExtend: (r: Reservation) => void;
   onEarlyCheckout: (r: Reservation) => void;
   onEdit: () => void; onDelete: () => void; onClose: () => void;
@@ -2189,7 +2200,13 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
             })()}
             {isActive && (
               <>
-                <button onClick={() => onEarlyCheckout(activeRes)} className="flex-1 rounded-lg bg-rose-100 text-rose-700 py-2 text-xs font-semibold">{t("btnEarlyCheckout")}</button>
+                {isCheckoutDue(activeRes.checkOut) ? (
+                  // Checkout day has arrived/passed → normal Check Out button.
+                  <button onClick={() => onCheckout(activeRes)} className="flex-1 rounded-lg bg-sky-600 text-white py-2 text-xs font-semibold">{t("btnCheckOut")}</button>
+                ) : (
+                  // Checkout day is still in the future → Early Checkout.
+                  <button onClick={() => onEarlyCheckout(activeRes)} className="flex-1 rounded-lg bg-rose-100 text-rose-700 py-2 text-xs font-semibold">{t("btnEarlyCheckout")}</button>
+                )}
                 <button onClick={() => onExtend(activeRes)} className="flex-1 rounded-lg bg-sky-100 text-sky-700 py-2 text-xs font-semibold">{t("btnExtend")}</button>
               </>
             )}
