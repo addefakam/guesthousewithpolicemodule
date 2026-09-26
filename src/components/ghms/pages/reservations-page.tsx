@@ -1433,6 +1433,7 @@ export default function ReservationsPage() {
             <TableHeader>
               <TableRow className="bg-gray-50/80">
                 <TableHead>{t('thguest', 'Guest')}</TableHead>
+                <TableHead className="w-[140px]">Second Guest</TableHead>
                 <TableHead>{t('throom', 'Room')}</TableHead>
                 <TableHead>{t('thcheckin', 'Check-in')}</TableHead>
                 <TableHead>{t('thcheckout', 'Check-out')}</TableHead>
@@ -1446,7 +1447,7 @@ export default function ReservationsPage() {
             <TableBody>
               {pagedReservations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="h-32 text-center">
+                  <TableCell colSpan={9} className="h-32 text-center">
                     <div className="flex flex-col items-center text-gray-400">
                       <CalendarRange className="h-8 w-8 mb-2" />
                       <p className="font-medium text-lg">
@@ -1475,6 +1476,20 @@ export default function ReservationsPage() {
                           <p className="text-xs text-gray-400">{res.guest?.phone}</p>
                         </div>
                       </div>
+                    </TableCell>
+                    {/* Second Guest — shows name + phone if a second guest
+                        was recorded, "—" otherwise. */}
+                    <TableCell>
+                      {res.secondGuestName ? (
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate">
+                            {res.secondGuestName}
+                          </p>
+                          <p className="text-xs text-gray-400">{res.secondGuestPhone || ""}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div>
@@ -1767,6 +1782,11 @@ export default function ReservationsPage() {
                     <p className="text-xs text-gray-500">
                       Room {res.room?.number} · {res.room?.name}
                     </p>
+                    {res.secondGuestName && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        2nd Guest: {res.secondGuestName}{res.secondGuestPhone ? ` · ${res.secondGuestPhone}` : ""}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {/* Secondary actions: Edit, Cancel, Record Payment (still in dropdown) */}
