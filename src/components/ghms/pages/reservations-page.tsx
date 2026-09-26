@@ -1438,9 +1438,9 @@ export default function ReservationsPage() {
                 <TableHead>{t('thcheckout', 'Check-out')}</TableHead>
                 <TableHead>{t('thnights', 'Nights')}</TableHead>
                 {/* Total, Paid, Balance columns removed per request. */}
-                <TableHead>{t('thstatus', 'Status')}</TableHead>
+                <TableHead className="w-[110px]">{t('thstatus', 'Status')}</TableHead>
                 {/* Payment column removed per request. */}
-                <TableHead className="text-right">{t('thactions', 'Actions')}</TableHead>
+                <TableHead className="w-[150px] text-right">{t('thactions', 'Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
