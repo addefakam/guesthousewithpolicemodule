@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Bed, CalendarCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useAppStore } from "@/lib/store";
 
 import RoomsPage from "./rooms-page";
 import AccommodationGuestsPage from "./accommodation-guests-page";
@@ -11,7 +12,13 @@ type TabType = "rooms" | "reservations";
 
 export default function AccommodationPage() {
   const { t } = useTranslation("accommodation");
-  const [activeTab, setActiveTab] = useState<TabType>("rooms");
+  const { accommodationTab, setAccommodationTab } = useAppStore();
+  const [activeTab, setActiveTab] = useState<TabType>(accommodationTab);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setAccommodationTab(tab);
+  };
 
   const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
     { key: "rooms", label: t("roomsTab", "Rooms"), icon: Bed },
@@ -36,7 +43,7 @@ export default function AccommodationPage() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? "bg-background text-foreground shadow-sm"

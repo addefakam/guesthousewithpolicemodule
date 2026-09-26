@@ -74,6 +74,9 @@ interface AppState {
   triggerRefresh: () => void;
   preselectedRoom: PreselectedRoom | null;
   setPreselectedRoom: (r: PreselectedRoom | null) => void;
+  /** Which tab the Accommodation page should open on. */
+  accommodationTab: "rooms" | "reservations";
+  setAccommodationTab: (t: "rooms" | "reservations") => void;
   // Joint session state (Concurrent Dual Session)
   jointSession: JointSessionInfo;
   setJointSession: (info: JointSessionInfo) => void;
@@ -173,6 +176,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   triggerRefresh: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
   preselectedRoom: null,
   setPreselectedRoom: (r) => set({ preselectedRoom: r }),
+  accommodationTab: "rooms",
+  setAccommodationTab: (t) => set({ accommodationTab: t }),
   // Joint session (Concurrent Dual Session)
   jointSession: { active: false, superuser: null, policeAdmin: null },
   setJointSession: (info) => set({ jointSession: info }),
