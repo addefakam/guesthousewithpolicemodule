@@ -575,11 +575,11 @@ export default function AccommodationGuestsPage() {
 
   // ── Stats ──
   const stats = useMemo(() => ({
-    total: guests.length,
+    total: guestIdsWithAnyReservation.size,
     checkedIn: activeReservations.filter((r) => r.status === "ACTIVE").length,
     upcoming: activeReservations.filter((r) => r.status === "UPCOMING").length,
     availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
-  }), [guests, activeReservations, rooms]);
+  }), [guestIdsWithAnyReservation, activeReservations, rooms]);
 
   // ── Render ──
   if (loading) {
@@ -620,7 +620,7 @@ export default function AccommodationGuestsPage() {
           { label: t("totalGuests", "Total Guests"), value: stats.total, icon: <Users className="h-4 w-4" />, color: "text-slate-700 bg-slate-50", onClick: () => { setStatusFilter("ALL"); pagination.resetToFirst(); } },
           { label: t("checkedIn", "Checked In"), value: stats.checkedIn, icon: <BedDouble className="h-4 w-4" />, color: "text-emerald-700 bg-emerald-50", onClick: () => { setStatusFilter("CHECKED_IN"); pagination.resetToFirst(); } },
           { label: t("upcoming", "Upcoming"), value: stats.upcoming, icon: <CalendarDays className="h-4 w-4" />, color: "text-blue-700 bg-blue-50", onClick: () => { setStatusFilter("UPCOMING"); pagination.resetToFirst(); } },
-          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50", onClick: () => setCurrentPage("rooms") },
+          { label: t("availableRooms", "Available Rooms"), value: stats.availableRooms, icon: <BedDouble className="h-4 w-4" />, color: "text-purple-700 bg-purple-50", onClick: () => { setAccommodationTab("rooms"); setCurrentPage("accommodation"); } },
         ].map((s) => (
           <button
             key={s.label}
