@@ -77,3 +77,29 @@ export function isCheckoutDue(checkOut: string | null | undefined): boolean {
   return todayStr >= checkOut;
 }
 
+// ── Check-in-due helper ──
+// Determines whether a reservation's scheduled check-in date has arrived
+// or passed. Used to sort the Reservations list so guests who are supposed
+// to arrive today (or were supposed to arrive earlier but haven't yet —
+// "no-shows") appear at the TOP, above ACTIVE in-house guests and above
+// future UPCOMING reservations.
+//
+//   - isCheckInDue === true  → guest is due/overdue for check-in
+//   - isCheckInDue === false → check-in is still in the future
+//
+// checkIn is stored as "YYYY-MM-DD" so plain lexicographic comparison
+// against today's date (in the same format) is correct and timezone-safe.
+//
+// Returns false for falsy/invalid input rather than throwing — callers
+// can use it inline without try/catch, and a missing date should never
+// block the user from acting (the API still validates server-side).
+export function isCheckInDue(checkIn: string | null | undefined): boolean {
+  if (!checkIn) return false;
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  return todayStr >= checkIn;
+}
+

@@ -23,7 +23,7 @@ import {
   apiGetRoomAvailability,
   apiGetGuestLifecycle,
 } from "@/lib/api";
-import { isValidPhone, isCheckoutDue } from "@/lib/utils";
+import { isValidPhone, isCheckoutDue, isCheckInDue } from "@/lib/utils";
 import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER, ID_TYPES } from "@/lib/national-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1781,20 +1781,41 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
 }) {
   const [filter, setFilter] = useState<string>("ALL");
-  // Filter by status pill, then sort: UPCOMING first (soonest check-in
-  // date first — the operator's next expected arrival), then ACTIVE
-  // (most recent check-in first — the currently in-house guests).
-  // This matches the operator's natural workflow: see who's expected
-  // next, then who's currently in.
+  // Sort order (operator's natural workflow):
+  //   1. UPCOMING + check-in due (today or past)  — TOP
+  //      Guests who were supposed to arrive today or earlier but haven't
+  //      checked in yet. Longest-overdue first (oldest checkIn on top).
+  //   2. ACTIVE                                    — MIDDLE
+  //      Currently in-house guests. Most recent check-in first.
+  //   3. UPCOMING + check-in in the future          — BOTTOM
+  //      Future bookings. Soonest first (next arrival on top).
+  //   4. COMPLETED / CANCELLED                      — BELOW ALL
+  //      Historical/archive rows. Most recent first.
   const filtered = (filter === "ALL" ? reservations : reservations.filter((r) => r.status === filter))
     .slice() // copy before sort so we don't mutate props
     .sort((a, b) => {
-      // UPCOMING before ACTIVE
-      if (a.status === "UPCOMING" && b.status !== "UPCOMING") return -1;
-      if (a.status !== "UPCOMING" && b.status === "UPCOMING") return 1;
-      // Within the same status, sort by check-in date:
-      //  - UPCOMING: ascending (soonest first — next arrival on top)
-      //  - ACTIVE:   descending (most recent first — newest in-house on top)
+      const aCheckInDue = a.status === "UPCOMING" && isCheckInDue(a.checkIn);
+      const bCheckInDue = b.status === "UPCOMING" && isCheckInDue(b.checkIn);
+      // Group 1 (UPCOMING + due) before everything else
+      if (aCheckInDue && !bCheckInDue) return -1;
+      if (!aCheckInDue && bCheckInDue) return 1;
+      if (aCheckInDue && bCheckInDue) {
+        // Both due — longest-overdue first (oldest checkIn on top)
+        return a.checkIn.localeCompare(b.checkIn);
+      }
+      // Neither is UPCOMING-due — sort ACTIVE above UPCOMING-future
+      // above COMPLETED/CANCELLED.
+      const aPri = a.status === "ACTIVE" ? 2
+        : a.status === "UPCOMING" ? 1
+        : 0;
+      const bPri = b.status === "ACTIVE" ? 2
+        : b.status === "UPCOMING" ? 1
+        : 0;
+      if (aPri !== bPri) return bPri - aPri;
+      // Within the same priority group, sort by check-in date:
+      //   - UPCOMING (future):  ascending  — soonest first (next arrival on top)
+      //   - ACTIVE:              descending — most recent first (newest in-house on top)
+      //   - COMPLETED/CANCELLED: descending — most recent first
       if (a.status === "UPCOMING") {
         return a.checkIn.localeCompare(b.checkIn);
       }

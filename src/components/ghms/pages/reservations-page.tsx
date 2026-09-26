@@ -99,7 +99,7 @@ import {
 import AddressFields from "@/components/shared/address-fields";
 import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
-import { isValidPhone, isCheckoutDue } from "@/lib/utils";
+import { isValidPhone, isCheckoutDue, isCheckInDue } from "@/lib/utils";
 
 interface GuestOption {
   id: string;
@@ -995,8 +995,44 @@ export default function ReservationsPage() {
           r.id.toLowerCase().includes(q)
       );
     }
-    // Move COMPLETED and DELETED to bottom, active first
-    list = [...list.filter((r) => r.status !== "COMPLETED" && r.status !== "DELETED"), ...list.filter((r) => r.status === "COMPLETED" || r.status === "DELETED")];
+    // Sort order (operator's natural workflow):
+    //   1. UPCOMING + check-in due (today or past)  — TOP
+    //      Guests who were supposed to arrive today or earlier but haven't
+    //      checked in yet. Longest-overdue first (oldest checkIn on top).
+    //   2. ACTIVE                                    — MIDDLE
+    //      Currently in-house guests. Most recent check-in first.
+    //   3. UPCOMING + check-in in the future          — BOTTOM
+    //      Future bookings. Soonest first (next arrival on top).
+    //   4. COMPLETED / CANCELLED / DELETED             — BELOW ALL
+    //      Historical/archive rows. Most recent first.
+    list = list.slice().sort((a, b) => {
+      const aCheckInDue = a.status === "UPCOMING" && isCheckInDue(a.checkIn);
+      const bCheckInDue = b.status === "UPCOMING" && isCheckInDue(b.checkIn);
+      // Group 1 (UPCOMING + due) before everything else
+      if (aCheckInDue && !bCheckInDue) return -1;
+      if (!aCheckInDue && bCheckInDue) return 1;
+      if (aCheckInDue && bCheckInDue) {
+        // Both due — longest-overdue first (oldest checkIn on top)
+        return (a.checkIn || "").localeCompare(b.checkIn || "");
+      }
+      // Neither is UPCOMING-due — sort ACTIVE above UPCOMING-future
+      // above COMPLETED/CANCELLED/DELETED.
+      const aPri = a.status === "ACTIVE" ? 2
+        : a.status === "UPCOMING" ? 1
+        : 0;
+      const bPri = b.status === "ACTIVE" ? 2
+        : b.status === "UPCOMING" ? 1
+        : 0;
+      if (aPri !== bPri) return bPri - aPri;
+      // Within the same priority group, sort by check-in date:
+      //   - UPCOMING (future):  ascending  — soonest first (next arrival on top)
+      //   - ACTIVE:              descending — most recent first (newest in-house on top)
+      //   - COMPLETED/CANCELLED/DELETED: descending — most recent first
+      if (a.status === "UPCOMING") {
+        return (a.checkIn || "").localeCompare(b.checkIn || "");
+      }
+      return (b.checkIn || "").localeCompare(a.checkIn || "");
+    });
     return list;
   }, [reservations, statusFilter, search]);
 
