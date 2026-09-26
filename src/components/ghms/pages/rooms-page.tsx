@@ -183,8 +183,15 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
 
 // Derive floor from first digit of room number (e.g. "102" → 1, "201" → 2)
 const getFloorFromNumber = (num: string): number | null => {
-  const match = num.match(/^\d/);
+  const match = num.match(/^\d+/);
   return match ? parseInt(match[0], 10) : null;
+};
+
+/** Get the floor for a room — prefers the explicit `floor` field from the
+ *  database, falls back to extracting from the room number. */
+const getRoomFloor = (room: { number: string; floor?: number }): number | null => {
+  if (typeof room.floor === "number" && room.floor > 0) return room.floor;
+  return getFloorFromNumber(room.number);
 };
 
 const emptyForm = {
@@ -622,7 +629,7 @@ export default function RoomsPage() {
   const floors = useMemo(() => {
     const set = new Set<number>();
     rooms.forEach((r) => {
-      const f = getFloorFromNumber(r.number);
+      const f = getRoomFloor(r);
       if (f !== null) set.add(f);
     });
     return Array.from(set).sort((a, b) => a - b);
@@ -697,7 +704,7 @@ export default function RoomsPage() {
             }
           }
         }
-        if (floorFilter !== null && getFloorFromNumber(room.number) !== floorFilter) return false;
+        if (floorFilter !== null && getRoomFloor(room) !== floorFilter) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         return (
@@ -709,8 +716,8 @@ export default function RoomsPage() {
       .sort((a, b) => {
         const so = (STATUS_ORDER[displayStatus(a)] ?? 9) - (STATUS_ORDER[displayStatus(b)] ?? 9);
         if (so !== 0) return so;
-        const fa = getFloorFromNumber(a.number) ?? a.floor;
-        const fb = getFloorFromNumber(b.number) ?? b.floor;
+        const fa = getRoomFloor(a) ?? a.floor;
+        const fb = getRoomFloor(b) ?? b.floor;
         if (fa !== fb) return fa - fb;
         return roomNumberKey(a.number).localeCompare(roomNumberKey(b.number));
       });
@@ -722,7 +729,7 @@ export default function RoomsPage() {
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { AVAILABLE: 0, RESERVED: 0, OCCUPIED: 0, MAINTENANCE: 0 };
     rooms.forEach((r) => {
-      if (floorFilter !== null && getFloorFromNumber(r.number) !== floorFilter) return;
+      if (floorFilter !== null && getRoomFloor(r) !== floorFilter) return;
       const st = displayStatus(r);
       if (counts[st] !== undefined) counts[st] += 1;
       // Dual-status: also count in RESERVED if OCCUPIED + future booking
