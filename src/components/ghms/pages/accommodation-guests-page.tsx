@@ -601,8 +601,8 @@ export default function AccommodationGuestsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base sm:text-lg font-semibold">{t("manageGuests", "Manage Guests")}</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">{t("manageGuestsDesc", "Manage guest check-in & check-out and reservations")}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("manageGuests", "Manage Guests")}</h1>
+          <p className="text-sm text-muted-foreground">{t("manageGuestsDesc", "Manage guest check-in & check-out and reservations")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} className="h-8 text-xs gap-1.5">
