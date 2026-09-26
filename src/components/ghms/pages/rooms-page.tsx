@@ -181,17 +181,19 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   Parking: <Car className="h-3 w-3" />,
 };
 
-// Derive floor from first digit of room number (e.g. "102" → 1, "201" → 2)
+// Derive floor from FIRST DIGIT of room number (e.g. "401" → 4, "102" → 1)
 const getFloorFromNumber = (num: string): number | null => {
-  const match = num.match(/^\d+/);
+  const match = num.match(/^\d/);
   return match ? parseInt(match[0], 10) : null;
 };
 
-/** Get the floor for a room — prefers the explicit `floor` field from the
- *  database, falls back to extracting from the room number. */
+/** Get the floor for a room — prefers the first digit of the room number,
+ *  falls back to the explicit `floor` field from the database. */
 const getRoomFloor = (room: { number: string; floor?: number }): number | null => {
+  const fromNum = getFloorFromNumber(room.number);
+  if (fromNum !== null) return fromNum;
   if (typeof room.floor === "number" && room.floor > 0) return room.floor;
-  return getFloorFromNumber(room.number);
+  return null;
 };
 
 const emptyForm = {
