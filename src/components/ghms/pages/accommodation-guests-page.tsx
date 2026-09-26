@@ -8,8 +8,10 @@ import {
   apiGetReservations,
   apiCheckin,
   apiCheckout,
+  apiUpdateReservation,
   apiGetRooms,
   apiCreateReservation,
+  apiCancelReservation,
   apiGetGuestLifecycle,
 } from "@/lib/api";
 import { toast } from "sonner";
@@ -35,7 +37,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Search, LogIn, LogOut, Users, BedDouble, CalendarDays, AlertTriangle, UserPlus, Download,
+  MoreVertical, Pencil, XCircle, CalendarPlus, CreditCard,
 } from "lucide-react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -182,9 +188,75 @@ export default function AccommodationGuestsPage() {
 
   // Check-in / Check-out confirm
   const [confirmAction, setConfirmAction] = useState<{
-    type: "checkin" | "checkout"; reservation: Reservation;
+    type: "checkin" | "checkout" | "cancel"; reservation: Reservation;
   } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // ── Extend Stay ──
+  const [extendDialog, setExtendDialog] = useState<Reservation | null>(null);
+  const [extendDate, setExtendDate] = useState("");
+  const [extending, setExtending] = useState(false);
+
+  // ── Early Checkout ──
+  const [earlyCheckoutDialog, setEarlyCheckoutDialog] = useState<Reservation | null>(null);
+  const [earlyCheckingOut, setEarlyCheckingOut] = useState(false);
+
+  const openExtendDialog = (res: Reservation) => {
+    setExtendDialog(res);
+    const nextDay = new Date(res.checkOut);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setExtendDate(nextDay.toISOString().split("T")[0]);
+  };
+
+  const handleExtendStay = async () => {
+    if (!extendDialog || !extendDate) return;
+    if (extendDate <= extendDialog.checkOut) {
+      toast.error("New checkout date must be after the current checkout date");
+      return;
+    }
+    try {
+      setExtending(true);
+      await apiUpdateReservation(extendDialog.id, { checkOut: extendDate });
+      toast.success("Stay extended successfully");
+      setExtendDialog(null);
+      setExtendDate("");
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to extend stay");
+    } finally {
+      setExtending(false);
+    }
+  };
+
+  const handleEarlyCheckout = async () => {
+    if (!earlyCheckoutDialog) return;
+    try {
+      setEarlyCheckingOut(true);
+      await apiCheckout(earlyCheckoutDialog.id);
+      toast.success("Guest checked out successfully");
+      setEarlyCheckoutDialog(null);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to check out");
+    } finally {
+      setEarlyCheckingOut(false);
+    }
+  };
+
+  const handleCancelReservation = async () => {
+    if (!confirmAction) return;
+    try {
+      setActionLoading(true);
+      await apiCancelReservation(confirmAction.reservation.id);
+      toast.success("Reservation cancelled");
+      setConfirmAction(null);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel reservation");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // ── Export dialog state ──
   // Lets the user pick a date range + guest state, then downloads an .xlsx
@@ -518,11 +590,13 @@ export default function AccommodationGuestsPage() {
     try {
       setActionLoading(true);
       if (type === "checkin") { await apiCheckin(reservation.id); toast.success(t("toastGuestCheckedIn")); }
-      else { await apiCheckout(reservation.id); toast.success(t("toastGuestCheckedOut")); }
+      else if (type === "checkout") { await apiCheckout(reservation.id); toast.success(t("toastGuestCheckedOut")); }
+      else if (type === "cancel") { await apiCancelReservation(reservation.id); toast.success("Reservation cancelled"); }
       setConfirmAction(null);
       triggerRefresh();
+      fetchData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : (type === "checkin" ? t("toastFailedCheckIn") : t("toastFailedCheckOut")));
+      toast.error(err instanceof Error ? err.message : (type === "checkin" ? t("toastFailedCheckIn") : type === "checkout" ? t("toastFailedCheckOut") : "Failed to cancel"));
     } finally { setActionLoading(false); }
   };
 
@@ -773,7 +847,8 @@ export default function AccommodationGuestsPage() {
                       </TableCell>
                       {/* Amount column removed per request. */}
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* ── Primary action: Check In / Check Out (inline) ── */}
                           {g.activeReservation?.status === "UPCOMING" && (() => {
                             const eligibility = getCheckInEligibility(g.activeReservation!);
                             if (eligibility.canCheckIn) {
@@ -783,16 +858,19 @@ export default function AccommodationGuestsPage() {
                                 </Button>
                               );
                             }
+                            const reason = eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : "Check-in not available";
                             return (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled
-                                title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
-                                className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
-                              >
-                                <LogIn className="h-3 w-3 opacity-60" /> {t("btnCheckIn", "Check In")}
-                              </Button>
+                              <div className="relative group">
+                                <Button size="sm" variant="outline" disabled className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed">
+                                  <LogIn className="h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
+                                </Button>
+                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block z-50">
+                                  <div className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10px] text-white shadow-lg whitespace-nowrap max-w-[280px]">
+                                    {reason}
+                                    <div className="absolute top-full right-3 h-0 w-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
+                                  </div>
+                                </div>
+                              </div>
                             );
                           })()}
                           {g.activeReservation?.status === "ACTIVE" && (
@@ -804,6 +882,43 @@ export default function AccommodationGuestsPage() {
                             <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }}>
                               <CalendarDays className="h-3 w-3" /> {t("btnReserve")}
                             </Button>
+                          )}
+                          {(!g.activeReservation || g.activeReservation.status === "COMPLETED" || g.activeReservation.status === "CANCELLED") && g.activeReservation && (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+
+                          {/* ── Secondary actions in ⋮ dropdown ── */}
+                          {g.activeReservation && (g.activeReservation.status === "UPCOMING" || g.activeReservation.status === "ACTIVE") && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }} className="text-violet-700 focus:text-violet-700">
+                                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                {g.activeReservation.status === "ACTIVE" && (
+                                  <DropdownMenuItem onClick={() => openExtendDialog(g.activeReservation!)} className="text-sky-700 focus:text-sky-700">
+                                    <CalendarPlus className="mr-2 h-4 w-4" /> Extend Stay
+                                  </DropdownMenuItem>
+                                )}
+                                {g.activeReservation.status === "ACTIVE" && (
+                                  <DropdownMenuItem onClick={() => setEarlyCheckoutDialog(g.activeReservation!)} className="text-rose-700 focus:text-rose-700">
+                                    <LogOut className="mr-2 h-4 w-4" /> Early Checkout
+                                  </DropdownMenuItem>
+                                )}
+                                {g.activeReservation.status === "UPCOMING" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setConfirmAction({ type: "cancel", reservation: g.activeReservation! })} className="text-rose-600 focus:text-rose-600">
+                                      <XCircle className="mr-2 h-4 w-4" /> Cancel
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                       </TableCell>
@@ -997,6 +1112,54 @@ export default function AccommodationGuestsPage() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {/* ── Extend Stay Dialog ── */}
+      <Dialog open={!!extendDialog} onOpenChange={(o) => { if (!o) { setExtendDialog(null); setExtendDate(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarPlus className="h-5 w-5 text-sky-600" />
+              Extend Stay
+            </DialogTitle>
+            <DialogDescription>
+              {extendDialog && `Extend checkout for ${extendDialog.guest?.name || "guest"} (Room ${extendDialog.room?.number || "?"}). Current checkout: ${extendDialog.checkOut}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>New Check-out Date</Label>
+              <Input type="date" value={extendDate} onChange={(e) => setExtendDate(e.target.value)} min={extendDialog ? new Date(new Date(extendDialog.checkOut).getTime() + 86400000).toISOString().split("T")[0] : ""} />
+              <p className="text-[10px] text-muted-foreground">Must be after the current checkout date.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setExtendDialog(null); setExtendDate(""); }} disabled={extending}>Cancel</Button>
+            <Button onClick={handleExtendStay} disabled={extending || !extendDate} className="gap-1.5 bg-sky-600 hover:bg-sky-700">
+              {extending ? "Extending..." : "Extend Stay"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Early Checkout Dialog ── */}
+      <AlertDialog open={!!earlyCheckoutDialog} onOpenChange={() => setEarlyCheckoutDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-rose-600" /> Early Checkout
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {earlyCheckoutDialog && `Check out ${earlyCheckoutDialog.guest?.name || "guest"} from Room ${earlyCheckoutDialog.room?.number || "?"} before the scheduled checkout date (${earlyCheckoutDialog.checkOut})?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={earlyCheckingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleEarlyCheckout} disabled={earlyCheckingOut}>
+              {earlyCheckingOut ? "Checking out..." : "Check Out Now"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Export Dialog — filter guests by date range + state, then download .xlsx ── */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
