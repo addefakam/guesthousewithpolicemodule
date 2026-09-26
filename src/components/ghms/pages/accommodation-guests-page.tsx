@@ -12,7 +12,6 @@ import {
   apiGetRooms,
   apiCreateReservation,
   apiCancelReservation,
-  apiGetGuestLifecycle,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone, isDefaultRoomName } from "@/lib/utils";
@@ -45,7 +44,7 @@ import {
 } from "lucide-react";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
-import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
+
 
 // ── Types ──
 interface Guest {
@@ -171,7 +170,7 @@ export default function AccommodationGuestsPage() {
   // Lifecycle summaries per guest — keys are guest IDs. Used to show
   // status-change badges (early exit, extended, cancelled, room shifted)
   // inline on each row of the guest search table.
-  const [lifecycleSummaries, setLifecycleSummaries] = useState<Record<string, GuestLifecycleSummary>>({});
+
 
   // Search & filter
   const [search, setSearch] = useState("");
@@ -407,32 +406,8 @@ export default function AccommodationGuestsPage() {
       // ── Stop loading here so the page renders immediately ──
       setLoading(false);
 
-      // ── Fetch lifecycle summaries in the background ──
-      // This powers the status-change badges (early exit, extended,
-      // room shifted, cancelled). Fetched AFTER the page renders so
-      // they don't block the initial load. Badges pop in as data arrives.
-      // Use a higher batch size (20 instead of 8) to reduce the number
-      // of sequential await rounds.
-      try {
-        const summaries: Record<string, GuestLifecycleSummary> = {};
-        const BATCH = 20;
-        for (let i = 0; i < gArr.length; i += BATCH) {
-          const batch = gArr.slice(i, i + BATCH);
-          const results = await Promise.allSettled(
-            batch.map((g) => apiGetGuestLifecycle(g.id))
-          );
-          results.forEach((res, idx) => {
-            if (res.status === "fulfilled" && res.value?.summary) {
-              summaries[batch[idx].id] = res.value.summary as GuestLifecycleSummary;
-            }
-          });
-          // Update progressively so badges appear as each batch completes
-          setLifecycleSummaries({ ...summaries });
-        }
-      } catch {
-        // Non-blocking — badges just won't show.
-        setLifecycleSummaries({});
-      }
+      // History column + lifecycle badges removed — was causing slow
+      // loading due to N+1 API calls (one per guest).
     } catch {
       toast.error(t("toastFailedLoadGuests"));
     } finally {
@@ -726,10 +701,6 @@ export default function AccommodationGuestsPage() {
                           {resStatusLabel(g.activeReservation.status)}
                         </Badge>
                       )}
-                      <GuestLifecycleBadges
-                        summary={lifecycleSummaries[g.id]}
-                        compact
-                      />
                     </div>
                   </div>
                   {g.activeReservation && g.activeReservation.room && (
@@ -784,7 +755,6 @@ export default function AccommodationGuestsPage() {
                     <TableHead>{t("thGuest", "Guest")}</TableHead>
                     <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
                     <TableHead>{t("thStatus", "Status")}</TableHead>
-                    <TableHead>{t("thHistory", "History")}</TableHead>
                     <TableHead>{t("thRoom", "Room")}</TableHead>
                     <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
                     <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
@@ -824,12 +794,7 @@ export default function AccommodationGuestsPage() {
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <GuestLifecycleBadges
-                          summary={lifecycleSummaries[g.id]}
-                          compact
-                        />
-                      </TableCell>
+                      {/* History column removed — was causing N+1 API calls. */}
                       <TableCell className="text-sm">
                         {g.activeReservation?.room ? (
                           <span>{g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
