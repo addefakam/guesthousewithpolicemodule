@@ -590,14 +590,15 @@ export default function AccommodationGuestsPage() {
   const quickCheckin = (r: Reservation) => setConfirmAction({ type: "checkin", reservation: r });
   const quickCheckout = (r: Reservation) => setConfirmAction({ type: "checkout", reservation: r });
 
-  // ── Bulk Check In / Check Out (multi-select) ──
-  // Mirrors the bulk-action bar on the Reservations page, scoped to two
+  // ── Bulk Check In / Check Out / Cancel (multi-select) ──
+  // Mirrors the bulk-action bar on the Reservations page, scoped to three
   // actions (per request):
   //   - checkin  → for UPCOMING reservations whose check-in date has arrived
   //   - checkout → for ACTIVE reservations whose checkout date has arrived
+  //   - cancel   → for UPCOMING or ACTIVE reservations (releases the room)
   //
-  // (Bulk Early Out / Cancel already exist on the Reservations page; can
-  //  be added here later by extending bulkAction's type union.)
+  // (Bulk Early Out already exists on the Reservations page; can be added
+  //  here later by extending bulkAction's type union.)
   //
   // selectionMode: when true, each row shows a checkbox and a sticky
   // action bar appears at the bottom with the action buttons.
@@ -607,7 +608,7 @@ export default function AccommodationGuestsPage() {
   // bulkLoading: spinner state on the confirm button.
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkAction, setBulkAction] = useState<"checkin" | "checkout" | null>(null);
+  const [bulkAction, setBulkAction] = useState<"checkin" | "checkout" | "cancel" | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const toggleSelect = (id: string) => {
@@ -663,11 +664,15 @@ export default function AccommodationGuestsPage() {
       // Same checks as the bulk endpoint:
       //   - checkin  → must be UPCOMING, today must be ≥ checkIn
       //   - checkout → must be ACTIVE, today must be ≥ checkOut
+      //   - cancel   → must be UPCOMING or ACTIVE (terminal states like
+      //                COMPLETED/CANCELLED/DELETED are skipped)
       let ok = false;
       if (bulkAction === "checkin") {
         ok = r.status === "UPCOMING" && isCheckInDue(r.checkIn);
       } else if (bulkAction === "checkout") {
         ok = r.status === "ACTIVE" && isCheckoutDue(r.checkOut);
+      } else if (bulkAction === "cancel") {
+        ok = r.status === "UPCOMING" || r.status === "ACTIVE";
       }
       if (ok) eligible++;
       else skipped++;
@@ -689,7 +694,9 @@ export default function AccommodationGuestsPage() {
         total: number;
       };
       const toastKey =
-        bulkAction === "checkin" ? "toastBulkCheckinResult" : "toastBulkCheckoutResult";
+        bulkAction === "checkin" ? "toastBulkCheckinResult"
+        : bulkAction === "cancel" ? "toastBulkCancelResult"
+        : "toastBulkCheckoutResult";
       toast.success(t(toastKey, {
         success: result.successCount,
         total: result.total,
@@ -1255,9 +1262,9 @@ export default function AccommodationGuestsPage() {
 
       {/* ── Bulk Action Bar ──
           Sticky bottom bar that appears when selectionMode is on and ≥1
-          reservation is selected. Shows the count + Check In / Check Out
-          buttons. (Early Out / Cancel not exposed here per request —
-          those can be added later by extending bulkAction's type.) */}
+          reservation is selected. Shows the count + Check In / Check Out /
+          Cancel buttons. (Early Out not exposed here per request — can be
+          added later by extending bulkAction's type.) */}
       {selectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border bg-white shadow-xl px-4 py-3 max-w-[calc(100vw-2rem)] overflow-x-auto">
           <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
@@ -1284,27 +1291,41 @@ export default function AccommodationGuestsPage() {
           >
             <LogOut className="h-3.5 w-3.5" /> {t("btnBulkCheckout")}
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-red-700 border-red-300 hover:bg-red-50"
+            onClick={() => setBulkAction("cancel")}
+            disabled={bulkLoading}
+          >
+            <XCircle className="h-3.5 w-3.5" /> {t("btnBulkCancel")}
+          </Button>
         </div>
       )}
 
-      {/* ── Bulk Action Confirm Dialog (Check In / Check Out) ── */}
+      {/* ── Bulk Action Confirm Dialog (Check In / Check Out / Cancel) ── */}
       <AlertDialog
         open={!!bulkAction}
         onOpenChange={(open) => { if (!open && !bulkLoading) setBulkAction(null); }}
       >
         <AlertDialogContent>
           <AlertDialogTitle className="flex items-center gap-2">
-            {bulkAction === "checkin"
-              ? <LogIn className="h-5 w-5 text-emerald-600" />
+            {bulkAction === "checkin" ? <LogIn className="h-5 w-5 text-emerald-600" />
+              : bulkAction === "cancel" ? <XCircle className="h-5 w-5 text-red-600" />
               : <LogOut className="h-5 w-5 text-sky-600" />}
             {bulkAction === "checkin"
               ? t("confirmBulkCheckinTitle", { count: bulkEligibility.total })
-              : t("confirmBulkCheckoutTitle", { count: bulkEligibility.total })}
+              : bulkAction === "cancel"
+                ? t("confirmBulkCancelTitle", { count: bulkEligibility.total })
+                : t("confirmBulkCheckoutTitle", { count: bulkEligibility.total })}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {bulkAction === "checkin"
               ? t("confirmBulkCheckinDesc", { skipped: bulkEligibility.skipped })
-              : t("confirmBulkCheckoutDesc", { skipped: bulkEligibility.skipped })}
+              : bulkAction === "cancel"
+                ? t("confirmBulkCancelDesc", { skipped: bulkEligibility.skipped })
+                : t("confirmBulkCheckoutDesc", { skipped: bulkEligibility.skipped })}
           </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={bulkLoading}>{t("btnCancel")}</AlertDialogCancel>
@@ -1312,7 +1333,9 @@ export default function AccommodationGuestsPage() {
               type="button"
               className={bulkAction === "checkin"
                 ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-sky-600 hover:bg-sky-700"}
+                : bulkAction === "cancel"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-sky-600 hover:bg-sky-700"}
               onClick={(e) => { e.preventDefault(); handleBulkAction(); }}
               disabled={bulkLoading || bulkEligibility.eligible === 0}
             >
@@ -1321,7 +1344,9 @@ export default function AccommodationGuestsPage() {
                   <Loader2 className="h-4 w-4 animate-spin" /> {t("btnProcessing")}
                 </span>
               ) : (
-                bulkAction === "checkin" ? t("btnBulkCheckin") : t("btnBulkCheckout")
+                bulkAction === "checkin" ? t("btnBulkCheckin")
+                : bulkAction === "cancel" ? t("btnBulkCancel")
+                : t("btnBulkCheckout")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
