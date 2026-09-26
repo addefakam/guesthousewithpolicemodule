@@ -1123,60 +1123,27 @@ export default function RoomsPage() {
                         {t("btnReserve")}
                       </Button>
                     ) : st === "RESERVED" ? (
-                      <div className="flex flex-1 gap-1.5">
-                        <Button
-                          size="sm"
-                          className="flex-1 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700"
-                          onClick={() => { setPreselectedRoom({ id: room.id, number: room.number, name: room.name, type: room.type, pricePerNight: room.pricePerNight, intent: "manage" }); setCurrentPage("reservations"); }}
-                        >
-                          <ClipboardList className="h-3.5 w-3.5" />
-                          {t("btnManageReservations")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                          onClick={() => handleReserveFromRoom(room)}
-                          title="Reserve for different dates"
-                        >
-                          <CalendarPlus className="h-3.5 w-3.5" />
-                          {t("btnReserve")}
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                        onClick={() => handleReserveFromRoom(room)}
+                        title="Reserve for different dates"
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        {t("btnReserve")}
+                      </Button>
                     ) : (
-                      <div className="flex flex-1 gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
-                          onClick={() => {
-                            const res = roomResMap[room.id];
-                            if (res) {
-                              toast.warning(t("toastRoomOccupied", {
-                                number: !isDefaultRoomName(room.name, room.number) ? `${room.number} (${room.name})` : room.number,
-                                from: formatDate(res.checkIn),
-                                to: formatDate(res.checkOut),
-                                guest: res.guest?.name || "",
-                              }));
-                            } else {
-                              toast.warning(t("toastRoomNotAvailable", { number: !isDefaultRoomName(room.name, room.number) ? `${room.number} (${room.name})` : room.number }));
-                            }
-                          }}
-                        >
-                          <ClipboardList className="h-3.5 w-3.5" />
-                          {t("btnManageReservations")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                          onClick={() => handleReserveFromRoom(room)}
-                          title="Reserve for different dates"
-                        >
-                          <CalendarPlus className="h-3.5 w-3.5" />
-                          {t("btnReserve")}
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                        onClick={() => handleReserveFromRoom(room)}
+                        title="Reserve for different dates"
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                        {t("btnReserve")}
+                      </Button>
                     )}
                   </div>
 
@@ -1831,23 +1798,14 @@ export default function RoomsPage() {
                       {t("btnReserveThisRoom")}
                     </Button>
                   ) : infoRoom.status === "RESERVED" ? (
-                    <div className="flex gap-2">
-                      <Button
-                        className="gap-2 bg-sky-600 hover:bg-sky-700"
-                        onClick={() => { setPreselectedRoom({ id: infoRoom.id, number: infoRoom.number, name: infoRoom.name, type: infoRoom.type, pricePerNight: infoRoom.pricePerNight, intent: "manage" }); setInfoRoom(null); setRoomReservations([]); setCurrentPage("reservations"); }}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        {t("btnManageReservations")}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                        onClick={() => handleReserveFromRoom(infoRoom)}
-                      >
-                        <CalendarPlus className="h-4 w-4" />
-                        {t("btnReserve")}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                      onClick={() => handleReserveFromRoom(infoRoom)}
+                    >
+                      <CalendarPlus className="h-4 w-4" />
+                      {t("btnReserve")}
+                    </Button>
                   ) : infoRoom.status === "OCCUPIED" ? (
                     <div className="flex gap-2 flex-wrap">
                       <Button
