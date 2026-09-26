@@ -957,9 +957,9 @@ export default function AccommodationGuestsPage() {
             <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-200">
                     {selectionMode && (
-                      <TableHead className="w-[40px]">
+                      <TableHead className="w-[40px] px-3 py-3">
                         <Checkbox
                           checked={paginated.length > 0 && paginated.every((r) => selectedIds.has(r.id))}
                           onCheckedChange={(checked) => {
@@ -976,15 +976,14 @@ export default function AccommodationGuestsPage() {
                         />
                       </TableHead>
                     )}
-                    <TableHead>{t("thGuest", "Guest")}</TableHead>
-                    <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
-                    <TableHead className="w-[160px]">Room / Status</TableHead>
+                    <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("thGuest", "Guest")}</TableHead>
+                    <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("thPhoneId", "Phone / ID")}</TableHead>
+                    <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-[180px]">Room / Status</TableHead>
                     {showSecondGuest && (
-                      <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
+                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("thSecondGuest", "Second Guest")}</TableHead>
                     )}
-                    <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
-                    {/* Amount column header removed per request. */}
-                    <TableHead className="text-right">{t("thActions", "Actions")}</TableHead>
+                    <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("thStayPeriod", "Stay Period")}</TableHead>
+                    <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 text-right">{t("thActions", "Actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -992,10 +991,21 @@ export default function AccommodationGuestsPage() {
                     const guest = r.guestId ? guestMap.get(r.guestId) : undefined;
                     const guestIdNumber = guest?.idNumber || "";
                     const vip = guest?.vip || false;
+                    // Compute nights for context under the stay period
+                    const nights = (r.checkIn && r.checkOut)
+                      ? Math.max(1, Math.ceil((new Date(r.checkOut + "T00:00:00").getTime() - new Date(r.checkIn + "T00:00:00").getTime()) / 86400000))
+                      : 0;
                     return (
-                    <TableRow key={r.id} className={r.status === "ACTIVE" ? "bg-emerald-50/30" : ""}>
+                    <TableRow
+                      key={r.id}
+                      className={`group transition-colors border-b border-slate-100 last:border-b-0 ${
+                        r.status === "ACTIVE"
+                          ? "bg-emerald-50/40 hover:bg-emerald-50/70"
+                          : "hover:bg-slate-50/70"
+                      }`}
+                    >
                       {selectionMode && (
-                        <TableCell className="w-[40px]">
+                        <TableCell className="w-[40px] px-3 py-3 align-middle">
                           <Checkbox
                             checked={selectedIds.has(r.id)}
                             onCheckedChange={() => toggleSelect(r.id)}
@@ -1003,66 +1013,95 @@ export default function AccommodationGuestsPage() {
                           />
                         </TableCell>
                       )}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${r.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : r.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                      {/* Guest */}
+                      <TableCell className="px-4 py-3 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                            r.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-200/60"
+                            : r.status === "UPCOMING" ? "bg-blue-100 text-blue-700 ring-2 ring-blue-200/60"
+                            : "bg-slate-100 text-slate-600"}`}
+                          >
                             {(r.guest?.name || "?").charAt(0).toUpperCase()}
+                            {vip && (
+                              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-white text-[8px] font-bold ring-2 ring-white" title="VIP">★</span>
+                            )}
                           </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-medium">{r.guest?.name || "—"}{vip ? " \u2605" : ""}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-sm font-semibold text-slate-900 truncate max-w-[200px]">{r.guest?.name || "—"}</p>
                               {r.exceptionallyReserved && (
-                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-300 px-1 py-0">{t("exceptionBadge")}</Badge>
+                                <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300 px-1.5 py-0">{t("exceptionBadge")}</Badge>
                               )}
                             </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <p className="text-xs">{r.guest?.phone || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{guestIdNumber || "—"}</p>
+                      {/* Phone / ID */}
+                      <TableCell className="px-4 py-3 align-middle">
+                        {r.guest?.phone || guestIdNumber ? (
+                          <div className="space-y-0.5">
+                            {r.guest?.phone && <p className="text-xs font-medium text-slate-700 tabular-nums">{r.guest.phone}</p>}
+                            {guestIdNumber && <p className="text-[10px] text-slate-500 font-mono tracking-tight">{guestIdNumber}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-300">—</span>
+                        )}
                       </TableCell>
-                      {/* Room / Status — merged into one column, Room on top */}
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
+                      {/* Room / Status */}
+                      <TableCell className="px-4 py-3 align-middle">
+                        <div className="flex flex-col gap-1.5">
                           {r.room ? (
-                            <span className="text-xs font-medium text-gray-700">
+                            <span className="text-xs font-medium text-slate-700">
                               {r.room && !isDefaultRoomName(r.room.name, r.room.number) ? t("roomWithName", { number: r.room.number, name: r.room.name }) : t("roomPrefix", { number: r.room.number })}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-gray-300">—</span>
+                            <span className="text-[10px] text-slate-300">—</span>
                           )}
-                          <Badge variant="outline" className={`text-[10px] w-fit ${RES_STATUS[r.status]?.color || ""}`}>
+                          <Badge variant="outline" className={`inline-flex items-center gap-1 text-[10px] w-fit px-1.5 py-0.5 font-medium border-0 ${RES_STATUS[r.status]?.color || "bg-slate-100 text-slate-700"}`}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
                             {resStatusLabel(r.status)}
                           </Badge>
                         </div>
                       </TableCell>
+                      {/* Second Guest */}
                       {showSecondGuest && (
-                        <TableCell className="text-xs">
+                        <TableCell className="px-4 py-3 align-middle">
                           {r.secondGuestName ? (
-                            <div>
-                              <p className="font-medium">{r.secondGuestName}</p>
-                              <p className="text-[10px] text-muted-foreground">{r.secondGuestPhone || ""}</p>
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-medium text-slate-700">{r.secondGuestName}</p>
+                              {r.secondGuestPhone && <p className="text-[10px] text-slate-500 tabular-nums">{r.secondGuestPhone}</p>}
                             </div>
                           ) : r.exceptionallyReserved ? (
-                            <span className="text-[10px] text-amber-600">{t("naException")}</span>
+                            <span className="text-[10px] text-amber-600 italic">{t("naException")}</span>
                           ) : (
-                            <span className="text-[10px] text-muted-foreground">—</span>
+                            <span className="text-[10px] text-slate-300">—</span>
                           )}
                         </TableCell>
                       )}
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {`${formatDate(r.checkIn)} → ${formatDate(r.checkOut)}`}
+                      {/* Stay Period */}
+                      <TableCell className="px-4 py-3 align-middle">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                            {formatDate(r.checkIn)}
+                            <span className="text-slate-400 mx-1">→</span>
+                            {formatDate(r.checkOut)}
+                          </p>
+                          {nights > 0 && (
+                            <p className="text-[10px] text-slate-500">
+                              {nights} {nights === 1 ? "night" : "nights"}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
-                      {/* Amount column removed per request. */}
-                      <TableCell className="text-right">
+                      {/* Actions */}
+                      <TableCell className="px-4 py-3 align-middle">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* ── Primary action: Check In / Check Out (inline) ── */}
                           {r.status === "UPCOMING" && (() => {
                             const eligibility = getCheckInEligibility(r);
                             if (eligibility.canCheckIn) {
                               return (
-                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(r)}>
+                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400" onClick={() => quickCheckin(r)}>
                                   <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
                                 </Button>
                               );
@@ -1084,11 +1123,11 @@ export default function AccommodationGuestsPage() {
                           })()}
                           {r.status === "ACTIVE" && (
                             isCheckoutDue(r.checkOut) ? (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(r)}>
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50 hover:border-sky-400" onClick={() => quickCheckout(r)}>
                                 <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
                               </Button>
                             ) : (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(r)}>
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50 hover:border-rose-400" onClick={() => setEarlyCheckoutDialog(r)}>
                                 <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
                               </Button>
                             )
