@@ -105,10 +105,10 @@ export interface IdTypeConfig {
  * selected ID type. Each ID type has its own label so the user knows
  * exactly what to enter:
  *
- * - National ID     → "National ID Number" / "FAN 00 00 00 00 00 00 00 00"
- * - Kebele ID       → "Kebele ID Number"   / "e.g. 01/23/4567"
- * - Passport        → "Passport Number"    / "e.g. A1234567"
- * - Driver's License→ "License Number"    / "e.g. DL-1234567"
+ * - National ID      → "National ID Number" / "FAN 00 00 00 00 00 00 00 00"
+ * - Kebele ID        → "Kebele ID Number"   / "e.g. 01/23/4567"
+ * - Passport         → "Passport Number"    / "e.g. A1234567"
+ * - Driver's License → "License Number"    / "e.g. DL-1234567"
  *
  * Falls back to "ID Number" with a generic placeholder for unknown types.
  */
@@ -126,8 +126,11 @@ export function getIdFieldConfig(idType: string | undefined | null): IdTypeConfi
   if (normalized === "PASSPORT") {
     return { label: "Passport Number", placeholder: "e.g. A1234567" };
   }
-  if (normalized === "DRIVERSLICENSE" || normalized === "DRIVERLICENSE") {
+  if (normalized === "DRIVERSLICENSE" || normalized === "DRIVERLICENSE" || normalized === "DRIVER") {
     return { label: "License Number", placeholder: "e.g. DL-1234567" };
+  }
+  if (normalized === "OTHER") {
+    return { label: "ID Number", placeholder: "Enter ID number" };
   }
 
   return { label: "ID Number", placeholder: "Enter ID number" };
@@ -135,7 +138,6 @@ export function getIdFieldConfig(idType: string | undefined | null): IdTypeConfi
 
 /**
  * The list of ID types shown in the dropdown.
- * "Other" has been removed — only specific ID types are listed.
  */
 export const ID_TYPES = [
   "National ID",
@@ -143,3 +145,19 @@ export const ID_TYPES = [
   "Passport",
   "Driver's License",
 ] as const;
+
+/**
+ * Normalize any ID type value (from mobile app, API, database, etc.)
+ * to the display label used across the system.
+ * Ensures uniform labels regardless of which format was stored.
+ */
+export function normalizeIdType(idType: string | undefined | null): string {
+  if (!idType) return "";
+  const normalized = idType.trim().toUpperCase().replace(/[\s_]+/g, "");
+  if (normalized === "NATIONALID" || normalized === "NATIONAL") return "National ID";
+  if (normalized === "KEBELEID" || normalized === "KEBELE") return "Kebele ID";
+  if (normalized === "PASSPORT") return "Passport";
+  if (normalized === "DRIVERSLICENSE" || normalized === "DRIVERLICENSE" || normalized === "DRIVER") return "Driver's License";
+  if (normalized === "OTHER") return "Other";
+  return idType;
+}

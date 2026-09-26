@@ -4,7 +4,7 @@ import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } fr
 import { checkSuspectMatch } from "@/lib/suspect-check";
 import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
-import { isValidNationalId, isNationalIdType } from "@/lib/national-id";
+import { isValidNationalId, isNationalIdType, normalizeIdType } from "@/lib/national-id";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale guest data at the edge.
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
       phone: String(g.phone || ""),
       email: String(g.email || ""),
       idNumber: String(g.idNumber || ""),
-      idType: String(g.idType || ""),
+      idType: normalizeIdType(String(g.idType || "")) || "",
       nationality: String(g.nationality || ""),
       region: String(g.region || ""),
       zone: String(g.zone || ""),

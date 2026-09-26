@@ -79,7 +79,7 @@ import {
 } from "lucide-react";
 import AddressFields, { getEmptyAddress, AddressDisplay } from "@/components/shared/address-fields";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
-import { ID_TYPES, getIdFieldConfig } from "@/lib/national-id";
+import { ID_TYPES, getIdFieldConfig, normalizeIdType } from "@/lib/national-id";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -438,7 +438,7 @@ export default function GuestsPage() {
                           <div>
                             <p className="text-xs text-gray-500">ID Type / Number</p>
                             <p className="text-sm text-gray-900">
-                              {guest.idType} {guest.idNumber ? `· ${guest.idNumber}` : ""}
+                              {normalizeIdType(guest.idType)} {guest.idNumber ? `· ${guest.idNumber}` : ""}
                             </p>
                           </div>
                         </div>

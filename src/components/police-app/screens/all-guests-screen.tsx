@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { normalizeIdType } from "@/lib/national-id";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -499,7 +500,7 @@ export default function AllGuestsScreen({ onBack }: Props) {
                     <div>
                       {selectedGuest.idType && (
                         <span className="text-[10px] text-slate-400 mr-1.5">
-                          {selectedGuest.idType}
+                          {normalizeIdType(selectedGuest.idType)}
                         </span>
                       )}
                       <span className="font-mono font-medium text-slate-800">

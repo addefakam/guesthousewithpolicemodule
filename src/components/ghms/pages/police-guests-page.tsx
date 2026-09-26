@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAppStore } from "@/lib/store";
+import { normalizeIdType } from "@/lib/national-id";
 import { apiPoliceGuests, apiGetGuestLifecycle } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -288,7 +289,7 @@ export default function PoliceGuestsPage() {
                       <TableCell className="font-mono text-sm">{guest.idNumber || "—"}</TableCell>
                       <TableCell>
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium">
-                          {guest.idType || "—"}
+                          {normalizeIdType(guest.idType) || "—"}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -394,7 +395,7 @@ export default function PoliceGuestsPage() {
                   <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[8px] font-bold text-slate-600">ID</span>
                   <div>
                     <p className="text-[10px] text-muted-foreground">
-                      {selectedGuest.idType || t('detailIdType')}
+                      {normalizeIdType(selectedGuest.idType) || t('detailIdType')}
                     </p>
                     <p className="font-mono font-medium">
                       {selectedGuest.idNumber || "—"}

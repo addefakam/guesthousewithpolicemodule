@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone, isDefaultRoomName } from "@/lib/utils";
+import { normalizeIdType } from "@/lib/national-id";
 import RoomAvailabilityCalendar from "@/components/ghms/room-availability-calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -333,7 +334,7 @@ export default function AccommodationGuestsPage() {
           Phone: g.phone || "",
           Email: g.email || "",
           Nationality: g.nationality || "",
-          IDType: g.idType || "",
+          IDType: normalizeIdType(g.idType) || "",
           IDNumber: g.idNumber || "",
           Address: addrParts.join(", "),
           TotalStays: g.totalStays ?? 0,
