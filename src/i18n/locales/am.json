@@ -1248,7 +1248,8 @@
     "toastBulkCheckoutResult": "{{total}} ውስጥ {{success}} ወጥተዋል። {{skipped}} ይዘለላሉ፣ {{failed}} አልተሳኩም።",
     "toastBulkCancelResult": "{{total}} ውስጥ {{success}} ተሰርዘዋል። {{skipped}} ይዘለላሉ፣ {{failed}} አልተሳኩም።",
     "toastBulkNoneEligible": "ከተመረጡት ቀጠሮዎች ምንም ብቁ አይደለም።",
-    "btnCancel": "ይቅር"
+    "btnCancel": "ይቅር",
+    "btnToggleSecondGuest": "ሁለተኛ እንግዳ"
   },
   "operations": {
     "title": "ተግባራት",

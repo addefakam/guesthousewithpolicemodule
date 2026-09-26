@@ -622,6 +622,32 @@ export default function AccommodationGuestsPage() {
     setBulkAction(null);
   };
 
+  // ── Second Guest column toggle ──
+  // Operator-controlled show/hide for the desktop table's Second Guest
+  // column. Default ON (matches previous behavior). Persists in
+  // localStorage so the choice is remembered across sessions.
+  // SSR-safe: guard with typeof window check + try/catch for private
+  // mode (Safari throws on localStorage access in private browsing).
+  const [showSecondGuest, setShowSecondGuest] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("ghms.showSecondGuestColumn");
+      // Only flip OFF if explicitly "false" — undefined/null keeps default ON
+      if (stored === "false") setShowSecondGuest(false);
+    } catch {
+      /* private mode — ignore */
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("ghms.showSecondGuestColumn", String(showSecondGuest));
+    } catch {
+      /* private mode — ignore */
+    }
+  }, [showSecondGuest]);
+
   // Eligibility counts for the confirm dialog's "X not eligible" hint.
   // Mirrors the server-side checks so the user gets an accurate pre-flight
   // estimate before confirming. The room-occupied check is server-side
@@ -774,6 +800,22 @@ export default function AccommodationGuestsPage() {
           {selectionMode ? <XCircle className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
           {selectionMode ? t("btnBulkExit") : t("btnBulkSelect")}
         </Button>
+        {/* Second Guest column toggle — desktop only (mobile cards already
+            conditionally render second-guest info only when present). */}
+        <Button
+          type="button"
+          variant={showSecondGuest ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowSecondGuest((v) => !v)}
+          className="hidden md:inline-flex h-9 gap-1.5"
+          aria-pressed={showSecondGuest}
+          title={showSecondGuest
+            ? "Hide the Second Guest column"
+            : "Show the Second Guest column"}
+        >
+          <UserPlus className="h-4 w-4" />
+          {t("btnToggleSecondGuest", "Second Guest")}
+        </Button>
       </div>
 
       {/* Guest List */}
@@ -897,7 +939,9 @@ export default function AccommodationGuestsPage() {
                     <TableHead>{t("thGuest", "Guest")}</TableHead>
                     <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
                     <TableHead className="w-[160px]">Room / Status</TableHead>
-                    <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
+                    {showSecondGuest && (
+                      <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
+                    )}
                     <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
                     {/* Amount column header removed per request. */}
                     <TableHead className="text-right">{t("thActions", "Actions")}</TableHead>
@@ -953,18 +997,20 @@ export default function AccommodationGuestsPage() {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {r.secondGuestName ? (
-                          <div>
-                            <p className="font-medium">{r.secondGuestName}</p>
-                            <p className="text-[10px] text-muted-foreground">{r.secondGuestPhone || ""}</p>
-                          </div>
-                        ) : r.exceptionallyReserved ? (
-                          <span className="text-[10px] text-amber-600">{t("naException")}</span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
+                      {showSecondGuest && (
+                        <TableCell className="text-xs">
+                          {r.secondGuestName ? (
+                            <div>
+                              <p className="font-medium">{r.secondGuestName}</p>
+                              <p className="text-[10px] text-muted-foreground">{r.secondGuestPhone || ""}</p>
+                            </div>
+                          ) : r.exceptionallyReserved ? (
+                            <span className="text-[10px] text-amber-600">{t("naException")}</span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {`${formatDate(r.checkIn)} → ${formatDate(r.checkOut)}`}
                       </TableCell>

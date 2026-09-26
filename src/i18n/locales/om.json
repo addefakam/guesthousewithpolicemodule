@@ -1248,7 +1248,8 @@
     "toastBulkCheckoutResult": "{{total}} keessaa {{success}} ba'e. {{skipped}} daangifame, {{failed}} hin milkaa'ane.",
     "toastBulkCancelResult": "{{total}} keessaa {{success}} haqame. {{skipped}} daangifame, {{failed}} hin milkaa'ane.",
     "toastBulkNoneEligible": "Filataman qabiyyee keessaa tokkollee hin danda'amne.",
-    "btnCancel": "Dhiisi"
+    "btnCancel": "Dhiisi",
+    "btnToggleSecondGuest": "Keessummaa Lammaffaa"
   },
   "operations": {
     "title": "Hojiiwwan",

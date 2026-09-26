@@ -1248,7 +1248,8 @@
     "toastBulkCheckoutResult": "{{success}} of {{total}} checked out. {{skipped}} skipped, {{failed}} failed.",
     "toastBulkCancelResult": "{{success}} of {{total}} cancelled. {{skipped}} skipped, {{failed}} failed.",
     "toastBulkNoneEligible": "None of the selected reservations are eligible for this action.",
-    "btnCancel": "Cancel"
+    "btnCancel": "Cancel",
+    "btnToggleSecondGuest": "Second Guest"
   },
   "operations": {
     "title": "Operations",
