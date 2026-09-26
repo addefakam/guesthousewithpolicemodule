@@ -975,6 +975,8 @@ export default function RoomsPage() {
                         <p className="text-sm text-gray-500">{t("roomType" + (room.type.charAt(0).toUpperCase() + room.type.slice(1).toLowerCase()))}</p>
                       </div>
                     </div>
+                    {/* Dropdown menu — hidden for RESERVED rooms (they only need the Reserve button) */}
+                    {st !== "RESERVED" && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
@@ -1009,7 +1011,7 @@ export default function RoomsPage() {
                             {t("btnEdit")}
                           </DropdownMenuItem>
                         )}
-                        {room.status !== "OCCUPIED" && (
+                        {room.status === "AVAILABLE" && (
                           <DropdownMenuItem
                             onClick={() => {
                               const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
@@ -1020,6 +1022,8 @@ export default function RoomsPage() {
                             {t("menuToggleAvailability")}
                           </DropdownMenuItem>
                         )}
+                        {st === "AVAILABLE" && (
+                        <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-rose-600 focus:text-rose-600"
@@ -1028,8 +1032,11 @@ export default function RoomsPage() {
                           <Trash2 className="mr-2 h-4 w-4" />
                           {t("btnDelete")}
                         </DropdownMenuItem>
+                        </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </div>
 
                   {/* Badges Row */}
