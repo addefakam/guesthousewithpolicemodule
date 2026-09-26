@@ -1182,12 +1182,20 @@ export default function ReservationsPage() {
     setGuestSearch("");
     setNewGuestForm({ name: "", phone: "", email: "", idNumber: "", idType: "National ID", nationality: DEFAULT_NATIONALITY, region: "", zone: "", woreda: "", kebele: "", houseNumber: "", streetName: "", plateNumber: "", weapon: "", notes: "" });
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
-    // Read preselectedRoom directly from the store (not from the closure)
-    // to avoid stale closure issues where preselectedRoom might have been
-    // cleared by a re-render before closeCreateDialog runs.
+    // Read preselectedRoom directly from the store to avoid stale closures.
     const currentPreselected = useAppStore.getState().preselectedRoom;
-    if (currentPreselected && currentPreselected.id === "" && currentPreselected.intent === "create") {
-      useAppStore.getState().setAccommodationTab("reservations");
+    // If the dialog was opened from the Accommodation page (either from the
+    // Reservations tab's "New Reservation" button with empty id, or from
+    // the Rooms tab's "Reserve" button with a real room id), navigate back
+    // to the Accommodation page on the appropriate tab.
+    if (currentPreselected && currentPreselected.intent === "create") {
+      // Came from Rooms tab (real room id) → return to Rooms tab
+      if (currentPreselected.id !== "") {
+        useAppStore.getState().setAccommodationTab("rooms");
+      } else {
+        // Came from Reservations tab (empty id) → return to Reservations tab
+        useAppStore.getState().setAccommodationTab("reservations");
+      }
       useAppStore.getState().setCurrentPage("accommodation");
     }
     setPreselectedRoom(null);
