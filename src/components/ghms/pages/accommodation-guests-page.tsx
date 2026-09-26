@@ -736,9 +736,39 @@ export default function AccommodationGuestsPage() {
     );
   }
 
-  const actionInfo = confirmAction
-    ? { label: confirmAction.type === "checkin" ? t("btnCheckIn") : t("btnCheckOut"), icon: confirmAction.type === "checkin" ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />, cls: confirmAction.type === "checkin" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-sky-600 hover:bg-sky-700", desc: confirmAction.type === "checkin" ? t("confirmCheckInDesc", { guest: confirmAction.reservation.guest?.name || "", room: confirmAction.reservation.room?.number || "" }) : t("confirmCheckOutDesc", { guest: confirmAction.reservation.guest?.name || "", room: confirmAction.reservation.room?.number || "" }) }
-    : null;
+  // ── Confirm dialog metadata for the single-action (non-bulk) dialog ──
+  // Branches on confirmAction.type so Cancel shows a red 'Cancel' button
+  // with a cancel-specific description, instead of incorrectly showing
+  // 'Check Out' label/color/desc for cancel (the old ternary treated
+  // anything non-checkin as checkout).
+  const actionInfo = (() => {
+    if (!confirmAction) return null;
+    const guestName = confirmAction.reservation.guest?.name || "";
+    const roomNumber = confirmAction.reservation.room?.number || "";
+    if (confirmAction.type === "checkin") {
+      return {
+        label: t("btnCheckIn"),
+        icon: <LogIn className="h-4 w-4" />,
+        cls: "bg-emerald-600 hover:bg-emerald-700",
+        desc: t("confirmCheckInDesc", { guest: guestName, room: roomNumber }),
+      };
+    }
+    if (confirmAction.type === "cancel") {
+      return {
+        label: t("btnCancel") || "Cancel",
+        icon: <XCircle className="h-4 w-4" />,
+        cls: "bg-red-600 hover:bg-red-700",
+        desc: t("confirmCancelDesc", { guest: guestName, room: roomNumber }),
+      };
+    }
+    // type === "checkout"
+    return {
+      label: t("btnCheckOut"),
+      icon: <LogOut className="h-4 w-4" />,
+      cls: "bg-sky-600 hover:bg-sky-700",
+      desc: t("confirmCheckOutDesc", { guest: guestName, room: roomNumber }),
+    };
+  })();
 
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6">

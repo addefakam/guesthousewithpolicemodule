@@ -1250,7 +1250,8 @@
     "toastBulkCancelResult": "{{total}} keessaa {{success}} haqame. {{skipped}} daangifame, {{failed}} hin milkaa'ane.",
     "toastBulkNoneEligible": "Filataman qabiyyee keessaa tokkollee hin danda'amne.",
     "btnCancel": "Dhiisi",
-    "btnToggleSecondGuest": "Keessummaa Lammaffaa"
+    "btnToggleSecondGuest": "Keessummaa Lammaffaa",
+    "confirmCancelDesc": "Qabiyyee {{guest}} kan Kutaa {{room}} jiru haquu barbaaddaa?"
   },
   "operations": {
     "title": "Hojiiwwan",

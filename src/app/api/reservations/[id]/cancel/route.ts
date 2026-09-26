@@ -15,6 +15,13 @@ export async function POST(
 
     const reservation = await db.reservation.findFirst({
       where: { id, providerId },
+      // Include the room relation — needed below to check whether to
+      // release it back to AVAILABLE (only if it was RESERVED/OCCUPIED).
+      // Previously this `include` was missing, so `reservation.room`
+      // was undefined → accessing `reservation.room.status` threw
+      // "Cannot read properties of undefined (reading 'status')" and
+      // the cancel request 500'd before reaching the status update.
+      include: { room: { select: { id: true, number: true, name: true, status: true } } },
     });
     if (!reservation) {
       return NextResponse.json({ error: "Reservation not found" }, { status: 404 });

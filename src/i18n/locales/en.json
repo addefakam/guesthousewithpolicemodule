@@ -1250,7 +1250,8 @@
     "toastBulkCancelResult": "{{success}} of {{total}} cancelled. {{skipped}} skipped, {{failed}} failed.",
     "toastBulkNoneEligible": "None of the selected reservations are eligible for this action.",
     "btnCancel": "Cancel",
-    "btnToggleSecondGuest": "Second Guest"
+    "btnToggleSecondGuest": "Second Guest",
+    "confirmCancelDesc": "Cancel reservation for {{guest}} in Room {{room}}?"
   },
   "operations": {
     "title": "Operations",

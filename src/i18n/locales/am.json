@@ -1250,7 +1250,8 @@
     "toastBulkCancelResult": "{{total}} ውስጥ {{success}} ተሰርዘዋል። {{skipped}} ይዘለላሉ፣ {{failed}} አልተሳኩም።",
     "toastBulkNoneEligible": "ከተመረጡት ቀጠሮዎች ምንም ብቁ አይደለም።",
     "btnCancel": "ይቅር",
-    "btnToggleSecondGuest": "ሁለተኛ እንግዳ"
+    "btnToggleSecondGuest": "ሁለተኛ እንግዳ",
+    "confirmCancelDesc": "ለ {{guest}} በክፍል {{room}} ያለውን ቀጠሮ መሰረዝ ይፈልጋሉ?"
   },
   "operations": {
     "title": "ተግባራት",
