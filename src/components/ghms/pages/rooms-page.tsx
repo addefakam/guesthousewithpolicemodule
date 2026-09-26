@@ -196,6 +196,7 @@ const getRoomFloor = (room: { number: string; floor?: number }): number | null =
 
 const emptyForm = {
   number: "",
+  name: "",
   type: "SINGLE",
   pricePerNight: "",
   floor: "",
@@ -396,6 +397,7 @@ export default function RoomsPage() {
     setEditingRoom(room);
     setForm({
       number: room.number,
+      name: room.name || "",
       type: room.type,
       pricePerNight: String(room.pricePerNight),
       floor: String(room.floor),
@@ -417,6 +419,7 @@ export default function RoomsPage() {
       setSaving(true);
       const payload = {
         number: form.number,
+        name: form.name || "",
         type: form.type,
         pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : 0,
         floor: Number(form.floor),
@@ -428,12 +431,14 @@ export default function RoomsPage() {
       if (editingRoom) {
         await apiUpdateRoom(editingRoom.id, payload);
         toast.success(t("toastRoomUpdated"));
+        setEditingRoom(null);
       } else {
         await apiCreateRoom(payload);
         toast.success(t("toastRoomCreated"));
       }
 
       setDialogOpen(false);
+      setForm({ ...emptyForm });
       triggerRefresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("toastFailedSaveRoom");
