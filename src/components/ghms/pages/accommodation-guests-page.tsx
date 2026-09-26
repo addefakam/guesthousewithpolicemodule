@@ -437,11 +437,25 @@ export default function AccommodationGuestsPage() {
     [activeReservations]
   );
 
-  // Merge guests with their active reservation info
+  // Merge guests with their active reservation info.
+  // PRIORITY: ACTIVE > UPCOMING — if a guest has both, the ACTIVE one
+  // wins so the list reflects the guest's most urgent current state
+  // (they're physically in-house, may need to check out today) rather
+  // than their future booking. Without this priority, the array order
+  // from the API would arbitrarily pick whichever reservation came
+  // first in the response — usually the earliest-created one, which
+  // is often the UPCOMING booking. This caused stats to mismatch the
+  // displayed list (e.g. "8 Upcoming" stat but only 5 rows shown).
   const enrichedGuests = useMemo(() => {
     const activeMap = new Map<string, Reservation>();
     for (const r of activeReservations) {
-      if (r.guest?.id && !activeMap.has(r.guest.id)) activeMap.set(r.guest.id, r);
+      if (!r.guest?.id) continue;
+      const existing = activeMap.get(r.guest.id);
+      // Replace if none yet, OR if the existing one is UPCOMING and the
+      // new one is ACTIVE (prefer ACTIVE).
+      if (!existing || (existing.status === "UPCOMING" && r.status === "ACTIVE")) {
+        activeMap.set(r.guest.id, r);
+      }
     }
     return guests.map((g) => ({
       ...g,
@@ -575,12 +589,16 @@ export default function AccommodationGuestsPage() {
   const quickCheckout = (r: Reservation) => setConfirmAction({ type: "checkout", reservation: r });
 
   // ── Stats ──
+  // Counts GUESTS (not reservations) so the numbers always match the
+  // displayed list rows. A guest with both an ACTIVE and an UPCOMING
+  // reservation is counted once, in the ACTIVE bucket (matches the
+  // priority logic in enrichedGuests above).
   const stats = useMemo(() => ({
-    total: guestIdsWithAnyReservation.size,
-    checkedIn: activeReservations.filter((r) => r.status === "ACTIVE").length,
-    upcoming: activeReservations.filter((r) => r.status === "UPCOMING").length,
+    total: enrichedGuests.filter((g) => g.activeReservation).length,
+    checkedIn: enrichedGuests.filter((g) => g.activeReservation?.status === "ACTIVE").length,
+    upcoming: enrichedGuests.filter((g) => g.activeReservation?.status === "UPCOMING").length,
     availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
-  }), [guestIdsWithAnyReservation, activeReservations, rooms]);
+  }), [enrichedGuests, rooms]);
 
   // ── Render ──
   if (loading) {
