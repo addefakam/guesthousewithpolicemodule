@@ -1389,7 +1389,7 @@ export default function ReservationsPage() {
                 {/* Total, Paid, Balance columns removed per request. */}
                 <TableHead>{t('thstatus', 'Status')}</TableHead>
                 {/* Payment column removed per request. */}
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="text-right">{t('thactions', 'Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1446,91 +1446,110 @@ export default function ReservationsPage() {
                     </TableCell>
                     {/* Payment cell removed per request. */}
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          {res.status === "UPCOMING" && (() => {
-                            const eligibility = getCheckInEligibility(res);
-                            if (eligibility.canCheckIn) {
-                              return (
-                                <DropdownMenuItem
-                                  onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
-                                  className="text-emerald-700 focus:text-emerald-700"
-                                >
-                                  <LogIn className="mr-2 h-4 w-4" />
-                                  Check In
-                                </DropdownMenuItem>
-                              );
-                            }
-                            // Check-in blocked — render a disabled item with
-                            // a hint explaining why. The hint comes from the
-                            // reservations namespace and matches the
-                            // structured 409 the API returns when the client
-                            // check is bypassed.
+                      <div className="flex items-center gap-1.5">
+                        {/* ── Inline action buttons — mirrors the mobile app layout ──
+                            The button shown depends on the reservation status and
+                            check-in eligibility:
+                            - UPCOMING + eligible → green "Check In" button
+                            - UPCOMING + blocked  → grayed-out "Check In" + hint
+                            - ACTIVE              → "Check Out" button
+                            - COMPLETED/CANCELLED → no button (just "—")
+                            Secondary actions (Edit, Cancel, Record Payment) stay
+                            in the ⋮ dropdown. */}
+                        {res.status === "UPCOMING" && (() => {
+                          const eligibility = getCheckInEligibility(res);
+                          if (eligibility.canCheckIn) {
                             return (
-                              <DropdownMenuItem
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
+                              >
+                                <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
+                              </Button>
+                            );
+                          }
+                          // Check-in blocked — disabled button + hint
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 disabled
-                                className="text-gray-400 focus:text-gray-400 cursor-not-allowed"
+                                className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
                                 title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
                               >
-                                <LogIn className="mr-2 h-4 w-4 opacity-40" />
-                                <span className="opacity-60">Check In</span>
-                                {eligibility.reasonKey && (
-                                  <span className="ml-1 text-[10px] text-amber-600 truncate">
-                                    · {t(eligibility.reasonKey, eligibility.reasonContext || {})}
-                                  </span>
-                                )}
-                              </DropdownMenuItem>
-                            );
-                          })()}
-                          {res.status === "ACTIVE" && (
-                            <DropdownMenuItem
-                              onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
-                              className="text-sky-700 focus:text-sky-700"
-                            >
-                              <LogOut className="mr-2 h-4 w-4" />
-                              Check Out
-                            </DropdownMenuItem>
-                          )}
-                          {(res.status === "UPCOMING" || res.status === "ACTIVE") && res.balance > 0 && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setPaymentDialog(res);
-                                setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" });
-                              }}
-                              className="text-amber-700 focus:text-amber-700"
-                            >
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Record Payment
-                            </DropdownMenuItem>
-                          )}
-                          {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
-                            <DropdownMenuItem
-                              onClick={() => openEdit(res)}
-                              className="text-violet-700 focus:text-violet-700"
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              {t("edit")}
-                            </DropdownMenuItem>
-                          )}
-                          {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setConfirmAction({ type: "cancel", reservation: res })}
-                                className="text-rose-600 focus:text-rose-600"
-                              >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancel
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                                <LogIn className="h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
+                              </Button>
+                              {eligibility.reasonKey && (
+                                <p className="text-[9px] text-amber-700 leading-tight max-w-[100px]">
+                                  {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        {res.status === "ACTIVE" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
+                            onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
+                          >
+                            <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                          </Button>
+                        )}
+                        {(res.status === "COMPLETED" || res.status === "CANCELLED" || res.status === "DELETED") && (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
+
+                        {/* Secondary actions: Edit, Cancel, Record Payment (still in dropdown) */}
+                        {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              {(res.status === "UPCOMING" || res.status === "ACTIVE") && res.balance > 0 && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setPaymentDialog(res);
+                                    setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" });
+                                  }}
+                                  className="text-amber-700 focus:text-amber-700"
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Record Payment
+                                </DropdownMenuItem>
+                              )}
+                              {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                <DropdownMenuItem
+                                  onClick={() => openEdit(res)}
+                                  className="text-violet-700 focus:text-violet-700"
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  {t("edit")}
+                                </DropdownMenuItem>
+                              )}
+                              {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setConfirmAction({ type: "cancel", reservation: res })}
+                                    className="text-rose-600 focus:text-rose-600"
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Cancel
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -1671,61 +1690,60 @@ export default function ReservationsPage() {
                     </p>
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {res.status === "UPCOMING" && (() => {
-                      const eligibility = getCheckInEligibility(res);
-                      if (eligibility.canCheckIn) {
-                        return (
-                          <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
-                            <LogIn className="mr-2 h-4 w-4" /> Check In
-                          </DropdownMenuItem>
-                        );
-                      }
-                      // Blocked — disabled item with inline reason hint.
-                      return (
-                        <DropdownMenuItem
-                          disabled
-                          className="text-gray-400 focus:text-gray-400 cursor-not-allowed"
-                          title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
-                        >
-                          <LogIn className="mr-2 h-4 w-4 opacity-40" />
-                          <span className="opacity-60">Check In</span>
-                          {eligibility.reasonKey && (
-                            <span className="ml-1 text-[10px] text-amber-600 truncate">
-                              · {t(eligibility.reasonKey, eligibility.reasonContext || {})}
-                            </span>
-                          )}
+                {/* Secondary actions: Edit, Cancel, Record Payment (still in dropdown) */}
+                {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {res.balance > 0 && (res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                        <DropdownMenuItem onClick={() => { setPaymentDialog(res); setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" }); }}>
+                          <CreditCard className="mr-2 h-4 w-4" /> Record Payment
                         </DropdownMenuItem>
-                      );
-                    })()}
-                    {res.status === "ACTIVE" && (
-                      <DropdownMenuItem onClick={() => setConfirmAction({ type: "checkout", reservation: res })}>
-                        <LogOut className="mr-2 h-4 w-4" /> Check Out
-                      </DropdownMenuItem>
-                    )}
-                    {res.balance > 0 && (res.status === "UPCOMING" || res.status === "ACTIVE") && (
-                      <DropdownMenuItem onClick={() => { setPaymentDialog(res); setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" }); }}>
-                        <CreditCard className="mr-2 h-4 w-4" /> Record Payment
-                      </DropdownMenuItem>
-                    )}
-                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                      )}
                       <DropdownMenuItem className="text-violet-700" onClick={() => openEdit(res)}>
                         <Pencil className="mr-2 h-4 w-4" /> {t("edit")}
                       </DropdownMenuItem>
-                    )}
-                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
                       <DropdownMenuItem className="text-rose-600" onClick={() => setConfirmAction({ type: "cancel", reservation: res })}>
                         <XCircle className="mr-2 h-4 w-4" /> Cancel
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
+              {/* ── Inline action buttons — mirrors the mobile app layout ── */}
+              <div className="flex gap-2 pt-1">
+                {res.status === "UPCOMING" && (() => {
+                  const eligibility = getCheckInEligibility(res);
+                  if (eligibility.canCheckIn) {
+                    return (
+                      <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 py-2 text-xs font-semibold" onClick={() => setConfirmAction({ type: "checkin", reservation: res })}>
+                        <LogIn className="mr-1.5 h-3 w-3" /> {t("btnCheckIn", "Check In")}
+                      </Button>
+                    );
+                  }
+                  return (
+                    <div className="flex-1 space-y-1">
+                      <Button size="sm" disabled className="w-full bg-gray-200 text-gray-400 py-2 text-xs font-semibold cursor-not-allowed">
+                        <LogIn className="mr-1.5 h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
+                      </Button>
+                      {eligibility.reasonKey && (
+                        <p className="text-[10px] text-amber-700 leading-tight px-1">
+                          {t(eligibility.reasonKey, eligibility.reasonContext || {})}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+                {res.status === "ACTIVE" && (
+                  <Button size="sm" className="flex-1 bg-sky-600 hover:bg-sky-700 py-2 text-xs font-semibold" onClick={() => setConfirmAction({ type: "checkout", reservation: res })}>
+                    <LogOut className="mr-1.5 h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
