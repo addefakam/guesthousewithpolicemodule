@@ -1218,7 +1218,17 @@ export default function RoomsPage() {
                   id="room-number"
                   placeholder="e.g. 101"
                   value={form.number}
-                  onChange={(e) => setForm({ ...form, number: e.target.value })}
+                  onChange={(e) => {
+                    const newNumber = e.target.value;
+                    // Auto-derive the floor from the first digit of the room
+                    // number so the floor field always matches the room number.
+                    const derivedFloor = getFloorFromNumber(newNumber);
+                    setForm({
+                      ...form,
+                      number: newNumber,
+                      floor: derivedFloor !== null ? String(derivedFloor) : form.floor,
+                    });
+                  }}
                 />
               </div>
               <div className="space-y-2">
