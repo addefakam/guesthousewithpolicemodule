@@ -305,11 +305,15 @@ function getRoleBadgeClass(role: string): string {
 // ── Nav item button component ──
 // Renders a single sidebar entry. If `item.children` is set, the button
 // shows a chevron that toggles expand/collapse; clicking the label still
-// navigates (default tab). The `expanded` + `onToggleExpand` props are
-// only used by parents with children. When expanded, children are
-// rendered as NavItemChildButton instances below; their clicks dispatch
+// navigates (default tab). When expanded, children are rendered as
+// NavItemChildButton instances below; their clicks dispatch
 // `onChildClick(childItem)` so the parent component can pre-select the
 // tab via setAccommodationTab before navigating.
+//
+// Parents with children render as ONE cohesive row (label + chevron
+// inside the same button) so they visually match other top-level items
+// like Dashboard/Reports. The chevron is a separate hit area but lives
+// inside the same rounded highlight box.
 function NavItemButton({
   item,
   currentPage,
@@ -322,20 +326,11 @@ function NavItemButton({
 }: {
   item: NavItem;
   currentPage: string;
-  // Current accommodationTab from the store — used so that when both
-  // child items share page='accommodation', only the one matching the
-  // active tab is highlighted as active.
   currentTab?: "rooms" | "reservations";
   onClick: () => void;
-  // Callback for clicks on child items — receives the child NavItem so
-  // the parent (SidebarContent) can call setAccommodationTab(child.tab)
-  // before navigating. Only used when item.children is non-empty.
   onChildClick?: (item: NavItem) => void;
   expanded?: boolean;
   onToggleExpand?: () => void;
-  // Indent depth for nested children (0 = top-level, 1 = first child).
-  // Children get extra left padding so they visually nest under their
-  // parent.
   depth?: number;
 }) {
   const { t } = useTranslation("sidebar");
@@ -345,85 +340,74 @@ function NavItemButton({
   //   - For leaf items (no children): active when currentPage matches AND
   //     (no tab on the item OR currentTab matches the item's tab).
   //   - For parents (with children): active when currentPage matches the
-  //     parent's page (any tab).
+  //     parent's page AND no child is currently active (so the parent
+  //     only highlights when collapsed, not when an expanded child is
+  //     the actual active route).
+  const childIsActive = hasChildren && item.children!.some(
+    (c) => c.page === currentPage && (!c.tab || currentTab === c.tab)
+  );
   const isActive = hasChildren
-    ? currentPage === item.page
+    ? currentPage === item.page && !childIsActive
     : currentPage === item.page && (!item.tab || currentTab === item.tab);
 
   return (
     <div className="relative">
-      <div className="flex items-stretch">
-        <button
-          onClick={onClick}
-          style={{ paddingLeft: `${12 + depth * 16}px` }}
-          className={`group relative flex flex-1 items-center gap-3 rounded-lg pr-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
-            isActive
-              ? "bg-primary/10 text-primary"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+      <button
+        onClick={onClick}
+        style={{ paddingLeft: `${12 + depth * 16}px` }}
+        className={`group relative flex w-full items-center gap-3 rounded-lg pr-2.5 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        }`}
+      >
+        {isActive && (
+          <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
+        )}
+        <Icon
+          className={`size-[18px] shrink-0 transition-colors ${
+            isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
           }`}
-        >
-          {isActive && (
-            <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
-          )}
-          <Icon
-            className={`size-[18px] shrink-0 transition-colors ${
-              isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
-            }`}
-          />
-          <span className="truncate">{t(item.label)}</span>
-          {item.badge && (
-            <Badge
-              variant="secondary"
-              className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
-            >
-              {t(item.badge)}
-            </Badge>
-          )}
-        </button>
+        />
+        <span className="truncate flex-1 text-left">{t(item.label)}</span>
+        {item.badge && (
+          <Badge
+            variant="secondary"
+            className="h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+          >
+            {t(item.badge)}
+          </Badge>
+        )}
         {hasChildren && onToggleExpand && (
-          <button
+          <ChevronDown
             onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+            role="button"
+            tabIndex={0}
             aria-label={expanded ? t("Collapse") : t("Expand sidebar")}
             aria-expanded={expanded}
-            className="flex shrink-0 items-center justify-center w-8 rounded-r-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          >
-            <ChevronDown
-              className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
-            />
-          </button>
+            className={`shrink-0 size-4 p-0.5 cursor-pointer rounded transition-all ${
+              expanded ? "rotate-180" : ""
+            } ${
+              isActive
+                ? "text-primary hover:bg-primary/20"
+                : "text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+            }`}
+          />
         )}
-      </div>
-      {/* Expandable children */}
+      </button>
+      {/* Expandable children — indented under the parent, smaller font,
+          with a subtle left border to visually nest them. */}
       {hasChildren && expanded && (
-        <div className="mt-0.5 space-y-0.5">
-          {item.children!.map((child) => {
-            // Each child needs its own onClick so it can pre-select its
-            // tab via the parent's handleItemClick logic. We use the
-            // same `onClick` callback signature — the parent's caller
-            // (SidebarContent.handleItemClick) reads `item.tab` to decide
-            // whether to call setAccommodationTab. So we need to pass
-            // child + its handler down. The simplest way: re-call the
-            // parent's onClick factory with the child. But onClick is a
-            // closure-free () => void here. Workaround: have the parent
-            // supply a `onChildClick` callback that takes a NavItem.
-            //
-            // For now, fall back to a per-child closure: when the user
-            // clicks a child, we trigger the parent's onClick (which
-            // navigates to the parent's page) AND set the tab based on
-            // child.tab. The setAccommodationTab is hoisted to the
-            // SidebarContent via a non-public prop. To keep this
-            // component pure, we accept an onChildClick prop.
-            return (
-              <NavItemChildButton
-                key={`${child.page}-${child.tab || ""}`}
-                item={child}
-                currentPage={currentPage}
-                currentTab={currentTab}
-                onChildClick={onChildClick}
-                depth={depth + 1}
-              />
-            );
-          })}
+        <div className="mt-0.5 ml-4 pl-2 border-l border-slate-200/70 space-y-0.5">
+          {item.children!.map((child) => (
+            <NavItemChildButton
+              key={`${child.page}-${child.tab || ""}`}
+              item={child}
+              currentPage={currentPage}
+              currentTab={currentTab}
+              onChildClick={onChildClick}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -431,21 +415,21 @@ function NavItemButton({
 }
 
 // ── Child nav button (for items inside an expandable section) ──
-// Same visual style as NavItemButton but always a leaf (no children of
-// its own). The onChildClick prop receives the child NavItem so the
-// parent component can call setAccommodationTab(child.tab) + onNavigate.
+// Visually smaller than the parent — smaller font (13px vs 14px),
+// smaller icon (16px vs 18px), and rendered inside an indented container
+// with a subtle left border (provided by the parent's wrapper div).
+// Always a leaf — no children of its own.
 function NavItemChildButton({
   item,
   currentPage,
   currentTab,
   onChildClick,
-  depth,
 }: {
   item: NavItem;
   currentPage: string;
   currentTab?: "rooms" | "reservations";
   onChildClick?: (item: NavItem) => void;
-  depth: number;
+  depth?: number;
 }) {
   const { t } = useTranslation("sidebar");
   const Icon = item.icon;
@@ -453,8 +437,7 @@ function NavItemChildButton({
   return (
     <button
       onClick={() => onChildClick?.(item)}
-      style={{ paddingLeft: `${12 + depth * 16}px` }}
-      className={`group relative flex w-full items-center gap-3 rounded-lg pr-3 py-2 text-[13px] font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+      className={`group relative flex w-full items-center gap-2.5 rounded-md pl-2.5 pr-2 py-1.5 text-[13px] font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
         isActive
           ? "bg-primary/10 text-primary"
           : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
