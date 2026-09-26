@@ -744,8 +744,7 @@ export default function AccommodationGuestsPage() {
                   <TableRow>
                     <TableHead>{t("thGuest", "Guest")}</TableHead>
                     <TableHead>{t("thPhoneId", "Phone / ID")}</TableHead>
-                    <TableHead>{t("thStatus", "Status")}</TableHead>
-                    <TableHead>{t("thRoom", "Room")}</TableHead>
+                    <TableHead className="w-[160px]">Status / Room</TableHead>
                     <TableHead>{t("thSecondGuest", "Second Guest")}</TableHead>
                     <TableHead>{t("thStayPeriod", "Stay Period")}</TableHead>
                     {/* Amount column header removed per request. */}
@@ -775,20 +774,24 @@ export default function AccommodationGuestsPage() {
                         <p className="text-xs">{g.phone || "—"}</p>
                         <p className="text-[10px] text-muted-foreground font-mono">{g.idNumber || "—"}</p>
                       </TableCell>
+                      {/* Status / Room — merged into one column */}
                       <TableCell>
-                        {g.activeReservation ? (
-                          <Badge variant="outline" className={`text-[10px] ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
-                            {resStatusLabel(g.activeReservation.status)}
-                          </Badge>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      {/* History column removed — was causing N+1 API calls. */}
-                      <TableCell className="text-sm">
-                        {g.activeReservation?.room ? (
-                          <span>{g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
-                        ) : "—"}
+                        <div className="flex flex-col gap-1">
+                          {g.activeReservation ? (
+                            <Badge variant="outline" className={`text-[10px] w-fit ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
+                              {resStatusLabel(g.activeReservation.status)}
+                            </Badge>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                          {g.activeReservation?.room ? (
+                            <span className="text-xs text-gray-600">
+                              {g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-gray-300">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs">
                         {g.activeReservation?.secondGuestName ? (
