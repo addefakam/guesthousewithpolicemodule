@@ -217,6 +217,24 @@ export const apiCheckout = (id: string, data?: Record<string, unknown>) =>
 export const apiCancelReservation = (id: string) =>
   req(`/api/reservations/${id}/cancel`, { method: "POST" });
 
+/**
+ * Apply one action to many reservations in a single API call.
+ * action: "checkin" | "checkout" | "cancel"
+ * ids: array of reservation IDs to act on
+ *
+ * Returns: { action, total, successCount, skippedCount, failedCount, results }
+ *
+ * "checkout" covers BOTH "Check Out" (when checkout date is due) and
+ * "Early Check Out" (any ACTIVE). The client decides which label to
+ * show based on isCheckoutDue(res.checkOut); the server treats them
+ * identically.
+ */
+export const apiBulkReservationAction = (ids: string[], action: "checkin" | "checkout" | "cancel") =>
+  req("/api/reservations/bulk-action", {
+    method: "POST",
+    body: JSON.stringify({ ids, action }),
+  });
+
 // Payments
 export const apiCreatePayment = (data: Record<string, unknown>) =>
   req("/api/payments", { method: "POST", body: JSON.stringify(data) });

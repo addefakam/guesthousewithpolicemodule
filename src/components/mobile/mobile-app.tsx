@@ -18,6 +18,7 @@ import {
   apiCheckin,
   apiCheckout,
   apiCancelReservation,
+  apiBulkReservationAction,
   apiUpdateReservation,
   apiUpdateRoomStatus,
   apiGetRoomAvailability,
@@ -106,6 +107,8 @@ import {
   Armchair,
   Sparkles,
   Box,
+  ListChecks,
+  Loader2,
 } from "lucide-react";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
@@ -447,6 +450,97 @@ export default function MobileApp() {
   // Early checkout
   const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
   const [earlyCheckoutRes, setEarlyCheckoutRes] = useState<Reservation | null>(null);
+
+  // ── Bulk Actions (multi-select Check In / Check Out / Early Out / Cancel) ──
+  // selectionMode: when true, each reservation card shows a checkbox and a
+  // sticky action bar appears at the bottom with the 4 bulk action buttons.
+  // selectedIds: set of reservation IDs currently checked.
+  // bulkAction: when set, an AlertDialog is shown asking the user to confirm
+  //   the bulk action before firing the API call.
+  // bulkLoading: spinner state on the confirm button.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"checkin" | "checkout" | "earlyout" | "cancel" | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkAction(null);
+  };
+
+  // Eligibility counts for the confirm dialog's "X not eligible" hint.
+  // Mirrors the server-side checks so the user gets an accurate pre-flight
+  // estimate before confirming.
+  const bulkEligibility = useMemo(() => {
+    const selected = reservations.filter((r) => selectedIds.has(r.id));
+    let eligible = 0;
+    let skipped = 0;
+    for (const r of selected) {
+      let ok = false;
+      if (bulkAction === "checkin") {
+        ok = r.status === "UPCOMING" && isCheckInDue(r.checkIn);
+      } else if (bulkAction === "checkout") {
+        ok = r.status === "ACTIVE" && isCheckoutDue(r.checkOut);
+      } else if (bulkAction === "earlyout") {
+        ok = r.status === "ACTIVE";
+      } else if (bulkAction === "cancel") {
+        ok = r.status === "UPCOMING" || r.status === "ACTIVE";
+      }
+      if (ok) eligible++;
+      else skipped++;
+    }
+    return { eligible, skipped, total: selected.length };
+  }, [reservations, selectedIds, bulkAction]);
+
+  const handleBulkAction = async () => {
+    if (!bulkAction) return;
+    const selectedIdsArray = Array.from(selectedIds);
+    if (selectedIdsArray.length === 0) return;
+
+    // Map the UI action to the API action. "earlyout" maps to "checkout"
+    // server-side (same behavior — the distinction is purely client UX).
+    const apiAction: "checkin" | "checkout" | "cancel" =
+      bulkAction === "earlyout" ? "checkout" : bulkAction;
+
+    try {
+      setBulkLoading(true);
+      const result = await apiBulkReservationAction(selectedIdsArray, apiAction) as {
+        successCount: number;
+        skippedCount: number;
+        failedCount: number;
+        total: number;
+      };
+      const toastKey =
+        bulkAction === "checkin" ? "toastBulkCheckinResult"
+        : bulkAction === "cancel" ? "toastBulkCancelResult"
+        : "toastBulkCheckoutResult";
+      toast.success(t(toastKey, {
+        success: result.successCount,
+        total: result.total,
+        skipped: result.skippedCount,
+        failed: result.failedCount,
+      }));
+      exitSelectionMode();
+      triggerRefresh();
+      await fetchData();
+      if (selectedRoom) fetchRoomReservations(selectedRoom.id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Bulk action failed";
+      toast.error(msg);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   // Edit reservation (pending / active only — enforced by the API too)
   const [editRes, setEditRes] = useState<Reservation | null>(null);
@@ -1281,6 +1375,13 @@ export default function MobileApp() {
             onEarlyCheckout={(r) => { setEarlyCheckoutRes(r); setShowEarlyCheckout(true); }}
             onEdit={openEditRes}
             onCancel={(r) => setConfirmAction({ type: "cancel", res: r })}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectionMode={() => {
+              if (selectionMode) exitSelectionMode();
+              else setSelectionMode(true);
+            }}
             t={t} formatDate={formatDate} formatCurrency={formatCurrency}
           />
         )}
@@ -1388,6 +1489,100 @@ export default function MobileApp() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {/* ── Bulk Action Bar ──
+          Sticky bottom bar that appears when selectionMode is on and ≥1
+          reservation is selected. Shows the 4 bulk actions horizontally
+          scrollable so all 4 fit on small screens. */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-2 right-2 z-50 flex items-center gap-2 rounded-2xl border bg-white shadow-xl px-3 py-2.5 overflow-x-auto">
+          <span className="text-xs font-semibold text-gray-700 whitespace-nowrap shrink-0">
+            {t("bulkActionBarCount", { count: selectedIds.size })}
+          </span>
+          <span className="h-6 w-px bg-gray-200 shrink-0" />
+          <button
+            onClick={() => setBulkAction("checkin")}
+            disabled={bulkLoading}
+            className="shrink-0 flex items-center gap-1 rounded-lg bg-emerald-100 text-emerald-700 px-2.5 py-1.5 text-[11px] font-semibold active:bg-emerald-200 disabled:opacity-50"
+          >
+            <LogIn className="h-3.5 w-3.5" /> {t("btnBulkCheckin")}
+          </button>
+          <button
+            onClick={() => setBulkAction("checkout")}
+            disabled={bulkLoading}
+            className="shrink-0 flex items-center gap-1 rounded-lg bg-sky-100 text-sky-700 px-2.5 py-1.5 text-[11px] font-semibold active:bg-sky-200 disabled:opacity-50"
+          >
+            <LogOut className="h-3.5 w-3.5" /> {t("btnBulkCheckout")}
+          </button>
+          <button
+            onClick={() => setBulkAction("earlyout")}
+            disabled={bulkLoading}
+            className="shrink-0 flex items-center gap-1 rounded-lg bg-rose-100 text-rose-700 px-2.5 py-1.5 text-[11px] font-semibold active:bg-rose-200 disabled:opacity-50"
+          >
+            <LogOut className="h-3.5 w-3.5" /> {t("btnBulkEarlyOut")}
+          </button>
+          <button
+            onClick={() => setBulkAction("cancel")}
+            disabled={bulkLoading}
+            className="shrink-0 flex items-center gap-1 rounded-lg bg-red-100 text-red-700 px-2.5 py-1.5 text-[11px] font-semibold active:bg-red-200 disabled:opacity-50"
+          >
+            <Ban className="h-3.5 w-3.5" /> {t("btnBulkCancel")}
+          </button>
+        </div>
+      )}
+
+      {/* ── Bulk Action Confirm Dialog ── */}
+      <AlertDialog
+        open={!!bulkAction}
+        onOpenChange={(open) => { if (!open && !bulkLoading) setBulkAction(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {bulkAction === "checkin" ? <LogIn className="h-5 w-5 text-emerald-600" />
+                : bulkAction === "cancel" ? <Ban className="h-5 w-5 text-red-600" />
+                : <LogOut className="h-5 w-5 text-sky-600" />}
+              {bulkAction === "checkin" ? t("confirmBulkCheckinTitle", { count: bulkEligibility.total })
+                : bulkAction === "checkout" ? t("confirmBulkCheckoutTitle", { count: bulkEligibility.total })
+                : bulkAction === "earlyout" ? t("confirmBulkEarlyOutTitle", { count: bulkEligibility.total })
+                : bulkAction === "cancel" ? t("confirmBulkCancelTitle", { count: bulkEligibility.total })
+                : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === "checkin" ? t("confirmBulkCheckinDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "checkout" ? t("confirmBulkCheckoutDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "earlyout" ? t("confirmBulkEarlyOutDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "cancel" ? t("confirmBulkCancelDesc", { skipped: bulkEligibility.skipped })
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkLoading}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className={
+                bulkAction === "checkin" ? "bg-emerald-600 hover:bg-emerald-700"
+                : bulkAction === "cancel" ? "bg-red-600 hover:bg-red-700"
+                : "bg-sky-600 hover:bg-sky-700"
+              }
+              onClick={(e) => { e.preventDefault(); handleBulkAction(); }}
+              disabled={bulkLoading || bulkEligibility.eligible === 0}
+            >
+              {bulkLoading ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("processing")}
+                </span>
+              ) : (
+                bulkAction === "checkin" ? t("btnBulkCheckin")
+                : bulkAction === "checkout" ? t("btnBulkCheckout")
+                : bulkAction === "earlyout" ? t("btnBulkEarlyOut")
+                : bulkAction === "cancel" ? t("btnBulkCancel")
+                : ""
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Extend Stay Dialog */}
       <Dialog open={showExtend} onOpenChange={(open) => { if (!open) { setShowExtend(false); setExtendRes(null); } }}>
@@ -1801,12 +1996,20 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
   );
 }
 
-function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onCancel, t, formatDate, formatCurrency }: {
+function ReservationsTab({
+  reservations, rooms, onCheckin, onCheckout, onExtend, onEarlyCheckout, onEdit, onCancel,
+  selectionMode, selectedIds, onToggleSelect, onToggleSelectionMode,
+  t, formatDate, formatCurrency,
+}: {
   reservations: Reservation[];
   rooms: Room[];
   onCheckin: (r: Reservation) => void; onCheckout: (r: Reservation) => void;
   onExtend: (r: Reservation) => void; onEarlyCheckout: (r: Reservation) => void;
   onEdit: (r: Reservation) => void; onCancel: (r: Reservation) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onToggleSelectionMode: () => void;
   t: (k: string, opts?: Record<string, unknown>) => string;
   formatDate: (d: string) => string; formatCurrency: (v: number) => string;
 }) {
@@ -1854,8 +2057,8 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
 
   return (
     <div className="px-4 pt-4 space-y-3">
-      {/* Filter pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      {/* Filter pills + Bulk Select toggle */}
+      <div className="flex gap-2 overflow-x-auto pb-1 items-center">
         {["ALL", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED"].map((s) => (
           <button
             key={s} onClick={() => setFilter(s)}
@@ -1868,6 +2071,15 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
             : s === "COMPLETED" ? t("statusCompleted")
             : t("statusCancelled")}</button>
         ))}
+        <button
+          onClick={onToggleSelectionMode}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ml-auto ${
+            selectionMode ? "bg-violet-600 text-white" : "bg-white text-violet-700 border border-violet-200"
+          }`}
+        >
+          {selectionMode ? <XCircle className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
+          {selectionMode ? t("btnBulkExit") : t("btnBulkSelect")}
+        </button>
       </div>
 
       {filtered.length === 0 ? (
@@ -1878,9 +2090,22 @@ function ReservationsTab({ reservations, rooms, onCheckin, onCheckout, onExtend,
       ) : (
         <div className="space-y-2">
           {filtered.map((res) => (
-            <div key={res.id} className="rounded-2xl bg-white border border-gray-100 p-3 shadow-sm">
+            <div key={res.id} className={`rounded-2xl bg-white border p-3 shadow-sm transition-all ${selectionMode && selectedIds.has(res.id) ? "border-violet-400 ring-2 ring-violet-200" : "border-gray-100"}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2.5 min-w-0">
+                  {selectionMode && (
+                    <button
+                      onClick={() => onToggleSelect(res.id)}
+                      className={`shrink-0 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors ${
+                        selectedIds.has(res.id)
+                          ? "bg-violet-600 border-violet-600 text-white"
+                          : "border-gray-300 bg-white"
+                      }`}
+                      aria-label={selectedIds.has(res.id) ? "Deselect" : "Select"}
+                    >
+                      {selectedIds.has(res.id) && <CheckCircle2 className="h-4 w-4" />}
+                    </button>
+                  )}
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                     res.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700"
                     : res.status === "COMPLETED" ? "bg-slate-100 text-slate-700"

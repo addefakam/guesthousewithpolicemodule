@@ -10,6 +10,7 @@ import {
   apiCheckin,
   apiCheckout,
   apiCancelReservation,
+  apiBulkReservationAction,
   apiCreatePayment,
   apiGetGuests,
   apiGetRooms,
@@ -94,7 +95,11 @@ import {
   ChevronsUpDown,
   CalendarPlus,
   Pencil,
+  ListChecks,
+  Ban,
+  Loader2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import AddressFields from "@/components/shared/address-fields";
 import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
@@ -696,6 +701,98 @@ export default function ReservationsPage() {
   // ── Early Checkout ──
   const [earlyCheckoutDialog, setEarlyCheckoutDialog] = useState<Reservation | null>(null);
   const [earlyCheckingOut, setEarlyCheckingOut] = useState(false);
+
+  // ── Bulk Actions (multi-select Check In / Check Out / Early Out / Cancel) ──
+  // selectionMode: when true, each row/card shows a checkbox and a sticky
+  // action bar appears at the bottom with the 4 bulk action buttons.
+  // selectedIds: the set of reservation IDs currently checked.
+  // bulkAction: when set, an AlertDialog is shown asking the user to confirm
+  //   the bulk action before firing the API call.
+  // bulkLoading: spinner state on the confirm button.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"checkin" | "checkout" | "earlyout" | "cancel" | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkAction(null);
+  };
+
+  // Eligibility counts for the confirm dialog's "X not eligible and will
+  // be skipped" hint. Mirrors the server-side checks so the user gets an
+  // accurate pre-flight estimate before confirming.
+  const bulkEligibility = useMemo(() => {
+    const selected = reservations.filter((r) => selectedIds.has(r.id));
+    let eligible = 0;
+    let skipped = 0;
+    for (const r of selected) {
+      let ok = false;
+      if (bulkAction === "checkin") {
+        // Same checks as the bulk endpoint: must be UPCOMING, today must be
+        // within [checkIn, checkOut]. Room-occupied check is server-side
+        // only — we don't have the live room status here cheaply.
+        ok = r.status === "UPCOMING" && isCheckInDue(r.checkIn);
+      } else if (bulkAction === "checkout") {
+        ok = r.status === "ACTIVE" && isCheckoutDue(r.checkOut);
+      } else if (bulkAction === "earlyout") {
+        ok = r.status === "ACTIVE";
+      } else if (bulkAction === "cancel") {
+        ok = r.status === "UPCOMING" || r.status === "ACTIVE";
+      }
+      if (ok) eligible++;
+      else skipped++;
+    }
+    return { eligible, skipped, total: selected.length };
+  }, [reservations, selectedIds, bulkAction]);
+
+  const handleBulkAction = async () => {
+    if (!bulkAction) return;
+    const selectedIdsArray = Array.from(selectedIds);
+    if (selectedIdsArray.length === 0) return;
+
+    // Map the UI action to the API action. "earlyout" maps to "checkout"
+    // server-side (same behavior — the distinction is purely client UX).
+    const apiAction: "checkin" | "checkout" | "cancel" =
+      bulkAction === "earlyout" ? "checkout" : bulkAction;
+
+    try {
+      setBulkLoading(true);
+      const result = await apiBulkReservationAction(selectedIdsArray, apiAction) as {
+        successCount: number;
+        skippedCount: number;
+        failedCount: number;
+        total: number;
+      };
+      const toastKey =
+        bulkAction === "checkin" ? "toastBulkCheckinResult"
+        : bulkAction === "cancel" ? "toastBulkCancelResult"
+        : "toastBulkCheckoutResult";
+      toast.success(t(toastKey, {
+        success: result.successCount,
+        total: result.total,
+        skipped: result.skippedCount,
+        failed: result.failedCount,
+      }));
+      exitSelectionMode();
+      triggerRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Bulk action failed";
+      toast.error(msg);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   const openExtendDialog = (res: Reservation) => {
     setExtendDialog(res);
@@ -1470,7 +1567,7 @@ export default function ReservationsPage() {
         </Button>
       </div>
 
-      {/* Status Tabs + Search */}
+      {/* Status Tabs + Search + Bulk Select toggle */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); clearHighlight(); }}>
           <TabsList>
@@ -1486,21 +1583,38 @@ export default function ReservationsPage() {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="search"
-            name="reservation-search"
-            autoComplete="off"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(0);
-              clearHighlight();
-            }}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2">
+          {!isFreeRoomsView && (
+            <Button
+              type="button"
+              variant={selectionMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                if (selectionMode) exitSelectionMode();
+                else setSelectionMode(true);
+              }}
+              className="gap-1.5"
+            >
+              {selectionMode ? <XCircle className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
+              {selectionMode ? t("btnBulkExit") : t("btnBulkSelect")}
+            </Button>
+          )}
+          <div className="relative sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              type="search"
+              name="reservation-search"
+              autoComplete="off"
+              placeholder={t("searchPlaceholder")}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+                clearHighlight();
+              }}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
@@ -1511,6 +1625,24 @@ export default function ReservationsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/80">
+                {selectionMode && (
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={pagedReservations.length > 0 && pagedReservations.every((r) => selectedIds.has(r.id))}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (checked) {
+                            pagedReservations.forEach((r) => next.add(r.id));
+                          } else {
+                            pagedReservations.forEach((r) => next.delete(r.id));
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>{t('thguest', 'Guest')}</TableHead>
                 <TableHead className="w-[140px]">Second Guest</TableHead>
                 <TableHead>{t('throom', 'Room')}</TableHead>
@@ -1524,7 +1656,7 @@ export default function ReservationsPage() {
             <TableBody>
               {pagedReservations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center">
+                  <TableCell colSpan={selectionMode ? 7 : 6} className="h-32 text-center">
                     <div className="flex flex-col items-center text-gray-400">
                       <CalendarRange className="h-8 w-8 mb-2" />
                       <p className="font-medium text-lg">
@@ -1541,6 +1673,15 @@ export default function ReservationsPage() {
               ) : (
                 pagedReservations.map((res) => (
                   <TableRow key={res.id} className={highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-l-4 border-l-sky-500 transition-all duration-300" : ""}>
+                    {selectionMode && (
+                      <TableCell className="w-[40px]">
+                        <Checkbox
+                          checked={selectedIds.has(res.id)}
+                          onCheckedChange={() => toggleSelect(res.id)}
+                          aria-label={`Select reservation ${res.guest?.name || ""}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 text-xs font-medium">
@@ -1864,9 +2005,16 @@ export default function ReservationsPage() {
           </div>
         ) : (
           pagedReservations.map((res) => (
-            <div key={res.id} className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-sky-400 border-l-4 shadow-md shadow-sky-100" : "bg-white"}`}>
+            <div key={res.id} className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${highlightRoomId && res.room?.id === highlightRoomId ? "bg-sky-50 border-sky-400 border-l-4 shadow-md shadow-sky-100" : "bg-white"} ${selectionMode && selectedIds.has(res.id) ? "ring-2 ring-violet-400 border-violet-300" : ""}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
+                  {selectionMode && (
+                    <Checkbox
+                      checked={selectedIds.has(res.id)}
+                      onCheckedChange={() => toggleSelect(res.id)}
+                      aria-label={`Select reservation ${res.guest?.name || ""}`}
+                    />
+                  )}
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-600 font-semibold text-sm">
                     {res.guest?.name?.charAt(0).toUpperCase() || "?"}
                   </div>
@@ -2843,6 +2991,111 @@ export default function ReservationsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Bulk Action Bar ──
+          Sticky bottom bar that appears when selectionMode is on and ≥1
+          reservation is selected. Shows the 4 bulk actions. */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border bg-white shadow-xl px-4 py-3 max-w-[calc(100vw-2rem)] overflow-x-auto">
+          <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            {t("bulkActionBarCount", { count: selectedIds.size })}
+          </span>
+          <span className="h-6 w-px bg-gray-200" />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+            onClick={() => setBulkAction("checkin")}
+            disabled={bulkLoading}
+          >
+            <LogIn className="h-3.5 w-3.5" /> {t("btnBulkCheckin")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-sky-700 border-sky-300 hover:bg-sky-50"
+            onClick={() => setBulkAction("checkout")}
+            disabled={bulkLoading}
+          >
+            <LogOut className="h-3.5 w-3.5" /> {t("btnBulkCheckout")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-rose-700 border-rose-300 hover:bg-rose-50"
+            onClick={() => setBulkAction("earlyout")}
+            disabled={bulkLoading}
+          >
+            <LogOut className="h-3.5 w-3.5" /> {t("btnBulkEarlyOut")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-red-700 border-red-300 hover:bg-red-50"
+            onClick={() => setBulkAction("cancel")}
+            disabled={bulkLoading}
+          >
+            <Ban className="h-3.5 w-3.5" /> {t("btnBulkCancel")}
+          </Button>
+        </div>
+      )}
+
+      {/* ── Bulk Action Confirm Dialog ── */}
+      <AlertDialog
+        open={!!bulkAction}
+        onOpenChange={(open) => { if (!open && !bulkLoading) setBulkAction(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {bulkAction === "checkin" ? <LogIn className="h-5 w-5 text-emerald-600" />
+                : bulkAction === "cancel" ? <Ban className="h-5 w-5 text-red-600" />
+                : <LogOut className="h-5 w-5 text-sky-600" />}
+              {bulkAction === "checkin" ? t("confirmBulkCheckinTitle", { count: bulkEligibility.total })
+                : bulkAction === "checkout" ? t("confirmBulkCheckoutTitle", { count: bulkEligibility.total })
+                : bulkAction === "earlyout" ? t("confirmBulkEarlyOutTitle", { count: bulkEligibility.total })
+                : bulkAction === "cancel" ? t("confirmBulkCancelTitle", { count: bulkEligibility.total })
+                : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === "checkin" ? t("confirmBulkCheckinDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "checkout" ? t("confirmBulkCheckoutDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "earlyout" ? t("confirmBulkEarlyOutDesc", { skipped: bulkEligibility.skipped })
+                : bulkAction === "cancel" ? t("confirmBulkCancelDesc", { skipped: bulkEligibility.skipped })
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkLoading}>{t("btnCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              className={
+                bulkAction === "checkin" ? "bg-emerald-600 hover:bg-emerald-700"
+                : bulkAction === "cancel" ? "bg-red-600 hover:bg-red-700"
+                : "bg-sky-600 hover:bg-sky-700"
+              }
+              onClick={(e) => { e.preventDefault(); handleBulkAction(); }}
+              disabled={bulkLoading || bulkEligibility.eligible === 0}
+            >
+              {bulkLoading ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("processing")}
+                </span>
+              ) : (
+                bulkAction === "checkin" ? t("btnBulkCheckin")
+                : bulkAction === "checkout" ? t("btnBulkCheckout")
+                : bulkAction === "earlyout" ? t("btnBulkEarlyOut")
+                : bulkAction === "cancel" ? t("btnBulkCancel")
+                : ""
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
