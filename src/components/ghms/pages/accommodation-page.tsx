@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Bed, Users } from "lucide-react";
+import { Bed, CalendarCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import RoomsPage from "./rooms-page";
 import AccommodationGuestsPage from "./accommodation-guests-page";
 
-type TabType = "guests" | "rooms";
+type TabType = "rooms" | "reservations";
 
 export default function AccommodationPage() {
   const { t } = useTranslation("accommodation");
-  const [activeTab, setActiveTab] = useState<TabType>("guests");
+  const [activeTab, setActiveTab] = useState<TabType>("rooms");
 
   const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
-    { key: "guests", label: t("guestsTab", "Guests"), icon: Users },
     { key: "rooms", label: t("roomsTab", "Rooms"), icon: Bed },
+    { key: "reservations", label: t("reservationsTab", "Reservations"), icon: CalendarCheck },
   ];
 
   return (
@@ -28,7 +28,7 @@ export default function AccommodationPage() {
               {t("title", "Accommodation")}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {t("subtitle", "Manage guests and room inventory.")}
+              {t("subtitle", "Manage room inventory and reservations.")}
             </p>
           </div>
         </div>
@@ -52,8 +52,8 @@ export default function AccommodationPage() {
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0">
-        {activeTab === "guests" && <AccommodationGuestsPage />}
         {activeTab === "rooms" && <RoomsPage />}
+        {activeTab === "reservations" && <AccommodationGuestsPage />}
       </div>
     </div>
   );
