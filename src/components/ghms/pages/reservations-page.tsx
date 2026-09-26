@@ -605,7 +605,7 @@ function GuestSearchBox({
 
 export default function ReservationsPage() {
   const { t } = useTranslation("reservations");
-  const { refreshKey, triggerRefresh, preselectedRoom, setPreselectedRoom } = useAppStore();
+  const { refreshKey, triggerRefresh, preselectedRoom, setPreselectedRoom, setCurrentPage } = useAppStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [allGuests, setAllGuests] = useState<GuestOption[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOption[]>([]);
@@ -1184,6 +1184,12 @@ export default function ReservationsPage() {
     setCreateForm({ roomId: "", checkIn: "", checkOut: "", notes: "", secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "", exceptionallyReserved: false, exceptionReason: "", hasSecondGuest: false });
     // Clear any preselected room so the dialog doesn't auto-reopen on remount.
     setPreselectedRoom(null);
+    // If the dialog was opened from the Accommodation page (preselectedRoom
+    // had an empty id with intent="create"), navigate back to the
+    // Accommodation page so the user returns to where they came from.
+    if (preselectedRoom && preselectedRoom.id === "" && preselectedRoom.intent === "create") {
+      setCurrentPage("guests-reservations");
+    }
   };
 
   const handleAction = async () => {
