@@ -1497,115 +1497,69 @@ export default function ReservationsPage() {
                     </TableCell>
                     {/* Payment cell removed per request. */}
                     <TableCell>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* ── Inline action buttons — mirrors the mobile app exactly ──
-                            UPCOMING: [Edit] [Check In] [Cancel]
-                            ACTIVE:    [Edit] [Early Checkout] [Extend]
-                            COMPLETED/CANCELLED: —
-                            Check In uses the getCheckInEligibility() logic:
-                            eligible → green button, blocked → grayed + hover tooltip */}
-                        {res.status === "UPCOMING" && (
-                          <>
-                            {/* Edit */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[10px] gap-1 text-violet-700 border-violet-300 hover:bg-violet-50"
-                              onClick={() => openEdit(res)}
-                            >
-                              <Pencil className="h-3 w-3" /> {t("edit")}
-                            </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* ── Primary action: Check In / Check Out (inline) ──
+                            Everything else (Edit, Cancel, Extend, Early Checkout,
+                            Record Payment) goes into the ⋮ dropdown to keep
+                            the table clean and presentable. */}
 
-                            {/* Check In — with eligibility check */}
-                            {(() => {
-                              const eligibility = getCheckInEligibility(res);
-                              if (eligibility.canCheckIn) {
-                                return (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                                    onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
-                                  >
-                                    <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
-                                  </Button>
-                                );
-                              }
-                              const reason = eligibility.reasonKey
-                                ? t(eligibility.reasonKey, eligibility.reasonContext || {})
-                                : "Check-in not available";
-                              return (
-                                <div className="relative group">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    disabled
-                                    className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
-                                  >
-                                    <LogIn className="h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
-                                  </Button>
-                                  <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50">
-                                    <div className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10px] text-white shadow-lg whitespace-nowrap max-w-[250px]">
-                                      {reason}
-                                      <div className="absolute top-full left-3 h-0 w-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
-                                    </div>
-                                  </div>
+                        {/* UPCOMING → Check In button (or grayed-out + tooltip) */}
+                        {res.status === "UPCOMING" && (() => {
+                          const eligibility = getCheckInEligibility(res);
+                          if (eligibility.canCheckIn) {
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                onClick={() => setConfirmAction({ type: "checkin", reservation: res })}
+                              >
+                                <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
+                              </Button>
+                            );
+                          }
+                          const reason = eligibility.reasonKey
+                            ? t(eligibility.reasonKey, eligibility.reasonContext || {})
+                            : "Check-in not available";
+                          return (
+                            <div className="relative group">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
+                              >
+                                <LogIn className="h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
+                              </Button>
+                              <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block z-50">
+                                <div className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10px] text-white shadow-lg whitespace-nowrap max-w-[280px]">
+                                  {reason}
+                                  <div className="absolute top-full right-3 h-0 w-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
                                 </div>
-                              );
-                            })()}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
-                            {/* Cancel */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[10px] gap-1 text-rose-600 border-rose-300 hover:bg-rose-50"
-                              onClick={() => setConfirmAction({ type: "cancel", reservation: res })}
-                            >
-                              <XCircle className="h-3 w-3" /> Cancel
-                            </Button>
-                          </>
-                        )}
-
+                        {/* ACTIVE → Check Out button (inline) */}
                         {res.status === "ACTIVE" && (
-                          <>
-                            {/* Edit */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[10px] gap-1 text-violet-700 border-violet-300 hover:bg-violet-50"
-                              onClick={() => openEdit(res)}
-                            >
-                              <Pencil className="h-3 w-3" /> {t("edit")}
-                            </Button>
-
-                            {/* Early Checkout */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50"
-                              onClick={() => setEarlyCheckoutDialog(res)}
-                            >
-                              <LogOut className="h-3 w-3" /> Early Checkout
-                            </Button>
-
-                            {/* Extend */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
-                              onClick={() => openExtendDialog(res)}
-                            >
-                              <CalendarPlus className="h-3 w-3" /> Extend
-                            </Button>
-                          </>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50"
+                            onClick={() => setConfirmAction({ type: "checkout", reservation: res })}
+                          >
+                            <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
+                          </Button>
                         )}
 
+                        {/* COMPLETED / CANCELLED / DELETED → no primary action */}
                         {(res.status === "COMPLETED" || res.status === "CANCELLED" || res.status === "DELETED") && (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
 
-                        {/* Record Payment — small dropdown for UPCOMING/ACTIVE with balance */}
-                        {(res.status === "UPCOMING" || res.status === "ACTIVE") && res.balance > 0 && (
+                        {/* ── Secondary actions in ⋮ dropdown ── */}
+                        {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -1613,16 +1567,64 @@ export default function ReservationsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
+                              {/* Edit */}
                               <DropdownMenuItem
-                                onClick={() => {
-                                  setPaymentDialog(res);
-                                  setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" });
-                                }}
-                                className="text-amber-700 focus:text-amber-700"
+                                onClick={() => openEdit(res)}
+                                className="text-violet-700 focus:text-violet-700"
                               >
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Record Payment
+                                <Pencil className="mr-2 h-4 w-4" />
+                                {t("edit")}
                               </DropdownMenuItem>
+
+                              {/* Extend — only for ACTIVE */}
+                              {res.status === "ACTIVE" && (
+                                <DropdownMenuItem
+                                  onClick={() => openExtendDialog(res)}
+                                  className="text-sky-700 focus:text-sky-700"
+                                >
+                                  <CalendarPlus className="mr-2 h-4 w-4" />
+                                  Extend Stay
+                                </DropdownMenuItem>
+                              )}
+
+                              {/* Early Checkout — only for ACTIVE */}
+                              {res.status === "ACTIVE" && (
+                                <DropdownMenuItem
+                                  onClick={() => setEarlyCheckoutDialog(res)}
+                                  className="text-rose-700 focus:text-rose-700"
+                                >
+                                  <LogOut className="mr-2 h-4 w-4" />
+                                  Early Checkout
+                                </DropdownMenuItem>
+                              )}
+
+                              {/* Record Payment — if balance > 0 */}
+                              {res.balance > 0 && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setPaymentDialog(res);
+                                    setPaymentForm({ amount: "", method: "CASH", referenceNo: "", notes: "" });
+                                  }}
+                                  className="text-amber-700 focus:text-amber-700"
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Record Payment
+                                </DropdownMenuItem>
+                              )}
+
+                              {/* Cancel — only for UPCOMING */}
+                              {res.status === "UPCOMING" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setConfirmAction({ type: "cancel", reservation: res })}
+                                    className="text-rose-600 focus:text-rose-600"
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Cancel
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
