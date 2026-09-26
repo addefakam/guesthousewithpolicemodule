@@ -867,7 +867,8 @@ export default function RoomsPage() {
             {t("filterAll")}
             <span className="ml-1 tabular-nums opacity-60">({rooms.length})</span>
           </Button>
-          {floors.slice(0, 3).map((f) => (
+          {/* Show floors 1, 2, 3 as buttons — everything else goes in "Others" */}
+          {[1, 2, 3].filter((f) => floors.includes(f)).map((f) => (
             <Button
               key={f}
               variant={floorFilter === f ? "default" : "outline"}
@@ -879,11 +880,11 @@ export default function RoomsPage() {
               {f}
             </Button>
           ))}
-          {floors.length > 3 && (
+          {floors.filter((f) => f > 3).length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={floorFilter !== null && floors.slice(3).includes(floorFilter) ? "default" : "outline"}
+                  variant={floorFilter !== null && floorFilter > 3 ? "default" : "outline"}
                   size="sm"
                   className="h-8 text-xs px-3 shrink-0 gap-1"
                 >
@@ -892,7 +893,7 @@ export default function RoomsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {floors.slice(3).map((f) => (
+                {floors.filter((f) => f > 3).map((f) => (
                   <DropdownMenuItem
                     key={f}
                     className="text-xs"
@@ -995,13 +996,19 @@ export default function RoomsPage() {
                             <ClipboardList className="mr-2 h-4 w-4" />
                             Manage Reservations
                           </DropdownMenuItem>
+                        ) : room.status === "MAINTENANCE" ? (
+                          /* No Edit button on maintenance rooms — only
+                             "Enable (Back to Service)" toggle. */
+                          null
                         ) : (
                           <DropdownMenuItem onClick={() => openEdit(room)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             {t("btnEdit")}
                           </DropdownMenuItem>
                         )}
-                        {room.status === "AVAILABLE" && (
+                        {/* Toggle Availability — AVAILABLE → MAINTENANCE,
+                            MAINTENANCE → AVAILABLE (Back to Service) */}
+                        {(room.status === "AVAILABLE" || room.status === "MAINTENANCE") && (
                           <DropdownMenuItem
                             onClick={() => {
                               const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
@@ -1009,7 +1016,7 @@ export default function RoomsPage() {
                             }}
                           >
                             <Layers className="mr-2 h-4 w-4" />
-                            {t("menuToggleAvailability")}
+                            {room.status === "MAINTENANCE" ? "Enable (Back to Service)" : t("menuToggleAvailability")}
                           </DropdownMenuItem>
                         )}
                         {st === "AVAILABLE" && (
