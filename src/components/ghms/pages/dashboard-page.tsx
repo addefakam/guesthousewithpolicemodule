@@ -15,6 +15,9 @@ import {
   TrendingUp,
   CalendarCheck,
   DollarSign,
+  BedDouble,
+  CalendarDays,
+  Wrench,
   ArrowUpRight,
   ArrowDownRight,
   Clock,
@@ -132,12 +135,13 @@ export default function DashboardPage() {
 
   const kpis = [
     {
-      title: t("kpiTotalRooms"),
-      value: data?.totalRooms ?? 0,
-      icon: <DoorOpen className="h-5 w-5" />,
-      color: "text-sky-600",
-      bg: "bg-sky-50",
-      border: "border-sky-100",
+      title: t("kpiActiveReservations"),
+      value: data?.activeReservations ?? 0,
+      icon: <CalendarCheck className="h-5 w-5" />,
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+      border: "border-violet-100",
+      subtitle: t("kpiCheckinsToday", { count: data?.todayCheckins ?? 0 }),
     },
     {
       title: t("kpiOccupancyRate"),
@@ -149,22 +153,44 @@ export default function DashboardPage() {
       subtitle: t("kpiOccupiedOfTotal", { occupied: data?.roomsByStatus.OCCUPIED ?? 0, total: data?.totalRooms ?? 0 }),
     },
     {
-      title: t("kpiActiveReservations"),
-      value: data?.activeReservations ?? 0,
-      icon: <CalendarCheck className="h-5 w-5" />,
-      color: "text-violet-600",
-      bg: "bg-violet-50",
-      border: "border-violet-100",
-      subtitle: t("kpiCheckinsToday", { count: data?.todayCheckins ?? 0 }),
+      title: t("kpiTotalRooms"),
+      value: data?.totalRooms ?? 0,
+      icon: <DoorOpen className="h-5 w-5" />,
+      color: "text-sky-600",
+      bg: "bg-sky-50",
+      border: "border-sky-100",
     },
-    // Monthly Revenue card removed per request.
+    {
+      title: "Available Rooms",
+      value: data?.roomsByStatus?.AVAILABLE ?? 0,
+      icon: <BedDouble className="h-5 w-5" />,
+      color: "text-teal-600",
+      bg: "bg-teal-50",
+      border: "border-teal-100",
+    },
+    {
+      title: "Reserved",
+      value: data?.roomsByStatus?.RESERVED ?? 0,
+      icon: <CalendarDays className="h-5 w-5" />,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+    },
+    {
+      title: "Maintenance",
+      value: data?.roomsByStatus?.MAINTENANCE ?? 0,
+      icon: <Wrench className="h-5 w-5" />,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+    },
   ];
 
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
@@ -186,7 +212,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((kpi) => (
           <Card key={kpi.title} className="gap-0 overflow-hidden py-0">
             <CardContent className="p-4">
