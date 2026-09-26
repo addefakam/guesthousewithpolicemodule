@@ -986,25 +986,10 @@ export default function RoomsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {room.status === "OCCUPIED" ? (
-                          <>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
-                              <CalendarClock className="mr-2 h-4 w-4" />
-                              {t("menuExtendEarlyCheckout")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              const active = roomResMap[room.id];
-                              if (active) {
-                                setInfoRoom(room);
-                                openShiftDialog(active);
-                              } else {
-                                toast.error(t("toastNoActiveReservation"));
-                              }
-                            }}>
-                              <ArrowRightLeft className="mr-2 h-4 w-4" />
-                              {t("btnShift")}
-                            </DropdownMenuItem>
-                          </>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
+                            <ClipboardList className="mr-2 h-4 w-4" />
+                            Manage Reservations
+                          </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onClick={() => openEdit(room)}>
                             <Pencil className="mr-2 h-4 w-4" />
