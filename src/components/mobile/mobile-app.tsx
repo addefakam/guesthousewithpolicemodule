@@ -220,8 +220,6 @@ const PAYMENT_STATUS: Record<string, { color: string; icon: "check" | "alert" | 
   PENDING: { color: "border-amber-300 text-amber-700 bg-amber-50", icon: "alert" },
 };
 
-const PAYMENT_METHODS = ["CASH", "TRANSFER", "CARD", "MOBILE"] as const;
-
 const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
 
 const ROOM_FORM_DEFAULTS = {
@@ -942,14 +940,16 @@ export default function MobileApp() {
     setShowEditRes(true);
   };
 
-  // Live totals while editing — mirrors the server-side recompute
+  // Live nights count while editing — used by the Save button's
+  // disabled state (don't allow saving a 0-night stay).
+  // Note: rate / tax / discount / paymentMethod / notes are intentionally
+  // NOT editable from the mobile Edit Reservation form — those values are
+  // preserved on the backend (PATCH-style update). Only guest, room, and
+  // dates can be changed here. The backend recomputes totalCost and
+  // balance automatically when dates change.
   const editNights =
     editResForm.checkIn && editResForm.checkOut && editResForm.checkOut > editResForm.checkIn
       ? Math.max(1, Math.ceil((new Date(editResForm.checkOut).getTime() - new Date(editResForm.checkIn).getTime()) / 86400000))
-      : 0;
-  const editTotal =
-    editNights > 0
-      ? (Number(editResForm.roomRate) || 0) * editNights + (Number(editResForm.taxAmount) || 0) - (Number(editResForm.discountAmount) || 0)
       : 0;
 
   const handleEditResSave = async () => {
@@ -962,16 +962,15 @@ export default function MobileApp() {
     }
     try {
       setSavingEdit(true);
+      // Only send guest / room / dates — the backend preserves the
+      // existing roomRate, taxAmount, discountAmount, paymentMethod, and
+      // notes (PATCH-style update) and recomputes totalCost + balance
+      // automatically when dates change.
       await apiUpdateReservation(editRes.id, {
         guestId: editResForm.guestId,
         roomId: editResForm.roomId,
         checkIn: editResForm.checkIn,
         checkOut: editResForm.checkOut,
-        roomRate: Number(editResForm.roomRate) || 0,
-        taxAmount: Number(editResForm.taxAmount) || 0,
-        discountAmount: Number(editResForm.discountAmount) || 0,
-        paymentMethod: editResForm.paymentMethod || null,
-        notes: editResForm.notes,
       });
       toast.success(t("toastResUpdated"));
       setShowEditRes(false); setEditRes(null);
@@ -1452,44 +1451,12 @@ export default function MobileApp() {
                 <Input type="date" value={editResForm.checkOut} min={editResForm.checkIn || undefined} onChange={(e) => setEditResForm((f) => ({ ...f, checkOut: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
               </div>
             </div>
-            {/* Rate / tax / discount */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">{t("lblRoomRate")}</Label>
-                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.roomRate} onChange={(e) => setEditResForm((f) => ({ ...f, roomRate: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">{t("lblTax")}</Label>
-                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.taxAmount} onChange={(e) => setEditResForm((f) => ({ ...f, taxAmount: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">{t("lblDiscount")}</Label>
-                <Input type="number" inputMode="decimal" min={0} step="0.01" value={editResForm.discountAmount} onChange={(e) => setEditResForm((f) => ({ ...f, discountAmount: e.target.value }))} className="mt-1.5 h-11 rounded-xl" />
-              </div>
-            </div>
-            {/* Payment method */}
-            <div>
-              <Label className="text-xs font-semibold">{t("lblPaymentMethod")}</Label>
-              <Select value={editResForm.paymentMethod} onValueChange={(v) => setEditResForm((f) => ({ ...f, paymentMethod: v }))}>
-                <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Notes */}
-            <div>
-              <Label className="text-xs font-semibold">{t("lblNotes")}</Label>
-              <Textarea rows={2} value={editResForm.notes} onChange={(e) => setEditResForm((f) => ({ ...f, notes: e.target.value }))} className="mt-1.5 text-sm rounded-xl" />
-            </div>
-            {/* Live totals */}
-            {editNights > 0 && (
-              <p className="text-[11px] text-gray-500">
-                {t("editNightsLine", { nights: editNights })} · {t("editTotalLine", { total: formatCurrency(editTotal), paid: formatCurrency(editRes?.paidAmount || 0), balance: formatCurrency(editTotal - (editRes?.paidAmount || 0)) })}
-              </p>
-            )}
+            {/* Price-related fields (room rate, tax, discount, payment
+                method, notes, live totals) are intentionally omitted
+                from this Edit form. Only guest / room / dates can be
+                edited here — the backend preserves all existing
+                pricing values (PATCH-style update) and recomputes
+                totalCost + balance automatically when dates change. */}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setShowEditRes(false); setEditRes(null); }} disabled={savingEdit}>{t("cancel")}</Button>
