@@ -412,86 +412,67 @@ export default function AccommodationGuestsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
 
-  // ── Computed: guests with at least one reservation (any status) ──
-  // Used to filter out guests who have never reserved any room.
-  // Only include guests who have at least one ACTIVE or UPCOMING
-  // reservation. Guests whose reservations are all COMPLETED/CANCELLED/
-  // DELETED are excluded from the list entirely.
-  const guestIdsWithAnyReservation = useMemo(() => {
-    const ids = new Set<string>();
-    for (const r of reservations) {
-      if (r.status !== "ACTIVE" && r.status !== "UPCOMING") continue;
-      const gid = r.guestId || r.guest?.id;
-      if (typeof gid === "string" && gid) ids.add(gid);
-    }
-    return ids;
-  }, [reservations]);
-
+  // ── Computed: list of ACTIVE or UPCOMING reservations ──
+  // Each reservation becomes ONE row in the table — no deduplication by
+  // guest. So if a guest has multiple bookings (group bookings, recurring
+  // stays, multi-room), they appear once per reservation. This makes the
+  // stats (Total/CheckedIn/Upcoming) match the displayed row count.
+  //
+  // The page is still called "Manage Guests" for marketing reasons, but
+  // the data model is now reservation-centric — same as the Reservations
+  // page, just filtered to ACTIVE + UPCOMING only.
   const activeReservations = useMemo(() =>
     reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
     [reservations]
   );
 
-  const activeGuestIds = useMemo(() =>
-    new Set(activeReservations.map((r) => r.guest?.id).filter(Boolean)),
-    [activeReservations]
-  );
+  // Lookup map of guestId → full Guest record. The reservation's `guest`
+  // sub-object from the API only has {id, name, phone} — no idNumber,
+  // nationality, vip, etc. Cross-reference here to surface those fields
+  // (idNumber is shown in the Phone/ID column; vip could be used for
+  // the star badge if needed in the future).
+  const guestMap = useMemo(() => {
+    const m = new Map<string, Guest>();
+    for (const g of guests) m.set(g.id, g);
+    return m;
+  }, [guests]);
 
-  // Merge guests with their active reservation info.
-  // PRIORITY: ACTIVE > UPCOMING — if a guest has both, the ACTIVE one
-  // wins so the list reflects the guest's most urgent current state
-  // (they're physically in-house, may need to check out today) rather
-  // than their future booking. Without this priority, the array order
-  // from the API would arbitrarily pick whichever reservation came
-  // first in the response — usually the earliest-created one, which
-  // is often the UPCOMING booking. This caused stats to mismatch the
-  // displayed list (e.g. "8 Upcoming" stat but only 5 rows shown).
-  const enrichedGuests = useMemo(() => {
-    const activeMap = new Map<string, Reservation>();
-    for (const r of activeReservations) {
-      if (!r.guest?.id) continue;
-      const existing = activeMap.get(r.guest.id);
-      // Replace if none yet, OR if the existing one is UPCOMING and the
-      // new one is ACTIVE (prefer ACTIVE).
-      if (!existing || (existing.status === "UPCOMING" && r.status === "ACTIVE")) {
-        activeMap.set(r.guest.id, r);
-      }
-    }
-    return guests.map((g) => ({
-      ...g,
-      activeReservation: activeMap.get(g.id) || null,
-    }));
-  }, [guests, activeReservations]);
-
-  // ── Filtered list ──
+  // ── Filtered list (one row per reservation) ──
   const filtered = useMemo(() => {
-    let list = enrichedGuests;
-    // By default (ALL filter), exclude guests who have never reserved any
-    // room — they shouldn't appear in the list at all.
-    if (statusFilter === "ALL") {
-      list = list.filter((g) => guestIdsWithAnyReservation.has(g.id));
-    } else if (statusFilter === "CHECKED_IN") {
-      list = list.filter((g) => g.activeReservation?.status === "ACTIVE");
+    let list = activeReservations;
+    if (statusFilter === "CHECKED_IN") {
+      list = list.filter((r) => r.status === "ACTIVE");
     } else if (statusFilter === "UPCOMING") {
-      list = list.filter((g) => g.activeReservation?.status === "UPCOMING");
+      list = list.filter((r) => r.status === "UPCOMING");
     }
+    // statusFilter === "ALL" → no extra filter, all ACTIVE+UPCOMING shown.
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (g) =>
-          g.name.toLowerCase().includes(q) ||
-          g.phone.toLowerCase().includes(q) ||
-          g.idNumber.toLowerCase().includes(q)
+        (r) => {
+          // Match primary guest name/phone from the reservation's nested guest
+          if ((r.guest?.name || "").toLowerCase().includes(q)) return true;
+          if ((r.guest?.phone || "").toLowerCase().includes(q)) return true;
+          // Match second guest name/phone (e.g. for double rooms)
+          if ((r.secondGuestName || "").toLowerCase().includes(q)) return true;
+          if ((r.secondGuestPhone || "").toLowerCase().includes(q)) return true;
+          // Match the primary guest's ID number — this field is NOT in the
+          // reservation's nested guest object (the API only returns name/phone
+          // there), so we cross-reference the guests array via guestMap.
+          const guest = r.guestId ? guestMap.get(r.guestId) : undefined;
+          if (guest?.idNumber && guest.idNumber.toLowerCase().includes(q)) return true;
+          return false;
+        }
       );
     }
-    // Sort: checked-in first, then upcoming, then others. Within each, latest first.
+    // Sort: ACTIVE first, then UPCOMING. Within each, latest createdAt first.
     return [...list].sort((a, b) => {
-      const aPri = a.activeReservation?.status === "ACTIVE" ? 2 : a.activeReservation?.status === "UPCOMING" ? 1 : 0;
-      const bPri = b.activeReservation?.status === "ACTIVE" ? 2 : b.activeReservation?.status === "UPCOMING" ? 1 : 0;
+      const aPri = a.status === "ACTIVE" ? 2 : a.status === "UPCOMING" ? 1 : 0;
+      const bPri = b.status === "ACTIVE" ? 2 : b.status === "UPCOMING" ? 1 : 0;
       if (bPri !== aPri) return bPri - aPri;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [enrichedGuests, statusFilter, search]);
+  }, [activeReservations, statusFilter, search]);
 
   // Update pagination total
   useEffect(() => { pagination.setTotalItems(filtered.length); }, [filtered.length, pagination]);
@@ -589,16 +570,15 @@ export default function AccommodationGuestsPage() {
   const quickCheckout = (r: Reservation) => setConfirmAction({ type: "checkout", reservation: r });
 
   // ── Stats ──
-  // Counts GUESTS (not reservations) so the numbers always match the
-  // displayed list rows. A guest with both an ACTIVE and an UPCOMING
-  // reservation is counted once, in the ACTIVE bucket (matches the
-  // priority logic in enrichedGuests above).
+  // Counts RESERVATIONS (one per row in the table) so the numbers
+  // always match the displayed list rows exactly. A guest with multiple
+  // active/upcoming reservations is counted once per reservation.
   const stats = useMemo(() => ({
-    total: enrichedGuests.filter((g) => g.activeReservation).length,
-    checkedIn: enrichedGuests.filter((g) => g.activeReservation?.status === "ACTIVE").length,
-    upcoming: enrichedGuests.filter((g) => g.activeReservation?.status === "UPCOMING").length,
+    total: activeReservations.length,
+    checkedIn: activeReservations.filter((r) => r.status === "ACTIVE").length,
+    upcoming: activeReservations.filter((r) => r.status === "UPCOMING").length,
     availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
-  }), [enrichedGuests, rooms]);
+  }), [activeReservations, rooms]);
 
   // ── Render ──
   if (loading) {
@@ -685,80 +665,81 @@ export default function AccommodationGuestsPage() {
           <>
             {/* Mobile Cards */}
             <div className="divide-y md:hidden">
-              {paginated.map((g) => (
-                <div key={g.id} className="p-3 space-y-2">
+              {paginated.map((r) => {
+                const guest = r.guestId ? guestMap.get(r.guestId) : undefined;
+                const guestIdNumber = guest?.idNumber || "";
+                const vip = guest?.vip || false;
+                return (
+                <div key={r.id} className="p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${g.activeReservation?.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : g.activeReservation?.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
-                        {g.name.charAt(0).toUpperCase()}
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${r.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : r.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                        {(r.guest?.name || "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-sm font-medium">{g.name}</p>
-                          {g.vip && <span className="text-[9px] text-amber-600 font-semibold">VIP</span>}
+                          <p className="truncate text-sm font-medium">{r.guest?.name || "—"}</p>
+                          {vip && <span className="text-[9px] text-amber-600 font-semibold">VIP</span>}
                         </div>
-                        <p className="text-[10px] text-muted-foreground">{g.phone}{g.idNumber ? ` | ${g.idNumber}` : ""}</p>
+                        <p className="text-[10px] text-muted-foreground">{r.guest?.phone || ""}{guestIdNumber ? ` | ${guestIdNumber}` : ""}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {g.activeReservation?.exceptionallyReserved && (
+                      {r.exceptionallyReserved && (
                         <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300">{t("exceptionBadge")}</Badge>
                       )}
-                      {g.activeReservation && (
-                        <Badge variant="outline" className={`text-[9px] shrink-0 ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
-                          {resStatusLabel(g.activeReservation.status)}
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className={`text-[9px] shrink-0 ${RES_STATUS[r.status]?.color || ""}`}>
+                        {resStatusLabel(r.status)}
+                      </Badge>
                     </div>
                   </div>
-                  {g.activeReservation && g.activeReservation.room && (
+                  {r.room && (
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground pl-10">
-                      <span>{g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}</span>
-                      <span>{formatDate(g.activeReservation.checkIn)} → {formatDate(g.activeReservation.checkOut)}</span>
+                      <span>{r.room && !isDefaultRoomName(r.room.name, r.room.number) ? t("roomWithName", { number: r.room.number, name: r.room.name }) : t("roomPrefix", { number: r.room.number })}</span>
+                      <span>{formatDate(r.checkIn)} → {formatDate(r.checkOut)}</span>
                     </div>
                   )}
-                  {g.activeReservation?.secondGuestName && (
+                  {r.secondGuestName && (
                     <div className="text-[10px] text-muted-foreground pl-10 flex items-center gap-1">
-                      <UserPlus className="h-3 w-3" /> {t("secondGuestPrefix")} {g.activeReservation.secondGuestName}{g.activeReservation.secondGuestPhone ? ` (${g.activeReservation.secondGuestPhone})` : ""}
+                      <UserPlus className="h-3 w-3" /> {t("secondGuestPrefix")} {r.secondGuestName}{r.secondGuestPhone ? ` (${r.secondGuestPhone})` : ""}
                     </div>
                   )}
-                  {g.activeReservation && (
-                    <div className="flex gap-2 pl-10">
-                      {g.activeReservation.status === "UPCOMING" && (() => {
-                        const eligibility = getCheckInEligibility(g.activeReservation!);
-                        if (eligibility.canCheckIn) {
-                          return (
-                            <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(g.activeReservation!)}>
-                              <LogIn className="h-3 w-3" /> {t("btnCheckIn")}
-                            </Button>
-                          );
-                        }
+                  <div className="flex gap-2 pl-10">
+                    {r.status === "UPCOMING" && (() => {
+                      const eligibility = getCheckInEligibility(r);
+                      if (eligibility.canCheckIn) {
                         return (
-                          <Button
-                            size="sm"
-                            disabled
-                            title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
-                            className="h-7 text-[10px] gap-1 bg-gray-200 text-gray-400 cursor-not-allowed"
-                          >
-                            <LogIn className="h-3 w-3 opacity-60" /> {t("btnCheckIn")}
+                          <Button size="sm" className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => quickCheckin(r)}>
+                            <LogIn className="h-3 w-3" /> {t("btnCheckIn")}
                           </Button>
                         );
-                      })()}
-                      {g.activeReservation.status === "ACTIVE" && (
-                        isCheckoutDue(g.activeReservation.checkOut) ? (
-                          <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(g.activeReservation!)}>
-                            <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(g.activeReservation!)}>
-                            <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
-                          </Button>
-                        )
-                      )}
-                    </div>
-                  )}
+                      }
+                      return (
+                        <Button
+                          size="sm"
+                          disabled
+                          title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
+                          className="h-7 text-[10px] gap-1 bg-gray-200 text-gray-400 cursor-not-allowed"
+                        >
+                          <LogIn className="h-3 w-3 opacity-60" /> {t("btnCheckIn")}
+                        </Button>
+                      );
+                    })()}
+                    {r.status === "ACTIVE" && (
+                      isCheckoutDue(r.checkOut) ? (
+                        <Button size="sm" className="h-7 text-[10px] gap-1 bg-sky-600 hover:bg-sky-700" onClick={() => quickCheckout(r)}>
+                          <LogOut className="h-3 w-3" /> {t("btnCheckOut")}
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(r)}>
+                          <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
+                        </Button>
+                      )
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Desktop Table */}
@@ -776,17 +757,21 @@ export default function AccommodationGuestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((g) => (
-                    <TableRow key={g.id} className={g.activeReservation?.status === "ACTIVE" ? "bg-emerald-50/30" : ""}>
+                  {paginated.map((r) => {
+                    const guest = r.guestId ? guestMap.get(r.guestId) : undefined;
+                    const guestIdNumber = guest?.idNumber || "";
+                    const vip = guest?.vip || false;
+                    return (
+                    <TableRow key={r.id} className={r.status === "ACTIVE" ? "bg-emerald-50/30" : ""}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${g.activeReservation?.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : g.activeReservation?.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
-                            {g.name.charAt(0).toUpperCase()}
+                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${r.status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : r.status === "UPCOMING" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                            {(r.guest?.name || "?").charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-medium">{g.name}{g.vip ? " \u2605" : ""}</p>
-                              {g.activeReservation?.exceptionallyReserved && (
+                              <p className="text-sm font-medium">{r.guest?.name || "—"}{vip ? " \u2605" : ""}</p>
+                              {r.exceptionallyReserved && (
                                 <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-300 px-1 py-0">{t("exceptionBadge")}</Badge>
                               )}
                             </div>
@@ -794,52 +779,48 @@ export default function AccommodationGuestsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="text-xs">{g.phone || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{g.idNumber || "—"}</p>
+                        <p className="text-xs">{r.guest?.phone || "—"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{guestIdNumber || "—"}</p>
                       </TableCell>
                       {/* Room / Status — merged into one column, Room on top */}
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          {g.activeReservation?.room ? (
+                          {r.room ? (
                             <span className="text-xs font-medium text-gray-700">
-                              {g.activeReservation.room && !isDefaultRoomName(g.activeReservation.room.name, g.activeReservation.room.number) ? t("roomWithName", { number: g.activeReservation.room.number, name: g.activeReservation.room.name }) : t("roomPrefix", { number: g.activeReservation.room.number })}
+                              {r.room && !isDefaultRoomName(r.room.name, r.room.number) ? t("roomWithName", { number: r.room.number, name: r.room.name }) : t("roomPrefix", { number: r.room.number })}
                             </span>
                           ) : (
                             <span className="text-[10px] text-gray-300">—</span>
                           )}
-                          {g.activeReservation ? (
-                            <Badge variant="outline" className={`text-[10px] w-fit ${RES_STATUS[g.activeReservation.status]?.color || ""}`}>
-                              {resStatusLabel(g.activeReservation.status)}
-                            </Badge>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">—</span>
-                          )}
+                          <Badge variant="outline" className={`text-[10px] w-fit ${RES_STATUS[r.status]?.color || ""}`}>
+                            {resStatusLabel(r.status)}
+                          </Badge>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        {g.activeReservation?.secondGuestName ? (
+                        {r.secondGuestName ? (
                           <div>
-                            <p className="font-medium">{g.activeReservation.secondGuestName}</p>
-                            <p className="text-[10px] text-muted-foreground">{g.activeReservation.secondGuestPhone || ""}</p>
+                            <p className="font-medium">{r.secondGuestName}</p>
+                            <p className="text-[10px] text-muted-foreground">{r.secondGuestPhone || ""}</p>
                           </div>
-                        ) : g.activeReservation?.exceptionallyReserved ? (
+                        ) : r.exceptionallyReserved ? (
                           <span className="text-[10px] text-amber-600">{t("naException")}</span>
                         ) : (
                           <span className="text-[10px] text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {g.activeReservation ? `${formatDate(g.activeReservation.checkIn)} → ${formatDate(g.activeReservation.checkOut)}` : "—"}
+                        {`${formatDate(r.checkIn)} → ${formatDate(r.checkOut)}`}
                       </TableCell>
                       {/* Amount column removed per request. */}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* ── Primary action: Check In / Check Out (inline) ── */}
-                          {g.activeReservation?.status === "UPCOMING" && (() => {
-                            const eligibility = getCheckInEligibility(g.activeReservation!);
+                          {r.status === "UPCOMING" && (() => {
+                            const eligibility = getCheckInEligibility(r);
                             if (eligibility.canCheckIn) {
                               return (
-                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(g.activeReservation!)}>
+                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={() => quickCheckin(r)}>
                                   <LogIn className="h-3 w-3" /> {t("btnCheckIn", "Check In")}
                                 </Button>
                               );
@@ -859,28 +840,20 @@ export default function AccommodationGuestsPage() {
                               </div>
                             );
                           })()}
-                          {g.activeReservation?.status === "ACTIVE" && (
-                            isCheckoutDue(g.activeReservation.checkOut) ? (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(g.activeReservation!)}>
+                          {r.status === "ACTIVE" && (
+                            isCheckoutDue(r.checkOut) ? (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-sky-700 border-sky-300 hover:bg-sky-50" onClick={() => quickCheckout(r)}>
                                 <LogOut className="h-3 w-3" /> {t("btnCheckOut", "Check Out")}
                               </Button>
                             ) : (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(g.activeReservation!)}>
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-rose-700 border-rose-300 hover:bg-rose-50" onClick={() => setEarlyCheckoutDialog(r)}>
                                 <LogOut className="h-3 w-3" /> {t("btnEarlyCheckout", "Early Checkout")}
                               </Button>
                             )
                           )}
-                          {!g.activeReservation && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }}>
-                              <CalendarDays className="h-3 w-3" /> {t("btnReserve")}
-                            </Button>
-                          )}
-                          {(!g.activeReservation || g.activeReservation.status === "COMPLETED" || g.activeReservation.status === "CANCELLED") && g.activeReservation && (
-                            <span className="text-[10px] text-muted-foreground">—</span>
-                          )}
 
                           {/* ── Secondary actions in ⋮ dropdown ── */}
-                          {g.activeReservation && (g.activeReservation.status === "UPCOMING" || g.activeReservation.status === "ACTIVE") && (
+                          {(r.status === "UPCOMING" || r.status === "ACTIVE") && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -891,20 +864,20 @@ export default function AccommodationGuestsPage() {
                                 <DropdownMenuItem onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }} className="text-violet-700 focus:text-violet-700">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                {g.activeReservation.status === "ACTIVE" && (
-                                  <DropdownMenuItem onClick={() => openExtendDialog(g.activeReservation!)} className="text-sky-700 focus:text-sky-700">
+                                {r.status === "ACTIVE" && (
+                                  <DropdownMenuItem onClick={() => openExtendDialog(r)} className="text-sky-700 focus:text-sky-700">
                                     <CalendarPlus className="mr-2 h-4 w-4" /> Extend Stay
                                   </DropdownMenuItem>
                                 )}
-                                {g.activeReservation.status === "ACTIVE" && !isCheckoutDue(g.activeReservation.checkOut) && (
-                                  <DropdownMenuItem onClick={() => setEarlyCheckoutDialog(g.activeReservation!)} className="text-rose-700 focus:text-rose-700">
+                                {r.status === "ACTIVE" && !isCheckoutDue(r.checkOut) && (
+                                  <DropdownMenuItem onClick={() => setEarlyCheckoutDialog(r)} className="text-rose-700 focus:text-rose-700">
                                     <LogOut className="mr-2 h-4 w-4" /> Early Checkout
                                   </DropdownMenuItem>
                                 )}
-                                {g.activeReservation.status === "UPCOMING" && (
+                                {r.status === "UPCOMING" && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => setConfirmAction({ type: "cancel", reservation: g.activeReservation! })} className="text-rose-600 focus:text-rose-600">
+                                    <DropdownMenuItem onClick={() => setConfirmAction({ type: "cancel", reservation: r })} className="text-rose-600 focus:text-rose-600">
                                       <XCircle className="mr-2 h-4 w-4" /> Cancel
                                     </DropdownMenuItem>
                                   </>
@@ -915,7 +888,8 @@ export default function AccommodationGuestsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
