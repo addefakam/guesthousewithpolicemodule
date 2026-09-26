@@ -465,11 +465,26 @@ export default function AccommodationGuestsPage() {
         }
       );
     }
-    // Sort: ACTIVE first, then UPCOMING. Within each, latest createdAt first.
+    // Sort: ACTIVE first, then UPCOMING.
+    //   - ACTIVE  → sorted by checkIn date DESCENDING (most recent arrival
+    //               first — the operator sees who got here most recently)
+    //   - UPCOMING → sorted by checkIn date ASCENDING (soonest arrival
+    //                first — the operator sees who's expected next)
+    //   - Other   → fallback to createdAt DESC
     return [...list].sort((a, b) => {
       const aPri = a.status === "ACTIVE" ? 2 : a.status === "UPCOMING" ? 1 : 0;
       const bPri = b.status === "ACTIVE" ? 2 : b.status === "UPCOMING" ? 1 : 0;
       if (bPri !== aPri) return bPri - aPri;
+      // Same priority group:
+      if (a.status === "UPCOMING") {
+        // Soonest arrival first → ascending by checkIn
+        return (a.checkIn || "").localeCompare(b.checkIn || "");
+      }
+      if (a.status === "ACTIVE") {
+        // Most recent arrival first → descending by checkIn
+        return (b.checkIn || "").localeCompare(a.checkIn || "");
+      }
+      // COMPLETED/CANCELLED/DELETED fallback — most recently created first
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [activeReservations, statusFilter, search]);
