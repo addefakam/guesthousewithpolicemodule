@@ -1180,7 +1180,8 @@ export default function RoomsPage() {
                     )}
                   </div>
 
-                  {/* Edit + Delete Room — always available on ALL statuses */}
+                  {/* Edit + Delete Room — only on AVAILABLE (free) rooms */}
+                  {st === "AVAILABLE" && (
                   <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
@@ -1201,6 +1202,7 @@ export default function RoomsPage() {
                       {t("btnDelete")}
                     </Button>
                   </div>
+                  )}
                 </CardContent>
               </Card>
             );
