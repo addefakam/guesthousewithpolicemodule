@@ -1766,24 +1766,92 @@ export default function RoomsPage() {
                       <p className="text-sm text-gray-400">{t("noReservationsForRoom")}</p>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {roomReservations.map((res) => (
-                        <div key={res.id} className="flex items-center justify-between rounded-lg border p-2.5 text-xs">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 shrink-0">
-                              <User className="h-3.5 w-3.5 text-gray-500" />
+                        <div key={res.id} className="rounded-lg border p-2.5 text-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 shrink-0">
+                                <User className="h-3.5 w-3.5 text-gray-500" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{res.guest?.name || "—"}</p>
+                                <p className="text-gray-500">{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{res.guest?.name || "—"}</p>
-                              <p className="text-gray-500">{formatDate(res.checkIn)} → {formatDate(res.checkOut)}</p>
+                            <div className="text-right shrink-0 ml-2">
+                              <Badge variant="outline" className={`text-[10px] ${STATUS_STYLES[res.status] || ""}`}>
+                                {t("status" + res.status.charAt(0) + res.status.slice(1).toLowerCase())}
+                              </Badge>
+                              <p className="font-medium text-gray-900 mt-0.5">{formatPrice(res.totalCost)}</p>
                             </div>
                           </div>
-                          <div className="text-right shrink-0 ml-2">
-                            <Badge variant="outline" className={`text-[10px] ${STATUS_STYLES[res.status] || ""}`}>
-                              {t("status" + res.status.charAt(0) + res.status.slice(1).toLowerCase())}
-                            </Badge>
-                            <p className="font-medium text-gray-900 mt-0.5">{formatPrice(res.totalCost)}</p>
-                          </div>
+                          {/* Per-reservation actions — only for UPCOMING or ACTIVE */}
+                          {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                            <div className="flex gap-1.5 flex-wrap pt-1 border-t">
+                              {/* Change Dates */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[10px] gap-1 text-sky-700 border-sky-200 hover:bg-sky-50"
+                                onClick={() => {
+                                  openExtendDialog(res);
+                                }}
+                              >
+                                <CalendarClock className="h-3 w-3" /> Change Dates
+                              </Button>
+                              {/* Shift Room */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[10px] gap-1 text-violet-700 border-violet-200 hover:bg-violet-50"
+                                onClick={() => {
+                                  openShiftDialog(res);
+                                }}
+                              >
+                                <ArrowRightLeft className="h-3 w-3" /> Shift Room
+                              </Button>
+                              {/* Cancel — only for UPCOMING */}
+                              {res.status === "UPCOMING" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[10px] gap-1 text-rose-600 border-rose-200 hover:bg-rose-50"
+                                  onClick={async () => {
+                                    if (!confirm(`Cancel reservation for ${res.guest?.name || "this guest"}?`)) return;
+                                    try {
+                                      const { apiCancelReservation } = await import("@/lib/api");
+                                      await apiCancelReservation(res.id);
+                                      toast.success("Reservation cancelled");
+                                      // Refresh room reservations
+                                      if (infoRoom) {
+                                        const data = await apiGetReservations(`roomId=${infoRoom.id}`);
+                                        setRoomReservations(Array.isArray(data) ? data : (data?.data || []));
+                                      }
+                                      triggerRefresh();
+                                    } catch (err) {
+                                      toast.error(err instanceof Error ? err.message : "Failed to cancel");
+                                    }
+                                  }}
+                                >
+                                  <XCircle className="h-3 w-3" /> Cancel
+                                </Button>
+                              )}
+                              {/* Early Checkout — only for ACTIVE */}
+                              {res.status === "ACTIVE" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[10px] gap-1 text-amber-700 border-amber-200 hover:bg-amber-50"
+                                  onClick={() => {
+                                    setEarlyCheckoutDialog(res);
+                                  }}
+                                >
+                                  <LogOut className="h-3 w-3" /> Early Checkout
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
