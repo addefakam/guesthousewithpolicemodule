@@ -985,9 +985,18 @@ export default function RoomsPage() {
                               <CalendarClock className="mr-2 h-4 w-4" />
                               {t("menuExtendEarlyCheckout")}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setInfoRoom(room); }}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              const active = roomResMap[room.id];
+                              if (active) {
+                                setInfoRoom(room);
+                                openShiftDialog(active);
+                              } else {
+                                toast.error(t("toastNoActiveReservation"));
+                              }
+                            }}>
                               <ArrowRightLeft className="mr-2 h-4 w-4" />
-                              {t("menuRoomShift")}
+                              {t("btnShift")}
                             </DropdownMenuItem>
                           </>
                         ) : (
@@ -1838,6 +1847,18 @@ export default function RoomsPage() {
                       >
                         <CalendarPlus className="h-4 w-4" />
                         {t("btnReserve")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-violet-700 border-violet-300 hover:bg-violet-50"
+                        onClick={() => {
+                          const active = roomReservations.find((r) => r.status === "ACTIVE");
+                          if (active) openShiftDialog(active);
+                          else toast.error(t("toastNoActiveReservation"));
+                        }}
+                      >
+                        <ArrowRightLeft className="h-4 w-4" />
+                        {t("btnShift")}
                       </Button>
                     </div>
                   ) : null}
