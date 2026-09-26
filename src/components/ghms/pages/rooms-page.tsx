@@ -1126,7 +1126,7 @@ export default function RoomsPage() {
                       <Button
                         size="sm"
                         className="flex-1 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleReserveFromRoom(room)}
+                        onClick={(e) => { e.stopPropagation(); handleReserveFromRoom(room); }}
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
                         {t("btnReserve")}
@@ -1136,7 +1136,7 @@ export default function RoomsPage() {
                         size="sm"
                         variant="outline"
                         className="flex-1 gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                        onClick={() => handleReserveFromRoom(room)}
+                        onClick={(e) => { e.stopPropagation(); handleReserveFromRoom(room); }}
                         title="Reserve for different dates"
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
@@ -1147,7 +1147,7 @@ export default function RoomsPage() {
                         size="sm"
                         variant="outline"
                         className="flex-1 gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                        onClick={() => handleReserveFromRoom(room)}
+                        onClick={(e) => { e.stopPropagation(); handleReserveFromRoom(room); }}
                         title="Reserve for different dates"
                       >
                         <CalendarPlus className="h-3.5 w-3.5" />
