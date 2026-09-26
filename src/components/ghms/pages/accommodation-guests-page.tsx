@@ -389,6 +389,8 @@ export default function AccommodationGuestsPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      // Fetch the 3 main data sources in parallel — these are what the
+      // table needs to render. Don't block on lifecycle summaries.
       const [gData, rData, rmData] = await Promise.all([
         apiGetGuests(),
         apiGetReservations(),
@@ -402,16 +404,18 @@ export default function AccommodationGuestsPage() {
       const raw = Array.isArray(rmData) ? rmData : Array.isArray(rmData?.rooms) ? rmData.rooms : [];
       setRooms(raw);
 
-      // ── Fetch lifecycle summaries for each guest ──
+      // ── Stop loading here so the page renders immediately ──
+      setLoading(false);
+
+      // ── Fetch lifecycle summaries in the background ──
       // This powers the status-change badges (early exit, extended,
-      // room shifted, cancelled) on the guest search table. Fetched
-      // in parallel with a small concurrency cap to avoid hammering
-      // the API — failures are non-blocking (badges simply don't show).
+      // room shifted, cancelled). Fetched AFTER the page renders so
+      // they don't block the initial load. Badges pop in as data arrives.
+      // Use a higher batch size (20 instead of 8) to reduce the number
+      // of sequential await rounds.
       try {
         const summaries: Record<string, GuestLifecycleSummary> = {};
-        // Process in batches of 8 to avoid spawning too many requests
-        // at once on guesthouses with hundreds of guests.
-        const BATCH = 8;
+        const BATCH = 20;
         for (let i = 0; i < gArr.length; i += BATCH) {
           const batch = gArr.slice(i, i + BATCH);
           const results = await Promise.allSettled(
@@ -422,8 +426,9 @@ export default function AccommodationGuestsPage() {
               summaries[batch[idx].id] = res.value.summary as GuestLifecycleSummary;
             }
           });
+          // Update progressively so badges appear as each batch completes
+          setLifecycleSummaries({ ...summaries });
         }
-        setLifecycleSummaries(summaries);
       } catch {
         // Non-blocking — badges just won't show.
         setLifecycleSummaries({});
