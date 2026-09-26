@@ -78,12 +78,35 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   section?: string;
+  // Optional: which tab inside the page should be pre-selected when this
+  // item is clicked. Used by the 'Accommodation' parent's children
+  // (Rooms → tab=rooms, Reservations → tab=reservations). When undefined,
+  // the page opens with its default tab (controlled by useAppStore's
+  // accommodationTab state).
+  tab?: "rooms" | "reservations";
+  // Optional: child items rendered as an expandable sub-list beneath this
+  // parent. Only 'Accommodation' uses this today — its children are Rooms
+  // and Reservations. Parents with children render with a chevron toggle
+  // + an expandable region; clicking the parent label still navigates
+  // (default tab), clicking the chevron only expands/collapses.
+  children?: NavItem[];
 }
 
 // ── All available navigation items ──
 const ALL_NAV_ITEMS: NavItem[] = [
   { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { page: "accommodation", label: "Accommodation", icon: DoorOpen },
+  {
+    page: "accommodation",
+    label: "Accommodation",
+    icon: DoorOpen,
+    // Expandable section — click chevron to expand, click label to navigate
+    // (default tab). Auto-expands when the user is on the accommodation page
+    // so the active child is visible.
+    children: [
+      { page: "accommodation", label: "Rooms", icon: Bed, tab: "rooms" },
+      { page: "accommodation", label: "Reservations", icon: CalendarCheck, tab: "reservations" },
+    ],
+  },
   { page: "users", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
   { page: "group-bookings", label: "Group Bookings", icon: Users },
@@ -280,45 +303,172 @@ function getRoleBadgeClass(role: string): string {
 }
 
 // ── Nav item button component ──
+// Renders a single sidebar entry. If `item.children` is set, the button
+// shows a chevron that toggles expand/collapse; clicking the label still
+// navigates (default tab). The `expanded` + `onToggleExpand` props are
+// only used by parents with children. When expanded, children are
+// rendered as NavItemChildButton instances below; their clicks dispatch
+// `onChildClick(childItem)` so the parent component can pre-select the
+// tab via setAccommodationTab before navigating.
 function NavItemButton({
   item,
   currentPage,
+  currentTab,
   onClick,
+  onChildClick,
+  expanded,
+  onToggleExpand,
+  depth = 0,
 }: {
   item: NavItem;
   currentPage: string;
+  // Current accommodationTab from the store — used so that when both
+  // child items share page='accommodation', only the one matching the
+  // active tab is highlighted as active.
+  currentTab?: "rooms" | "reservations";
   onClick: () => void;
+  // Callback for clicks on child items — receives the child NavItem so
+  // the parent (SidebarContent) can call setAccommodationTab(child.tab)
+  // before navigating. Only used when item.children is non-empty.
+  onChildClick?: (item: NavItem) => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  // Indent depth for nested children (0 = top-level, 1 = first child).
+  // Children get extra left padding so they visually nest under their
+  // parent.
+  depth?: number;
 }) {
   const { t } = useTranslation("sidebar");
   const Icon = item.icon;
-  const isActive = currentPage === item.page;
+  const hasChildren = !!item.children && item.children.length > 0;
+  // Active highlight logic:
+  //   - For leaf items (no children): active when currentPage matches AND
+  //     (no tab on the item OR currentTab matches the item's tab).
+  //   - For parents (with children): active when currentPage matches the
+  //     parent's page (any tab).
+  const isActive = hasChildren
+    ? currentPage === item.page
+    : currentPage === item.page && (!item.tab || currentTab === item.tab);
 
   return (
+    <div className="relative">
+      <div className="flex items-stretch">
+        <button
+          onClick={onClick}
+          style={{ paddingLeft: `${12 + depth * 16}px` }}
+          className={`group relative flex flex-1 items-center gap-3 rounded-lg pr-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+            isActive
+              ? "bg-primary/10 text-primary"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          {isActive && (
+            <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
+          )}
+          <Icon
+            className={`size-[18px] shrink-0 transition-colors ${
+              isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+            }`}
+          />
+          <span className="truncate">{t(item.label)}</span>
+          {item.badge && (
+            <Badge
+              variant="secondary"
+              className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
+            >
+              {t(item.badge)}
+            </Badge>
+          )}
+        </button>
+        {hasChildren && onToggleExpand && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+            aria-label={expanded ? t("Collapse") : t("Expand sidebar")}
+            aria-expanded={expanded}
+            className="flex shrink-0 items-center justify-center w-8 rounded-r-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+          >
+            <ChevronDown
+              className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+      {/* Expandable children */}
+      {hasChildren && expanded && (
+        <div className="mt-0.5 space-y-0.5">
+          {item.children!.map((child) => {
+            // Each child needs its own onClick so it can pre-select its
+            // tab via the parent's handleItemClick logic. We use the
+            // same `onClick` callback signature — the parent's caller
+            // (SidebarContent.handleItemClick) reads `item.tab` to decide
+            // whether to call setAccommodationTab. So we need to pass
+            // child + its handler down. The simplest way: re-call the
+            // parent's onClick factory with the child. But onClick is a
+            // closure-free () => void here. Workaround: have the parent
+            // supply a `onChildClick` callback that takes a NavItem.
+            //
+            // For now, fall back to a per-child closure: when the user
+            // clicks a child, we trigger the parent's onClick (which
+            // navigates to the parent's page) AND set the tab based on
+            // child.tab. The setAccommodationTab is hoisted to the
+            // SidebarContent via a non-public prop. To keep this
+            // component pure, we accept an onChildClick prop.
+            return (
+              <NavItemChildButton
+                key={`${child.page}-${child.tab || ""}`}
+                item={child}
+                currentPage={currentPage}
+                currentTab={currentTab}
+                onChildClick={onChildClick}
+                depth={depth + 1}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Child nav button (for items inside an expandable section) ──
+// Same visual style as NavItemButton but always a leaf (no children of
+// its own). The onChildClick prop receives the child NavItem so the
+// parent component can call setAccommodationTab(child.tab) + onNavigate.
+function NavItemChildButton({
+  item,
+  currentPage,
+  currentTab,
+  onChildClick,
+  depth,
+}: {
+  item: NavItem;
+  currentPage: string;
+  currentTab?: "rooms" | "reservations";
+  onChildClick?: (item: NavItem) => void;
+  depth: number;
+}) {
+  const { t } = useTranslation("sidebar");
+  const Icon = item.icon;
+  const isActive = currentPage === item.page && (!item.tab || currentTab === item.tab);
+  return (
     <button
-      onClick={onClick}
-      className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+      onClick={() => onChildClick?.(item)}
+      style={{ paddingLeft: `${12 + depth * 16}px` }}
+      className={`group relative flex w-full items-center gap-3 rounded-lg pr-3 py-2 text-[13px] font-medium transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
         isActive
           ? "bg-primary/10 text-primary"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
       }`}
     >
       {isActive && (
         <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" />
       )}
       <Icon
-        className={`size-[18px] shrink-0 transition-colors ${
+        className={`size-4 shrink-0 transition-colors ${
           isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
         }`}
       />
       <span className="truncate">{t(item.label)}</span>
-      {item.badge && (
-        <Badge
-          variant="secondary"
-          className="ml-auto h-5 min-w-[20px] items-center justify-center bg-rose-500 px-1.5 text-[10px] font-bold text-white"
-        >
-          {t(item.badge)}
-        </Badge>
-      )}
     </button>
   );
 }
@@ -440,9 +590,56 @@ function SidebarContent({
   onToggleCollapse: () => void;
 }) {
   const { t } = useTranslation("sidebar");
-  const { jointSession, setJointLoginDialogOpen, subscription, disabledPages } = useAppStore();
+  const { jointSession, setJointLoginDialogOpen, subscription, disabledPages, accommodationTab, setAccommodationTab } = useAppStore();
   const navItems = getNavItems(user, disabledPages ?? []);
   const roleBadgeClass = getRoleBadgeClass(user.role);
+
+  // ── Expandable sidebar sections (currently only 'Accommodation') ──
+  // Persisted in localStorage so the operator's choice is remembered.
+  // Auto-expanded when the user is on a page that matches the parent's
+  // page (so the active child is always visible).
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("ghms.sidebar.expandedSections");
+      if (stored) {
+        const arr = JSON.parse(stored);
+        if (Array.isArray(arr)) return new Set(arr.filter((x): x is string => typeof x === "string"));
+      }
+    } catch {
+      /* private mode / corrupted JSON — ignore */
+    }
+    return new Set();
+  });
+  // Auto-expand any section whose parent page matches currentPage.
+  // Done as an effect (not initial state) so navigation AFTER first
+  // render also triggers the expand. Doesn't override an explicit
+  // collapse — if the user manually collapses, we respect that until
+  // they navigate away and back.
+  useEffect(() => {
+    const pagesWithChildren = new Set(
+      navItems.filter((i) => i.children && i.children.length > 0).map((i) => i.page)
+    );
+    if (pagesWithChildren.has(currentPage)) {
+      setExpandedSections((prev) => prev.has(currentPage) ? prev : new Set(prev).add(currentPage));
+    }
+  }, [currentPage, navItems]);
+  const toggleSection = (page: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(page)) next.delete(page);
+      else next.add(page);
+      try { localStorage.setItem("ghms.sidebar.expandedSections", JSON.stringify(Array.from(next))); } catch { /* private mode */ }
+      return next;
+    });
+  };
+  // Click handler that respects the item's `tab` field (children of the
+  // Accommodation parent). If tab is set, call setAccommodationTab first
+  // so the page opens with the right tab pre-selected.
+  const handleItemClick = (item: NavItem) => {
+    if (item.tab) setAccommodationTab(item.tab);
+    onNavigate(item.page);
+  };
 
   // Translated role label
   const getRoleLabel = (role: string) => {
@@ -560,10 +757,14 @@ function SidebarContent({
         <nav className="flex flex-col gap-1" aria-label={t("Main navigation")}>
           {navItems.map((item) => (
             <NavItemButton
-              key={item.page}
+              key={item.page + (item.tab ? `-${item.tab}` : "")}
               item={item}
               currentPage={currentPage}
-              onClick={() => onNavigate(item.page)}
+              currentTab={accommodationTab}
+              expanded={expandedSections.has(item.page)}
+              onToggleExpand={item.children && item.children.length > 0 ? () => toggleSection(item.page) : undefined}
+              onClick={() => handleItemClick(item)}
+              onChildClick={handleItemClick}
             />
           ))}
 
