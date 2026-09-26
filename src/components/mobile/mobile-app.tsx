@@ -102,6 +102,9 @@ import {
   Trash2,
   Ban,
   RefreshCw,
+  Gem,
+  Armchair,
+  Sparkles,
 } from "lucide-react";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
@@ -152,6 +155,11 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   TWIN: <Hotel className="h-4 w-4" />,
   SUITE: <Crown className="h-4 w-4" />,
   DELUXE: <Star className="h-4 w-4" />,
+  KING: <Gem className="h-4 w-4" />,
+  STANDARD: <Building2 className="h-4 w-4" />,
+  STANDARD_SUITE: <Layers className="h-4 w-4" />,
+  JUNIOR_SUITE: <Armchair className="h-4 w-4" />,
+  EXECUTIVE_SUITE: <Sparkles className="h-4 w-4" />,
 };
 
 const STATUS_STYLES: Record<string, string> = {

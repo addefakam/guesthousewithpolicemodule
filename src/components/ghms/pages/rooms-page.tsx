@@ -95,6 +95,9 @@ import {
   XCircle,
   AlertCircle,
   ClipboardList,
+  Gem,
+  Armchair,
+  Sparkles,
 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -141,6 +144,11 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   TWIN: <Hotel className="h-4 w-4" />,
   SUITE: <Crown className="h-4 w-4" />,
   DELUXE: <Star className="h-4 w-4" />,
+  KING: <Gem className="h-4 w-4" />,
+  STANDARD: <Building2 className="h-4 w-4" />,
+  STANDARD_SUITE: <Layers className="h-4 w-4" />,
+  JUNIOR_SUITE: <Armchair className="h-4 w-4" />,
+  EXECUTIVE_SUITE: <Sparkles className="h-4 w-4" />,
 };
 
 const ROOM_TYPE_COLORS: Record<string, string> = {
@@ -149,6 +157,11 @@ const ROOM_TYPE_COLORS: Record<string, string> = {
   TWIN: "bg-teal-50 text-teal-700 border-teal-200",
   SUITE: "bg-amber-50 text-amber-700 border-amber-200",
   DELUXE: "bg-rose-50 text-rose-700 border-rose-200",
+  KING: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  STANDARD: "bg-slate-50 text-slate-700 border-slate-200",
+  STANDARD_SUITE: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  JUNIOR_SUITE: "bg-pink-50 text-pink-700 border-pink-200",
+  EXECUTIVE_SUITE: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
 const STATUS_STYLES: Record<string, string> = {
