@@ -469,8 +469,9 @@ export default function AccommodationGuestsPage() {
       );
     }
     // Sort: ACTIVE first, then UPCOMING.
-    //   - ACTIVE  → sorted by checkIn date DESCENDING (most recent arrival
-    //               first — the operator sees who got here most recently)
+    //   - ACTIVE  → sorted by checkOut date ASCENDING (soonest departure
+    //               first — the operator sees who needs to check out
+    //               today/tomorrow on top, the most urgent action)
     //   - UPCOMING → sorted by checkIn date ASCENDING (soonest arrival
     //                first — the operator sees who's expected next)
     //   - Other   → fallback to createdAt DESC
@@ -484,8 +485,10 @@ export default function AccommodationGuestsPage() {
         return (a.checkIn || "").localeCompare(b.checkIn || "");
       }
       if (a.status === "ACTIVE") {
-        // Most recent arrival first → descending by checkIn
-        return (b.checkIn || "").localeCompare(a.checkIn || "");
+        // Soonest departure first → ascending by checkOut.
+        // Operator sees who needs to check out today/tomorrow on top —
+        // the most urgent action — rather than who arrived most recently.
+        return (a.checkOut || "").localeCompare(b.checkOut || "");
       }
       // COMPLETED/CANCELLED/DELETED fallback — most recently created first
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
