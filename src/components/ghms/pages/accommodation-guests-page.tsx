@@ -413,12 +413,13 @@ export default function AccommodationGuestsPage() {
 
   // ── Computed: guests with at least one reservation (any status) ──
   // Used to filter out guests who have never reserved any room.
-  // Only include guests who have at least one reservation (any status:
-  // UPCOMING, ACTIVE, COMPLETED, CANCELLED, DELETED). Guests with zero
-  // reservations are excluded entirely.
+  // Only include guests who have at least one ACTIVE or UPCOMING
+  // reservation. Guests whose reservations are all COMPLETED/CANCELLED/
+  // DELETED are excluded from the list entirely.
   const guestIdsWithAnyReservation = useMemo(() => {
     const ids = new Set<string>();
     for (const r of reservations) {
+      if (r.status !== "ACTIVE" && r.status !== "UPCOMING") continue;
       const gid = r.guestId || r.guest?.id;
       if (typeof gid === "string" && gid) ids.add(gid);
     }
