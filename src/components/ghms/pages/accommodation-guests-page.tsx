@@ -263,7 +263,7 @@ export default function AccommodationGuestsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
-  const [exportState, setExportState] = useState<"ALL" | "CHECKED_IN" | "UPCOMING" | "COMPLETED" | "CANCELLED" | "NO_RESERVATION">("ALL");
+  const [exportState, setExportState] = useState<"ALL" | "CHECKED_IN" | "UPCOMING" | "COMPLETED" | "CANCELLED">("ALL");
   const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
@@ -290,9 +290,7 @@ export default function AccommodationGuestsPage() {
         const gReservations = reservationsByGuest.get(g.id) || [];
 
         // ── State filter ──
-        if (exportState === "NO_RESERVATION") {
-          if (gReservations.length > 0) continue;
-        } else if (exportState === "CHECKED_IN") {
+        if (exportState === "CHECKED_IN") {
           if (!gReservations.some((r) => r.status === "ACTIVE")) continue;
         } else if (exportState === "UPCOMING") {
           if (!gReservations.some((r) => r.status === "UPCOMING")) continue;
@@ -301,6 +299,8 @@ export default function AccommodationGuestsPage() {
         } else if (exportState === "CANCELLED") {
           if (!gReservations.some((r) => r.status === "CANCELLED")) continue;
         }
+        // Skip guests with no reservations entirely.
+        if (gReservations.length === 0) continue;
 
         // ── Date range filter ──
         // If a range is set, require at least one reservation whose
@@ -315,13 +315,7 @@ export default function AccommodationGuestsPage() {
             const okTo = !to || ci <= to;
             return okFrom && okTo;
           });
-          // For NO_RESERVATION guests, date filter doesn't apply — they
-          // have no dates. Skip them if a range is set.
-          if (!inRange && exportState !== "NO_RESERVATION") continue;
-          if (exportState === "NO_RESERVATION" && (from || to)) {
-            // Show no-reservation guests only if no date filter is set.
-            continue;
-          }
+          if (!inRange) continue;
         }
 
         // Compose address string
@@ -459,16 +453,13 @@ export default function AccommodationGuestsPage() {
   const filtered = useMemo(() => {
     let list = enrichedGuests;
     // By default (ALL filter), exclude guests who have never reserved any
-    // room — they shouldn't clutter the guests list. The user can still
-    // explicitly select "No Reservation" to see ONLY those guests.
+    // room — they shouldn't appear in the list at all.
     if (statusFilter === "ALL") {
       list = list.filter((g) => guestIdsWithAnyReservation.has(g.id));
     } else if (statusFilter === "CHECKED_IN") {
       list = list.filter((g) => g.activeReservation?.status === "ACTIVE");
     } else if (statusFilter === "UPCOMING") {
       list = list.filter((g) => g.activeReservation?.status === "UPCOMING");
-    } else if (statusFilter === "NO_RESERVATION") {
-      list = list.filter((g) => !guestIdsWithAnyReservation.has(g.id));
     }
     if (search) {
       const q = search.toLowerCase();
@@ -661,7 +652,6 @@ export default function AccommodationGuestsPage() {
             <SelectItem value="ALL">{t("allGuests", "All Guests")}</SelectItem>
             <SelectItem value="CHECKED_IN">{t("checkedIn", "Checked In")}</SelectItem>
             <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
-            <SelectItem value="NO_RESERVATION">{t("noReservation", "No Reservation")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -1035,7 +1025,6 @@ export default function AccommodationGuestsPage() {
                   <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
                   <SelectItem value="COMPLETED">{t("completed", "Completed")}</SelectItem>
                   <SelectItem value="CANCELLED">{t("cancelled", "Cancelled")}</SelectItem>
-                  <SelectItem value="NO_RESERVATION">{t("noReservation", "No Reservation")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
