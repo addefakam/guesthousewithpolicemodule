@@ -30,6 +30,14 @@ interface PreselectedRoom {
    * Defaults to "create" when omitted.
    */
   intent?: "create" | "manage";
+  /**
+   * Optional preselected guest ID — when the user clicks "Reserve" next to
+   * a specific guest in the AccommodationGuestsPage, this is set so the
+   * Reservations page can pre-select that guest in the New Reservation
+   * dialog's "Existing Guest" tab.
+   */
+  guestId?: string;
+  guestName?: string;
 }
 
 export interface SubscriptionInfo {

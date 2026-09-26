@@ -155,7 +155,7 @@ function addDays(d: string, n: number) {
 // ── Component ──
 export default function AccommodationGuestsPage() {
   const { t } = useTranslation("accommodation");
-  const { refreshKey, triggerRefresh, setCurrentPage } = useAppStore();
+  const { refreshKey, triggerRefresh, setCurrentPage, setPreselectedRoom } = useAppStore();
 
   function resStatusLabel(status: string) {
     const key = `resStatus${status.charAt(0)}${status.slice(1).toLowerCase()}`;
@@ -638,7 +638,7 @@ export default function AccommodationGuestsPage() {
           <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} className="h-8 text-xs gap-1.5">
             <Download className="h-3.5 w-3.5" /> {t("export", "Export")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setResDialogOpen(true)} className="h-8 text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }} className="h-8 text-xs gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" /> {t("newReservation", "New Reservation")}
           </Button>
         </div>
@@ -879,7 +879,7 @@ export default function AccommodationGuestsPage() {
                             </Button>
                           )}
                           {!g.activeReservation && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }}>
+                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }}>
                               <CalendarDays className="h-3 w-3" /> {t("btnReserve")}
                             </Button>
                           )}
@@ -896,7 +896,7 @@ export default function AccommodationGuestsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-44">
-                                <DropdownMenuItem onClick={() => { setResDialogOpen(true); setResForm({ ...emptyResForm, guestId: g.id }); setResGuestSearch(g.name); }} className="text-violet-700 focus:text-violet-700">
+                                <DropdownMenuItem onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }} className="text-violet-700 focus:text-violet-700">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
                                 {g.activeReservation.status === "ACTIVE" && (
@@ -941,161 +941,10 @@ export default function AccommodationGuestsPage() {
         />
       )}
 
-      {/* ── New Reservation Dialog ── */}
-      <Dialog open={resDialogOpen} onOpenChange={(open) => { if (!open) { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); } }}>
-        <DialogContent className="max-w-lg mx-4 w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" /> {t("dlgNewReservationTitle")}</DialogTitle>
-            <DialogDescription>{t("dlgNewReservationDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {/* Guest Select */}
-            <div>
-              <Label>{t('lblguest', 'Guest')} *</Label>
-              {resForm.guestId ? (
-                <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/30">
-                  <span className="text-sm font-medium flex-1">{guests.find((g) => g.id === resForm.guestId)?.name || t("selected")}</span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setResForm({ ...resForm, guestId: "" }); setResGuestSearch(""); }}>{t("change")}</Button>
-                </div>
-              ) : (
-                <div className="relative mt-1">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={resGuestSearch} onChange={(e) => setResGuestSearch(e.target.value)} placeholder={t("phSearchGuest")} className="h-9 pl-8 text-sm" />
-                </div>
-              )}
-              {!resForm.guestId && resGuestResults.length > 0 && (
-                <div className="mt-1 max-h-32 overflow-y-auto rounded-md border">
-                  {resGuestResults.map((g) => (
-                    <button key={g.id} className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 border-b last:border-b-0 flex justify-between items-center" onClick={() => { setResForm({ ...resForm, guestId: g.id }); setResGuestSearch(g.name); }}>
-                      <span className="font-medium">{g.name}</span>
-                      <span className="text-muted-foreground">{g.phone}{g.idNumber ? ` | ${g.idNumber}` : ""}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Room Select */}
-            <div>
-              <Label>{t('lblroom', 'Room')} *</Label>
-              <Select value={resForm.roomId} onValueChange={(v) => setResForm({ ...resForm, roomId: v })}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("phSelectRoom")} /></SelectTrigger>
-                <SelectContent>
-                  {availableRooms.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name ? t("roomWithName", { number: r.number, name: r.name }) : t("roomPrefix", { number: r.number })} — {r.type} — {formatCurrency(r.pricePerNight)}/night</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* ── Double/TWIN Room: Second Guest + Exception ── */}
-            {selectedRoomIsDouble && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-3">
-                <div className="flex items-center gap-2 text-amber-800">
-                  <BedDouble className="h-4 w-4" />
-                  <span className="text-xs font-semibold">{t("doubleRoomSecondGuestRequired")}</span>
-                </div>
-
-                {/* Exception toggle */}
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="exceptionallyReserved"
-                      checked={!resForm.exceptionallyReserved}
-                      onChange={() => setResForm({ ...resForm, exceptionallyReserved: false, exceptionReason: "" })}
-                      className="h-3.5 w-3.5 text-emerald-600 accent-emerald-600"
-                    />
-                    <span className="text-xs font-medium">{t("twoGuests")}</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="exceptionallyReserved"
-                      checked={resForm.exceptionallyReserved}
-                      onChange={() => setResForm({ ...resForm, exceptionallyReserved: true, secondGuestName: "", secondGuestPhone: "", secondGuestIdNumber: "" })}
-                      className="h-3.5 w-3.5 text-amber-600 accent-amber-600"
-                    />
-                    <span className="text-xs font-medium text-amber-700">{t("exceptionallyReserved")}</span>
-                  </label>
-                </div>
-
-                {!resForm.exceptionallyReserved ? (
-                  /* Second guest fields */
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-muted-foreground">{t("secondGuestDetailsHint")}</p>
-                    <div>
-                      <Label>{t('lblsecondGuestName', 'Second Guest Name')} *</Label>
-                      <Input
-                        value={resForm.secondGuestName}
-                        onChange={(e) => setResForm({ ...resForm, secondGuestName: e.target.value })}
-                        placeholder={t("phSecondGuestName")}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label>{t('lblsecondGuestPhone', 'Second Guest Phone')} *</Label>
-                      <Input
-                        type="tel"
-                        value={resForm.secondGuestPhone}
-                        onChange={(e) => setResForm({ ...resForm, secondGuestPhone: e.target.value })}
-                        placeholder={t("phSecondGuestPhone")}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label>{t('lblsecondGuestIdNumber', 'Second Guest ID Number')}</Label>
-                      <Input
-                        value={resForm.secondGuestIdNumber}
-                        onChange={(e) => setResForm({ ...resForm, secondGuestIdNumber: e.target.value })}
-                        placeholder={t("phSecondGuestId")}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  /* Exception reason field */
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-amber-700">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      <p className="text-[10px] font-medium">{t("singleOccupancyException")}</p>
-                    </div>
-                    <div>
-                      <Label>{t('lblexceptionReason', 'Exception Reason')} *</Label>
-                      <Textarea
-                        value={resForm.exceptionReason}
-                        onChange={(e) => setResForm({ ...resForm, exceptionReason: e.target.value })}
-                        placeholder={t("phExceptionReason")}
-                        className="min-h-[60px] text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Availability calendar — occupied days are disabled (not clickable);
-                a checkout day stays open as the next arrival */}
-            <RoomAvailabilityCalendar
-              roomId={resForm.roomId || undefined}
-              checkIn={resForm.checkIn}
-              checkOut={resForm.checkOut}
-              onChange={(v) => setResForm((f) => ({ ...f, ...v }))}
-            />
-            {resNights > 0 && resRate > 0 && (
-              <div className="rounded-md bg-muted/50 p-2 flex justify-between text-xs">
-                <span>{t("nightsTimes", { nights: resNights, rate: formatCurrency(resRate) })}</span>
-                <span className="font-bold">{formatCurrency(resNights * resRate)}</span>
-              </div>
-            )}
-            <div><Label>{t('lblnotes', 'Notes')}</Label><Input value={resForm.notes} onChange={(e) => setResForm({ ...resForm, notes: e.target.value })} placeholder={t("phNotes")} className="h-9 text-sm" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setResDialogOpen(false); setResForm(emptyResForm); setResGuestSearch(""); }}>{t("cancel")}</Button>
-            <Button size="sm" onClick={handleCreateRes} disabled={creatingRes || !resForm.guestId || !resForm.roomId}>{creatingRes ? t("btnCreating") : t("btnCreateReservation")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Old New Reservation Dialog removed — now navigates to the full
+          Reservations page which has the single-page form with room banner,
+          guest search box, collapsible address, capacity-based second
+          guest toggle, etc. */}
 
       {/* ── Check-in / Check-out Confirm ── */}
       {actionInfo && confirmAction && (
