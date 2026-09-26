@@ -638,7 +638,7 @@ export default function AccommodationGuestsPage() {
           <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} className="h-8 text-xs gap-1.5">
             <Download className="h-3.5 w-3.5" /> {t("export", "Export")}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }} className="h-8 text-xs gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }} className="h-8 text-xs gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" /> {t("newReservation", "New Reservation")}
           </Button>
         </div>
@@ -879,7 +879,7 @@ export default function AccommodationGuestsPage() {
                             </Button>
                           )}
                           {!g.activeReservation && (
-                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }}>
+                            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }}>
                               <CalendarDays className="h-3 w-3" /> {t("btnReserve")}
                             </Button>
                           )}
@@ -896,7 +896,7 @@ export default function AccommodationGuestsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-44">
-                                <DropdownMenuItem onClick={() => { setPreselectedRoom(null); setCurrentPage("reservations"); }} className="text-violet-700 focus:text-violet-700">
+                                <DropdownMenuItem onClick={() => { setPreselectedRoom({ id: "", number: "", name: "", type: "", pricePerNight: 0, intent: "create" }); setCurrentPage("reservations"); }} className="text-violet-700 focus:text-violet-700">
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
                                 {g.activeReservation.status === "ACTIVE" && (
