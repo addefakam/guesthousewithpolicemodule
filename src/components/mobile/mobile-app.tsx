@@ -24,7 +24,7 @@ import {
   apiGetGuestLifecycle,
 } from "@/lib/api";
 import { isValidPhone } from "@/lib/utils";
-import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER } from "@/lib/national-id";
+import { formatNationalId, isValidNationalId, isNationalIdType, NATIONAL_ID_PLACEHOLDER, ID_TYPES } from "@/lib/national-id";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -238,7 +238,7 @@ const RES_FORM_DEFAULTS = {
   hasSecondGuest: false,
   // Direct guest fields
   guestMode: "registered" as "registered" | "direct",
-  directName: "", directPhone: "", directIdNumber: "", directIdType: "NATIONAL", directNationality: "Ethiopian", directPlateNumber: "",
+  directName: "", directPhone: "", directIdNumber: "", directIdType: "National ID", directNationality: "Ethiopian", directPlateNumber: "",
 };
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -2421,10 +2421,9 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
               <Select value={form.directIdType} onValueChange={(v) => onUpdate({ directIdType: v })}>
                 <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NATIONAL">{t("idTypeNational")}</SelectItem>
-                  <SelectItem value="PASSPORT">{t("idTypePassport")}</SelectItem>
-                  <SelectItem value="DRIVER">{t("idTypeDriver")}</SelectItem>
-                  <SelectItem value="OTHER">{t("idTypeOther")}</SelectItem>
+                  {ID_TYPES.map((x) => (
+                    <SelectItem key={x} value={x}>{x}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
