@@ -105,6 +105,7 @@ import {
   Gem,
   Armchair,
   Sparkles,
+  Box,
 } from "lucide-react";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
 
@@ -160,7 +161,26 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   STANDARD_SUITE: <Layers className="h-4 w-4" />,
   JUNIOR_SUITE: <Armchair className="h-4 w-4" />,
   EXECUTIVE_SUITE: <Sparkles className="h-4 w-4" />,
+  OTHER: <Box className="h-4 w-4" />,
 };
+
+// Mobile Add/Edit Room dialog dropdown options — kept in sync with the
+// desktop ROOM_TYPES list in rooms-page.tsx, plus a legacy "OTHER" entry
+// so existing rooms in the DB that were created with type=OTHER still
+// display a valid option when edited.
+const MOBILE_ROOM_TYPES = [
+  "SINGLE",
+  "DOUBLE",
+  "TWIN",
+  "SUITE",
+  "DELUXE",
+  "KING",
+  "STANDARD",
+  "STANDARD_SUITE",
+  "JUNIOR_SUITE",
+  "EXECUTIVE_SUITE",
+  "OTHER",
+] as const;
 
 const STATUS_STYLES: Record<string, string> = {
   AVAILABLE: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -2727,12 +2747,16 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
           }}>
             <SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="SINGLE">{t("roomTypeSINGLE")}</SelectItem>
-              <SelectItem value="DOUBLE">{t("roomTypeDOUBLE")}</SelectItem>
-              <SelectItem value="TWIN">{t("roomTypeTWIN")}</SelectItem>
-              <SelectItem value="SUITE">{t("roomTypeSUITE")}</SelectItem>
-              <SelectItem value="DELUXE">{t("roomTypeDELUXE")}</SelectItem>
-              <SelectItem value="OTHER">{t("roomTypeOTHER") || "Other"}</SelectItem>
+              {MOBILE_ROOM_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  <span className="flex items-center gap-2">
+                    {ROOM_TYPE_ICONS[type]}
+                    {type === "OTHER"
+                      ? (t("roomTypeOTHER") || "Other")
+                      : t("roomType" + (type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()))}
+                  </span>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
