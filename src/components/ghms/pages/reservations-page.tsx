@@ -1470,23 +1470,29 @@ export default function ReservationsPage() {
                               </Button>
                             );
                           }
-                          // Check-in blocked — disabled button + hint
+                          // Check-in blocked — disabled button with hover tooltip
+                          // showing the reason (e.g. "Cannot check in before arrival
+                          // date (2026-09-30). Today is 2026-09-26.")
+                          const reason = eligibility.reasonKey
+                            ? t(eligibility.reasonKey, eligibility.reasonContext || {})
+                            : "Check-in not available";
                           return (
-                            <div className="flex flex-col gap-0.5">
+                            <div className="relative group">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 disabled
                                 className="h-7 text-[10px] gap-1 text-gray-400 border-gray-200 cursor-not-allowed"
-                                title={eligibility.reasonKey ? t(eligibility.reasonKey, eligibility.reasonContext || {}) : ""}
                               >
                                 <LogIn className="h-3 w-3 opacity-40" /> {t("btnCheckIn", "Check In")}
                               </Button>
-                              {eligibility.reasonKey && (
-                                <p className="text-[9px] text-amber-700 leading-tight max-w-[100px]">
-                                  {t(eligibility.reasonKey, eligibility.reasonContext || {})}
-                                </p>
-                              )}
+                              {/* Hover tooltip — appears on mouseover */}
+                              <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50">
+                                <div className="rounded-md bg-slate-900 px-2.5 py-1.5 text-[10px] text-white shadow-lg whitespace-nowrap max-w-[250px]">
+                                  {reason}
+                                  <div className="absolute top-full left-3 h-0 w-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
+                                </div>
+                              </div>
                             </div>
                           );
                         })()}
