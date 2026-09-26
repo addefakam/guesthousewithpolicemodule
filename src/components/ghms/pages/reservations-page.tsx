@@ -1388,7 +1388,7 @@ export default function ReservationsPage() {
                 <TableHead>{t('thnights', 'Nights')}</TableHead>
                 {/* Total, Paid, Balance columns removed per request. */}
                 <TableHead>{t('thstatus', 'Status')}</TableHead>
-                <TableHead>{t('thpayment', 'Payment')}</TableHead>
+                {/* Payment column removed per request. */}
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -1444,11 +1444,7 @@ export default function ReservationsPage() {
                         {STATUS_LABEL[res.status] || res.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={PAYMENT_STATUS_BADGE[res.paymentStatus] || ""}>
-                        {res.paymentStatus}
-                      </Badge>
-                    </TableCell>
+                    {/* Payment cell removed per request. */}
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1743,15 +1739,7 @@ export default function ReservationsPage() {
 
               <Separator />
 
-              <div className="flex items-center justify-between text-sm">
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="outline" className={PAYMENT_STATUS_BADGE[res.paymentStatus]}>
-                      {res.paymentStatus}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
+              {/* Payment badge removed from mobile card per request. */}
             </div>
           ))
         )}

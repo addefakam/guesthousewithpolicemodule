@@ -747,7 +747,7 @@ export default function DaytimePage() {
                       <TableHead>{t("thtime")}</TableHead>
                       <TableHead>{t("thqty")}</TableHead>
                       <TableHead>{t("thtotal")}</TableHead>
-                      <TableHead>{t("thpayment")}</TableHead>
+                      {/* Payment column removed per request. */}
                       <TableHead>{t("thactions")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -769,14 +769,7 @@ export default function DaytimePage() {
                         <TableCell className="text-sm">{bk.time}</TableCell>
                         <TableCell className="text-right text-sm">{bk.quantity}</TableCell>
                         <TableCell className="text-right font-medium text-sm">{formatPrice(bk.totalCost)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={PAYMENT_STYLES[bk.paymentStatus] || PAYMENT_STYLES.PENDING}>
-                            {t("paymentStatus" + bk.paymentStatus.charAt(0) + bk.paymentStatus.slice(1).toLowerCase())}
-                            {bk.paymentStatus === "PARTIAL" && (
-                              <span className="ml-1 text-xs">({formatPrice(bk.paidAmount)})</span>
-                            )}
-                          </Badge>
-                        </TableCell>
+                        {/* Payment cell removed per request. */}
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1048,7 +1041,7 @@ export default function DaytimePage() {
                   <TableHead>{t("rmThEnd") || "End"}</TableHead>
                   <TableHead>{t("rmThHours") || "Hours"}</TableHead>
                   <TableHead>{t("rmThTotal") || "Total"}</TableHead>
-                  <TableHead>{t("rmThPayment") || "Payment"}</TableHead>
+                  {/* Payment column removed per request. */}
                   <TableHead className="text-right">{t("thActions") || "Actions"}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1068,15 +1061,7 @@ export default function DaytimePage() {
                     <TableCell className="text-sm">{bk.endTime}</TableCell>
                     <TableCell className="text-sm">{bk.totalHours.toFixed(1)}h</TableCell>
                     <TableCell className="text-sm font-medium">{formatPrice(bk.totalCost)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={
-                        bk.paymentStatus === "PAID" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                        bk.paymentStatus === "PARTIAL" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                        "bg-slate-50 text-slate-600 border-slate-200"
-                      }>
-                        {bk.paymentStatus}
-                      </Badge>
-                    </TableCell>
+                    {/* Payment cell removed per request. */}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
