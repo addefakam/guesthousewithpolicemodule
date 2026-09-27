@@ -379,7 +379,10 @@
       "floor": "ፎቅ {{floor}}",
       "perNight": "በሌሊት",
       "roomsWord": "ክፍሎች",
-      "noRooms": "ለዚህ አቅራቢ የተመዘገቡ ክፍሎች የሉም።"
+      "noRooms": "ለዚህ አቅራቢ የተመዘገቡ ክፍሎች የሉም።",
+      "searchLabel": "ፍለጋ",
+      "searchPlaceholder": "በአቅራቢ ስም፣ አድራሻ ወይም ስልክ ይፈልጉ…",
+      "noMatch": "በፍለጋዎ ምንም አቅራቢዎች አልተገኙም።"
     },
     "pageTitle": "የፖሊስ ዳሽቦርድ",
     "pageSubtitle": "የተመዘገቡ የእንግዳ ማረፊያዎች አጠቃላይ እይታ",

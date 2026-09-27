@@ -379,7 +379,10 @@
       "floor": "Floor {{floor}}",
       "perNight": "/ night",
       "roomsWord": "rooms",
-      "noRooms": "No rooms registered for this guesthouse."
+      "noRooms": "No rooms registered for this guesthouse.",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Search by guesthouse name, address, or phone…",
+      "noMatch": "No guesthouses match your search."
     },
     "pageTitle": "Police Dashboard",
     "pageSubtitle": "Overview of all registered guesthouses",

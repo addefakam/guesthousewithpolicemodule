@@ -42,11 +42,13 @@ import {
   ChevronDown,
   MapPin,
   Phone,
+  Search,
 
   ToggleLeft,
   ToggleRight,
   Loader2,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface DashboardData {
   totalProviders: number;
@@ -146,6 +148,10 @@ export default function PoliceDashboardPage() {
   const [breakdown, setBreakdown] = useState<BreakdownData | null>(null);
   const [detailKind, setDetailKind] = useState<KpiDetailKind | null>(null);
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
+  // Search query for the Provider Room Breakdown card. Filters the
+  // guesthouse list by name / address / phone (case-insensitive).
+  // Empty string = no filter (show all providers).
+  const [breakdownSearch, setBreakdownSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [anomalyEnabled, setAnomalyEnabled] = useState(false);
@@ -500,10 +506,52 @@ export default function PoliceDashboardPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground">{t("breakdown.hint")}</p>
+            {/* Search box — filters the guesthouse list by name / address /
+                phone (case-insensitive). Inline label so screen readers
+                announce the field's purpose; placeholder shows when empty. */}
+            <div className="mt-3 flex items-center gap-2">
+              <label htmlFor="breakdown-search" className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 shrink-0 hidden sm:block">
+                {t("breakdown.searchLabel")}
+              </label>
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  id="breakdown-search"
+                  type="search"
+                  autoComplete="off"
+                  value={breakdownSearch}
+                  onChange={(e) => setBreakdownSearch(e.target.value)}
+                  placeholder={t("breakdown.searchPlaceholder")}
+                  className="h-9 pl-8 pr-3 text-sm"
+                  aria-label={t("breakdown.searchLabel")}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="px-4 pb-4 sm:px-6">
             <ul className="space-y-3">
-              {breakdown.providers.map((p) => {
+              {(() => {
+                // Filter providers by the search query — matches name,
+                // address, or phone (case-insensitive). Empty query =
+                // show all providers.
+                const q = breakdownSearch.trim().toLowerCase();
+                const filteredProviders = q
+                  ? breakdown.providers.filter((p) =>
+                      (p.name || "").toLowerCase().includes(q) ||
+                      (p.address || "").toLowerCase().includes(q) ||
+                      (p.phone || "").toLowerCase().includes(q)
+                    )
+                  : breakdown.providers;
+                if (filteredProviders.length === 0) {
+                  return (
+                    <li className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-8 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        {t("breakdown.noMatch")}
+                      </p>
+                    </li>
+                  );
+                }
+                return filteredProviders.map((p) => {
                 const expanded = expandedProvider === p.id;
                 const busy = p.utilizationRate >= 80;
                 return (
@@ -630,7 +678,8 @@ export default function PoliceDashboardPage() {
                     )}
                   </li>
                 );
-              })}
+                });
+              })()}
             </ul>
           </CardContent>
         </Card>

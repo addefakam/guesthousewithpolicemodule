@@ -379,7 +379,10 @@
       "floor": "Darbii {{floor}}",
       "perNight": "halkanii",
       "roomsWord": "kutaawwan",
-      "noRooms": "Dhiyeessitaa kanaaf kutaawwan galmeefaman hin jiru."
+      "noRooms": "Dhiyeessitaa kanaaf kutaawwan galmeefaman hin jiru.",
+      "searchLabel": "Barbaadi",
+      "searchPlaceholder": "Maqaa dhiyeessitaa, teessoo ykn bilbilaatiin barbaadi…",
+      "noMatch": "Barbaadda kee walfakkaatu dhiyeessitoota hin jiru."
     },
     "pageTitle": "Daashboordii Poolisii",
     "pageSubtitle": "Mana keessummaa galmaa'an hunda ilaalcha",
