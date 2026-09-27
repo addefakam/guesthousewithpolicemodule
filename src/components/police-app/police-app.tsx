@@ -26,9 +26,10 @@ import {
 import HomeScreen from "@/components/police-app/screens/home-screen";
 import RoomsScreen from "@/components/police-app/screens/rooms-screen";
 import GuestsScreen from "@/components/police-app/screens/guests-screen";
-import ProvidersScreen from "@/components/police-app/screens/providers-screen";
+// ProvidersScreen import removed — the Guesthouses tab was removed per request.
+// The Room Availability screen (RoomsScreen) already shows every guesthouse.
 
-type Tab = "home" | "rooms" | "guests" | "providers" | "system";
+type Tab = "home" | "rooms" | "guests" | "system";
 
 const LANG_CYCLE = ["en", "or"];
 const LANG_LABELS: Record<string, string> = { en: "EN", or: "OR" };
@@ -98,7 +99,9 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
     // NOT the full guest registry. The old label caused confusion because
     // the count didn't match the dashboard's totalGuests KPI.
     { key: "guests", label: t("nav.activeStays"), icon: <Users className="h-5 w-5" /> },
-    { key: "providers", label: t("nav.providers"), icon: <Building2 className="h-5 w-5" /> },
+    // "Providers" (Guesthouses) tab removed per request — the Room
+    // Availability screen already shows every guesthouse with its rooms,
+    // so the separate Guesthouses tab was redundant.
     { key: "system", label: t("nav.system"), icon: <Monitor className="h-5 w-5" /> },
   ];
 
@@ -172,7 +175,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
           {tab === "home" && <HomeScreen onNavigate={setTab} />}
           {tab === "rooms" && <RoomsScreen />}
           {tab === "guests" && <GuestsScreen />}
-          {tab === "providers" && <ProvidersScreen />}
+          {/* Providers tab removed — RoomsScreen already shows all guesthouses */}
         </div>
       </main>
 
@@ -181,7 +184,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
         aria-label={t("appName")}
         className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-100 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
       >
-        <ul className="mx-auto grid h-16 max-w-lg grid-cols-5">
+        <ul className="mx-auto grid h-16 max-w-lg grid-cols-4">
           {tabs.map((item) => {
             const active = tab === item.key;
             return (

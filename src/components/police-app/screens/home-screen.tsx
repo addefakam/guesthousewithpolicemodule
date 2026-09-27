@@ -110,7 +110,9 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (tab: Tab) => v
     dot: string;
     navigateTo?: Tab;
   }[] = [
-    { key: "home.totalProviders", value: data.totalProviders, dot: "bg-sky-400", navigateTo: "providers" },
+    // "Total Providers" KPI no longer navigates — the Providers tab was
+    // removed. The count is still useful as a read-only stat.
+    { key: "home.totalProviders", value: data.totalProviders, dot: "bg-sky-400" },
     { key: "home.totalRooms", value: data.totalRooms, dot: "bg-violet-400", navigateTo: "rooms" },
     { key: "home.activeStays", value: data.activeReservations, dot: "bg-emerald-400", navigateTo: "guests" },
     { key: "home.totalGuests", value: data.totalGuests, dot: "bg-amber-400" },
