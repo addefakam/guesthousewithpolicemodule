@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
       const generator = (async function* (): AsyncGenerator<string> {
         // Yield header row
         if (targetEntity === "guests") {
-          yield "name,phone,idNumber,idType,nationality,region,zone,woreda,kebele,houseNumber,streetName,address,provider\n";
+          yield "name,phone,idNumber,idType,nationality\n";
           // Use cursor-based iteration to avoid loading all rows at once
           let skip = 0;
           const take = 500;
@@ -127,14 +127,6 @@ export async function GET(req: NextRequest) {
                 csvEscape(r.idNumber),
                 csvEscape(r.idType),
                 csvEscape(r.nationality),
-                csvEscape(r.region),
-                csvEscape(r.zone),
-                csvEscape(r.woreda),
-                csvEscape(r.kebele),
-                csvEscape(r.houseNumber),
-                csvEscape(r.streetName),
-                csvEscape(r.address),
-                csvEscape(r.provider?.name || ""),
               ].join(",") + "\n";
             }
             if (rows.length < take) break;

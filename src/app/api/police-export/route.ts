@@ -56,10 +56,10 @@ export async function GET(req: NextRequest) {
             if (type === "guests" || type === "all") {
               await streamSection("guests",
                 (skip, take) => db.guest.findMany({
-                  select: { name: true, phone: true, idNumber: true, idType: true, nationality: true, totalSpent: true, totalStays: true, createdAt: true, provider: { select: { name: true } } },
+                  select: { name: true, phone: true, idNumber: true, idType: true, nationality: true, provider: { select: { name: true } } },
                   orderBy: { createdAt: "desc" }, skip, take,
                 }),
-                (g) => ({ name: g.name, phone: g.phone, idNumber: g.idNumber, idType: g.idType, nationality: g.nationality, provider: g.provider?.name, registeredAt: g.createdAt, totalSpent: g.totalSpent, totalStays: g.totalStays }),
+                (g) => ({ name: g.name, phone: g.phone, idNumber: g.idNumber, idType: g.idType, nationality: g.nationality, provider: g.provider?.name }),
               );
             }
 
@@ -98,6 +98,116 @@ export async function GET(req: NextRequest) {
           "Content-Type": "application/json; charset=utf-8",
           "Content-Disposition": `attachment; filename="police-export-${type}-${Date.now()}.json"`,
           "Transfer-Encoding": "chunked",
+        },
+      });
+    }
+
+    // XLSX path — generate Excel file using the xlsx library
+    if (format === "xlsx") {
+      logAudit(req, { action: "EXPORT_DATA", details: `type=${type} format=xlsx` });
+
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      // ── Guests sheet ──
+      if (type === "guests" || type === "all") {
+        const guestRows: Record<string, unknown>[] = [];
+        let skip = 0;
+        while (skip < MAX_ROWS) {
+          const rows = await db.guest.findMany({
+            select: { name: true, phone: true, idNumber: true, idType: true, nationality: true, provider: { select: { name: true } } },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: BATCH_SIZE,
+          });
+          if (rows.length === 0) break;
+          for (const g of rows) {
+            guestRows.push({
+              Name: g.name,
+              Phone: g.phone,
+              "ID Number": g.idNumber,
+              "ID Type": g.idType,
+              Nationality: g.nationality,
+            });
+          }
+          skip += rows.length;
+          if (rows.length < BATCH_SIZE) break;
+        }
+        const ws = XLSX.utils.json_to_sheet(guestRows);
+        ws["!cols"] = Object.keys(guestRows[0] || { Name: "" }).map((k) => ({ wch: k.length + 5 }));
+        XLSX.utils.book_append_sheet(wb, ws, "Guests");
+      }
+
+      // ── Suspect Matches sheet ──
+      if (type === "matches" || type === "all") {
+        const matchRows: Record<string, unknown>[] = [];
+        let skip = 0;
+        while (skip < MAX_ROWS) {
+          const rows = await db.suspectMatch.findMany({
+            select: { guestName: true, guestPhone: true, providerName: true, matchType: true, createdAt: true, suspectedPerson: { select: { name: true, severity: true } } },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: BATCH_SIZE,
+          });
+          if (rows.length === 0) break;
+          for (const m of rows) {
+            matchRows.push({
+              "Suspect Name": m.suspectedPerson?.name || "",
+              Severity: m.suspectedPerson?.severity || "",
+              "Guest Name": m.guestName,
+              "Guest Phone": m.guestPhone,
+              "Provider Name": m.providerName,
+              "Match Type": m.matchType,
+              "Detected At": m.createdAt instanceof Date ? m.createdAt.toISOString() : String(m.createdAt),
+            });
+          }
+          skip += rows.length;
+          if (rows.length < BATCH_SIZE) break;
+        }
+        if (matchRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(matchRows);
+          ws["!cols"] = Object.keys(matchRows[0]).map((k) => ({ wch: k.length + 5 }));
+          XLSX.utils.book_append_sheet(wb, ws, "Suspect Matches");
+        }
+      }
+
+      // ── Audit Logs sheet ──
+      if (type === "audit" || type === "all") {
+        const auditRows: Record<string, unknown>[] = [];
+        const rows = await db.auditLog.findMany({
+          select: { officerName: true, action: true, targetId: true, targetType: true, ipAddress: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: MAX_ROWS,
+        });
+        for (const a of rows) {
+          auditRows.push({
+            "Officer Name": a.officerName,
+            Action: a.action,
+            "Target ID": a.targetId,
+            "Target Type": a.targetType,
+            "IP Address": a.ipAddress,
+            "Created At": a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+          });
+        }
+        if (auditRows.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(auditRows);
+          ws["!cols"] = Object.keys(auditRows[0]).map((k) => ({ wch: k.length + 5 }));
+          XLSX.utils.book_append_sheet(wb, ws, "Audit Logs");
+        }
+      }
+
+      // If no sheets were added (e.g. no data), add an empty placeholder
+      if (wb.SheetNames.length === 0) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["No data to export"]]), "Empty");
+      }
+
+      const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+      const filename = `police-export-${type}-${Date.now()}.xlsx`;
+
+      return new Response(buf, {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"`,
         },
       });
     }

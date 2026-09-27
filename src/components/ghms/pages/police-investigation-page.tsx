@@ -623,7 +623,8 @@ export default function PoliceInvestigationPage() {
                   <div key={exp.type} className={`rounded-lg border p-3 ${exp.color}`}>
                     <p className="text-sm font-medium">{exp.label}</p>
                     <p className="text-[10px] opacity-75 mb-3">{exp.desc}</p>
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Button size="sm" variant="outline" className="h-7 text-[10px] bg-white" onClick={() => handleExport(exp.type, "xlsx")}>Excel</Button>
                       <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => handleExport(exp.type, "json")}>JSON</Button>
                       <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => handleExport(exp.type, "csv")}>CSV</Button>
                     </div>
@@ -634,7 +635,8 @@ export default function PoliceInvestigationPage() {
           </Card>
           <Card>
             <CardHeader><CardTitle className="text-sm">{t('exportEverythingTitle')}</CardTitle></CardHeader>
-            <CardContent className="flex gap-2">
+            <CardContent className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={() => handleExport("all", "xlsx")} className="bg-emerald-600 hover:bg-emerald-700 text-white"><Download className="mr-1 h-3.5 w-3.5" /> Excel</Button>
               <Button size="sm" onClick={() => handleExport("all", "json")} className="bg-sky-600 hover:bg-sky-700 text-white"><Download className="mr-1 h-3.5 w-3.5" /> {t('fullExportJson')}</Button>
               <Button size="sm" variant="outline" onClick={() => handleExport("all", "csv")}><Download className="mr-1 h-3.5 w-3.5" /> {t('fullExportCsv')}</Button>
             </CardContent>
