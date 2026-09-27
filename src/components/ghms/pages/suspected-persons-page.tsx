@@ -1056,7 +1056,15 @@ export default function SuspectedPersonsPage() {
                   id="sp-nationality"
                   placeholder={t('nationalityPlaceholder')}
                   value={form.nationality}
-                  onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))}
+                  onChange={(e) => {
+                    // Strip all digit characters as the user types —
+                    // nationality is a name (Ethiopian, Pakistani, etc.),
+                    // never a number. Prevents junk like '25874174572' from
+                    // being entered in this field by mistake.
+                    const stripped = e.target.value.replace(/[0-9]/g, "");
+                    setForm((f) => ({ ...f, nationality: stripped }));
+                  }}
+                  inputMode="text"
                 />
               </div>
               <div className="grid gap-2">

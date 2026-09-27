@@ -2720,7 +2720,20 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
           </div>
           <div>
             <Label className="text-xs font-semibold">{t("lblGuestNationality")}</Label>
-            <Input value={form.directNationality} onChange={(e) => onUpdate({ directNationality: e.target.value })} placeholder={t("phGuestNationality")} className="mt-1.5 h-11 rounded-xl" />
+            <Input
+              value={form.directNationality}
+              onChange={(e) => {
+                // Strip all digit characters as the user types —
+                // nationality is a name (Ethiopian, Pakistani, etc.),
+                // never a number. Prevents junk like '25874174572' from
+                // being entered in this field by mistake.
+                const stripped = e.target.value.replace(/[0-9]/g, "");
+                onUpdate({ directNationality: stripped });
+              }}
+              inputMode="text"
+              placeholder={t("phGuestNationality")}
+              className="mt-1.5 h-11 rounded-xl"
+            />
           </div>
           {/* Plate Number — optional. Captured for guesthouses that need
               to track vehicle plates (e.g. for security or parking
