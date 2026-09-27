@@ -338,7 +338,6 @@ export default function AccommodationGuestsPage() {
           Nationality: g.nationality || "",
           IDType: normalizeIdType(g.idType) || "",
           IDNumber: g.idNumber || "",
-          Address: addrParts.join(", "),
           CheckIn: primary?.checkIn?.slice(0, 10) || "—",
           CheckOut: primary?.checkOut?.slice(0, 10) || "—",
           RoomNumber: primary?.room?.number || "—",
