@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, UserCheck, UserMinus, AlertTriangle, Building2, BedDouble,
   CalendarDays, RefreshCw, Download, Clock,
-  Globe, CreditCard, BarChart3, ArrowUp, ArrowDown,
+  Globe, CreditCard, BarChart3, ArrowUp, ArrowDown, ArrowDownRight, ArrowUpRight,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -157,6 +157,8 @@ export default function PoliceReportsPage() {
   // Selected provider for the Occupancy drill-down dialog — when set,
   // shows a Dialog with the full room status breakdown for that provider.
   const [occDetail, setOccDetail] = useState<OccupancyRow | null>(null);
+  // Selected provider for the Activity Summary drill-down dialog.
+  const [activityDetail, setActivityDetail] = useState<ProviderRow | null>(null);
 
   // ── Providers tab: sortable columns ──
   // Sort key can be: name, address, guests, checkIns, checkOuts, matches, rooms
@@ -581,7 +583,7 @@ export default function PoliceReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {sortedProviders.map((p, i) => (
-                        <TableRow key={i}>
+                        <TableRow key={i} className="cursor-pointer hover:bg-muted/50" onClick={() => setActivityDetail(p)}>
                           <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                           <TableCell className="text-xs font-medium">{p.name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{p.address || "—"}</TableCell>
@@ -694,6 +696,60 @@ export default function PoliceReportsPage() {
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" /> Maint.</span>
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Avail.</span>
                 </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Provider Activity drill-down dialog ──
+          Opens when the user clicks a row in the Provider Activity
+          Summary table. Shows the full activity breakdown for that
+          provider: rooms, check-ins, check-outs, suspect matches. */}
+      <Dialog open={!!activityDetail} onOpenChange={(open) => { if (!open) setActivityDetail(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Building2 className="h-4 w-4 text-slate-400" />
+              {activityDetail?.name || "Provider"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">Provider activity details</DialogDescription>
+          </DialogHeader>
+          {activityDetail && (() => {
+            const stats = [
+              { label: t('throoms', 'Rooms'), value: activityDetail.rooms, icon: <BedDouble className="h-4 w-4 text-violet-500" />, color: "text-violet-700 bg-violet-50 border-violet-200" },
+              { label: t('thcheckins', 'Check-Ins'), value: activityDetail.checkIns, icon: <ArrowDownRight className="h-4 w-4 text-blue-500" />, color: "text-blue-700 bg-blue-50 border-blue-200" },
+              { label: t('thcheckouts', 'Check-Outs'), value: activityDetail.checkOuts, icon: <ArrowUpRight className="h-4 w-4 text-emerald-500" />, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+              { label: t('thsuspectMatches', 'Suspect Matches'), value: activityDetail.matches, icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: "text-red-700 bg-red-50 border-red-200" },
+            ];
+            return (
+              <div className="space-y-4">
+                {/* Address */}
+                {activityDetail.address && (
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+                    <Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    {activityDetail.address}
+                  </div>
+                )}
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {stats.map((s) => (
+                    <div key={s.label} className={`rounded-lg border px-4 py-3 ${s.color}`}>
+                      <div className="flex items-center gap-2">
+                        {s.icon}
+                        <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">{s.label}</span>
+                      </div>
+                      <p className="mt-1.5 text-2xl font-bold">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Suspect match alert */}
+                {activityDetail.matches > 0 && (
+                  <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{activityDetail.matches} suspect match(es) detected at this guesthouse during the selected period.</span>
+                  </div>
+                )}
               </div>
             );
           })()}
