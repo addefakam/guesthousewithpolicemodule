@@ -335,21 +335,14 @@ export default function AccommodationGuestsPage() {
         rows.push({
           Name: g.name || "",
           Phone: g.phone || "",
-          Email: g.email || "",
           Nationality: g.nationality || "",
           IDType: normalizeIdType(g.idType) || "",
           IDNumber: g.idNumber || "",
           Address: addrParts.join(", "),
-          TotalStays: g.totalStays ?? 0,
-          TotalSpent: g.totalSpent ?? 0,
-          VIP: g.vip ? "Yes" : "No",
-          RegisteredAt: g.createdAt ? new Date(g.createdAt).toLocaleString() : "",
-          ReservationStatus: primary?.status || "—",
           CheckIn: primary?.checkIn?.slice(0, 10) || "—",
           CheckOut: primary?.checkOut?.slice(0, 10) || "—",
           RoomNumber: primary?.room?.number || "—",
           RoomType: primary?.room?.type || "—",
-          ReservationCount: gReservations.length,
         });
       }
 

@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
         try {
           const targetType = type === "all" ? "guests" : type;
           const headers: Record<string, string[]> = {
-            guests: ["name", "phone", "idNumber", "idType", "nationality", "provider", "registeredAt", "totalSpent", "totalStays"],
+            guests: ["name", "phone", "idNumber", "idType", "nationality", "provider"],
             matches: ["suspectName", "severity", "guestName", "guestPhone", "providerName", "matchType", "detectedAt"],
             audit: ["officerName", "action", "targetId", "targetType", "ipAddress", "createdAt"],
           };
@@ -150,10 +150,10 @@ export async function GET(req: NextRequest) {
           if (targetType === "guests") {
             await streamCsvRows(
               (skip, take) => db.guest.findMany({
-                select: { name: true, phone: true, idNumber: true, idType: true, nationality: true, totalSpent: true, totalStays: true, createdAt: true, provider: { select: { name: true } } },
+                select: { name: true, phone: true, idNumber: true, idType: true, nationality: true, provider: { select: { name: true } } },
                 orderBy: { createdAt: "desc" }, skip, take,
               }),
-              (r) => [csvEscape(r.name), csvEscape(r.phone), csvEscape(r.idNumber), csvEscape(r.idType), csvEscape(r.nationality), csvEscape(r.provider?.name || ""), csvEscape(r.createdAt), csvEscape(r.totalSpent), csvEscape(r.totalStays)],
+              (r) => [csvEscape(r.name), csvEscape(r.phone), csvEscape(r.idNumber), csvEscape(r.idType), csvEscape(r.nationality), csvEscape(r.provider?.name || "")],
             );
           } else if (targetType === "matches") {
             await streamCsvRows(
