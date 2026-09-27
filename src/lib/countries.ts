@@ -210,5 +210,5 @@ export const COUNTRIES: Country[] = [
   { name: "Zimbabwe", code: "ZW" },
 ];
 
-/** Default nationality value — Ethiopia. */
-export const DEFAULT_NATIONALITY = "Ethiopia";
+/** Default nationality value — Ethiopian (canonical demonym form, was "Ethiopia"). */
+export const DEFAULT_NATIONALITY = "Ethiopian";

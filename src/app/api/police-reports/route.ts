@@ -153,16 +153,36 @@ export async function GET(req: NextRequest) {
     }
 
     // ── 4. Nationality breakdown ──
+    // Group by the CANONICAL nationality form, mirroring the JS-side
+    // normalizeNationality() helper in src/lib/nationalities.ts. Previously
+    // this grouped by TRIM("nationality") directly, so 'Ethiopian',
+    // 'Ethiopia', 'ethi', 'ETH' all appeared as separate slices even
+    // though they refer to the same nationality.
+    //
+    // The CASE expression normalizes on the fly so existing data doesn't
+    // need a migration to display correctly. Upper-cases the input after
+    // removing spaces/underscores/hyphens so 'Ethiopia' / 'ETHIOPIA' /
+    // 'ethiopia' / 'Ethiopian' all collapse to the same key.
     const nationalities = await db.$queryRaw<{ name: string; count: number }[]>(Prisma.sql`
       SELECT
-        CASE WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown'
-             ELSE TRIM("nationality") END AS name,
+        CASE
+          WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown'
+          WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
+               ('ETHIOPIAN', 'ETHIOPIA', 'ETHI', 'ETH', 'ETHIO') THEN 'Ethiopian'
+          WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
+               ('PAKISTANI', 'PAKISTAN') THEN 'Pakistani'
+          WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
+               ('KENYAN', 'KENYA') THEN 'Kenyan'
+          WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
+               ('INDIAN', 'INDIA') THEN 'Indian'
+          ELSE TRIM("nationality")
+        END AS name,
         COUNT(*)::int AS count
       FROM "Guest"
       WHERE 1=1
         ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         ${period !== "yearly" ? Prisma.sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``}
-      GROUP BY CASE WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown' ELSE TRIM("nationality") END
+      GROUP BY 1
       ORDER BY count DESC
       LIMIT 15
     `);

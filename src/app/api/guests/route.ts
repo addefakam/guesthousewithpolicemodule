@@ -5,6 +5,7 @@ import { checkSuspectMatch } from "@/lib/suspect-check";
 import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { isValidNationalId, isNationalIdType, normalizeIdType } from "@/lib/national-id";
+import { normalizeNationality } from "@/lib/nationalities";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale guest data at the edge.
@@ -172,7 +173,10 @@ export async function POST(req: NextRequest) {
         // showed NATIONAL, NATIONAL_ID, and National ID as 3 separate
         // slices for what is really the same ID type.
         idType: normalizeIdType(idType || "") || "",
-        nationality: nationality || "",
+        // Normalize nationality to canonical form (Ethiopian/Pakistani/
+        // Kenyan/Indian) so the Nationality chart groups all variants
+        // together. Previously stored the raw frontend value.
+        nationality: normalizeNationality(nationality || ""),
         region: region || "",
         zone: zone || "",
         woreda: woreda || "",
@@ -198,7 +202,10 @@ export async function POST(req: NextRequest) {
       providerId,
       extraDetails: {
         email: email || "",
-        nationality: nationality || "",
+        // Normalize nationality to canonical form (Ethiopian/Pakistani/
+        // Kenyan/Indian) so the Nationality chart groups all variants
+        // together. Previously stored the raw frontend value.
+        nationality: normalizeNationality(nationality || ""),
         address: composedAddress,
       },
     }).catch(() => {});

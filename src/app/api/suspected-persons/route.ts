@@ -6,6 +6,7 @@ import { ensureSuspectTables } from "@/lib/suspect-check";
 import { Prisma } from "@prisma/client";
 import { isValidPhone } from "@/lib/utils";
 import { normalizeIdType } from "@/lib/national-id";
+import { normalizeNationality } from "@/lib/nationalities";
 
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 5;
@@ -165,7 +166,9 @@ export async function POST(req: NextRequest) {
         phone: phone || "",
         idNumber: primaryId,
         idType: primaryIdType,
-        nationality: nationality || "",
+        // Normalize nationality too so suspect records use the same
+        // canonical forms as guests.
+        nationality: normalizeNationality(nationality || ""),
         address: address || "",
         description: description || "",
         severity: severity || "MEDIUM",
