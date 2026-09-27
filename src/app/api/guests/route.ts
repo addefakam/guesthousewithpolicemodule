@@ -189,20 +189,17 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Fire-and-forget suspect match check (same as new-guest path)
-      checkSuspectMatch({
-        name: updated.name,
-        phone: updated.phone,
-        idNumber: updated.idNumber || "",
-        idType: updated.idType || "",
-        matchType: "GUEST_CHECKIN",
-        providerId,
-        extraDetails: {
-          email: updated.email || "",
-          nationality: updated.nationality || "",
-          address: composeAddress({ region, zone, woreda, kebele, houseNumber, streetName }),
-        },
-      }).catch(() => {});
+      // ── Suspect check intentionally NOT fired here ──
+      // The guest already existed and was already checked against the
+      // suspect watchlist when they were first created. Re-checking on
+      // every enrichment would fire duplicate alerts — the reservation
+      // creation endpoint (POST /api/reservations) fires checkSuspectMatch
+      // with the full reservation context (room, dates, provider) which
+      // is more useful to the police than a bare guest-enrichment event.
+      //
+      // If a NEW suspect was added to the watchlist AFTER this guest was
+      // first created, the reservation creation will catch it — that's
+      // the right time to re-check, not during guest-profile enrichment.
 
       return NextResponse.json({ ...updated, _reused: true }, { status: 200 });
     }

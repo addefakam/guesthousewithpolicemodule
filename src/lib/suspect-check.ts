@@ -259,6 +259,12 @@ export async function checkSuspectMatch(params: {
     // update it with the NEW reservation info instead of creating a duplicate.
     // This way the Suspect Alerts list shows ONE entry per person, with the
     // latest reservation status — not a new entry every time they book again.
+    //
+    // ALERT DISPATCH: only fires on CREATE (new match), NOT on UPDATE.
+    // Previously it fired for BOTH paths, causing duplicate alerts when
+    // the same person made multiple reservations — the police got
+    // notified twice (once from guest creation, once from reservation
+    // creation) even though it was the same suspect match being updated.
     for (const suspect of suspects) {
       // Check if a match already exists for this suspect + guest
       const existingMatch = await db.suspectMatch.findFirst({
@@ -271,6 +277,7 @@ export async function checkSuspectMatch(params: {
       });
 
       let match;
+      let isNewMatch = false;
       if (existingMatch) {
         // UPDATE the existing match with the new reservation info
         match = await db.suspectMatch.update({
@@ -303,23 +310,28 @@ export async function checkSuspectMatch(params: {
             details,
           },
         });
+        isNewMatch = true;
         console.log(`[suspect-check] Created new match ${match.id} for suspect ${suspect.id}`);
       }
 
-      // Fire-and-forget alert dispatch — never blocks or breaks normal flow
-      dispatchAlertForMatch(
-        { id: suspect.id, name: suspect.name, severity: suspect.severity, is_active: suspect.is_active },
-        {
-          matchId: match.id,
-          providerId: match.providerId,
-          providerName: match.providerName,
-          guestName: match.guestName,
-          guestPhone: match.guestPhone,
-          guestIdNumber: match.guestIdNumber,
-          matchType: match.matchType,
-          details: match.details,
-        }
-      ).catch(() => {});
+      // Fire-and-forget alert dispatch — ONLY for new matches.
+      // Updates are silent (just mark unread so the alert re-appears
+      // in the list, but no new notification is dispatched).
+      if (isNewMatch) {
+        dispatchAlertForMatch(
+          { id: suspect.id, name: suspect.name, severity: suspect.severity, is_active: suspect.is_active },
+          {
+            matchId: match.id,
+            providerId: match.providerId,
+            providerName: match.providerName,
+            guestName: match.guestName,
+            guestPhone: match.guestPhone,
+            guestIdNumber: match.guestIdNumber,
+            matchType: match.matchType,
+            details: match.details,
+          }
+        ).catch(() => {});
+      }
     }
   } catch (error) {
     // Log but never throw — suspect checking should not break normal operations
