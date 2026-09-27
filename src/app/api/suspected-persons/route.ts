@@ -5,6 +5,7 @@ import { requirePoliceMinRank } from "@/lib/police-permissions";
 import { ensureSuspectTables } from "@/lib/suspect-check";
 import { Prisma } from "@prisma/client";
 import { isValidPhone } from "@/lib/utils";
+import { normalizeIdType } from "@/lib/national-id";
 
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 5;
@@ -148,9 +149,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid phone number format. Use 7-15 digits with optional + prefix." }, { status: 400 });
     }
 
-    // Keep the legacy single idNumber/idType for backwards compat
+    // Keep the legacy single idNumber/idType for backwards compat.
+    // Normalize the idType so suspect records use the same canonical
+    // forms as guests ("National ID" / "Kebele ID" / "Passport" /
+    // "Driver's License" / "Other"). Previously this stored the raw
+    // frontend value, and the fallback at line 184 was "National_ID"
+    // (with underscore) — a totally unique string that didn't match
+    // anything else in the system.
     const primaryId = idNumber || "";
-    const primaryIdType = idType || "";
+    const primaryIdType = normalizeIdType(idType || "") || "";
 
     const person = await db.suspectedPerson.create({
       data: {
@@ -169,18 +176,24 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Create SuspectId records for all provided identifiers
+    // Create SuspectId records for all provided identifiers — also
+    // normalized so multi-ID suspects have consistent types.
     const idsToCreate: { idType: string; idNumber: string }[] = [];
     if (Array.isArray(identifiers) && identifiers.length > 0) {
       for (const ident of identifiers) {
         if (ident.idNumber && ident.idNumber.trim()) {
-          idsToCreate.push({ idType: ident.idType || "Other", idNumber: ident.idNumber.trim() });
+          idsToCreate.push({
+            idType: normalizeIdType(ident.idType || "") || "Other",
+            idNumber: ident.idNumber.trim(),
+          });
         }
       }
     }
-    // Also create from legacy fields if not already in the list
+    // Also create from legacy fields if not already in the list.
+    // Fallback type changed from "National_ID" (with underscore, broken)
+    // to the canonical "National ID" (with space).
     if (primaryId && !idsToCreate.some(i => i.idNumber.toLowerCase() === primaryId.toLowerCase())) {
-      idsToCreate.unshift({ idType: primaryIdType || "National_ID", idNumber: primaryId });
+      idsToCreate.unshift({ idType: primaryIdType || "National ID", idNumber: primaryId });
     }
 
     for (const sid of idsToCreate) {

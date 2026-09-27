@@ -237,16 +237,36 @@ export async function GET(req: NextRequest) {
       `);
 
     // ── 9. ID type distribution ──
+    // Group by the CANONICAL idType form, mirroring the JS-side
+    // normalizeIdType() helper in src/lib/national-id.ts. Previously
+    // this grouped by TRIM("idType") directly, so NATIONAL,
+    // NATIONAL_ID, and "National ID" appeared as 3 separate slices
+    // even though they're the same ID type.
+    //
+    // The CASE expression normalizes on the fly so existing data
+    // doesn't need a migration to display correctly. A separate
+    // one-time data-cleanup script (scripts/normalize_id_types.js)
+    // backfills the DB so new aggregations match the writes.
+    // Upper-cases the input after removing spaces and underscores so
+    // 'National ID', 'NATIONAL_ID', 'national id', and 'NationalID'
+    // all collapse to 'NATIONALID' → mapped to 'National ID'.
     const idTypes = await db.$queryRaw<{ name: string; count: number }[]>(Prisma.sql`
       SELECT
-        CASE WHEN "idType" IS NULL OR TRIM("idType") = '' THEN 'Not Provided'
-             ELSE TRIM("idType") END AS name,
+        CASE
+          WHEN "idType" IS NULL OR TRIM("idType") = '' THEN 'Not Provided'
+          WHEN UPPER(REPLACE(REPLACE(TRIM("idType"), ' ', ''), '_', '')) IN ('NATIONALID', 'NATIONAL') THEN 'National ID'
+          WHEN UPPER(REPLACE(REPLACE(TRIM("idType"), ' ', ''), '_', '')) IN ('KEBELEID', 'KEBELE') THEN 'Kebele ID'
+          WHEN UPPER(REPLACE(REPLACE(TRIM("idType"), ' ', ''), '_', '')) = 'PASSPORT' THEN 'Passport'
+          WHEN UPPER(REPLACE(REPLACE(TRIM("idType"), ' ', ''), '_', '')) IN ('DRIVER', 'DRIVERSLICENSE', 'DRIVERLICENSE') THEN 'Driver''s License'
+          WHEN UPPER(REPLACE(REPLACE(TRIM("idType"), ' ', ''), '_', '')) = 'OTHER' THEN 'Other'
+          ELSE TRIM("idType")
+        END AS name,
         COUNT(*)::int AS count
       FROM "Guest"
       WHERE 1=1
         ${providerId ? Prisma.sql`AND "providerId" = ${providerId}` : Prisma.sql``}
         ${period !== "yearly" ? Prisma.sql`AND "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``}
-      GROUP BY CASE WHEN "idType" IS NULL OR TRIM("idType") = '' THEN 'Not Provided' ELSE TRIM("idType") END
+      GROUP BY 1
       ORDER BY count DESC
     `);
 

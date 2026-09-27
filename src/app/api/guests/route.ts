@@ -165,7 +165,13 @@ export async function POST(req: NextRequest) {
         phone,
         email: email || "",
         idNumber: idNumber || "",
-        idType: idType || "",
+        // Normalize the ID type to the canonical form ("National ID",
+        // "Kebele ID", "Passport", "Driver's License", "Other") so the
+        // ID Type Distribution chart groups all variations together.
+        // Previously the raw frontend value was stored, so the chart
+        // showed NATIONAL, NATIONAL_ID, and National ID as 3 separate
+        // slices for what is really the same ID type.
+        idType: normalizeIdType(idType || "") || "",
         nationality: nationality || "",
         region: region || "",
         zone: zone || "",

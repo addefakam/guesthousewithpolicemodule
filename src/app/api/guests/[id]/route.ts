@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { normalizeIdType } from "@/lib/national-id";
 
 export async function PUT(
   req: NextRequest,
@@ -57,7 +58,8 @@ export async function PUT(
         ...(phone !== undefined && { phone }),
         ...(email !== undefined && { email }),
         ...(idNumber !== undefined && { idNumber }),
-        ...(idType !== undefined && { idType }),
+        // Normalize on update so old records get cleaned up when edited.
+        ...(idType !== undefined && { idType: normalizeIdType(idType) }),
         ...(nationality !== undefined && { nationality }),
         ...(region !== undefined && { region }),
         ...(zone !== undefined && { zone }),
