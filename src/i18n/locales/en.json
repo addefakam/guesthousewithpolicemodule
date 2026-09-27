@@ -3282,6 +3282,7 @@
     "toastFailedExtend": "Failed to extend stay",
     "toastInvalidDate": "Invalid date",
     "toastFailedLoad": "Failed to load data",
+    "networkError": "Network error. Please check your connection and try again.",
     "doubleRoomSecondGuest": "Double room — second guest required",
     "twoGuests": "Two guests",
     "exceptionallyReserved": "Exception (single)",

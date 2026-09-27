@@ -3180,6 +3180,7 @@
     "toastFailedExtend": "ቆይታ ማራዘም አልተቻለም",
     "toastInvalidDate": "ልክ ያልሆነ ቀን",
     "toastFailedLoad": " መጫን አልተሳካም",
+    "networkError": "የኔትወርክ ስህተት። እባክዎ ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።",
     "doubleRoomSecondGuest": "ድርብ ክፍል — ሁለተኛው እንግዳ ይገባል",
     "twoGuests": "ሁለት እንግዶች",
     "exceptionallyReserved": "ልዩ (አንድ ብቻ)",

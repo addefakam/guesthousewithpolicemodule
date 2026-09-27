@@ -2225,6 +2225,7 @@
     "toastFailedExtend": "Turti dabaluu hin danda'anne",
     "toastInvalidDate": "Guyyaan dogoggora",
     "toastFailedLoad": "Daatae kaa'uu hin dandahamne",
+    "networkError": "Dogoggora sirkii. Tarii qabannaa kee ilaali erga deebi'anii yaali.",
     "doubleRoomSecondGuest": "Kutaa lamaa — keessummaa lammaffaa dirqama",
     "twoGuests": "Keessummaa lama",
     "exceptionallyReserved": "Garmagarumatti qabame",

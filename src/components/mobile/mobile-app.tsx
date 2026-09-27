@@ -111,6 +111,7 @@ import {
   Loader2,
 } from "lucide-react";
 import GuestLifecycleBadges, { type GuestLifecycleSummary } from "@/components/shared/guest-lifecycle-badges";
+import { NetworkStatusBanner, useTimeout } from "@/components/mobile/network-status";
 
 
 // ── Types ──
@@ -392,6 +393,7 @@ function parseAmenities(amenitiesStr: string | null | undefined): string[] {
 export default function MobileApp() {
   const { t, i18n } = useTranslation("mobile");
   const { currentUser, setCurrentUser, triggerRefresh } = useAppStore();
+  const { runWithTimeout } = useTimeout();
   const [activeTab, setActiveTab] = useState<Tab>("rooms");
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -558,16 +560,22 @@ export default function MobileApp() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // ── Fetch all data ──
+  // Wrapped in runWithTimeout(10s) so a hung network connection
+  // doesn't leave the user staring at a spinner forever — after 10
+  // seconds, it throws "Request timed out" which triggers the error
+  // toast + the NetworkStatusBanner (if offline).
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch ALL reservations (no status filter) so the Reservations tab
       // can show Upcoming / Checked-in / Completed / Cancelled sections.
       // Mirrors the web's approach (apiGetReservations() with limit=999).
+      // Each API call is wrapped in a 10-second timeout so a slow/hung
+      // network doesn't block the UI indefinitely.
       const [rmRaw, allResRaw, gRaw] = await Promise.all([
-        apiGetRooms(),
-        apiGetReservations("limit=999").catch(() => []),
-        apiGetGuests(),
+        runWithTimeout(() => apiGetRooms(), 10000),
+        runWithTimeout(() => apiGetReservations("limit=999"), 10000).catch(() => []),
+        runWithTimeout(() => apiGetGuests(), 10000),
       ]);
 
       const rmList = Array.isArray(rmRaw.rooms) ? rmRaw.rooms : Array.isArray(rmRaw) ? rmRaw : [];
@@ -637,13 +645,17 @@ export default function MobileApp() {
         // The req() interceptor already redirected to login — just show a toast
         toast.error(t("sessionExpired") || "Session expired. Please sign in again.");
         setCurrentUser(null);
+      } else if (msg.includes("timed out") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        // Network failure or timeout — show a more specific message so the
+        // user knows it's a connectivity issue, not a server error.
+        toast.error(t("networkError") || "Network error. Please check your connection and try again.");
       } else {
         toast.error(t("toastFailedLoad"));
       }
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, runWithTimeout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -1253,6 +1265,12 @@ export default function MobileApp() {
   // ── Render ──
   return (
     <div className="min-h-dvh flex flex-col bg-gray-50">
+      {/* ── Network status banner ──
+          Shows a red "You are offline" bar when the network drops.
+          Auto-hides when connectivity returns, and auto-triggers a
+          data re-fetch (fetchData) after a 2-second delay so the app
+          recovers without the user needing to tap Refresh manually. */}
+      <NetworkStatusBanner onReconnect={fetchData} />
       {/* Header */}
       <header className="sticky top-0 z-30 bg-slate-900 text-white px-4 pt-[env(safe-area-inset-top)] pb-3">
         <div className="flex items-center justify-between">
