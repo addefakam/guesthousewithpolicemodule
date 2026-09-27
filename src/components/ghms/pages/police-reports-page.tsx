@@ -203,7 +203,6 @@ export default function PoliceReportsPage() {
         Provider: p.name,
         Address: p.address || "",
         Rooms: p.rooms,
-        Guests: p.guests,
         CheckIns: p.checkIns,
         CheckOuts: p.checkOuts,
         SuspectMatches: p.matches,
@@ -240,12 +239,12 @@ export default function PoliceReportsPage() {
 
   const exportCSV = useCallback(() => {
     if (!data) return;
-    const csvHeaders = [t('csvProvider'), t('csvRegisteredGuests'), t('csvCheckIns'), t('csvCheckOuts'), t('csvSuspectMatches'), t('csvRooms')].join(',');
+    const csvHeaders = [t('csvProvider'), t('csvCheckIns'), t('csvCheckOuts'), t('csvSuspectMatches'), t('csvRooms')].join(',');
     const nationalityHeader = [t('csvNationality'), t('csvCount')].join(',');
     const severityHeader = [t('csvSeverity'), t('csvCount')].join(',');
     const rows = [csvHeaders];
     for (const p of data.providerBreakdown) {
-      rows.push(`"${p.name}",${p.guests},${p.checkIns},${p.checkOuts},${p.matches},${p.rooms}`);
+      rows.push(`"${p.name}",${p.checkIns},${p.checkOuts},${p.matches},${p.rooms}`);
     }
     rows.push("");
     rows.push(nationalityHeader);
@@ -575,7 +574,6 @@ export default function PoliceReportsPage() {
                         <SortableTh label={t('thprovider', 'Provider')} col="name" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thAddress', 'Address')} col="address" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('throoms', 'Rooms')} col="rooms" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
-                        <SortableTh label={t('thguests', 'Guests')} col="guests" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thcheckins', 'Check-Ins')} col="checkIns" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thcheckouts', 'Check-Outs')} col="checkOuts" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thsuspectMatches', 'Suspect Matches')} col="matches" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
@@ -588,7 +586,6 @@ export default function PoliceReportsPage() {
                           <TableCell className="text-xs font-medium">{p.name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{p.address || "—"}</TableCell>
                           <TableCell className="text-xs text-center">{p.rooms}</TableCell>
-                          <TableCell className="text-xs text-center font-semibold">{p.guests}</TableCell>
                           <TableCell className="text-xs text-center text-blue-600">{p.checkIns}</TableCell>
                           <TableCell className="text-xs text-center text-emerald-600">{p.checkOuts}</TableCell>
                           <TableCell className="text-xs text-center">
