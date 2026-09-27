@@ -252,45 +252,56 @@ export async function POST(req: NextRequest) {
       }, { status: 409 });
     }
 
-    const reservation = await db.reservation.create({
-      data: {
-        guestId,
-        roomId,
-        checkIn: checkInDay,
-        checkOut: checkOutDay,
-        nights,
-        roomRate: rate,
-        totalCost,
-        paidAmount,
-        balance,
-        paymentStatus: "PENDING" as const,
-        paymentMethod: paymentMethod || null,
-        status: "UPCOMING" as const,
-        notes: notes || "",
-        taxAmount: tax,
-        discountAmount: discount,
-        secondGuestName: secondGuestName || "",
-        secondGuestPhone: secondGuestPhone || "",
-        secondGuestIdNumber: secondGuestIdNumber || "",
-        exceptionallyReserved: exceptionallyReserved === true,
-        exceptionReason: exceptionReason || "",
-        providerId: providerId!,
-        ...(groupBookingId ? { groupBookingId } : {}),
-      },
-      include: {
-        guest: { select: { id: true, name: true, phone: true, idNumber: true, idType: true } },
-        room: { select: { id: true, number: true, name: true } },
-      },
-    });
+    // ── Create reservation + update room status in a single transaction ──
+    // Previously these were 2 separate DB operations — if the reservation
+    // succeeded but the room-status update failed, the room would stay
+    // AVAILABLE even though it had a booking. Now both succeed or both
+    // roll back atomically.
+    //
+    // The suspect check (checkSuspectMatch) stays OUTSIDE the transaction
+    // — it's fire-and-forget and should never block or roll back the
+    // reservation if it fails.
+    const reservation = await db.$transaction(async (tx) => {
+      const res = await tx.reservation.create({
+        data: {
+          guestId,
+          roomId,
+          checkIn: checkInDay,
+          checkOut: checkOutDay,
+          nights,
+          roomRate: rate,
+          totalCost,
+          paidAmount,
+          balance,
+          paymentStatus: "PENDING" as const,
+          paymentMethod: paymentMethod || null,
+          status: "UPCOMING" as const,
+          notes: notes || "",
+          taxAmount: tax,
+          discountAmount: discount,
+          secondGuestName: secondGuestName || "",
+          secondGuestPhone: secondGuestPhone || "",
+          secondGuestIdNumber: secondGuestIdNumber || "",
+          exceptionallyReserved: exceptionallyReserved === true,
+          exceptionReason: exceptionReason || "",
+          providerId: providerId!,
+          ...(groupBookingId ? { groupBookingId } : {}),
+        },
+        include: {
+          guest: { select: { id: true, name: true, phone: true, idNumber: true, idType: true } },
+          room: { select: { id: true, number: true, name: true } },
+        },
+      });
 
-    // Update room status to RESERVED so it visually changes color immediately
-    try {
-      await db.$queryRawUnsafe(`UPDATE "Room" SET "status" = 'RESERVED' WHERE "id" = $1`, roomId);
-      console.log("[reservations] Room status updated to RESERVED for room:", roomId);
-    } catch (roomErr) {
-      console.error("[reservations] Failed to update room status:", roomErr instanceof Error ? roomErr.message : String(roomErr));
-      // Non-blocking — reservation was still created
-    }
+      // Update room status to RESERVED atomically — if this fails, the
+      // entire transaction (including the reservation creation) rolls back.
+      await tx.$queryRawUnsafe(
+        `UPDATE "Room" SET "status" = 'RESERVED' WHERE "id" = $1`,
+        roomId
+      );
+
+      return res;
+    });
 
 
     // Check if guest matches any suspected person SYNCHRONOUSLY so the

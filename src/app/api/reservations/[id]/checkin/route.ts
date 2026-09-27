@@ -63,59 +63,78 @@ export async function POST(
       );
     }
 
-    // ── Room not already OCCUPIED by another active reservation ──
-    // Even though this reservation is UPCOMING, the room could already
-    // be physically occupied by a different ACTIVE reservation (e.g. a
-    // previous guest who hasn't checked out yet, or a same-day checkout
-    // where the room hasn't been turned over). Refuse in that case so we
-    // never silently overwrite one guest's stay with another's.
-    const room = await db.room.findUnique({
-      where: { id: reservation.roomId },
-      select: { id: true, status: true, number: true, name: true },
-    });
-    if (!room) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    }
-    if (room.status === "OCCUPIED") {
-      // Confirm the occupation is caused by a DIFFERENT reservation
-      // (defensive — should always be true since this one is UPCOMING).
-      const otherActive = await db.reservation.findFirst({
-        where: {
-          roomId: reservation.roomId,
-          status: "ACTIVE",
-          id: { not: reservation.id },
-        },
-        select: { id: true, guest: { select: { name: true } } },
-      });
-      if (otherActive) {
-        return NextResponse.json(
-          {
-            error: `Room ${room.number}${room.name ? ` (${room.name})` : ""} is already occupied by ${otherActive.guest?.name || "another guest"}. Check out the current guest first.`,
-            code: "ROOM_OCCUPIED",
-            details: { roomId: reservation.roomId, roomNumber: room.number, otherReservationId: otherActive.id },
-          },
-          { status: 409 }
-        );
+    // ── Atomic check-in with row-level locking ──
+    // Wraps the room-occupied check + reservation update + room status
+    // update in a single DB transaction with SELECT ... FOR UPDATE on the
+    // Room row. This prevents the race condition where two operators
+    // simultaneously check in two different guests to the SAME room:
+    //   Operator A: locks room row → sees AVAILABLE → updates → commits → unlocks
+    //   Operator B: waits for lock → acquires → sees OCCUPIED → returns 409
+    // Without this, both could read AVAILABLE concurrently and both succeed.
+    const txResult = await db.$transaction(async (tx) => {
+      // Lock the room row — prevents concurrent check-ins to the same room.
+      // FOR UPDATE holds the lock until the transaction commits/rolls back.
+      const rooms = await tx.$queryRaw<
+        { id: string; status: string; number: string; name: string }[]
+      >`SELECT "id", "status", "number", "name" FROM "Room" WHERE "id" = ${reservation.roomId} FOR UPDATE`;
+      const room = rooms[0];
+      if (!room) {
+        return { error: "Room not found", status: 404 as const };
       }
+      if (room.status === "OCCUPIED") {
+        // Confirm the occupation is caused by a DIFFERENT reservation
+        const otherActive = await tx.reservation.findFirst({
+          where: {
+            roomId: reservation.roomId,
+            status: "ACTIVE",
+            id: { not: reservation.id },
+          },
+          select: { id: true, guest: { select: { name: true } } },
+        });
+        if (otherActive) {
+          return {
+            error: `Room ${room.number}${room.name ? ` (${room.name})` : ""} is already occupied by ${otherActive.guest?.name || "another guest"}. Check out the current guest first.`,
+            code: "ROOM_OCCUPIED" as const,
+            status: 409 as const,
+            details: { roomId: reservation.roomId, roomNumber: room.number, otherReservationId: otherActive.id },
+          };
+        }
+      }
+
+      // Update reservation status and actual check-in time
+      const updated = await tx.reservation.update({
+        where: { id },
+        data: {
+          status: "ACTIVE",
+          actualCheckIn: now,
+        },
+        include: {
+          guest: { select: { id: true, name: true, phone: true } },
+        },
+      });
+
+      // Update room status to OCCUPIED
+      await tx.room.update({
+        where: { id: reservation.roomId },
+        data: { status: "OCCUPIED" },
+      });
+
+      return { updated };
+    });
+
+    // Handle transaction error responses (room not found / room occupied)
+    if ("error" in txResult) {
+      return NextResponse.json(
+        {
+          error: txResult.error,
+          ...("code" in txResult ? { code: txResult.code } : {}),
+          ...("details" in txResult ? { details: txResult.details } : {}),
+        },
+        { status: txResult.status }
+      );
     }
 
-    // Update reservation status and actual check-in time
-    const updated = await db.reservation.update({
-      where: { id },
-      data: {
-        status: "ACTIVE",
-        actualCheckIn: now,
-      },
-      include: {
-        guest: { select: { id: true, name: true, phone: true } },
-      },
-    });
-
-    // Update room status to OCCUPIED
-    await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
-      where: { id: reservation.roomId },
-      data: { status: "OCCUPIED" },
-    });
+    const updated = txResult.updated;
 
     // Staff log
     const { userId, userName } = getLogUserInfo(req);

@@ -53,8 +53,14 @@ function normalizeName(name: string): string {
  * Returns true if:
  *  - Exact match (after normalization)
  *  - One name contains the other (after normalization)
- *  - Both names share the same last word (surname match)
- *  - Levenshtein distance is very small (1-2 chars) for short names
+ *  - Both names share the same last word (surname match) AND at least
+ *    one other word (prevents false positives on common surnames like
+ *    "Kebede" matching two completely different people)
+ *
+ * REMOVED: first-word-only match — was causing too many false positives
+ * because common Ethiopian given names like "Abebe", "Tesfaye", "Dawit"
+ * would match many different people who just happened to share that
+ * first name. Now requires surname match + at least one more word.
  */
 function namesMatch(name1: string, name2: string): boolean {
   const n1 = normalizeName(name1);
@@ -66,16 +72,22 @@ function namesMatch(name1: string, name2: string): boolean {
   // One contains the other (e.g. "John Doe" contains "John")
   if (n1.includes(n2) || n2.includes(n1)) return true;
 
-  // Surname match: last word is the same
+  // Surname match: last word is the same AND at least one more word
+  // matches too. This prevents false positives where two different
+  // people share only a surname (common in Ethiopia — many "Kebede"s).
+  // Without the additional word requirement, "Abebe Kebede" would match
+  // "Dawit Kebede" — two different people.
   const words1 = n1.split(" ").filter(Boolean);
   const words2 = n2.split(" ").filter(Boolean);
   if (words1.length > 1 && words2.length > 1) {
-    if (words1[words1.length - 1] === words2[words2.length - 1]) return true;
-  }
-
-  // First word match (given name)
-  if (words1.length > 0 && words2.length > 0) {
-    if (words1[0] === words2[0]) return true;
+    const sameSurname = words1[words1.length - 1] === words2[words2.length - 1];
+    if (sameSurname) {
+      // Require at least one MORE word to match (given name or middle name)
+      const given1 = words1.slice(0, -1);
+      const given2 = words2.slice(0, -1);
+      const sharedGiven = given1.some((w) => given2.includes(w));
+      if (sharedGiven) return true;
+    }
   }
 
   return false;
