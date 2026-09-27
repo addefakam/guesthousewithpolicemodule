@@ -16,11 +16,40 @@ import { useTranslation, I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/config";
 import MobileApp from "@/components/mobile/mobile-app";
 import { MobileLoginPage } from "@/components/mobile/mobile-login";
+import PwaInstallPrompt from "@/components/pwa-install-prompt";
 
 export default function MobilePage() {
   return (
     <I18nextProvider i18n={i18n}>
       <MobileLanguageBootstrap />
+      {/*
+        PWA install prompt — mounted at the page level (outside the
+        login/app content) so it's always rendered, regardless of whether
+        the user is logged in or not. This way the install dialog fires
+        automatically on the FIRST tap when the user opens the /m link,
+        even before they sign in.
+
+        autoPrompt=true → the native install dialog fires as soon as the
+        user makes any gesture (tap, scroll, keypress) on the page.
+        Browsers require a user gesture for beforeinstallprompt.prompt()
+        to succeed, so we listen for one and trigger immediately.
+
+        showOnMobile=true → the fallback card renders as a mobile-first
+        bottom sheet (not desktop corner card) so it looks native on
+        the phone screen.
+
+        dismissStorageKey="ghms_mobile_install_dismissed" → separate
+        from the main system's dismissal key, so dismissing on the
+        desktop app doesn't suppress the prompt on the mobile app (or
+        vice versa).
+      */}
+      <PwaInstallPrompt
+        titleKey="install.mobileTitle"
+        descKey="install.mobileDesc"
+        dismissStorageKey="ghms_mobile_install_dismissed"
+        showOnMobile={true}
+        autoPrompt={true}
+      />
       <MobilePageContent />
     </I18nextProvider>
   );

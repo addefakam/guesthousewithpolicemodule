@@ -67,6 +67,22 @@ interface PwaInstallPromptProps {
   dismissStorageKey?: string;
   /** Also ask on phones (bottom sheet) — used by the mobile-first police app */
   showOnMobile?: boolean;
+  /**
+   * When true, automatically fire the native install dialog as soon as the
+   * browser allows it (i.e. as soon as the user makes ANY gesture — click,
+   * tap, scroll, or keypress — on the page). Browsers require a user
+   * gesture for `beforeinstallprompt.prompt()` to succeed; calling it on
+   * page load silently fails with "requires user gesture".
+   *
+   * Used by the mobile guest app (/m) so the install dialog opens itself
+   * as soon as the user taps anywhere on the login screen.
+   *
+   * If the prompt is rejected (user dismissed the native dialog) OR the
+   * browser doesn't fire `beforeinstallprompt` at all (iOS Safari, Firefox),
+   * the standard card with an "Install app" button still shows as a
+   * fallback so the user can manually trigger it.
+   */
+  autoPrompt?: boolean;
 }
 
 /**
@@ -83,12 +99,16 @@ interface PwaInstallPromptProps {
  *   user dismisses it (persisted per app via localStorage).
  * - The police app passes its own title/desc keys + storage key and
  *   enables the mobile bottom sheet, so each app keeps its own dismissal.
+ * - With `autoPrompt={true}` (mobile guest app), the native install dialog
+ *   is fired automatically on the first user gesture, instead of waiting
+ *   for the user to click the "Install app" button.
  */
 export default function PwaInstallPrompt({
   titleKey = "install.title",
   descKey = "install.desc",
   dismissStorageKey = "ghms_install_dismissed",
   showOnMobile = false,
+  autoPrompt = false,
 }: PwaInstallPromptProps) {
   const { t } = useTranslation("common");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
@@ -224,6 +244,53 @@ export default function PwaInstallPrompt({
     const timer = setTimeout(() => setManualHint(true), MANUAL_HINT_DELAY_MS);
     return () => clearTimeout(timer);
   }, [visible, deferred]);
+
+  // ── autoPrompt: fire the native install dialog on the FIRST user gesture ──
+  // Browsers require a user gesture (click, tap, scroll, or keydown) for
+  // `beforeinstallprompt.prompt()` to succeed. Calling it on page load
+  // silently fails with "requires user gesture". So we listen for ANY
+  // user gesture on the window and trigger the install dialog at that
+  // point — typically within 1 tap of the user opening the mobile app.
+  //
+  // Once triggered, the install dialog shows itself; the user accepts or
+  // dismisses. If dismissed, the standard card stays visible so they can
+  // click "Install app" again later. If accepted, `appinstalled` fires
+  // and the whole component hides (see `onInstalled` above).
+  useEffect(() => {
+    if (!autoPrompt || !deferred) return;
+    let fired = false;
+
+    const triggerInstall = () => {
+      if (fired || !deferred) return;
+      fired = true;
+      cleanup();
+      deferred
+        .prompt()
+        .then(() => dismiss())
+        .catch(() => {
+          /* Will fall back to the visible card with the "Install app"
+             button so the user can manually retry. */
+        });
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("click", triggerInstall);
+      window.removeEventListener("touchend", triggerInstall);
+      window.removeEventListener("keydown", triggerInstall);
+      window.removeEventListener("scroll", triggerInstall);
+    };
+
+    // passive: true so we don't block the gesture from doing its main job
+    // (e.g. typing into the login form, scrolling the page). capture: false
+    // so the install dialog doesn't preempt form interactions.
+    const opts: AddEventListenerOptions = { passive: true };
+    window.addEventListener("click", triggerInstall, opts);
+    window.addEventListener("touchend", triggerInstall, opts);
+    window.addEventListener("keydown", triggerInstall, opts);
+    window.addEventListener("scroll", triggerInstall, opts);
+
+    return cleanup;
+  }, [autoPrompt, deferred, dismiss]);
 
   const onInstall = useCallback(async () => {
     if (!deferred) {
