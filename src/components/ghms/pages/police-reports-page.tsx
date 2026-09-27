@@ -10,6 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
@@ -151,6 +154,9 @@ export default function PoliceReportsPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [providerId, setProviderId] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  // Selected provider for the Occupancy drill-down dialog — when set,
+  // shows a Dialog with the full room status breakdown for that provider.
+  const [occDetail, setOccDetail] = useState<OccupancyRow | null>(null);
 
   // ── Providers tab: sortable columns ──
   // Sort key can be: name, address, guests, checkIns, checkOuts, matches, rooms
@@ -423,13 +429,14 @@ export default function PoliceReportsPage() {
                       <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: number) => `${v}%`} />
-                      <Bar dataKey="rate" name={t('occupancyPercent')} fill="#2563eb" radius={[0, 4, 4, 0]}>
+                      <Bar dataKey="rate" name={t('occupancyPercent')} fill="#2563eb" radius={[0, 4, 4, 0]} className="cursor-pointer" onClick={(payload: { payload?: OccupancyRow }) => payload?.payload && setOccDetail(payload.payload)}>
                         {data.occupancyByProvider.map((entry, i) => (
                           <Cell key={i} fill={entry.rate > 80 ? "#dc2626" : entry.rate > 50 ? "#ca8a04" : "#16a34a"} />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                  <p className="mt-2 text-center text-[10px] text-muted-foreground">Click a bar to see room details</p>
                 </CardContent>
               </Card>
             ) : providerId ? (
@@ -455,7 +462,7 @@ export default function PoliceReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {data.occupancyByProvider.map((p, i) => (
-                        <TableRow key={i}>
+                        <TableRow key={i} className="cursor-pointer hover:bg-muted/50" onClick={() => setOccDetail(p)}>
                           <TableCell className="text-xs font-medium">{p.name}</TableCell>
                           <TableCell className="text-xs text-center">{p.total}</TableCell>
                           <TableCell className="text-xs text-center font-semibold text-red-600">{p.occupied}</TableCell>
@@ -624,6 +631,77 @@ export default function PoliceReportsPage() {
           </TabsContent>
         </Tabs>
       ) : null}
+
+      {/* ── Occupancy drill-down dialog ──
+          Opens when the user clicks a bar in the Occupancy by Provider
+          chart or a row in the occupancy table. Shows the full room
+          status breakdown for that provider. */}
+      <Dialog open={!!occDetail} onOpenChange={(open) => { if (!open) setOccDetail(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Building2 className="h-4 w-4 text-slate-400" />
+              {occDetail?.name || "Provider"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">Room status breakdown</DialogDescription>
+          </DialogHeader>
+          {occDetail && (() => {
+            const total = occDetail.total || 0;
+            const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0;
+            const rows = [
+              { label: t('thavailable', 'Available'), value: occDetail.available, color: "text-emerald-700 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
+              { label: t('thoccupied', 'Occupied'), value: occDetail.occupied, color: "text-red-700 bg-red-50 border-red-200", dot: "bg-red-500" },
+              { label: t('threserved', 'Reserved'), value: occDetail.reserved, color: "text-blue-700 bg-blue-50 border-blue-200", dot: "bg-blue-500" },
+              { label: t('thmaint', 'Maintenance'), value: occDetail.maintenance, color: "text-amber-700 bg-amber-50 border-amber-200", dot: "bg-amber-500" },
+            ];
+            return (
+              <div className="space-y-4">
+                {/* Summary header */}
+                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t('thtotal', 'Total Rooms')}</p>
+                    <p className="text-2xl font-bold text-slate-900">{total}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t('thrate', 'Occupancy')}</p>
+                    <p className={`text-2xl font-bold ${occDetail.rate > 80 ? "text-red-600" : occDetail.rate > 50 ? "text-amber-600" : "text-emerald-600"}`}>
+                      {occDetail.rate}%
+                    </p>
+                  </div>
+                </div>
+                {/* Status breakdown */}
+                <div className="space-y-2">
+                  {rows.map((r) => (
+                    <div key={r.label} className={`flex items-center justify-between rounded-lg border px-4 py-2.5 ${r.color}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${r.dot}`} />
+                        <span className="text-sm font-medium">{r.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold">{r.value}</span>
+                        <span className="text-[10px] opacity-70">({pct(r.value)}%)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Visual bar */}
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100 flex">
+                  {occDetail.occupied > 0 && <div className="bg-red-500" style={{ width: `${pct(occDetail.occupied)}%` }} />}
+                  {occDetail.reserved > 0 && <div className="bg-blue-500" style={{ width: `${pct(occDetail.reserved)}%` }} />}
+                  {occDetail.maintenance > 0 && <div className="bg-amber-500" style={{ width: `${pct(occDetail.maintenance)}%` }} />}
+                  {occDetail.available > 0 && <div className="bg-emerald-500" style={{ width: `${pct(occDetail.available)}%` }} />}
+                </div>
+                <div className="flex justify-center gap-4 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> Occupied</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" /> Reserved</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" /> Maint.</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Avail.</span>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
