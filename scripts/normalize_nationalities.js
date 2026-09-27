@@ -72,6 +72,10 @@ function normalizeNationality(raw) {
   if (!raw) return "";
   const trimmed = String(raw).trim();
   if (!trimmed) return "";
+  // Reject purely numeric values (likely phone numbers mistakenly
+  // entered in the nationality field). Returns empty so the cleanup
+  // script blanks them out in the DB.
+  if (/^\d+$/.test(trimmed)) return "";
   const upperKey = trimmed.toUpperCase();
   if (NATIONALITY_VARIANTS[upperKey]) return NATIONALITY_VARIANTS[upperKey];
   const squashed = upperKey.replace(/[\s_-]+/g, "");
@@ -110,6 +114,18 @@ async function normalizeColumn(tableName, columnName) {
       console.log(`    ✓ "${raw}" → "${canonical}" : ${result} row(s) updated`);
       totalUpdated += result;
     }
+  }
+
+  // Also blank out any purely numeric nationality values (e.g.
+  // '25874174572' entered in the nationality field by mistake).
+  // Matches values that are entirely digits (after trimming).
+  const numericResult = await db.$executeRawUnsafe(
+    `UPDATE "${tableName}" SET "${columnName}" = ''
+     WHERE "${columnName}" ~ '^[[:space:]]*[0-9]+[[:space:]]*$'`
+  );
+  if (numericResult > 0) {
+    console.log(`    ✓ Numeric (junk) values blanked: ${numericResult} row(s) updated`);
+    totalUpdated += numericResult;
   }
 
   // Snapshot distinct values after.

@@ -62,6 +62,11 @@ const NATIONALITY_VARIANTS: Record<string, string> = {
 /**
  * Normalize a nationality string to its canonical form.
  *
+ * Purely numeric values are treated as INVALID (likely a phone number
+ * mistakenly entered in the nationality field) and return an empty
+ * string so the API rejects/ignores them rather than persisting junk
+ * data.
+ *
  * @example
  *   normalizeNationality("Ethiopia")      → "Ethiopian"
  *   normalizeNationality("ETH")          → "Ethiopian"
@@ -70,6 +75,8 @@ const NATIONALITY_VARIANTS: Record<string, string> = {
  *   normalizeNationality("KENYAN")       → "Kenyan"
  *   normalizeNationality("India")        → "Indian"
  *   normalizeNationality("American")     → "American"  (unknown — returned as-is, trimmed)
+ *   normalizeNationality("25874174572")  → ""  (purely numeric — invalid, rejected)
+ *   normalizeNationality("123")          → ""  (purely numeric — invalid, rejected)
  *   normalizeNationality("")             → ""
  *   normalizeNationality(null)           → ""
  *   normalizeNationality("  ethiopia ")  → "Ethiopian" (whitespace trimmed)
@@ -78,6 +85,11 @@ export function normalizeNationality(nationality: string | undefined | null): st
   if (!nationality) return "";
   const trimmed = String(nationality).trim();
   if (!trimmed) return "";
+  // Reject purely numeric values (likely a phone number mistakenly entered
+  // in the nationality field). Returns empty so the caller can decide what
+  // to do — typically the API will fall back to the default nationality
+  // or skip the field entirely.
+  if (/^\d+$/.test(trimmed)) return "";
   // Try exact upper-case match first.
   const upperKey = trimmed.toUpperCase();
   if (NATIONALITY_VARIANTS[upperKey]) return NATIONALITY_VARIANTS[upperKey];

@@ -163,10 +163,15 @@ export async function GET(req: NextRequest) {
     // need a migration to display correctly. Upper-cases the input after
     // removing spaces/underscores/hyphens so 'Ethiopia' / 'ETHIOPIA' /
     // 'ethiopia' / 'Ethiopian' all collapse to the same key.
+    //
+    // Also catches JUNK data — purely numeric values (e.g. '25874174572'
+    // mistakenly entered in the nationality field) are grouped as
+    // 'Unknown' instead of polluting the chart with phone-number slices.
     const nationalities = await db.$queryRaw<{ name: string; count: number }[]>(Prisma.sql`
       SELECT
         CASE
           WHEN "nationality" IS NULL OR TRIM("nationality") = '' THEN 'Unknown'
+          WHEN TRIM("nationality") ~ '^[0-9]+$' THEN 'Unknown'
           WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
                ('ETHIOPIAN', 'ETHIOPIA', 'ETHI', 'ETH', 'ETHIO') THEN 'Ethiopian'
           WHEN UPPER(REPLACE(REPLACE(REPLACE(TRIM("nationality"), ' ', ''), '_', ''), '-', '')) IN
