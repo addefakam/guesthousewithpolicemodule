@@ -138,6 +138,76 @@ export async function POST(req: NextRequest) {
     if (!idType || !idType.trim()) {
       return NextResponse.json({ error: "ID type is required" }, { status: 400 });
     }
+
+    // ── AUTO-DEDUP: find or create by phone number ──
+    // The #1 cause of duplicate guest records was the reservation flow:
+    // every time an operator created a reservation in "New Guest" mode,
+    // a new Guest row was inserted — even if a guest with the same phone
+    // already existed at the same guesthouse.
+    //
+    // This "find or create" logic fixes that:
+    //   1. Search for an existing guest with the same phone + providerId
+    //   2. If found → UPDATE that guest with the new data (enrich any
+    //      previously-empty fields like ID number, nationality, address)
+    //      and return the existing guest. The reservation flow then
+    //      links to this existing guest — no duplicate.
+    //   3. If not found → create a new Guest row as before.
+    //
+    // Phone is the natural unique key per provider because:
+    //   - Two different people at the same guesthouse won't share a phone
+    //   - The same person across multiple stays WILL have the same phone
+    //   - It's the field the operator always fills in (required)
+    const existingGuest = await db.guest.findFirst({
+      where: { phone, providerId },
+      include: { provider: { select: { name: true } } },
+    });
+
+    if (existingGuest) {
+      // ── Enrich the existing guest with any new data ──
+      // Only update fields that were previously empty OR have new values.
+      // This way the guest record gets richer over time without
+      // overwriting existing data with empty strings.
+      const updated = await db.guest.update({
+        where: { id: existingGuest.id },
+        data: {
+          // Always update name (in case of typo correction)
+          name: name || existingGuest.name,
+          // Enrich only if the existing value was empty AND the new value is non-empty
+          email: !existingGuest.email && email ? email : existingGuest.email,
+          idNumber: !existingGuest.idNumber && idNumber ? idNumber : existingGuest.idNumber,
+          idType: normalizeIdType(idType || "") || existingGuest.idType,
+          nationality: normalizeNationality(nationality || "") || existingGuest.nationality,
+          region: !existingGuest.region && region ? region : existingGuest.region,
+          zone: !existingGuest.zone && zone ? zone : existingGuest.zone,
+          woreda: !existingGuest.woreda && woreda ? woreda : existingGuest.woreda,
+          kebele: !existingGuest.kebele && kebele ? kebele : existingGuest.kebele,
+          houseNumber: !existingGuest.houseNumber && houseNumber ? houseNumber : existingGuest.houseNumber,
+          streetName: !existingGuest.streetName && streetName ? streetName : existingGuest.streetName,
+          plateNumber: !existingGuest.plateNumber && plateNumber ? plateNumber : existingGuest.plateNumber,
+          weapon: !existingGuest.weapon && weapon ? weapon : existingGuest.weapon,
+          notes: notes || existingGuest.notes,
+        },
+      });
+
+      // Fire-and-forget suspect match check (same as new-guest path)
+      checkSuspectMatch({
+        name: updated.name,
+        phone: updated.phone,
+        idNumber: updated.idNumber || "",
+        idType: updated.idType || "",
+        matchType: "GUEST_CHECKIN",
+        providerId,
+        extraDetails: {
+          email: updated.email || "",
+          nationality: updated.nationality || "",
+          address: composeAddress({ region, zone, woreda, kebele, houseNumber, streetName }),
+        },
+      }).catch(() => {});
+
+      return NextResponse.json({ ...updated, _reused: true }, { status: 200 });
+    }
+
+    // ── No existing guest found — create a new one ──
     if (!idNumber || !idNumber.trim()) {
       return NextResponse.json({ error: "ID number is required" }, { status: 400 });
     }

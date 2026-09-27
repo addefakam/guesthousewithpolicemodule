@@ -1044,6 +1044,19 @@ export default function ReservationsPage() {
     );
   }, [guestMode, selectedGuestId, newGuestForm.name, newGuestForm.phone, newGuestForm.nationality, newGuestForm.idType, newGuestForm.idNumber]);
 
+  // ── Live guest lookup by phone number ──
+  // When the operator types a phone in "New Guest" mode, auto-search
+  // the existing guests list for a match. If found, show a hint banner
+  // so the operator knows the system will reuse the existing record
+  // instead of creating a duplicate (the backend's find-or-create logic
+  // handles this automatically — this is just a UX heads-up).
+  const phoneMatch = useMemo(() => {
+    if (guestMode !== "new") return null;
+    const q = newGuestForm.phone.trim();
+    if (q.length < 7) return null;
+    return allGuests.find((g) => g.phone === q) || null;
+  }, [guestMode, newGuestForm.phone, allGuests]);
+
   // Local calendar date (YYYY-MM-DD) — same key used by the rooms page.
   const todayKey = useMemo(() => {
     const d = new Date();
@@ -1246,12 +1259,25 @@ export default function ReservationsPage() {
     try {
       setCreating(true);
 
-      // Determine guestId: use existing or create new
+      // Determine guestId: use existing or create new.
+      // The backend's POST /api/guests now implements find-or-create by
+      // phone number — if a guest with the same phone + providerId
+      // already exists, it UPDATEs that guest (enriches empty fields)
+      // and returns it with _reused: true instead of creating a
+      // duplicate. So the operator never needs to manually check for
+      // duplicates — the system handles it automatically.
       let guestId = selectedGuestId;
       if (guestMode === "new") {
         const created = await apiCreateGuest({
-          ...newGuestForm,        });
+          ...newGuestForm,
+        });
         guestId = created.id;
+        // Show a heads-up toast if the system reused an existing guest
+        // instead of creating a new one — the operator should know that
+        // their form data enriched the existing record.
+        if ((created as Record<string, unknown>)._reused) {
+          toast.info(`Existing guest "${created.name}" found — record enriched and reused.`);
+        }
       } else if (selRoom?.type === "FAMILY" && guestId) {
         // Existing guest as leader — best-effort role update
         try {
@@ -2315,6 +2341,35 @@ export default function ReservationsPage() {
                         <p className="text-[11px] text-rose-500">
                           {t("phoneFormatHint") || "Use 7-15 digits with optional + prefix. e.g. +251912345678"}
                         </p>
+                      )}
+                      {/* ── Existing-guest hint ──
+                          When the typed phone matches an existing guest,
+                          show a green banner so the operator knows the
+                          system will REUSE that record (not create a
+                          duplicate). The backend's find-or-create logic
+                          handles the actual dedup — this is just a UX
+                          heads-up so the operator doesn't worry about
+                          filling in fields the system will auto-enrich. */}
+                      {phoneMatch && (
+                        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-700">
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            Guest found: <strong>{phoneMatch.name}</strong>
+                            {phoneMatch.idNumber ? ` · ${phoneMatch.idNumber}` : ""}
+                            — existing record will be used & enriched.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGuestMode("existing");
+                              setSelectedGuestId(phoneMatch.id);
+                              setGuestSearch(phoneMatch.name);
+                            }}
+                            className="ml-auto shrink-0 font-semibold text-emerald-700 underline hover:text-emerald-800"
+                          >
+                            Use
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div className="space-y-1.5">
