@@ -267,7 +267,16 @@ function getNavItems(user: CurrentUser, disabledPages: string[] = []): NavItem[]
         const mapped = PERMISSION_PAGE_MAP[perm];
         if (mapped && !seen.has(mapped.page) && !disabledSet.has(mapped.page)) {
           seen.add(mapped.page);
-          items.push(mapped);
+          // ── Merge children from ALL_NAV_ITEMS if the mapped page has
+          // children defined there (e.g. 'accommodation' has Rooms +
+          // Reservations as children). Without this, staff see a flat
+          // "Accommodation" entry with no expandable sub-items.
+          const allNavItem = ALL_NAV_ITEMS.find((n) => n.page === mapped.page);
+          if (allNavItem?.children && allNavItem.children.length > 0) {
+            items.push({ ...mapped, children: allNavItem.children });
+          } else {
+            items.push(mapped);
+          }
         }
       }
       return items;
