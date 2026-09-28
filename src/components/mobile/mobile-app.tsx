@@ -3093,11 +3093,6 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
           />
         </div>
       </div>
-      <div>
-        <Label className="text-xs font-semibold">{t("amenities")}</Label>
-        <Input value={form.amenities} onChange={(e) => onUpdate({ amenities: e.target.value })} placeholder={t("phAmenities")} className="mt-1.5 h-11 rounded-xl" />
-        <p className="mt-1 text-[10px] text-gray-400">WiFi, TV, AC, Mini Bar, Hot Water, Parking</p>
-      </div>
       <DialogFooter className="gap-2 sm:gap-2">
         <Button variant="outline" size="lg" className="flex-1 rounded-xl" onClick={onCancel}>{t("cancel")}</Button>
         <Button size="lg" className="flex-1 rounded-xl" onClick={onSubmit} disabled={creating || !canSubmit}>

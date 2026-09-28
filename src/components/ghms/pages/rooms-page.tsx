@@ -1341,44 +1341,6 @@ export default function RoomsPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="room-amenities">{t("labelAmenities")}</Label>
-              <Input
-                id="room-amenities"
-                placeholder={t("placeholderAmenities")}
-                value={
-                  (() => {
-                    try {
-                      const parsed = JSON.parse(form.amenities);
-                      return Array.isArray(parsed) ? parsed.join(", ") : form.amenities;
-                    } catch {
-                      return form.amenities;
-                    }
-                  })()
-                }
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    amenities: JSON.stringify(
-                      e.target.value
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                    ),
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="room-description">{t("labelDescription")}</Label>
-              <Textarea
-                id="room-description"
-                placeholder={t("placeholderDescription")}
-                rows={3}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
             </div>
           </div>
 
