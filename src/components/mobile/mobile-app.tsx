@@ -1920,7 +1920,7 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
                       </div>
                       <div>
                         <p className="text-sm font-bold leading-tight">{room.number}</p>
-                        <p className="text-[10px] text-gray-400">{room.type}</p>
+                        <p className="text-[10px] text-gray-400">{t("roomType" + room.type) || room.type}</p>
                       </div>
                     </div>
                   </div>
@@ -2382,7 +2382,7 @@ function RoomDetailSheet({ room, reservation, reservations, resLoading, onReserv
             ? `${room.number} — ${room.name}`
             : room.number}
         </DialogTitle>
-        <DialogDescription>{t("roomType" + room.type.charAt(0) + room.type.slice(1).toLowerCase())} &middot; {t("floorLabel", { floor: getFloorFromNumber(room.number) ?? room.floor })}</DialogDescription>
+        <DialogDescription>{t("roomType" + room.type) || room.type} &middot; {t("floorLabel", { floor: getFloorFromNumber(room.number) ?? room.floor })}</DialogDescription>
       </DialogHeader>
 
       <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[room.status]}`}>
@@ -3055,7 +3055,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
                     {ROOM_TYPE_ICONS[type]}
                     {type === "OTHER"
                       ? (t("roomTypeOTHER") || "Other")
-                      : t("roomType" + (type.charAt(0).toUpperCase() + type.slice(1).toLowerCase()))}
+                      : t("roomType" + type)}
                   </span>
                 </SelectItem>
               ))}
