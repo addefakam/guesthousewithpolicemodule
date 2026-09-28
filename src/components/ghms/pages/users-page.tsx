@@ -128,7 +128,9 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const raw = await apiGetUsers();
-      setStaff(Array.isArray(raw) ? raw as StaffUser[] : []);
+      // API returns { data: [...], total, page, ... } — extract the array
+      const users = Array.isArray(raw) ? raw : (raw?.data ?? []);
+      setStaff(users as StaffUser[]);
     } catch {
       toast.error(t("toastLoadFailed"));
     } finally {
