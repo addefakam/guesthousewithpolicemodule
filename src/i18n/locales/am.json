@@ -795,7 +795,8 @@
     "capacityCapSingle": "ለነጠላ ክፍሎች ከፍተኛ 2",
     "capacityCapSingleError": "ነጠላ ክፍሎች ከፍተኛ 2 እንግዶችን መያዝ ይችላሉ",
     "capacityCappedTo2": "ለነጠላ ክፍሎች አቅም ወደ 2 ተገድቧል",
-    "alsoReserved": "ተጨማሪ ቀጥሮ"
+    "alsoReserved": "ተጨማሪ ቀጥሮ",
+    "btnManage": "አስተዳድር"
   },
   "guests": {
     "pageTitle": "የእንግዶች ማውጫ",

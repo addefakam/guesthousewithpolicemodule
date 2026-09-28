@@ -795,7 +795,8 @@
     "capacityCapSingle": "kutaaa 2 dabalataa",
     "capacityCapSingleError": "Kutaaa tokko oduu 2 qofauu danda'a",
     "capacityCappedTo2": "Kutaaf oduu 2 qofa jechuun daangaa",
-    "alsoReserved": "Dabalataan qabatamaa"
+    "alsoReserved": "Dabalataan qabatamaa",
+    "btnManage": "Bulchuu"
   },
   "guests": {
     "pageTitle": "Kuusaa Keessummootaa",

@@ -795,7 +795,8 @@
     "capacityCapSingle": "max 2 for single rooms",
     "capacityCapSingleError": "Single rooms can hold a maximum of 2 guests",
     "capacityCappedTo2": "Capacity capped to 2 for single rooms",
-    "alsoReserved": "Also reserved"
+    "alsoReserved": "Also reserved",
+    "btnManage": "Manage"
   },
   "guests": {
     "pageTitle": "Guest Directory",

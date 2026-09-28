@@ -1874,13 +1874,27 @@ export default function RoomsPage() {
                     {t("btnClose")}
                   </Button>
                   {infoRoom.status === "AVAILABLE" ? (
-                    <Button
-                      className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                      onClick={() => handleReserveFromRoom(infoRoom)}
-                    >
-                      <CalendarPlus className="h-4 w-4" />
-                      {t("btnReserveThisRoom")}
-                    </Button>
+                    <>
+                      <Button
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => handleReserveFromRoom(infoRoom)}
+                      >
+                        <CalendarPlus className="h-4 w-4" />
+                        {t("btnReserveThisRoom")}
+                      </Button>
+                      {/* Manage button — opens room edit dialog so the
+                          operator can change room type, price, capacity,
+                          or delete the room without leaving the info
+                          dialog. Same openEdit() used by the ⋮ dropdown. */}
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-slate-700 border-slate-300 hover:bg-slate-50"
+                        onClick={() => { openEdit(infoRoom); }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        {t("btnManage")}
+                      </Button>
+                    </>
                   ) : infoRoom.status === "RESERVED" ? (
                     <Button
                       variant="outline"
@@ -1941,6 +1955,18 @@ export default function RoomsPage() {
                         {t("btnShift")}
                       </Button>
                     </div>
+                  ) : infoRoom.status === "MAINTENANCE" ? (
+                    /* Manage button on maintenance rooms — lets the
+                       operator edit room details or set it back to
+                       AVAILABLE from the room edit dialog. */
+                    <Button
+                      variant="outline"
+                      className="gap-2 text-slate-700 border-slate-300 hover:bg-slate-50"
+                      onClick={() => { openEdit(infoRoom); }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      {t("btnManage")}
+                    </Button>
                   ) : null}
                 </DialogFooter>
               </>
