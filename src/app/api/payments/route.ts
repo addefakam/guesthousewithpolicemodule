@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
-import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
+import { logStaffActivity } from "@/lib/staff-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -142,9 +142,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Staff activity log
-    const { userId: _pUid, userName: _pUname } = getLogUserInfo(req);
     logStaffActivity({
-      req, userId: _pUid, userName: _pUname, action: "PAYMENT_RECORD", targetType: "PAYMENT", targetId: payment.id,
+      req, userId: auth.userId, userName: auth.userName, action: "PAYMENT_RECORD", targetType: "PAYMENT", targetId: payment.id,
       details: { reservationId, amount, method: paymentMethod || "" },
       providerId,
     });

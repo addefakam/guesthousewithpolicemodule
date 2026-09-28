@@ -4,7 +4,7 @@ import { getAuthContext,
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
 import { uploadFile } from "@/lib/storage";
-import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
+import { logStaffActivity } from "@/lib/staff-log";
 
 export async function PUT(
   req: NextRequest,
@@ -85,9 +85,8 @@ export async function PUT(
     });
 
     // Staff activity log
-    const { userId: _ruId, userName: _ruName } = getLogUserInfo(req);
     logStaffActivity({
-      req, userId: _ruId, userName: _ruName, action: "ROOM_UPDATE", targetType: "ROOM", targetId: id,
+      req, userId: auth.userId, userName: auth.userName, action: "ROOM_UPDATE", targetType: "ROOM", targetId: id,
       details: { roomNumber: room.number },
       providerId: existing.providerId,
     });
