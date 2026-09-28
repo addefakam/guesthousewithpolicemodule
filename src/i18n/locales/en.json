@@ -575,7 +575,7 @@
     "resetToastSaved": "Credentials updated successfully",
     "resetToastFailed": "Failed to update credentials",
     "deleteTitle": "Delete Staff Account",
-    "deleteDesc": "Are you sure you want to delete <strong>{{name}}</strong> ({{username}})? This action cannot be undone. They will lose all access to the system.",
+    "deleteDesc": "Are you sure you want to delete {{name}} ({{username}})? This action cannot be undone. They will lose all access to the system.",
     "deleteDeleting": "Deleting...",
     "deleteBtnDelete": "Delete Staff",
     "deleteToastDeleted": "Staff account deleted successfully",

@@ -575,7 +575,7 @@
     "resetToastSaved": "Ragaan seensaa milkaa'inaan haaromfame",
     "resetToastFailed": "Ragaa seensaa haaromsuu hin milkoofne",
     "deleteTitle": "Herrega Hojjettaa Haqi",
-    "deleteDesc": "<strong>{{name}}</strong> ({{username}}) haquuf mirkaneeffatteettaa? Gochicha kana deebisuun hin danda'amu.",
+    "deleteDesc": "{{name}} ({{username}}) haakuuf mirkaneessitaa? Kun deebi'uu hin danda'u. Sirni kanaaf daangaa isaanii dhabu.",
     "deleteDeleting": "Haqaa jira...",
     "deleteBtnDelete": "Hojjettaa Haqi",
     "deleteToastDeleted": "Herregni hojjettaa milkaa'inaan haqame",

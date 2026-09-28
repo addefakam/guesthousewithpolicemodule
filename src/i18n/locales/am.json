@@ -575,7 +575,7 @@
     "resetToastSaved": "መግቢያ መረጃ በተሳካ ሁኔታ ተዘምኗል",
     "resetToastFailed": "መግቢያ መረጃ ማዘመን አልተሳካም",
     "deleteTitle": "የሰራተኛ ሂሳብ ሰርዝ",
-    "deleteDesc": "<strong>{{name}}</strong> ({{username}}) ን ለመሰረዝ እርግጠኛ ነዎት? ይህ ድርጊት ሊቀለበስ አይችልም።",
+    "deleteDesc": "እርግጠኛ ነዎት {{name}} ({{username}}) ን መሰረዝ ይፈልጋሉ? ይህ እርምጃ መመለስ አይቻልም። ለስርዓቱ መዳረሻን ያጣሉ።",
     "deleteDeleting": "በመሰረዝ ላይ...",
     "deleteBtnDelete": "ሰራተኛ ሰርዝ",
     "deleteToastDeleted": "የሰራተኛ ሂሳብ በተሳካ ሁኔታ ተሰርዟል",
