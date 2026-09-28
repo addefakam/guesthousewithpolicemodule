@@ -269,11 +269,31 @@ function getNavItems(user: CurrentUser, disabledPages: string[] = []): NavItem[]
           seen.add(mapped.page);
           // ── Merge children from ALL_NAV_ITEMS if the mapped page has
           // children defined there (e.g. 'accommodation' has Rooms +
-          // Reservations as children). Without this, staff see a flat
-          // "Accommodation" entry with no expandable sub-items.
+          // Reservations as children). Filter the children based on the
+          // staff's actual permissions so a staff member with ONLY
+          // 'reservations' sees the Reservations sub-item but NOT Rooms,
+          // and vice versa.
           const allNavItem = ALL_NAV_ITEMS.find((n) => n.page === mapped.page);
           if (allNavItem?.children && allNavItem.children.length > 0) {
-            items.push({ ...mapped, children: allNavItem.children });
+            // Filter children: Rooms visible if staff has rooms/rooms_view,
+            // Reservations visible if staff has reservations.
+            const filteredChildren = allNavItem.children.filter((child) => {
+              if (child.tab === "rooms") {
+                return user.permissions.includes("rooms") ||
+                       user.permissions.includes("rooms_view");
+              }
+              if (child.tab === "reservations") {
+                return user.permissions.includes("reservations");
+              }
+              return true;
+            });
+            // Only add the parent with children if at least one child is visible.
+            // If no children are visible (e.g. staff has 'guests' which maps to
+            // accommodation but has no rooms/reservations permission), don't
+            // add the parent at all — it would show an empty expandable section.
+            if (filteredChildren.length > 0) {
+              items.push({ ...mapped, children: filteredChildren });
+            }
           } else {
             items.push(mapped);
           }

@@ -58,13 +58,13 @@ import {
 } from "lucide-react";
 
 // ── Permission options that OPERATOR can assign to staff ──
-// Permission options — labels will be translated dynamically via t()
+// 'guests' removed — redundant with 'reservations' (both map to the same
+//   Accommodation → Reservations page).
+// 'daytime' removed — Daytime Services feature is deactivated.
 const PERMISSION_OPTIONS_RAW = [
-  { value: "reservations", tKey: "permReservations", icon: CalendarCheck, color: "text-blue-600 bg-blue-50 border-blue-200" },
-  { value: "guests", tKey: "permGuests", icon: Users, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
   { value: "rooms", tKey: "permRooms", icon: Bed, color: "text-violet-600 bg-violet-50 border-violet-200" },
+  { value: "reservations", tKey: "permReservations", icon: CalendarCheck, color: "text-blue-600 bg-blue-50 border-blue-200" },
   { value: "housekeeping", tKey: "permHousekeeping", icon: Sparkles, color: "text-amber-600 bg-amber-50 border-amber-200" },
-  { value: "daytime", tKey: "permDaytime", icon: Sun, color: "text-orange-600 bg-orange-50 border-orange-200" },
   { value: "reports", tKey: "permReports", icon: BarChart3, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
   { value: "reviews", tKey: "permReviews", icon: Star, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
   { value: "notifications", tKey: "permNotifications", icon: Bell, color: "text-rose-600 bg-rose-50 border-rose-200" },
@@ -89,7 +89,7 @@ const emptyForm = {
   username: "",
   password: "",
   name: "",
-  permissions: ["reservations", "guests"] as string[],
+  permissions: ["rooms", "reservations"] as string[],
 };
 
 export default function UsersPage() {
