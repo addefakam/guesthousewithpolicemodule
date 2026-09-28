@@ -1179,13 +1179,12 @@ export default function RoomsPage() {
                     )}
                   </div>
 
-                  {/* Manage button — shown for ALL statuses. Opens the
-                      room detail dialog where the operator can reserve,
-                      edit room details, check in/out, extend, etc.
-                      Replaces the old Edit + Delete buttons that were
-                      only on AVAILABLE rooms — now every room has the
-                      same "Manage" action, consistent with the mobile
-                      app and other room statuses. */}
+                  {/* Manage button — only on AVAILABLE rooms.
+                      Opens the room detail dialog where the operator can
+                      reserve, edit room details, or delete the room.
+                      Other statuses (RESERVED/OCCUPIED/MAINTENANCE) only
+                      have the Info + Reserve buttons in the row above. */}
+                  {st === "AVAILABLE" && (
                   <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
@@ -1197,6 +1196,7 @@ export default function RoomsPage() {
                       {t("btnManage")}
                     </Button>
                   </div>
+                  )}
                 </CardContent>
               </Card>
             );
