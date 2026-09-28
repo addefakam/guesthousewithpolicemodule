@@ -882,8 +882,8 @@ export default function RoomsPage() {
             {t("filterAll")}
             <span className="ml-1 tabular-nums opacity-60">({rooms.length})</span>
           </Button>
-          {/* Show floors 1, 2, 3 as buttons — everything else goes in "Others" */}
-          {[1, 2, 3].filter((f) => floors.includes(f)).map((f) => (
+          {/* Show floors 1, 2 as buttons — everything else goes in "Others" */}
+          {[1, 2].filter((f) => floors.includes(f)).map((f) => (
             <Button
               key={f}
               variant={floorFilter === f ? "default" : "outline"}
@@ -895,11 +895,11 @@ export default function RoomsPage() {
               {f}
             </Button>
           ))}
-          {floors.filter((f) => f > 3).length > 0 && (
+          {floors.filter((f) => f > 2).length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={floorFilter !== null && floorFilter > 3 ? "default" : "outline"}
+                  variant={floorFilter !== null && floorFilter > 2 ? "default" : "outline"}
                   size="sm"
                   className="h-8 text-xs px-3 shrink-0 gap-1"
                 >
@@ -908,7 +908,7 @@ export default function RoomsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {floors.filter((f) => f > 3).map((f) => (
+                {floors.filter((f) => f > 2).map((f) => (
                   <DropdownMenuItem
                     key={f}
                     className="text-xs"

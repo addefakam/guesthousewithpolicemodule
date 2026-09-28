@@ -1852,7 +1852,7 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
             !floorFilter && !statusFilter ? "bg-slate-900 text-white" : "bg-white text-gray-600 border"
           }`}
         >{t("filterAll")}</button>
-        {floors.slice(0, 4).map((f) => (
+        {[1, 2].filter((f) => floors.includes(f)).map((f) => (
           <button
             key={f} onClick={() => setFloorFilter(floorFilter === f ? null : f)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
