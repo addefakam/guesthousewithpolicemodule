@@ -1179,29 +1179,24 @@ export default function RoomsPage() {
                     )}
                   </div>
 
-                  {/* Edit + Delete Room — only on AVAILABLE (free) rooms */}
-                  {st === "AVAILABLE" && (
+                  {/* Manage button — shown for ALL statuses. Opens the
+                      room detail dialog where the operator can reserve,
+                      edit room details, check in/out, extend, etc.
+                      Replaces the old Edit + Delete buttons that were
+                      only on AVAILABLE rooms — now every room has the
+                      same "Manage" action, consistent with the mobile
+                      app and other room statuses. */}
                   <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1 gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50"
-                      onClick={() => openEdit(room)}
+                      onClick={() => setInfoRoom(room)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
-                      {t("btnEdit")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
-                      onClick={() => setDeleteDialog(room)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      {t("btnDelete")}
+                      {t("btnManage")}
                     </Button>
                   </div>
-                  )}
                 </CardContent>
               </Card>
             );
