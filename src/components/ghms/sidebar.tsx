@@ -574,7 +574,20 @@ function SidebarContent({
 }) {
   const { t } = useTranslation("sidebar");
   const { jointSession, setJointLoginDialogOpen, subscription, disabledPages, accommodationTab, setAccommodationTab } = useAppStore();
-  const navItems = getNavItems(user, disabledPages ?? []);
+
+  // ── Prevent flash of soon-to-be-hidden nav items ──
+  // disabledPages starts as null (not yet fetched from the API).
+  // For roles that might have disabled pages, we show skeleton nav
+  // items instead of real ones until the fetch completes — otherwise
+  // the user sees ALL items for ~1 second before the disabled ones
+  // disappear (visible flicker).
+  const role = user.role;
+  const mightHaveDisabledPages =
+    role === "OPERATOR" || role === "STAFF" ||
+    (role === "SUPERUSER" && user.providerId);
+  const waitingForDisabledPages = mightHaveDisabledPages && disabledPages === null;
+
+  const navItems = waitingForDisabledPages ? [] : getNavItems(user, disabledPages ?? []);
   const roleBadgeClass = getRoleBadgeClass(user.role);
 
   // ── Expandable sidebar sections (currently only 'Accommodation') ──
@@ -738,7 +751,17 @@ function SidebarContent({
       {/* ── Navigation links ── */}
       <ScrollArea className="flex-1 min-h-0 px-3 py-3">
         <nav className="flex flex-col gap-1" aria-label={t("Main navigation")}>
-          {navItems.map((item) => (
+          {waitingForDisabledPages ? (
+            // Skeleton placeholders while disabledPages is being fetched.
+            // Prevents the flash of soon-to-be-hidden nav items.
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5">
+                <div className="size-[18px] shrink-0 animate-pulse rounded bg-slate-200" />
+                <div className="h-3.5 w-24 animate-pulse rounded bg-slate-200" />
+              </div>
+            ))
+          ) : (
+          navItems.map((item) => (
             <NavItemButton
               key={item.page + (item.tab ? `-${item.tab}` : "")}
               item={item}
@@ -749,7 +772,8 @@ function SidebarContent({
               onClick={() => handleItemClick(item)}
               onChildClick={handleItemClick}
             />
-          ))}
+          ))
+          )}
 
           {/* Joint Operations — only shown during active joint session */}
           {jointSession.active && (
@@ -883,6 +907,23 @@ export default function Sidebar() {
   }, [mounted, currentUser, setDisabledPages]);
 
   if (!mounted || !currentUser) return null;
+
+  // ── Prevent flash of soon-to-be-hidden nav items ──
+  // disabledPages starts as null (not yet fetched from the API).
+  // If we render navItems now, they'd show ALL items for ~1 second
+  // before the API response hides the disabled ones. This causes a
+  // visible flash/flicker.
+  //
+  // Fix: for roles that MIGHT have disabled pages (OPERATOR, STAFF,
+  // SUPERUSER-with-providerId), wait for the disabledPages fetch to
+  // complete before rendering navItems. Show a skeleton meanwhile.
+  // For POLICE and system-level SUPERUSER (no providerId), there are
+  // no operator-level disabled pages, so render immediately.
+  const role = currentUser.role;
+  const mightHaveDisabledPages =
+    role === "OPERATOR" || role === "STAFF" ||
+    (role === "SUPERUSER" && currentUser.providerId);
+  const waitingForDisabledPages = mightHaveDisabledPages && disabledPages === null;
 
   async function handleLogout() {
     // Clear httpOnly cookie on server
