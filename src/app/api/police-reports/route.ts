@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate} GROUP BY "providerId") co ON co."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} GROUP BY "providerId") sm ON sm."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Room" GROUP BY "providerId") r ON r."providerId" = p."id"
-        LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "status" = 'UPCOMING' AND "checkIn" >= ${startDate} AND "checkIn" <= ${endDate} GROUP BY "providerId") up ON up."providerId" = p."id"
+        LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "status" = 'UPCOMING' AND "checkIn" >= ${startDate.toISOString().slice(0, 10)} AND "checkIn" <= ${endDate.toISOString().slice(0, 10)} GROUP BY "providerId") up ON up."providerId" = p."id"
         WHERE p."status" = 'APPROVED'
         ORDER BY "guests" DESC
       `);
