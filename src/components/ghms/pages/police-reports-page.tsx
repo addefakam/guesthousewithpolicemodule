@@ -36,7 +36,7 @@ interface Summary {
   totalProviders: number; totalRooms: number;
 }
 interface NameCount { name: string; count: number; }
-interface ProviderRow { name: string; address?: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; }
+interface ProviderRow { name: string; address?: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; upcoming: number; }
 interface OccupancyRow { name: string; total: number; occupied: number; available: number; reserved: number; maintenance: number; rate: number; }
 interface FreqStay { id: string; guestName: string; guestPhone: string; guestIdNumber: string; providerNames: string; stayCount: number; avgDaysBetween: number; riskLevel: string; isReviewed: boolean; createdAt: string; }
 
@@ -206,6 +206,7 @@ export default function PoliceReportsPage() {
         Address: p.address || "",
         Rooms: p.rooms,
         CheckIns: p.checkIns,
+        Upcoming: p.upcoming,
         CheckOuts: p.checkOuts,
         SuspectMatches: p.matches,
       }));
@@ -577,6 +578,7 @@ export default function PoliceReportsPage() {
                         <SortableTh label={t('thAddress', 'Address')} col="address" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('throoms', 'Rooms')} col="rooms" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thcheckins', 'Check-Ins')} col="checkIns" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
+                        <SortableTh label={t('legendUpcoming', 'Upcoming')} col="upcoming" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thcheckouts', 'Check-Outs')} col="checkOuts" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                         <SortableTh label={t('thsuspectMatches', 'Suspect Matches')} col="matches" sortKey={sortKey} sortDir={sortDir} onToggle={toggleSort} />
                       </TableRow>
@@ -589,6 +591,7 @@ export default function PoliceReportsPage() {
                           <TableCell className="text-xs text-muted-foreground">{p.address || "—"}</TableCell>
                           <TableCell className="text-xs text-center">{p.rooms}</TableCell>
                           <TableCell className="text-xs text-center text-blue-600">{p.checkIns}</TableCell>
+                          <TableCell className="text-xs text-center font-medium text-indigo-600">{p.upcoming}</TableCell>
                           <TableCell className="text-xs text-center text-emerald-600">{p.checkOuts}</TableCell>
                           <TableCell className="text-xs text-center">
                             {p.matches > 0 ? (
@@ -607,10 +610,10 @@ export default function PoliceReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Provider guests bar chart */}
+            {/* Provider activity bar chart — Check-Ins, Upcoming, Check-Outs */}
             {data.providerBreakdown.length > 0 && (
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('guestsByProvider')}</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{t('activityByProvider')}</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={Math.max(200, data.providerBreakdown.length * 35)}>
                     <BarChart data={data.providerBreakdown} layout="vertical" margin={{ left: 40 }}>
@@ -619,9 +622,9 @@ export default function PoliceReportsPage() {
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Bar dataKey="guests" name={t('legendGuests')} fill="#2563eb" radius={[0, 4, 4, 0]} />
                       <Bar dataKey="checkIns" name={t('legendCheckIns')} fill="#16a34a" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="matches" name={t('legendSuspectMatches')} fill="#dc2626" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="upcoming" name={t('legendUpcoming', 'Upcoming')} fill="#2563eb" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="checkOuts" name={t('legendCheckOuts', 'Check-Outs')} fill="#dc2626" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -719,6 +722,7 @@ export default function PoliceReportsPage() {
             const stats = [
               { label: t('throoms', 'Rooms'), value: activityDetail.rooms, icon: <BedDouble className="h-4 w-4 text-violet-500" />, color: "text-violet-700 bg-violet-50 border-violet-200" },
               { label: t('thcheckins', 'Check-Ins'), value: activityDetail.checkIns, icon: <ArrowDownRight className="h-4 w-4 text-blue-500" />, color: "text-blue-700 bg-blue-50 border-blue-200" },
+              { label: t('legendUpcoming', 'Upcoming'), value: activityDetail.upcoming, icon: <Clock className="h-4 w-4 text-indigo-500" />, color: "text-indigo-700 bg-indigo-50 border-indigo-200" },
               { label: t('thcheckouts', 'Check-Outs'), value: activityDetail.checkOuts, icon: <ArrowUpRight className="h-4 w-4 text-emerald-500" />, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
               { label: t('thsuspectMatches', 'Suspect Matches'), value: activityDetail.matches, icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: "text-red-700 bg-red-50 border-red-200" },
             ];

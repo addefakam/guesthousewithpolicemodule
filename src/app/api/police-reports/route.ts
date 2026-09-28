@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
     // ── 5. Provider-level guest distribution ──
     const providerBreakdown = providerId
       ? []
-      : await db.$queryRaw<{ name: string; address: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number }[]>(Prisma.sql`
+      : await db.$queryRaw<{ name: string; address: string; guests: number; checkIns: number; checkOuts: number; matches: number; rooms: number; upcoming: number }[]>(Prisma.sql`
         SELECT
           p."name",
           COALESCE(p."address", '') AS "address",
@@ -203,13 +203,15 @@ export async function GET(req: NextRequest) {
           COALESCE(ci.c, 0)::int AS "checkIns",
           COALESCE(co.c, 0)::int AS "checkOuts",
           COALESCE(sm.c, 0)::int AS "matches",
-          COALESCE(r.c, 0)::int AS "rooms"
+          COALESCE(r.c, 0)::int AS "rooms",
+          COALESCE(up.c, 0)::int AS "upcoming"
         FROM "Provider" p
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Guest" ${period !== "yearly" ? Prisma.sql`WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate}` : Prisma.sql``} GROUP BY "providerId") g ON g."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "actualCheckIn" >= ${startDate} AND "actualCheckIn" <= ${endDate} GROUP BY "providerId") ci ON ci."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "actualCheckOut" >= ${startDate} AND "actualCheckOut" <= ${endDate} GROUP BY "providerId") co ON co."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "SuspectMatch" WHERE "createdAt" >= ${startDate} AND "createdAt" <= ${endDate} GROUP BY "providerId") sm ON sm."providerId" = p."id"
         LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Room" GROUP BY "providerId") r ON r."providerId" = p."id"
+        LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "status" = 'UPCOMING' AND "checkIn" >= ${startDate} AND "checkIn" <= ${endDate} GROUP BY "providerId") up ON up."providerId" = p."id"
         WHERE p."status" = 'APPROVED'
         ORDER BY "guests" DESC
       `);
