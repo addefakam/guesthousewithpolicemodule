@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+    checkWritePermission(auth, { staffPermissionKey: "reservations" });
 
     const body = await req.json();
     const { reservationId, daytimeBookingId, amount, method, referenceNo, notes } = body;

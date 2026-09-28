@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+    checkWritePermission(auth, { staffPermissionKey: "daytime" });
 
     const { id } = await params;
     const body = await req.json();
@@ -53,7 +53,7 @@ export async function DELETE(
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "daytime" });
+    checkWritePermission(auth, { staffPermissionKey: "daytime" });
 
     const { id } = await params;
 

@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     const auth = await getAuthContext(req);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+    checkWritePermission(auth, { staffPermissionKey: "reservations" });
     const { providerId } = getProviderFilter(auth);
 
     const { id } = await params;

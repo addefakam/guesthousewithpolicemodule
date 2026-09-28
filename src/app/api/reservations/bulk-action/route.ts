@@ -49,7 +49,7 @@ import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations", staffCanCreate: true });
+    checkWritePermission(auth, { staffPermissionKey: "reservations", staffCanCreate: true });
     const { providerId } = getProviderFilter(auth);
 
     const body = await req.json().catch(() => ({}));

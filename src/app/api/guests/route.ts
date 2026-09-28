@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "guests" });
+    checkWritePermission(auth, { staffPermissionKey: "guests" });
 
     const body = await req.json();
     const { name, phone, email, idNumber, idType, nationality, region, zone, woreda, kebele, houseNumber, streetName, plateNumber, weapon, address, notes, vip } = body;

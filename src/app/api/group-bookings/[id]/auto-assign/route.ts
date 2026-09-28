@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
     if (!providerId) return NextResponse.json({ error: "Provider required" }, { status: 403 });
-    checkWritePermission(auth, { staffOnlyWrite: true, staffPermissionKey: "reservations" });
+    checkWritePermission(auth, { staffPermissionKey: "reservations" });
 
     const { id } = await params;
 
