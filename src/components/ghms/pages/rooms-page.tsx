@@ -1340,8 +1340,6 @@ export default function RoomsPage() {
                 />
               </div>
             </div>
-
-            </div>
           </div>
 
           <DialogFooter>
