@@ -908,23 +908,6 @@ export default function Sidebar() {
 
   if (!mounted || !currentUser) return null;
 
-  // ── Prevent flash of soon-to-be-hidden nav items ──
-  // disabledPages starts as null (not yet fetched from the API).
-  // If we render navItems now, they'd show ALL items for ~1 second
-  // before the API response hides the disabled ones. This causes a
-  // visible flash/flicker.
-  //
-  // Fix: for roles that MIGHT have disabled pages (OPERATOR, STAFF,
-  // SUPERUSER-with-providerId), wait for the disabledPages fetch to
-  // complete before rendering navItems. Show a skeleton meanwhile.
-  // For POLICE and system-level SUPERUSER (no providerId), there are
-  // no operator-level disabled pages, so render immediately.
-  const role = currentUser.role;
-  const mightHaveDisabledPages =
-    role === "OPERATOR" || role === "STAFF" ||
-    (role === "SUPERUSER" && currentUser.providerId);
-  const waitingForDisabledPages = mightHaveDisabledPages && disabledPages === null;
-
   async function handleLogout() {
     // Clear httpOnly cookie on server
     await apiLogout();
