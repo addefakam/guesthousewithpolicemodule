@@ -4,6 +4,7 @@ import { getAuthContext,
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
 import { uploadFile } from "@/lib/storage";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 export async function PUT(
   req: NextRequest,
@@ -81,6 +82,14 @@ export async function PUT(
             : body.image || "",
         }),
       },
+    });
+
+    // Staff activity log
+    const { userId: _ruId, userName: _ruName } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId: _ruId, userName: _ruName, action: "ROOM_UPDATE", targetType: "ROOM", targetId: id,
+      details: { roomNumber: room.number },
+      providerId: existing.providerId,
     });
 
     return NextResponse.json({ room });

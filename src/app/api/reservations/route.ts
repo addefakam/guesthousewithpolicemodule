@@ -5,6 +5,7 @@ import { checkSuspectMatch } from "@/lib/suspect-check";
 import { runAnomalyDetection } from "@/lib/anomaly-engine";
 import { isValidPhone } from "@/lib/utils";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale reservation data at the edge.
@@ -343,6 +344,14 @@ export async function POST(req: NextRequest) {
       reservationId: reservation.id,
       trigger: "RESERVATION",
     }).catch(() => {});
+
+    // Staff activity log — who created this reservation
+    const { userId, userName } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId, userName, action: "RESERVATION_CREATE", targetType: "RESERVATION", targetId: reservation.id,
+      details: { guestName: reservation.guest?.name ?? "", roomNumber: reservation.room?.number ?? "", checkIn: checkInDay, checkOut: checkOutDay },
+      providerId,
+    });
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error: unknown) {

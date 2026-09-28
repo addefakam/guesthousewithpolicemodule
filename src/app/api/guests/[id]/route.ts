@@ -5,6 +5,7 @@ import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { normalizeIdType } from "@/lib/national-id";
 import { normalizeNationality } from "@/lib/nationalities";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 export async function PUT(
   req: NextRequest,
@@ -74,6 +75,14 @@ export async function PUT(
         ...(notes !== undefined && { notes }),
         ...(vip !== undefined && { vip }),
       },
+    });
+
+    // Staff activity log
+    const { userId: _uid2, userName: _uname2 } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId: _uid2, userName: _uname2, action: "GUEST_UPDATE", targetType: "GUEST", targetId: id,
+      details: { guestName: guest.name },
+      providerId,
     });
 
     return NextResponse.json(guest);

@@ -7,6 +7,7 @@ import {
   AuthError,
 } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 // ── Force dynamic rendering ──
 // Without this, Vercel may cache the API response at the edge, causing
@@ -266,6 +267,14 @@ export async function POST(req: NextRequest) {
         throw createErr; // Re-throw if it's a different error
       }
     }
+
+    // Staff activity log
+    const { userId: _rUid, userName: _rUname } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId: _rUid, userName: _rUname, action: "ROOM_CREATE", targetType: "ROOM", targetId: room.id,
+      details: { roomNumber: room.number, roomType: room.type },
+      providerId: auth.providerId!,
+    });
 
     return NextResponse.json({ room }, { status: 201 });
   } catch (error: unknown) {

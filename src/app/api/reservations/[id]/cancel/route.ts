@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 export async function POST(
   req: NextRequest,
@@ -64,6 +65,14 @@ export async function POST(
     } catch {
       // Non-blocking
     }
+
+    // Staff activity log
+    const { userId, userName } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId, userName, action: "RESERVATION_CANCEL", targetType: "RESERVATION", targetId: id,
+      details: { guestName: updated.guest?.name ?? "" },
+      providerId,
+    });
 
     return NextResponse.json(updated);
   } catch (error: unknown) {

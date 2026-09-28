@@ -6,6 +6,7 @@ import { composeAddress } from "@/lib/ethiopian-admin-divisions";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { isValidNationalId, isNationalIdType, normalizeIdType } from "@/lib/national-id";
 import { normalizeNationality } from "@/lib/nationalities";
+import { logStaffActivity, getLogUserInfo } from "@/lib/staff-log";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale guest data at the edge.
@@ -276,6 +277,14 @@ export async function POST(req: NextRequest) {
         address: composedAddress,
       },
     }).catch(() => {});
+
+    // Staff activity log — who created/enriched this guest
+    const { userId: _uid, userName: _uname } = getLogUserInfo(req);
+    logStaffActivity({
+      req, userId: _uid, userName: _uname, action: "GUEST_CREATE", targetType: "GUEST", targetId: guest.id,
+      details: { guestName: name, phone, idNumber: idNumber || "" },
+      providerId,
+    });
 
     return NextResponse.json(guest, { status: 201 });
   } catch (error: unknown) {
