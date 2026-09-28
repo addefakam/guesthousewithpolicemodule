@@ -59,18 +59,24 @@ export function logStaffActivity(opts: StaffLogOpts): void {
 /**
  * Extract user info from JWT token for logging purposes.
  * Returns { userId, userName } or defaults.
+ *
+ * Uses base64url decoding (not standard base64) since jose library
+ * encodes JWT payloads in base64url format.
  */
 export function getLogUserInfo(req: NextRequest): { userId: string; userName: string } {
   try {
     const token = req.cookies.get("ghms_token")?.value;
     if (!token) return { userId: "unknown", userName: "" };
-    // Simple base64 decode of JWT payload (no verification needed for logging)
     const parts = token.split(".");
     if (parts.length !== 3) return { userId: "unknown", userName: "" };
-    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+    // JWT uses base64url encoding (replace - with +, _ with /)
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    // Add padding if needed
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(Buffer.from(padded, "base64").toString());
     return {
       userId: payload.userId || payload.sub || "unknown",
-      userName: payload.userName || payload.name || "",
+      userName: payload.name || payload.userName || "",
     };
   } catch {
     return { userId: "unknown", userName: "" };
