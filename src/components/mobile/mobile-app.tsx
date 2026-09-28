@@ -1983,10 +1983,16 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
                     just protect overlapping reserved days'. */}
                 <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
                   {st === "AVAILABLE" ? (
-                    <button
-                      onClick={() => onReserve(room)}
-                      className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
-                    >{t("btnReserve")}</button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onReserve(room)}
+                        className="flex-1 rounded-xl bg-emerald-600 text-white py-2.5 text-xs font-semibold active:bg-emerald-700 transition-colors"
+                      >{t("btnReserve")}</button>
+                      <button
+                        onClick={() => onRoomTap(room)}
+                        className="flex-1 rounded-xl bg-slate-100 text-slate-700 py-2.5 text-xs font-semibold active:bg-slate-200 transition-colors"
+                      >{t("btnManage") || "Manage"}</button>
+                    </div>
                   ) : st === "RESERVED" || st === "OCCUPIED" ? (
                     <div className="flex gap-2">
                       <button
@@ -1999,10 +2005,16 @@ function RoomsTab({ rooms, totalRooms, roomResMap, floors, floorFilter, setFloor
                       >{t("btnManage") || "Manage"}</button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => onRoomTap(room)}
-                      className="w-full rounded-xl bg-gray-100 text-gray-500 py-2.5 text-xs font-semibold active:bg-gray-200 transition-colors"
-                    >{t("btnViewDetail")}</button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onRoomTap(room)}
+                        className="flex-1 rounded-xl bg-gray-100 text-gray-500 py-2.5 text-xs font-semibold active:bg-gray-200 transition-colors"
+                      >{t("btnViewDetail")}</button>
+                      <button
+                        onClick={() => onRoomTap(room)}
+                        className="flex-1 rounded-xl bg-amber-100 text-amber-700 py-2.5 text-xs font-semibold active:bg-amber-200 transition-colors"
+                      >{t("btnManage") || "Manage"}</button>
+                    </div>
                   )}
                 </div>
               </div>
