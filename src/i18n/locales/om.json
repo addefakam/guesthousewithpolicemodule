@@ -1424,7 +1424,8 @@
     "reasonConsumption": "Fayyadama",
     "reasonStocktake": "Sirreessituu lakkoofsa",
     "by": "kan",
-    "close": "Cufi"
+    "close": "Cufi",
+    "toastRestockWithExpense": "{{qty}} {{unit}} kan {{name}} dabalame. Baajata {{amount}} galmeessameera."
   },
   "providers": {
     "cardTotal": "Ida'ama",

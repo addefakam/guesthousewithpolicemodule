@@ -1424,7 +1424,8 @@
     "reasonConsumption": "የመጠቀም ሂደት",
     "reasonStocktake": "የቆጠራ ማስተካከያ",
     "by": "በ",
-    "close": "ዝጋ"
+    "close": "ዝጋ",
+    "toastRestockWithExpense": "{{qty}} {{unit}} የ{{name}} ተጨምሯል። የ{{amount}} ወጪ ተመዝግቧል።"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",

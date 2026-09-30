@@ -42,31 +42,70 @@ export async function POST(
     const addQty = Number(quantity);
     const newQty = existing.quantity + addQty;
 
-    // Update the resource AND create an audit-trail row in one transaction
-    // so the movement is always consistent with the new quantity.
-    const [resource] = await db.$transaction([
-      db.resource.update({
-        where: { id },
-        data: {
-          quantity: newQty,
-          lastRestocked: new Date(),
-        },
-      }),
-      db.stockMovement.create({
-        data: {
-          resourceId: id,
-          delta: addQty,
-          reason: "restock",
-          previousQty: existing.quantity,
-          newQty,
-          userId: auth.userId,
-          userName: auth.userName || "",
-          providerId: existing.providerId,
-        },
-      }),
-    ]);
+    // ── Compute expense amount: qty × costPerUnit ──
+    // Only create an Expense if the resource has a non-zero costPerUnit
+    // (free items like donated linens don't need an expense row).
+    const unitCost = existing.costPerUnit || 0;
+    const expenseAmount = unitCost * addQty;
+    const shouldCreateExpense = expenseAmount > 0;
 
-    return NextResponse.json({ resource });
+    // ── Interactive transaction so we can capture the movement ID and
+    // link the Expense to it. Three writes, all atomic:
+    //   1. Resource update (new quantity + lastRestocked timestamp)
+    //   2. StockMovement create (audit trail of the +N change)
+    //   3. Expense create (only if costPerUnit > 0 — links back to movement)
+    const result = await db.$transaction(async (tx) => {
+      const [resource, movement] = await Promise.all([
+        tx.resource.update({
+          where: { id },
+          data: {
+            quantity: newQty,
+            lastRestocked: new Date(),
+          },
+        }),
+        tx.stockMovement.create({
+          data: {
+            resourceId: id,
+            delta: addQty,
+            reason: "restock",
+            previousQty: existing.quantity,
+            newQty,
+            userId: auth.userId,
+            userName: auth.userName || "",
+            providerId: existing.providerId,
+          },
+        }),
+      ]);
+
+      let expense = null;
+      if (shouldCreateExpense) {
+        // Use today's date in YYYY-MM-DD format (matches how the
+        // manual Expense form stores it — keeps the date filter working).
+        const today = new Date().toISOString().split("T")[0];
+        expense = await tx.expense.create({
+          data: {
+            date: today,
+            category: "Inventory",
+            description: `Restock: ${addQty} ${existing.unit} of ${existing.name}`,
+            amount: expenseAmount,
+            vendor: existing.supplier || "",
+            paymentMethod: "CASH", // default; operator can edit later if needed
+            receiptNo: "",
+            taxAmount: 0,
+            providerId: existing.providerId,
+            stockMovementId: movement.id,
+          },
+        });
+      }
+
+      return { resource, movement, expense };
+    });
+
+    return NextResponse.json({
+      resource: result.resource,
+      expenseCreated: !!result.expense,
+      expenseAmount: result.expense ? result.expense.amount : 0,
+    });
   } catch (error: unknown) {
         if (error instanceof AuthError) {
           return NextResponse.json({ error: error.message }, { status: error.statusCode });

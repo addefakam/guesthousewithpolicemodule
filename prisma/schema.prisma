@@ -397,6 +397,9 @@ model Expense {
   receiptNo     String            @default("")
   taxAmount     Float             @default(0)
   providerId    String
+  // Optional link to the StockMovement that triggered this expense
+  // (null = manually-created expense; set = auto-created from a restock)
+  stockMovementId String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -405,6 +408,7 @@ model Expense {
   @@index([providerId])
   @@index([date])
   @@index([category])
+  @@index([stockMovementId])
 }
 
 model ExpenseCategory {

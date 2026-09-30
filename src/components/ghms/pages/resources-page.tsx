@@ -246,8 +246,32 @@ export default function ResourcesPage() {
     }
     try {
       setRestocking(true);
-      await apiRestockResource(restockTarget.id, Number(restockQty));
-      toast.success(t("toastRestockSuccess", { qty: restockQty, unit: restockTarget.unit, name: restockTarget.name }));
+      const res = await apiRestockResource(restockTarget.id, Number(restockQty)) as {
+        expenseCreated?: boolean;
+        expenseAmount?: number;
+      };
+      // If the API created an Expense (costPerUnit > 0), show a richer toast
+      // so the operator knows the accounting side was updated too.
+      if (res?.expenseCreated && res.expenseAmount) {
+        toast.success(
+          t("toastRestockWithExpense", {
+            qty: restockQty,
+            unit: restockTarget.unit,
+            name: restockTarget.name,
+            amount: res.expenseAmount.toLocaleString(),
+            defaultValue:
+              "Restocked {{qty}} {{unit}} of {{name}}. Expense of {{amount}} recorded.",
+          })
+        );
+      } else {
+        toast.success(
+          t("toastRestockSuccess", {
+            qty: restockQty,
+            unit: restockTarget.unit,
+            name: restockTarget.name,
+          })
+        );
+      }
       setRestockTarget(null);
       setRestockQty("");
       triggerRefresh();

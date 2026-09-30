@@ -1424,7 +1424,8 @@
     "reasonConsumption": "Consumption",
     "reasonStocktake": "Stocktake correction",
     "by": "by",
-    "close": "Close"
+    "close": "Close",
+    "toastRestockWithExpense": "Restocked {{qty}} {{unit}} of {{name}}. Expense of {{amount}} recorded."
   },
   "providers": {
     "cardTotal": "Total",
