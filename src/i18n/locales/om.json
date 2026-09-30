@@ -1425,7 +1425,21 @@
     "reasonStocktake": "Sirreessituu lakkoofsa",
     "by": "kan",
     "close": "Cufi",
-    "toastRestockWithExpense": "{{qty}} {{unit}} kan {{name}} dabalame. Baajata {{amount}} galmeessameera."
+    "toastRestockWithExpense": "{{qty}} {{unit}} kan {{name}} dabalame. Baajata {{amount}} galmeessameera.",
+    "thname": "Maqaa",
+    "lblcategory": "Garee",
+    "lblquantity": "Lakkoofsa",
+    "thunit": "Safartuu",
+    "lblminLevel": "Taraa xiqqaa",
+    "lblcostPerUnit": "Gataa tokkoo",
+    "lblsupplier": "Bitaa",
+    "thcategory": "Garee",
+    "thquantity": "Lakkoofsa",
+    "thminLevel": "Taraa xiqqaa",
+    "thcostunit": "Gataa/Safartuu",
+    "thsupplier": "Bitaa",
+    "thlastRestocked": "Dhumarratti irra deebi'ame",
+    "thactions": "Hojii"
   },
   "providers": {
     "cardTotal": "Ida'ama",

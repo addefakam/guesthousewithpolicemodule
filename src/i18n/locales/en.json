@@ -1425,7 +1425,21 @@
     "reasonStocktake": "Stocktake correction",
     "by": "by",
     "close": "Close",
-    "toastRestockWithExpense": "Restocked {{qty}} {{unit}} of {{name}}. Expense of {{amount}} recorded."
+    "toastRestockWithExpense": "Restocked {{qty}} {{unit}} of {{name}}. Expense of {{amount}} recorded.",
+    "thname": "Name",
+    "lblcategory": "Category",
+    "lblquantity": "Quantity",
+    "thunit": "Unit",
+    "lblminLevel": "Min Level",
+    "lblcostPerUnit": "Cost Per Unit",
+    "lblsupplier": "Supplier",
+    "thcategory": "Category",
+    "thquantity": "Quantity",
+    "thminLevel": "Min Level",
+    "thcostunit": "Cost/Unit",
+    "thsupplier": "Supplier",
+    "thlastRestocked": "Last Restocked",
+    "thactions": "Actions"
   },
   "providers": {
     "cardTotal": "Total",

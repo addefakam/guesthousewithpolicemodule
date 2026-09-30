@@ -1425,7 +1425,21 @@
     "reasonStocktake": "የቆጠራ ማስተካከያ",
     "by": "በ",
     "close": "ዝጋ",
-    "toastRestockWithExpense": "{{qty}} {{unit}} የ{{name}} ተጨምሯል። የ{{amount}} ወጪ ተመዝግቧል።"
+    "toastRestockWithExpense": "{{qty}} {{unit}} የ{{name}} ተጨምሯል። የ{{amount}} ወጪ ተመዝግቧል።",
+    "thname": "ስም",
+    "lblcategory": "ምድብ",
+    "lblquantity": "ብዛት",
+    "thunit": "መለኪያ",
+    "lblminLevel": "ዝቅተኛ ደረጃ",
+    "lblcostPerUnit": "የአንዱ ዋጋ",
+    "lblsupplier": "አቅራቢ",
+    "thcategory": "ምድብ",
+    "thquantity": "ብዛት",
+    "thminLevel": "ዝቅተኛ ደረጃ",
+    "thcostunit": "ዋጋ/መለኪያ",
+    "thsupplier": "አቅራቢ",
+    "thlastRestocked": "መጨረሻ የተመለሰበት",
+    "thactions": "እርምጫዎች"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",
