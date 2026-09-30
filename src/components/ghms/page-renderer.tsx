@@ -70,6 +70,9 @@ const ReportsPage = lazyPage(
 const SettingsPage = lazyPage(
   () => import("@/components/ghms/pages/settings-page")
 );
+const OrganizationInfoPage = lazyPage(
+  () => import("@/components/ghms/pages/organization-info-page")
+);
 const NotificationsPage = lazyPage(
   () => import("@/components/ghms/pages/notifications-page")
 );
@@ -184,6 +187,7 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
     users: UsersPage,
     reports: ReportsPage,
     settings: SettingsPage,
+    "organization-info": OrganizationInfoPage,
     notifications: NotificationsPage,
     providers: ProvidersPage,
     "police-dashboard": PoliceDashboardPage,

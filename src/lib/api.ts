@@ -313,6 +313,12 @@ export const apiUpdateProvider = (id: string, data: Record<string, unknown>) =>
   req(`/api/providers/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const apiDeleteProvider = (id: string) =>
   req(`/api/providers/${id}`, { method: "DELETE" });
+
+// Provider's own organization info (operator-facing)
+export const apiGetMyProvider = () => req("/api/providers/me");
+export const apiUpdateMyProvider = (data: Record<string, unknown>) =>
+  req("/api/providers/me", { method: "PATCH", body: JSON.stringify(data) });
+
 export const apiRegisterProvider = async (data: FormData) => {
   const res = await fetch("/api/providers", { method: "POST", body: data, credentials: "include" });
   const json = await res.json().catch(() => ({}));
