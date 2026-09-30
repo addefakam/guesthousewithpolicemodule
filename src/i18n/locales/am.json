@@ -1639,7 +1639,8 @@
     "page_guest-communication": "መልእክቶች",
     "page_staff-logs": "የሰራተኛ እንቅስቃሴዎች",
     "page_my-subscription": "ምዝገባ",
-    "page_settings": "ቅንብሮች"
+    "page_settings": "ቅንብሮች",
+    "page_resources": "የክምችት አስተዳደር"
   },
   "daytime": {
     "pageTitle": "የቀን አገልግሎቶች",

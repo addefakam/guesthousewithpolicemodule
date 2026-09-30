@@ -109,6 +109,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   },
   { page: "users", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
+  { page: "resources", label: "Stock Management", icon: Package },
   { page: "group-bookings", label: "Group Bookings", icon: Users },
   { page: "guest-communication", label: "Messages", icon: MessageSquare },
   { page: "staff-logs", label: "Staff Activity", icon: ScrollText },

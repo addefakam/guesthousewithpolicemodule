@@ -15,6 +15,7 @@ const TOGGLABLE_PAGES = [
   { key: "accommodation", label: "Accommodation", icon: "DoorOpen", category: "core" },
   // 'users' removed — always enabled for owners
   { key: "reports", label: "Reports", icon: "BarChart3", category: "management" },
+  { key: "resources", label: "Stock Management", icon: "Package", category: "operations" },
   { key: "group-bookings", label: "Group Bookings", icon: "Users", category: "operations" },
   { key: "guest-communication", label: "Messages", icon: "MessageSquare", category: "operations" },
   { key: "staff-logs", label: "Staff Activity", icon: "ScrollText", category: "operations" },

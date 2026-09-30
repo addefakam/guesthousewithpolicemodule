@@ -24,6 +24,7 @@ import {
   ScrollText,
   CreditCard,
   Settings,
+  Package,
   AlertTriangle,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   ScrollText,
   CreditCard,
   Settings,
+  Package,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {

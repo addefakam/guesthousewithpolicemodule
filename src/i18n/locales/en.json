@@ -1639,7 +1639,8 @@
     "page_guest-communication": "Messages",
     "page_staff-logs": "Staff Activity",
     "page_my-subscription": "Subscription",
-    "page_settings": "Settings"
+    "page_settings": "Settings",
+    "page_resources": "Stock Management"
   },
   "daytime": {
     "pageTitle": "Daytime Services",
