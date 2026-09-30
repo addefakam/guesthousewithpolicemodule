@@ -1224,7 +1224,6 @@ export default function RoomsPage() {
                 </Label>
                 <Input
                   id="room-number"
-                  placeholder="e.g. 101"
                   value={form.number}
                   onChange={(e) => {
                     const newNumber = e.target.value;
@@ -1296,7 +1295,6 @@ export default function RoomsPage() {
                 <Input
                   id="room-floor"
                   type="number"
-                  placeholder="1"
                   value={form.floor}
                   onChange={(e) => setForm({ ...form, floor: e.target.value })}
                 />

@@ -3028,7 +3028,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
     <div className="space-y-4">
       <div>
         <Label className="text-xs font-semibold">{t("addRoomNumber")} *</Label>
-        <Input value={form.number} onChange={(e) => onUpdate({ number: e.target.value })} placeholder={t("phRoomNumber")} className="mt-1.5 h-11 rounded-xl" />
+        <Input value={form.number} onChange={(e) => onUpdate({ number: e.target.value })} className="mt-1.5 h-11 rounded-xl" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -3070,7 +3070,7 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs font-semibold">{t("addRoomFloor")} *</Label>
-          <Input type="number" value={form.floor} onChange={(e) => onUpdate({ floor: e.target.value })} placeholder="1" className="mt-1.5 h-11 rounded-xl" />
+          <Input type="number" value={form.floor} onChange={(e) => onUpdate({ floor: e.target.value })} className="mt-1.5 h-11 rounded-xl" />
         </div>
         <div>
           <Label className="text-xs font-semibold">
@@ -3100,7 +3100,6 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
               }
               onUpdate({ capacity: val });
             }}
-            placeholder={form.type === "SINGLE" ? "1 or 2" : "1"}
             className="mt-1.5 h-11 rounded-xl"
           />
         </div>

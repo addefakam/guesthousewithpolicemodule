@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowDownUp,
   BadgeCheck,
   CalendarDays,
   ChevronRight,
@@ -48,6 +49,9 @@ interface ActiveReservation {
 
 type StayFilter = "ALL" | "ACTIVE" | "UPCOMING";
 
+type SortKey = "provider" | "date" | "status";
+type SortDir = "asc" | "desc";
+
 export default function GuestsScreen() {
   const { t } = useTranslation("policeApp");
   // Subscribe to the global refreshKey so the header's refresh button
@@ -58,6 +62,11 @@ export default function GuestsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StayFilter>("ALL");
+  // Sort state — lets the officer reorder active stays by guesthouse
+  // (provider), check-in date, or reservation status. Default mirrors
+  // the server's default (status asc → active first, then upcoming).
+  const [sortKey, setSortKey] = useState<SortKey>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   // Per-guest lifecycle summaries — powers the status-change badges
   // (early exit, extended, room shifted, cancelled) on each stay card.
   const [lifecycleMap, setLifecycleMap] = useState<Record<string, GuestLifecycleSummary>>({});
@@ -115,7 +124,7 @@ export default function GuestsScreen() {
   const filtered = useMemo(() => {
     if (!items) return [];
     const q = search.trim().toLowerCase();
-    return items.filter((r) => {
+    const filtered = items.filter((r) => {
       if (filter !== "ALL" && r.status !== filter) return false;
       if (!q) return true;
       return (
@@ -128,7 +137,34 @@ export default function GuestsScreen() {
         r.providerName.toLowerCase().includes(q)
       );
     });
-  }, [items, search, filter]);
+
+    // ── Apply sort ──
+    // provider → alphabetical by guesthouse name (locale-aware, case-insensitive)
+    // date     → chronological by check-in date (earliest first when asc)
+    // status   → ACTIVE before UPCOMING when asc (matches server default)
+    const dirMul = sortDir === "asc" ? 1 : -1;
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortKey === "provider") {
+        return (
+          a.providerName.localeCompare(b.providerName, undefined, { sensitivity: "base" }) * dirMul
+        );
+      }
+      if (sortKey === "date") {
+        // ISO date strings (YYYY-MM-DD) sort lexically = chronologically.
+        // Fall back to empty string so undefined dates don't crash.
+        const aDate = a.checkIn || "";
+        const bDate = b.checkIn || "";
+        if (aDate < bDate) return -1 * dirMul;
+        if (aDate > bDate) return 1 * dirMul;
+        return 0;
+      }
+      // status
+      const aRank = a.status === "ACTIVE" ? 0 : 1;
+      const bRank = b.status === "ACTIVE" ? 0 : 1;
+      return (aRank - bRank) * dirMul;
+    });
+    return sorted;
+  }, [items, search, filter, sortKey, sortDir]);
 
   const activeCount = useMemo(() => items?.filter((r) => r.status === "ACTIVE").length ?? 0, [items]);
   const upcomingCount = useMemo(() => items?.filter((r) => r.status === "UPCOMING").length ?? 0, [items]);
@@ -213,6 +249,53 @@ export default function GuestsScreen() {
               )}
               {f.label}
               <span className="ml-0.5 opacity-70">· {f.count}</span>
+            </button>
+          );
+        })}
+      </section>
+
+      {/* ── Sort row ──
+          Three sort keys (Provider / Date / Status) + direction toggle.
+          Tap a key to switch sort; tap again to flip direction (asc↔desc).
+          Matches the chip styling of the filter row above so the two
+          controls look like one cohesive band. */}
+      <section className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={t("guests.sortBy")}>
+        <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          <ArrowDownUp className="h-3 w-3" aria-hidden="true" />
+          {t("guests.sortBy")}
+        </span>
+        {([
+          { key: "provider" as SortKey, label: t("guests.sortProvider") },
+          { key: "date" as SortKey, label: t("guests.sortDate") },
+          { key: "status" as SortKey, label: t("guests.sortStatus") },
+        ]).map(({ key, label }) => {
+          const active = sortKey === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                // Tap active chip again → flip direction.
+                // Tap different chip → switch key, reset to asc.
+                if (active) {
+                  setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                } else {
+                  setSortKey(key);
+                  setSortDir("asc");
+                }
+              }}
+              aria-pressed={active}
+              aria-label={`${label} — ${sortDir === "asc" ? t("guests.sortAsc") : t("guests.sortDesc")}`}
+              className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                active ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-600"
+              }`}
+            >
+              {label}
+              {active && (
+                <span aria-hidden="true" className="text-[10px] font-bold text-indigo-500">
+                  {sortDir === "asc" ? "↑" : "↓"}
+                </span>
+              )}
             </button>
           );
         })}

@@ -407,17 +407,17 @@ export default function AccommodationGuestsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
 
-  // ── Computed: list of ACTIVE or UPCOMING reservations ──
+  // ── Computed: list of displayable reservations ──
   // Each reservation becomes ONE row in the table — no deduplication by
   // guest. So if a guest has multiple bookings (group bookings, recurring
-  // stays, multi-room), they appear once per reservation. This makes the
-  // stats (Total/CheckedIn/Upcoming) match the displayed row count.
+  // stays, multi-room), they appear once per reservation.
   //
-  // The page is still called "Manage Guests" for marketing reasons, but
-  // the data model is now reservation-centric — same as the Reservations
-  // page, just filtered to ACTIVE + UPCOMING only.
+  // Includes ALL non-DELETED statuses so the status-filter dropdown next
+  // to the search input can show COMPLETED and CANCELLED rows too.
+  // Stats/bulk-action consumers below explicitly filter to ACTIVE +
+  // UPCOMING where needed (so the KPI cards still reflect live guests).
   const activeReservations = useMemo(() =>
-    reservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING"),
+    reservations.filter((r) => r.status !== "DELETED"),
     [reservations]
   );
 
@@ -439,8 +439,12 @@ export default function AccommodationGuestsPage() {
       list = list.filter((r) => r.status === "ACTIVE");
     } else if (statusFilter === "UPCOMING") {
       list = list.filter((r) => r.status === "UPCOMING");
+    } else if (statusFilter === "COMPLETED") {
+      list = list.filter((r) => r.status === "COMPLETED");
+    } else if (statusFilter === "CANCELLED") {
+      list = list.filter((r) => r.status === "CANCELLED");
     }
-    // statusFilter === "ALL" → no extra filter, all ACTIVE+UPCOMING shown.
+    // statusFilter === "ALL" → no extra filter, every non-DELETED reservation shown.
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -708,14 +712,20 @@ export default function AccommodationGuestsPage() {
 
   // ── Stats ──
   // Counts RESERVATIONS (one per row in the table) so the numbers
-  // always match the displayed list rows exactly. A guest with multiple
-  // active/upcoming reservations is counted once per reservation.
-  const stats = useMemo(() => ({
-    total: activeReservations.length,
-    checkedIn: activeReservations.filter((r) => r.status === "ACTIVE").length,
-    upcoming: activeReservations.filter((r) => r.status === "UPCOMING").length,
-    availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
-  }), [activeReservations, rooms]);
+  // always match the displayed list rows exactly. The Total / CheckedIn /
+  // Upcoming KPIs deliberately count ONLY ACTIVE + UPCOMING — completed
+  // and cancelled stays are historical and shouldn't inflate the live
+  // occupancy numbers, even when the user selects those filters from the
+  // dropdown.
+  const stats = useMemo(() => {
+    const live = activeReservations.filter((r) => r.status === "ACTIVE" || r.status === "UPCOMING");
+    return {
+      total: live.length,
+      checkedIn: live.filter((r) => r.status === "ACTIVE").length,
+      upcoming: live.filter((r) => r.status === "UPCOMING").length,
+      availableRooms: rooms.filter((r) => r.status === "AVAILABLE").length,
+    };
+  }, [activeReservations, rooms]);
 
   // ── Render ──
   if (loading) {
@@ -817,6 +827,8 @@ export default function AccommodationGuestsPage() {
             <SelectItem value="ALL">{t("allGuests", "All Guests")}</SelectItem>
             <SelectItem value="CHECKED_IN">{t("checkedIn", "Checked In")}</SelectItem>
             <SelectItem value="UPCOMING">{t("upcoming", "Upcoming")}</SelectItem>
+            <SelectItem value="COMPLETED">{t("completed", "Completed")}</SelectItem>
+            <SelectItem value="CANCELLED">{t("cancelled", "Cancelled")}</SelectItem>
           </SelectContent>
         </Select>
         <Button

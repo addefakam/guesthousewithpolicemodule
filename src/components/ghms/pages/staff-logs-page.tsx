@@ -12,21 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClipboardList, Search, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { ClipboardList, Search, ChevronDown, ChevronUp, Filter, Calendar, Wifi } from "lucide-react";
 
 // ── Types ──
 
@@ -56,55 +48,28 @@ const PAGE_LIMIT = 20;
 function getActionBadgeClasses(action: string): string {
   const a = action.toUpperCase();
 
-  if (a === "CHECKIN" || a === "CHECKOUT") {
+  if (a === "CHECKIN" || a === "CHECKOUT" || a === "GROUP_CHECKOUT") {
     return "bg-emerald-100 text-emerald-700 border-emerald-200";
   }
-  if (a.startsWith("CREATE_")) {
+  if (a.startsWith("CREATE_") || a === "RESERVATION_CREATE") {
     return "bg-blue-100 text-blue-700 border-blue-200";
   }
   if (a.startsWith("UPDATE_")) {
     return "bg-amber-100 text-amber-700 border-amber-200";
   }
-  if (a.startsWith("DELETE_")) {
+  if (a.startsWith("DELETE_") || a === "RESERVATION_CANCEL" || a === "BULK_CANCEL") {
     return "bg-red-100 text-red-700 border-red-200";
   }
   if (a === "SEND_MESSAGE" || a === "BULK_SEND_MESSAGES") {
     return "bg-violet-100 text-violet-700 border-violet-200";
   }
+  if (a.startsWith("BULK_")) {
+    return "bg-cyan-100 text-cyan-700 border-cyan-200";
+  }
+  if (a === "PAYMENT_RECORD" || a === "GROUP_PAYMENT") {
+    return "bg-teal-100 text-teal-700 border-teal-200";
+  }
   return "bg-gray-100 text-gray-700 border-gray-200";
-}
-
-// getActionLabel replaced by ACTION_LABELS lookup in component
-
-function formatDetails(details: string): string {
-  try {
-    const parsed = JSON.parse(details);
-    if (typeof parsed === "string") return parsed;
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      const entries = Object.entries(parsed);
-      if (entries.length === 0) return "{}";
-      return entries
-        .slice(0, 6)
-        .map(([key, val]) => `${key}: ${val}`)
-        .join(" | ");
-    }
-    if (Array.isArray(parsed)) {
-      return JSON.stringify(parsed.slice(0, 3));
-    }
-    return String(parsed);
-  } catch {
-    return details;
-  }
-}
-
-function formatFullDetails(details: string): string {
-  try {
-    const parsed = JSON.parse(details);
-    if (typeof parsed === "string") return parsed;
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return details;
-  }
 }
 
 function formatDateTime(dateStr: string): string {
@@ -125,7 +90,10 @@ function formatDateTime(dateStr: string): string {
 
 function getInitials(name: string): string {
   if (!name || name.trim() === "") return "?";
-  return name.trim().charAt(0).toUpperCase();
+  const trimmed = name.trim();
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
 function getAvatarColor(name: string): string {
@@ -147,9 +115,125 @@ function getAvatarColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen) + "...";
+/**
+ * Parse the `details` JSON blob into a compact, human-readable "Target" summary.
+ * Examples:
+ *   RESERVATION_CREATE  →  "Room 101, Guest: Kebede"
+ *   CHECKOUT            →  "Room 101, Guest: Kebede"
+ *   PAYMENT_RECORD      →  "Amount: 1500 ETB, Method: Cash"
+ *   CREATE_GROUP_BOOKING→  "Group: Wedding Party"
+ *   SEND_MESSAGE        →  "Template: Welcome, To: +2519…"
+ *   BULK_CHECKIN        →  "3/5 reservations"
+ */
+function getTargetSummary(log: StaffLog): string {
+  if (!log.details) return "—";
+
+  let d: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(log.details);
+    if (typeof parsed === "string") return parsed || "—";
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      d = parsed as Record<string, unknown>;
+    } else {
+      return String(parsed);
+    }
+  } catch {
+    // details is plain text, not JSON
+    return log.details;
+  }
+
+  const action = (log.action || "").toUpperCase();
+  const parts: string[] = [];
+
+  const guestName = (d.guestName as string) || "";
+  const roomNumber = (d.roomNumber as string) || (d.room as string) || "";
+  const groupName = (d.groupName as string) || (d.name as string) || "";
+
+  // ── Reservation lifecycle ──
+  if (action === "RESERVATION_CREATE" || action === "CHECKIN" || action === "CHECKOUT") {
+    if (roomNumber) parts.push(`Room ${roomNumber}`);
+    if (guestName) parts.push(`Guest: ${guestName}`);
+  } else if (action === "RESERVATION_CANCEL") {
+    if (guestName) parts.push(`Guest: ${guestName}`);
+    if (roomNumber) parts.push(`Room ${roomNumber}`);
+  }
+  // ── Bulk reservation actions ──
+  else if (action.startsWith("BULK_")) {
+    const total = Number(d.total ?? 0);
+    const success = Number(d.success ?? 0);
+    const failed = Number(d.failed ?? 0);
+    if (total > 0) {
+      parts.push(`${success}/${total} reservations`);
+      if (failed > 0) parts.push(`${failed} failed`);
+    }
+  }
+  // ── Guest ──
+  else if (action === "GUEST_CREATE" || action === "GUEST_UPDATE") {
+    if (guestName) parts.push(`Guest: ${guestName}`);
+    if (d.phone) parts.push(`Phone: ${d.phone}`);
+    if (d.idNumber) parts.push(`ID: ${d.idNumber}`);
+  }
+  // ── Room ──
+  else if (action === "ROOM_CREATE" || action === "ROOM_UPDATE") {
+    if (roomNumber) parts.push(`Room ${roomNumber}`);
+    if (d.roomType) parts.push(`Type: ${d.roomType}`);
+  }
+  // ── Payment ──
+  else if (action === "PAYMENT_RECORD") {
+    if (d.amount !== undefined && d.amount !== null && d.amount !== "") {
+      const amt = typeof d.amount === "number" ? d.amount.toLocaleString() : d.amount;
+      parts.push(`Amount: ${amt}`);
+    }
+    if (d.method) parts.push(`Method: ${d.method}`);
+  }
+  // ── Group booking ──
+  else if (
+    action === "CREATE_GROUP_BOOKING" ||
+    action === "UPDATE_GROUP_BOOKING" ||
+    action === "DELETE_GROUP_BOOKING"
+  ) {
+    if (groupName) parts.push(`Group: ${groupName}`);
+    if (d.startDate) parts.push(`From: ${d.startDate}`);
+  } else if (action === "GROUP_CHECKOUT") {
+    if (groupName) parts.push(`Group: ${groupName}`);
+    const co = Number(d.checkedOut ?? 0);
+    const tot = Number(d.total ?? 0);
+    if (tot > 0) parts.push(`Checked out: ${co}/${tot}`);
+  } else if (action === "GROUP_PAYMENT") {
+    if (groupName) parts.push(`Group: ${groupName}`);
+    if (d.amount !== undefined && d.amount !== null && d.amount !== "") {
+      const amt = typeof d.amount === "number" ? d.amount.toLocaleString() : d.amount;
+      parts.push(`Amount: ${amt}`);
+    }
+    if (d.method) parts.push(`Method: ${d.method}`);
+  }
+  // ── Message templates / sends ──
+  else if (
+    action === "CREATE_MESSAGE_TEMPLATE" ||
+    action === "UPDATE_MESSAGE_TEMPLATE" ||
+    action === "DELETE_MESSAGE_TEMPLATE"
+  ) {
+    if (d.name) parts.push(`Template: ${d.name}`);
+    if (d.channel) parts.push(`Channel: ${d.channel}`);
+  } else if (action === "SEND_MESSAGE") {
+    if (d.template) parts.push(`Template: ${d.template}`);
+    if (d.recipient) parts.push(`To: ${d.recipient}`);
+  } else if (action === "BULK_SEND_MESSAGES") {
+    if (d.template) parts.push(`Template: ${d.template}`);
+    const sent = Number(d.sent ?? 0);
+    const failed = Number(d.failed ?? 0);
+    parts.push(`${sent} sent`);
+    if (failed > 0) parts.push(`${failed} failed`);
+  }
+
+  // Fallback: show key/value pairs
+  if (parts.length === 0) {
+    const entries = Object.entries(d).slice(0, 3);
+    if (entries.length === 0) return "—";
+    return entries.map(([k, v]) => `${k}: ${v}`).join(", ");
+  }
+
+  return parts.join(", ");
 }
 
 // ── Component ──
@@ -251,7 +335,7 @@ export default function StaffLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, actionFilter, targetTypeFilter, dateFrom, dateTo]);
+  }, [page, actionFilter, targetTypeFilter, dateFrom, dateTo, t]);
 
   useEffect(() => {
     fetchLogs();
@@ -421,13 +505,10 @@ export default function StaffLogsPage() {
           <CardContent className="p-4 md:p-6">
             <div className="space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-9 w-9 rounded-full shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                  <Skeleton className="h-6 w-20 rounded-full" />
+                <div key={i} className="border border-gray-100 rounded-lg p-3 space-y-2">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-3 w-3/4" />
+                  <Skeleton className="h-3 w-2/3" />
                 </div>
               ))}
             </div>
@@ -452,194 +533,97 @@ export default function StaffLogsPage() {
         </Card>
       )}
 
-      {/* Mobile Card View */}
+      {/* Compact Card List — same layout for mobile & desktop */}
       {!loading && logs.length > 0 && (
-        <div className="space-y-3 md:hidden">
+        <div className="space-y-3">
           {logs.map((log) => {
             const isExpanded = expandedRows.has(log.id);
-            const formattedDetails = formatDetails(log.details);
-            const isTruncatable = formattedDetails.length > 100;
+            const targetSummary = getTargetSummary(log);
+            const isTruncatable = targetSummary.length > 90;
+            const actionLabel = ACTION_LABELS[log.action.toUpperCase()] || log.action;
 
             return (
-              <Card key={log.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  {/* Card Header Row */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getAvatarColor(log.userName)}`}
-                      >
-                        {getInitials(log.userName)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {log.userName}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {formatDateTime(log.createdAt)}
-                        </p>
-                      </div>
+              <div
+                key={log.id}
+                className="border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors shadow-sm"
+              >
+                {/* Line 1: Staff · Action */}
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getAvatarColor(log.userName)}`}
+                      title={log.userName || "Unknown staff"}
+                    >
+                      {getInitials(log.userName)}
                     </div>
-                    <Badge variant="outline" className={getActionBadgeClasses(log.action)}>
-                      {ACTION_LABELS[log.action.toUpperCase()] || log.action}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        {t("thStaffName") || "Staff"}:
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900 truncate max-w-[180px]">
+                        {log.userName || "—"}
+                      </span>
+                    </div>
                   </div>
+                  <Badge variant="outline" className={getActionBadgeClasses(log.action)}>
+                    {actionLabel}
+                  </Badge>
+                </div>
 
-                  {/* Info Row */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{t("lblTargetTypeMobile")}</span>
-                      <span className="text-xs font-medium text-gray-700">
-                        {TARGET_LABELS[log.targetType] || log.targetType?.replace(/_/g, " ") || "—"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">{t("lblIpAddress")}</span>
-                      <span className="text-xs font-mono text-gray-700">
-                        {log.ipAddress || "—"}
-                      </span>
-                    </div>
-
-                    {/* Details */}
-                    {log.details && (
-                      <div className="mt-2">
-                        <span className="text-xs text-gray-500">{t("lblDetails")}</span>
-                        <p className="text-xs text-gray-600 mt-0.5 break-all leading-relaxed">
-                          {isExpanded || !isTruncatable
-                            ? formattedDetails
-                            : truncate(formattedDetails, 100)}
-                        </p>
-                        {isTruncatable && (
-                          <button
-                            type="button"
-                            onClick={() => toggleRowExpanded(log.id)}
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-1 font-medium"
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronUp className="h-3 w-3" />
-                                {t("btnShowLess")}
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="h-3 w-3" />
-                                {t("btnShowMore")}
-                              </>
-                            )}
-                          </button>
+                {/* Line 2: Target */}
+                <div className="px-4 py-2.5 border-b border-gray-100">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap mt-0.5">
+                      {t("lblTargetTypeMobile") || "Target"}:
+                    </span>
+                    <p
+                      className={`text-sm text-gray-700 break-words leading-relaxed ${
+                        isExpanded ? "" : "line-clamp-2"
+                      }`}
+                    >
+                      {targetSummary}
+                    </p>
+                    {isTruncatable && (
+                      <button
+                        type="button"
+                        onClick={() => toggleRowExpanded(log.id)}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-0.5 font-medium shrink-0"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="h-3 w-3" />
+                            {t("btnShowLess")}
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3" />
+                            {t("btnShowMore")}
+                          </>
                         )}
-                      </div>
+                      </button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Line 3: Date · IP */}
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-gray-50/50 rounded-b-lg">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <span className="text-xs text-gray-600 truncate">
+                      {formatDateTime(log.createdAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Wifi className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs font-mono text-gray-500">
+                      {log.ipAddress || "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
-      )}
-
-      {/* Desktop Table View */}
-      {!loading && logs.length > 0 && (
-        <Card className="hidden md:block">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/60">
-                    <TableHead>{t("thDateTime")}</TableHead>
-                    <TableHead>{t("thStaffName")}</TableHead>
-                    <TableHead>{t("thAction")}</TableHead>
-                    <TableHead>{t("thTargetType")}</TableHead>
-                    <TableHead>{t("thDetailsCol")}</TableHead>
-                    <TableHead>{t("thIpAddressCol")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => {
-                    const isExpanded = expandedRows.has(log.id);
-                    const formattedDetails = formatDetails(log.details);
-                    const fullDetails = formatFullDetails(log.details);
-                    const isTruncatable = formattedDetails.length > 100;
-
-                    return (
-                      <TableRow key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                        {/* Date/Time */}
-                        <TableCell className="text-sm text-gray-600">
-                          {formatDateTime(log.createdAt)}
-                        </TableCell>
-
-                        {/* Staff Name with Avatar */}
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getAvatarColor(log.userName)}`}
-                            >
-                              {getInitials(log.userName)}
-                            </div>
-                            <span className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                              {log.userName}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        {/* Action Badge */}
-                        <TableCell>
-                          <Badge variant="outline" className={getActionBadgeClasses(log.action)}>
-                            {ACTION_LABELS[log.action.toUpperCase()] || log.action}
-                          </Badge>
-                        </TableCell>
-
-                        {/* Target Type */}
-                        <TableCell className="text-sm text-gray-600">
-                          {TARGET_LABELS[log.targetType] || log.targetType?.replace(/_/g, " ") || "—"}
-                        </TableCell>
-
-                        {/* Details */}
-                        <TableCell>
-                          {log.details ? (
-                            <div>
-                              <p className="text-sm text-gray-600 break-all leading-relaxed whitespace-pre-line">
-                                {isExpanded
-                                  ? fullDetails
-                                  : truncate(formattedDetails, 100)}
-                              </p>
-                              {isTruncatable && (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleRowExpanded(log.id)}
-                                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-1 font-medium"
-                                >
-                                  {isExpanded ? (
-                                    <>
-                                      <ChevronUp className="h-3 w-3" />
-                                      {t("btnShowLess")}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ChevronDown className="h-3 w-3" />
-                                      {t("btnShowMore")}
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">—</span>
-                          )}
-                        </TableCell>
-
-                        {/* IP Address */}
-                        <TableCell className="text-sm font-mono text-gray-500">
-                          {log.ipAddress || "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {/* Pagination */}
