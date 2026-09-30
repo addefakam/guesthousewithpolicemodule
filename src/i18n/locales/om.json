@@ -1413,7 +1413,18 @@
     "catRent": "Kiraa",
     "catInsurance": "Hoogara",
     "catMiscellaneous": "Dhugaa Dabalataa",
-    "unknown": "Beekamte"
+    "unknown": "Beekamte",
+    "history": "Seenaa",
+    "historyTitle": "Seenaa Kuusaa",
+    "historyDesc": "Jijjiirama lakkoofsa waan kanaa — dhaabuu, goci, fayyadamaa, sirreessituu.",
+    "historyEmpty": "Jijjiiramaan tokko hin galmeeffamne.",
+    "toastHistoryFailed": "Seenaa fe'uu hin dablamne",
+    "reasonRestock": "Irra deebi'ee guuti",
+    "reasonEdit": "Goci harkaa",
+    "reasonConsumption": "Fayyadama",
+    "reasonStocktake": "Sirreessituu lakkoofsa",
+    "by": "kan",
+    "close": "Cufi"
   },
   "providers": {
     "cardTotal": "Ida'ama",

@@ -9,6 +9,7 @@ import {
   apiUpdateResource,
   apiDeleteResource,
   apiRestockResource,
+  apiGetStockMovements,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +69,7 @@ import {
   PackageCheck,
   RotateCcw,
   DollarSign,
+  History,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -82,6 +84,18 @@ interface Resource {
   costPerUnit: number;
   supplier: string;
   lastRestocked: string | null;
+}
+
+interface StockMovement {
+  id: string;
+  resourceId: string;
+  delta: number;
+  reason: string;
+  previousQty: number;
+  newQty: number;
+  userId: string;
+  userName: string;
+  createdAt: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -124,6 +138,11 @@ export default function ResourcesPage() {
   const [restockTarget, setRestockTarget] = useState<Resource | null>(null);
   const [restockQty, setRestockQty] = useState("");
   const [restocking, setRestocking] = useState(false);
+
+  // History dialog
+  const [historyTarget, setHistoryTarget] = useState<Resource | null>(null);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
@@ -237,6 +256,40 @@ export default function ResourcesPage() {
     } finally {
       setRestocking(false);
     }
+  };
+
+  // ── Stock movement history ──
+  const openHistory = async (res: Resource) => {
+    setHistoryTarget(res);
+    setMovements([]);
+    setHistoryLoading(true);
+    try {
+      const data = await apiGetStockMovements(res.id, 50, 0);
+      setMovements(Array.isArray(data.movements) ? data.movements : []);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastHistoryFailed", { defaultValue: "Failed to load history" }));
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const formatMovementReason = (reason: string) => {
+    switch (reason) {
+      case "restock": return t("reasonRestock", { defaultValue: "Restock" });
+      case "edit": return t("reasonEdit", { defaultValue: "Manual edit" });
+      case "consumption": return t("reasonConsumption", { defaultValue: "Consumption" });
+      case "stocktake-correction": return t("reasonStocktake", { defaultValue: "Stocktake correction" });
+      default: return reason || "—";
+    }
+  };
+
+  const formatMovementDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleString("en-US", {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return dateStr; }
   };
 
   const getStockStatus = (res: Resource) => {
@@ -385,6 +438,9 @@ export default function ResourcesPage() {
                             <DropdownMenuItem onClick={() => { setRestockTarget(res); setRestockQty(""); }}>
                               <RotateCcw className="mr-2 h-4 w-4" /> {t("restock")}
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openHistory(res)}>
+                              <History className="mr-2 h-4 w-4" /> {t("history", { defaultValue: "History" })}
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-rose-600 focus:text-rose-600"
@@ -513,6 +569,90 @@ export default function ResourcesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ─── History Dialog ───────────────────────────────────────────────── */}
+      <Dialog open={!!historyTarget} onOpenChange={() => setHistoryTarget(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4 text-slate-500" />
+              {t("historyTitle", { defaultValue: "Stock History" })}: {historyTarget?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {t("historyDesc", { defaultValue: "Every quantity change for this item — restocks, edits, consumption, corrections." })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyLoading ? (
+              <div className="space-y-2 py-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : movements.length === 0 ? (
+              <div className="py-8 text-center">
+                <History className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                <p className="text-sm text-slate-500">
+                  {t("historyEmpty", { defaultValue: "No movements recorded yet." })}
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {movements.map((m) => {
+                  const isPositive = m.delta > 0;
+                  return (
+                    <li
+                      key={m.id}
+                      className={`flex items-start gap-3 rounded-lg border p-3 ${
+                        isPositive
+                          ? "border-emerald-100 bg-emerald-50/40"
+                          : "border-rose-100 bg-rose-50/40"
+                      }`}
+                    >
+                      <div
+                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          isPositive
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {isPositive ? "+" : ""}
+                        {m.delta}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {formatMovementReason(m.reason)}
+                          </p>
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            {formatMovementDate(m.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          <span className="font-mono">{m.previousQty}</span>
+                          {" → "}
+                          <span className="font-mono font-bold">{m.newQty}</span>
+                          {historyTarget?.unit ? ` ${historyTarget.unit}` : ""}
+                        </p>
+                        {m.userName && (
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {t("by", { defaultValue: "by" })} {m.userName}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryTarget(null)}>
+              {t("close", { defaultValue: "Close" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

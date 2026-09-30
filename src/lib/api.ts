@@ -265,6 +265,8 @@ export const apiDeleteResource = (id: string) =>
   req(`/api/resources/${id}`, { method: "DELETE" });
 export const apiRestockResource = (id: string, qty: number) =>
   req(`/api/resources/${id}/restock`, { method: "POST", body: JSON.stringify({ quantity: qty }) });
+export const apiGetStockMovements = (id: string, limit = 50, offset = 0) =>
+  req(`/api/resources/${id}/movements?limit=${limit}&offset=${offset}`);
 
 // Housekeeping
 export const apiGetHousekeeping = (q?: string) => req(`/api/housekeeping${q ? `?${q}` : ""}`);

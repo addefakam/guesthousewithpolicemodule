@@ -39,13 +39,32 @@ export async function POST(
       );
     }
 
-    const resource = await db.resource.update({
-      where: { id },
-      data: {
-        quantity: existing.quantity + Number(quantity),
-        lastRestocked: new Date(),
-      },
-    });
+    const addQty = Number(quantity);
+    const newQty = existing.quantity + addQty;
+
+    // Update the resource AND create an audit-trail row in one transaction
+    // so the movement is always consistent with the new quantity.
+    const [resource] = await db.$transaction([
+      db.resource.update({
+        where: { id },
+        data: {
+          quantity: newQty,
+          lastRestocked: new Date(),
+        },
+      }),
+      db.stockMovement.create({
+        data: {
+          resourceId: id,
+          delta: addQty,
+          reason: "restock",
+          previousQty: existing.quantity,
+          newQty,
+          userId: auth.userId,
+          userName: auth.userName || "",
+          providerId: existing.providerId,
+        },
+      }),
+    ]);
 
     return NextResponse.json({ resource });
   } catch (error: unknown) {

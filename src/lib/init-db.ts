@@ -738,6 +738,26 @@ CREATE INDEX IF NOT EXISTS "StaffLog_providerId_createdAt_idx" ON "StaffLog" ("p
 CREATE INDEX IF NOT EXISTS "MessageLog_providerId_createdAt_idx" ON "MessageLog" ("providerId", "createdAt" DESC);
 CREATE INDEX IF NOT EXISTS "NotificationBroadcast_createdAt_idx" ON "NotificationBroadcast" ("createdAt");
 CREATE INDEX IF NOT EXISTS "NotificationBroadcast_sentBy_idx" ON "NotificationBroadcast" ("sentBy");
+
+-- StockMovement audit log (for Resource stock changes)
+CREATE TABLE IF NOT EXISTS "StockMovement" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "resourceId" TEXT NOT NULL,
+  "delta" DOUBLE PRECISION NOT NULL,
+  "reason" TEXT NOT NULL DEFAULT '',
+  "previousQty" DOUBLE PRECISION NOT NULL,
+  "newQty" DOUBLE PRECISION NOT NULL,
+  "userId" TEXT NOT NULL DEFAULT '',
+  "userName" TEXT NOT NULL DEFAULT '',
+  "providerId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "StockMovement_resourceId_idx" ON "StockMovement" ("resourceId");
+CREATE INDEX IF NOT EXISTS "StockMovement_providerId_idx" ON "StockMovement" ("providerId");
+CREATE INDEX IF NOT EXISTS "StockMovement_createdAt_idx" ON "StockMovement" ("createdAt");
+CREATE INDEX IF NOT EXISTS "StockMovement_resourceId_createdAt_idx" ON "StockMovement" ("resourceId", "createdAt" DESC);
+DO $$ BEGIN ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_resourceId_fkey" FOREIGN KEY ("resourceId") REFERENCES "Resource"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
 `;
 
 let _initDone = false;

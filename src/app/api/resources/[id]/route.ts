@@ -28,24 +28,51 @@ export async function PUT(
       );
     }
 
-    const resource = await db.resource.update({
-      where: { id },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.category !== undefined && { category: body.category }),
-        ...(body.quantity !== undefined && {
-          quantity: Number(body.quantity),
-        }),
-        ...(body.unit !== undefined && { unit: body.unit }),
-        ...(body.minLevel !== undefined && {
-          minLevel: Number(body.minLevel),
-        }),
-        ...(body.costPerUnit !== undefined && {
-          costPerUnit: Number(body.costPerUnit),
-        }),
-        ...(body.supplier !== undefined && { supplier: body.supplier }),
-      },
-    });
+    // Detect a quantity change so we can record a StockMovement row.
+    // Non-quantity edits (name, supplier, minLevel, etc.) don't create
+    // a movement — only quantity changes do.
+    const newQuantity =
+      body.quantity !== undefined ? Number(body.quantity) : existing.quantity;
+    const quantityChanged = newQuantity !== existing.quantity;
+    const delta = quantityChanged ? newQuantity - existing.quantity : 0;
+
+    const tx = [
+      db.resource.update({
+        where: { id },
+        data: {
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.category !== undefined && { category: body.category }),
+          ...(body.quantity !== undefined && { quantity: newQuantity }),
+          ...(body.unit !== undefined && { unit: body.unit }),
+          ...(body.minLevel !== undefined && {
+            minLevel: Number(body.minLevel),
+          }),
+          ...(body.costPerUnit !== undefined && {
+            costPerUnit: Number(body.costPerUnit),
+          }),
+          ...(body.supplier !== undefined && { supplier: body.supplier }),
+        },
+      }),
+    ];
+
+    if (quantityChanged) {
+      tx.push(
+        db.stockMovement.create({
+          data: {
+            resourceId: id,
+            delta,
+            reason: "edit",
+            previousQty: existing.quantity,
+            newQty: newQuantity,
+            userId: auth.userId,
+            userName: auth.userName || "",
+            providerId: existing.providerId,
+          },
+        })
+      );
+    }
+
+    const [resource] = await db.$transaction(tx);
 
     return NextResponse.json({ resource });
   } catch (error: unknown) {

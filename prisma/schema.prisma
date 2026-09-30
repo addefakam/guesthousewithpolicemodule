@@ -431,9 +431,32 @@ model Resource {
   updatedAt    DateTime @updatedAt
 
   provider Provider @relation(fields: [providerId], references: [id])
+  movements StockMovement[]
 
   @@index([providerId])
   @@index([category])
+}
+
+// Audit log of every quantity change to a Resource — restocks, manual
+// edits, deductions (housekeeping consumption, future), corrections.
+// One row per change. Positive delta = stock added; negative = removed.
+model StockMovement {
+  id          String   @id @default(cuid())
+  resourceId  String
+  delta       Float    // signed: +N for restock, -N for consumption/adjustment
+  reason      String   @default("")  // "restock", "edit", "consumption", "stocktake-correction", "delete"
+  previousQty Float    // quantity before this movement
+  newQty      Float    // quantity after this movement
+  userId      String   @default("")  // who performed the change
+  userName    String   @default("")
+  providerId  String
+  createdAt   DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId])
+  @@index([providerId])
+  @@index([createdAt])
 }
 
 model Payment {

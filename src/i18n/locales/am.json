@@ -1413,7 +1413,18 @@
     "catRent": "ኪራይ",
     "catInsurance": "ኢንሹራንስ",
     "catMiscellaneous": "ሌሎች",
-    "unknown": "ያልታወቀ"
+    "unknown": "ያልታወቀ",
+    "history": "ታሪክ",
+    "historyTitle": "የክምችት ታሪክ",
+    "historyDesc": "ለዚህ እቃ የተደረገ እያንዳንዱ የብዛት ለውጥ — እንደገና መሙላት፣ ማስተካከያ፣ የመጠቀም ሂደት፣ ማስተካከያዎች።",
+    "historyEmpty": "ምንም ንቅዎች አልተመዘገቡም።",
+    "toastHistoryFailed": "ታሪክ መጫን አልተሳካም",
+    "reasonRestock": "እንደገና መሙላት",
+    "reasonEdit": "እጅ ማስተካከያ",
+    "reasonConsumption": "የመጠቀም ሂደት",
+    "reasonStocktake": "የቆጠራ ማስተካከያ",
+    "by": "በ",
+    "close": "ዝጋ"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",

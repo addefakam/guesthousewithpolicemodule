@@ -1413,7 +1413,18 @@
     "catRent": "Rent",
     "catInsurance": "Insurance",
     "catMiscellaneous": "Miscellaneous",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "history": "History",
+    "historyTitle": "Stock History",
+    "historyDesc": "Every quantity change for this item — restocks, edits, consumption, corrections.",
+    "historyEmpty": "No movements recorded yet.",
+    "toastHistoryFailed": "Failed to load history",
+    "reasonRestock": "Restock",
+    "reasonEdit": "Manual edit",
+    "reasonConsumption": "Consumption",
+    "reasonStocktake": "Stocktake correction",
+    "by": "by",
+    "close": "Close"
   },
   "providers": {
     "cardTotal": "Total",
