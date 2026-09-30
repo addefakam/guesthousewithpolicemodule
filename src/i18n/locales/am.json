@@ -1451,7 +1451,9 @@
     "categoryCustom": "ሌላ (ብጁ)",
     "categoryCustomPlaceholder": "ብጁ ምድብ ይጻፉ",
     "itemCustom": "ሌላ (ብጁ)",
-    "itemCustomPlaceholder": "ብጁ የእቃ ስም ይጻፉ"
+    "itemCustomPlaceholder": "ብጁ የእቃ ስም ይጻፉ",
+    "lbldate": "ቀን",
+    "lblamount": "መጠን"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",

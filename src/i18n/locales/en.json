@@ -1451,7 +1451,9 @@
     "categoryCustom": "Other (custom)",
     "categoryCustomPlaceholder": "Type a custom category",
     "itemCustom": "Other (custom)",
-    "itemCustomPlaceholder": "Type a custom item name"
+    "itemCustomPlaceholder": "Type a custom item name",
+    "lbldate": "Date",
+    "lblamount": "Amount"
   },
   "providers": {
     "cardTotal": "Total",

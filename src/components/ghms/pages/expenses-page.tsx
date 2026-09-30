@@ -631,7 +631,7 @@ export default function ExpensesPage() {
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t("thdate")} <span className="text-rose-500">*</span></Label>
+                <Label>{t("lbldate")} <span className="text-rose-500">*</span></Label>
                 <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </div>
               <div className="space-y-2">
@@ -656,7 +656,7 @@ export default function ExpensesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t("thamount")} <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblamount")} <span className="text-rose-500">*</span></Label>
                 <Input type="number" placeholder="0" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
               <div className="space-y-2">

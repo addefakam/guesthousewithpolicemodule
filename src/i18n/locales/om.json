@@ -1451,7 +1451,9 @@
     "categoryCustom": "Kan biroo (addaa)",
     "categoryCustomPlaceholder": "Garee addaa barreessi",
     "itemCustom": "Kan biroo (addaa)",
-    "itemCustomPlaceholder": "Maqaa waan addaa barreessi"
+    "itemCustomPlaceholder": "Maqaa waan addaa barreessi",
+    "lbldate": "Guyyaa",
+    "lblamount": "Hanga"
   },
   "providers": {
     "cardTotal": "Ida'ama",
