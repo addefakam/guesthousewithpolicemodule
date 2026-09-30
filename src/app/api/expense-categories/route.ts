@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, checkWritePermission, AuthError } from "@/lib/tenant";
+import { ensureNewTables } from "@/lib/ensure-tables";
 
 export async function GET(req: NextRequest) {
   try {
-    await getAuthContext(req);
+    await ensureNewTables();
+    const auth = await getAuthContext(req);
     const categories = await db.expenseCategory.findMany({
       orderBy: { name: "asc" },
     });
@@ -15,15 +17,14 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({ error: error.message }, { status: error.statusCode });
         }
     console.error("List expense categories error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     checkWritePermission(auth, {
       blockSuperuser: true,

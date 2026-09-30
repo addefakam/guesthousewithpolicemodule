@@ -40,10 +40,8 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({ error: error.message }, { status: error.statusCode });
         }
     console.error("List expenses error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
