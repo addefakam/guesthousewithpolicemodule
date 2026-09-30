@@ -58,11 +58,11 @@ export async function POST(req: NextRequest) {
       supplier,
     } = body;
 
-    if (!name || !category || quantity == null || !unit) {
+    if (!name || quantity == null || !unit) {
       return NextResponse.json(
         {
           error:
-            "Missing required fields: name, category, quantity, unit",
+            "Missing required fields: name, quantity, unit",
         },
         { status: 400 }
       );
@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
     const resource = await db.resource.create({
       data: {
         name,
-        category,
+        // Category is optional — default to "Uncategorized" when empty
+        // so the DB constraint (NOT NULL) is satisfied without forcing
+        // the operator to classify every item.
+        category: category || "Uncategorized",
         quantity: Number(quantity),
         unit,
         minLevel: minLevel != null ? Number(minLevel) : 0,

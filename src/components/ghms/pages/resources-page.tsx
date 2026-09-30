@@ -193,7 +193,7 @@ export default function ResourcesPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.category || !form.quantity || !form.unit) {
+    if (!form.name || !form.quantity || !form.unit) {
       toast.error(t("toastResRequiredFields"));
       return;
     }
@@ -500,7 +500,7 @@ export default function ResourcesPage() {
                 <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>{t("lblcategory")} <span className="text-rose-500">*</span></Label>
+                <Label>{t("lblcategory")}</Label>
                 <Input placeholder={t("categoryPlaceholder")} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
               </div>
             </div>
