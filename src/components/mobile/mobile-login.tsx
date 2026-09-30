@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { setSupportPhone } from "@/lib/support";
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 
 // ── Constants (shared with the web login-page.tsx registration form) ──
@@ -57,6 +58,14 @@ export function MobileLoginPage() {
         sessionStorage.removeItem("ghms_session_expired");
       }
     } catch {}
+
+    // ── Pre-fetch support phone so toast.error shows the help line ──
+    fetch("/api/config/public")
+      .then((r) => r.json())
+      .then((data: { supportPhone?: string }) => {
+        if (data?.supportPhone) setSupportPhone(data.supportPhone);
+      })
+      .catch(() => { /* non-blocking */ });
   }, [t]);
 
   // ── Register state ──
@@ -82,6 +91,8 @@ export function MobileLoginPage() {
     try {
       const res = await apiAuth({ username: username.trim(), password });
       if (res && res.user) {
+        // Persist support phone for the toast.error wrapper.
+        if (res.supportPhone) setSupportPhone(res.supportPhone);
         setCurrentUser(res.user);
       } else {
         setError(t("loginError"));

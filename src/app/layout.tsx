@@ -2,6 +2,18 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "@/i18n/config";
 import { Toaster } from "@/components/ui/sonner";
+import { initToastErrorWrapper, setSupportPhone } from "@/lib/support";
+
+// ── One-time setup: wrap sonner's toast.error so EVERY error toast in
+// the app automatically appends "For help, call: <phone>" when a
+// support phone is configured. Safe on server (no-op) and client.
+if (typeof window !== "undefined") {
+  initToastErrorWrapper();
+  // Pre-load any previously-stored support phone from localStorage so
+  // the wrapper has it on the very first toast.error call after refresh.
+  // (Login screens will refresh this from /api/config/public on mount.)
+  setSupportPhone(window.localStorage.getItem("ghms_support_phone"));
+}
 
 export const metadata: Metadata = {
   title: "Bishoftu Guest Management System",

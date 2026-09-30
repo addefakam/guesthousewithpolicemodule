@@ -20,6 +20,7 @@ import {
   Loader2,
   CreditCard,
   CheckCircle2,
+  Phone,
 } from "lucide-react";
 
 // ── Types ──
@@ -33,6 +34,9 @@ interface GeneralSettings {
   defaultCurrency: string;
   timezone: string;
   maintenanceMode: boolean;
+  // Support phone shown to users in error toasts.
+  // Empty string = no support line shown.
+  supportPhone: string;
 }
 
 interface GuesthouseSettings {
@@ -99,6 +103,7 @@ const DEFAULT_GENERAL: GeneralSettings = {
   defaultCurrency: "ETB",
   timezone: "Africa/Addis_Ababa",
   maintenanceMode: false,
+  supportPhone: "",
 };
 
 const DEFAULT_GUESTHOUSE: GuesthouseSettings = {
@@ -476,6 +481,34 @@ function GeneralTab({
             className={inputClass + " bg-slate-50 text-slate-500 cursor-not-allowed"}
           />
         </SettingRow>
+      </SectionCard>
+
+      {/* Support / Help Contact */}
+      <SectionCard
+        title="Support & Help Contact"
+        description="Phone number shown to users in error messages so they know who to call for help"
+        icon={Phone}
+      >
+        <SettingRow
+          label="Support Phone Number"
+          description="Appears as 'For help, call: <phone>' on every error toast. Leave blank to hide the line."
+        >
+          <input
+            id="supportPhone"
+            type="tel"
+            value={settings.supportPhone}
+            onChange={(e) => onChange({ supportPhone: e.target.value })}
+            className={inputClass}
+            placeholder="e.g. +251 911 234 567"
+            autoComplete="off"
+          />
+        </SettingRow>
+        {settings.supportPhone && (
+          <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <span className="font-medium">Preview:</span> For help, call:{" "}
+            <span className="font-mono">{settings.supportPhone}</span>
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -1207,6 +1240,14 @@ export default function SuperSystemConfigPage() {
       }
 
       setDirty(false);
+      // ── Refresh the cached support phone immediately so the toast.error
+      // wrapper picks up the new value without requiring a re-login. ──
+      try {
+        const { setSupportPhone } = await import("@/lib/support");
+        setSupportPhone(config.general?.supportPhone || "");
+      } catch {
+        /* non-blocking — next page load will pick it up via /api/config/public */
+      }
       toast.success("System configuration saved successfully");
     } catch (err) {
       console.error("Save failed:", err);

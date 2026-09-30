@@ -6,11 +6,12 @@
 // Soft light canvas with aurora washes, one white glass card, a single
 // indigo→violet gradient action. No artwork, no dark theme.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Loader2, ShieldAlert, LogIn } from "lucide-react";
 import { apiAuth, apiLogout } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { setSupportPhone } from "@/lib/support";
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 
 /** Soft artistic backdrop shared by login / role-error states. */
@@ -35,6 +36,17 @@ export function PoliceLogin() {
   const [error, setError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
 
+  // ── Pre-fetch support phone so toast.error shows the help line ──
+  // Fires once on mount; runs in parallel with the rest of the login UI.
+  useEffect(() => {
+    fetch("/api/config/public")
+      .then((r) => r.json())
+      .then((data: { supportPhone?: string }) => {
+        if (data?.supportPhone) setSupportPhone(data.supportPhone);
+      })
+      .catch(() => { /* non-blocking */ });
+  }, []);
+
   function toggleLang() {
     if (!i18n || typeof i18n.changeLanguage !== "function") return;
     const next = i18n.language === "en" ? "or" : "en";
@@ -47,7 +59,7 @@ export function PoliceLogin() {
     setSubmitting(true);
     setError(null);
     try {
-      // /api/auth resolves to { user, providerName } — unwrap before the role check
+      // /api/auth resolves to { user, providerName, supportPhone } — unwrap before the role check
       const res = await apiAuth({ username: username.trim(), password });
       const user = res?.user;
       if (!user) {
@@ -61,6 +73,8 @@ export function PoliceLogin() {
         setError(t("login.notPolice"));
         return;
       }
+      // Persist support phone for the toast.error wrapper.
+      if (res.supportPhone) setSupportPhone(res.supportPhone);
       setCurrentUser({ ...user, providerName: res.providerName ?? user.providerName ?? null });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("login.error"));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, type FormEvent, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Building2, KeyRound, UserPlus, LogIn } from "lucide-react";
@@ -8,6 +8,7 @@ import { Building2, KeyRound, UserPlus, LogIn } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { apiAuth, apiRegisterProvider } from "@/lib/api";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { setSupportPhone } from "@/lib/support";
 import { ResetPasswordDialog } from "@/components/shared/reset-password-dialog";
 import LanguageSwitcher from "@/components/ghms/language-switcher";
 
@@ -40,6 +41,20 @@ export default function LoginPage() {
   const { setCurrentUser, setCurrentPage } = useAppStore();
 
   const [activeTab, setActiveTab] = useState("login");
+
+  // ── Pre-fetch the support phone from /api/config/public so the
+  // toast.error wrapper has it available even before login succeeds.
+  // Lets users see "For help, call: 09XX" on the login form too. ──
+  useEffect(() => {
+    fetch("/api/config/public")
+      .then((r) => r.json())
+      .then((data: { supportPhone?: string }) => {
+        if (data?.supportPhone) setSupportPhone(data.supportPhone);
+      })
+      .catch(() => {
+        /* non-blocking — toasts just won't show the support line */
+      });
+  }, []);
 
   // ── Login state ──
   const [loginUsername, setLoginUsername] = useState("");
@@ -82,6 +97,9 @@ export default function LoginPage() {
         password: loginPassword,
       });
       const userData = resp.user;
+      // Persist supportPhone (if returned by /api/auth) so toast.error
+      // can append the support line for the rest of the session.
+      if (resp.supportPhone) setSupportPhone(resp.supportPhone);
       setCurrentUser({ ...userData, providerName: resp.providerName });
       // Route based on role
       // SUPERUSER with providerId = guest house owner → provider dashboard

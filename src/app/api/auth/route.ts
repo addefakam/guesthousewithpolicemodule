@@ -89,6 +89,23 @@ export async function POST(req: NextRequest) {
 
     const token = await createToken(tokenPayload);
 
+    // ── Fetch public system config so client knows the support phone ──
+    // Lets every toast.error() in the app append
+    // "For help, call: <phone>" without an extra round-trip.
+    let supportPhone = "";
+    try {
+      const sysSettings = await db.settings.findFirst({ where: { providerId: null } });
+      if (sysSettings?.configJson && typeof sysSettings.configJson === "object") {
+        const general = (sysSettings.configJson as Record<string, unknown>).general;
+        if (general && typeof general === "object") {
+          const phone = (general as Record<string, unknown>).supportPhone;
+          if (typeof phone === "string") supportPhone = phone.trim();
+        }
+      }
+    } catch {
+      /* non-blocking — login still succeeds without support phone */
+    }
+
     // Set token as httpOnly cookie (secure in production)
     const isProduction = process.env.NODE_ENV === "production";
     const response = NextResponse.json({
@@ -102,6 +119,7 @@ export async function POST(req: NextRequest) {
         policeRank,
       },
       providerName: user.provider?.name ?? null,
+      supportPhone,
     });
 
     response.cookies.set("ghms_token", token, {
