@@ -240,7 +240,7 @@ export default function OrganizationInfoPage() {
         <p className="text-sm text-gray-500 mt-1">
           {t("subtitle", {
             defaultValue:
-              "View and edit your guesthouse information. Changes save instantly.",
+              "View and edit your organization information. Changes save instantly.",
           })}
         </p>
       </div>

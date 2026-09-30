@@ -3630,7 +3630,7 @@
   },
   "organization": {
     "title": "Organization Info",
-    "subtitle": "View and edit your guesthouse information. Changes save instantly.",
+    "subtitle": "View and edit your organization information. Changes save instantly.",
     "errorLoad": "Failed to load organization info",
     "errorSave": "Failed to save organization info",
     "noOrganization": "No organization associated with your account.",
