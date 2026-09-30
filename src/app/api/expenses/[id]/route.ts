@@ -3,12 +3,14 @@ import { db } from "@/lib/db";
 import { getAuthContext,
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
+import { ensureNewTables } from "@/lib/ensure-tables";
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
@@ -67,6 +69,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
