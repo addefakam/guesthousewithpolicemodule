@@ -758,11 +758,7 @@ CREATE INDEX IF NOT EXISTS "StockMovement_createdAt_idx" ON "StockMovement" ("cr
 CREATE INDEX IF NOT EXISTS "StockMovement_resourceId_createdAt_idx" ON "StockMovement" ("resourceId", "createdAt" DESC);
 DO $$ BEGIN ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_resourceId_fkey" FOREIGN KEY ("resourceId") REFERENCES "Resource"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "StockMovement" ADD CONSTRAINT "StockMovement_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
-
--- Add stockMovementId column to Expense (links auto-generated expenses
--- from restocks back to their StockMovement audit row). Idempotent —
--- re-runs are safe because of the IF NOT EXISTS check on the column.
-ALTER TABLE "Expense" ADD COLUMN IF NOT EXISTS "stockMovementId" TEXT;
+DO $$ BEGIN ALTER TABLE "Expense" ADD COLUMN "stockMovementId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 CREATE INDEX IF NOT EXISTS "Expense_stockMovementId_idx" ON "Expense" ("stockMovementId");
 `;
 
