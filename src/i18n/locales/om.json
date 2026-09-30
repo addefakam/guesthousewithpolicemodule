@@ -1449,7 +1449,9 @@
     "category_Office_Supplies": "Waan biroo",
     "category_Amenities": "Dabalata tajaajila",
     "categoryCustom": "Kan biroo (addaa)",
-    "categoryCustomPlaceholder": "Garee addaa barreessi"
+    "categoryCustomPlaceholder": "Garee addaa barreessi",
+    "itemCustom": "Kan biroo (addaa)",
+    "itemCustomPlaceholder": "Maqaa waan addaa barreessi"
   },
   "providers": {
     "cardTotal": "Ida'ama",

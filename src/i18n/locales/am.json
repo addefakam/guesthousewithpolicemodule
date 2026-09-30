@@ -1449,7 +1449,9 @@
     "category_Office_Supplies": "የቢሮ እቃዎች",
     "category_Amenities": "ተጨማሪ አገልግሎቶች",
     "categoryCustom": "ሌላ (ብጁ)",
-    "categoryCustomPlaceholder": "ብጁ ምድብ ይጻፉ"
+    "categoryCustomPlaceholder": "ብጁ ምድብ ይጻፉ",
+    "itemCustom": "ሌላ (ብጁ)",
+    "itemCustomPlaceholder": "ብጁ የእቃ ስም ይጻፉ"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",

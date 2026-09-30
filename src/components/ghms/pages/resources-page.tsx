@@ -130,6 +130,44 @@ const INVENTORY_CATEGORIES = [
   "Other (custom)",  // opens a free-text input
 ];
 
+// Predefined inventory items grouped by category. The operator picks one
+// from the dropdown OR chooses 'Other (custom)' to type their own.
+// Keeping it grouped lets us render optgroup headers in the dropdown.
+const INVENTORY_ITEMS: { category: string; items: string[] }[] = [
+  {
+    category: "Linen",
+    items: ["Bed Sheets", "Pillow Cases", "Bath Towels", "Hand Towels", "Face Towels", "Blankets", "Duvet Covers", "Mattress Protectors", "Bedspreads"],
+  },
+  {
+    category: "Toiletries",
+    items: ["Soap Bars", "Shampoo Sachets", "Conditioner Sachets", "Body Lotion Sachets", "Toothpaste", "Toothbrush", "Toilet Paper", "Facial Tissues", "Hand Sanitizer", "Shower Cap", "Comb", "Razor"],
+  },
+  {
+    category: "Beverage",
+    items: ["Tea Bags", "Coffee Sachets", "Coffee Powder", "Sugar", "Milk Powder", "Creamer", "Bottled Water", "Juice Sachets", "Honey Sachets"],
+  },
+  {
+    category: "Food",
+    items: ["Bread", "Butter Sachets", "Jam Sachets", "Cereal", "Biscuits", "Snack Bars", "Salt Sachets", "Pepper Sachets"],
+  },
+  {
+    category: "Cleaning",
+    items: ["Detergent", "Bleach", "Floor Cleaner", "Glass Cleaner", "Toilet Cleaner", "Air Freshener", "Trash Bags", "Disposable Gloves", "Sponges", "Mop Heads", "Broom", "Dustpan"],
+  },
+  {
+    category: "Maintenance",
+    items: ["Light Bulbs (LED)", "Light Bulbs (Incandescent)", "Batteries (AA)", "Batteries (AAA)", "Screws & Nails", "Extension Cords", "Power Strips"],
+  },
+  {
+    category: "Office Supplies",
+    items: ["Pens", "Notepads", "Printer Paper", "Printer Ink", "Staples", "Paper Clips", "Envelopes", "Folders"],
+  },
+  {
+    category: "Amenities",
+    items: ["Slippers", "Bathrobes", "Welcome Gifts", "Sewing Kits", "Shoe Polish", "Iron", "Ironing Board"],
+  },
+];
+
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ResourcesPage() {
@@ -145,9 +183,11 @@ export default function ResourcesPage() {
   const [editing, setEditing] = useState<Resource | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  // When the operator picks 'Other (custom)' from the category dropdown,
-  // we show a free-text input below it. isCustomCategory tracks that state.
+  // When the operator picks 'Other (custom)' from the category OR item
+  // dropdown, we show a free-text input below it. The two flags track
+  // this state independently so they don't interfere with each other.
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [isCustomName, setIsCustomName] = useState(false);
 
   // Delete & Restock
   const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
@@ -193,6 +233,7 @@ export default function ResourcesPage() {
     setEditing(null);
     setForm(emptyForm);
     setIsCustomCategory(false);
+    setIsCustomName(false);
     setDialogOpen(true);
   };
 
@@ -207,9 +248,12 @@ export default function ResourcesPage() {
       costPerUnit: String(res.costPerUnit),
       supplier: res.supplier,
     });
-    // If the resource's category isn't in our predefined list, switch to
-    // custom mode so the operator sees their existing custom value.
+    // If the resource's category/name isn't in our predefined lists,
+    // switch to custom mode so the operator sees their existing value
+    // rather than a blank dropdown.
     setIsCustomCategory(!INVENTORY_CATEGORIES.includes(res.category));
+    const allPredefinedNames = INVENTORY_ITEMS.flatMap((g) => g.items);
+    setIsCustomName(!allPredefinedNames.includes(res.name));
     setDialogOpen(true);
   };
 
@@ -518,7 +562,67 @@ export default function ResourcesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("thname")} <span className="text-rose-500">*</span></Label>
-                <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                {/* Item Name dropdown — grouped by category for fast lookup.
+                    Operator picks from the predefined list OR chooses
+                    'Other (custom)' to type their own item name. */}
+                <Select
+                  value={isCustomName ? "__custom__" : form.name}
+                  onValueChange={(v) => {
+                    if (v === "__custom__") {
+                      setIsCustomName(true);
+                      setForm({ ...form, name: "" });
+                    } else {
+                      setIsCustomName(false);
+                      setForm({ ...form, name: v });
+                      // Auto-fill category when a predefined item is picked,
+                      // IF the category hasn't been set yet — saves the operator
+                      // a step. Doesn't overwrite an already-set category.
+                      const group = INVENTORY_ITEMS.find((g) => g.items.includes(v));
+                      if (group && !form.category) {
+                        setForm((prev) => ({ ...prev, name: v, category: group.category }));
+                        setIsCustomCategory(false);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("namePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Predefined items grouped by category */}
+                    {INVENTORY_ITEMS.map((group) => (
+                      <div key={group.category} className="px-1 py-1">
+                        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                          {t(`category_${group.category.replace(/\s+/g, "_")}`, { defaultValue: group.category })}
+                        </p>
+                        {group.items.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                    <div className="my-1 border-t border-slate-100" />
+                    <SelectItem value="__custom__">
+                      {t("itemCustom", { defaultValue: "Other (custom)" })}
+                    </SelectItem>
+                    {/* If the resource has a custom name that's not in the
+                        predefined list (e.g. legacy data), show it as a
+                        selected option so the operator sees what's set. */}
+                    {form.name && !INVENTORY_ITEMS.flatMap((g) => g.items).includes(form.name) && !isCustomName && (
+                      <SelectItem value={form.name}>{form.name}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {isCustomName && (
+                  <Input
+                    placeholder={t("itemCustomPlaceholder", { defaultValue: "Type a custom item name" })}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="mt-2"
+                    autoFocus
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>{t("lblcategory")}</Label>

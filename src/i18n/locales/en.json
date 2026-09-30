@@ -1449,7 +1449,9 @@
     "category_Office_Supplies": "Office Supplies",
     "category_Amenities": "Amenities",
     "categoryCustom": "Other (custom)",
-    "categoryCustomPlaceholder": "Type a custom category"
+    "categoryCustomPlaceholder": "Type a custom category",
+    "itemCustom": "Other (custom)",
+    "itemCustomPlaceholder": "Type a custom item name"
   },
   "providers": {
     "cardTotal": "Total",
