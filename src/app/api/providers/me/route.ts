@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, AuthError } from "@/lib/tenant";
-import { uploadFile } from "@/lib/storage";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 
 /**
@@ -12,12 +11,10 @@ import { isValidPhone, isValidEmail } from "@/lib/utils";
  *
  * GET  → returns merged { ...providerFields, ...settingsFields }
  * PATCH → splits the body into:
- *   - Core fields (name, ownerName, phone, email, address, type, licenseNo,
- *     licenseFile) → written to Provider. Auto-approved — saves instantly,
- *     no re-approval flow.
- *   - Operational fields (logo, currency, taxRate, language, checkInTime,
+ *   - Core fields (name, ownerName, phone, email, address, type, licenseNo)
+ *     → written to Provider. Auto-approved — saves instantly.
+ *   - Operational fields (currency, taxRate, language, checkInTime,
  *     checkOutTime) → written to Settings. Instant.
- *   - GPS coordinates (latitude, longitude) → written to Provider. Instant.
  *
  * Access: OPERATOR + STAFF + SUPERUSER (when they have a providerId).
  * POLICE is rejected — they manage providers via /api/providers/[id].
@@ -32,7 +29,6 @@ const DEFAULT_SETTINGS = {
   currency: "ETB",
   taxRate: 0,
   language: "en",
-  logo: null as string | null,
   checkInTime: "14:00",
   checkOutTime: "12:00",
 };
@@ -49,7 +45,6 @@ const EDITABLE_PROVIDER_CORE = new Set([
 ]);
 
 const EDITABLE_SETTINGS = new Set([
-  "logo",
   "currency",
   "taxRate",
   "language",
@@ -83,10 +78,7 @@ export async function GET(req: NextRequest) {
         address: true,
         type: true,
         licenseNo: true,
-        licenseFile: true,
         status: true,
-        latitude: true,
-        longitude: true,
         approvedBy: true,
         approvedAt: true,
         rejectionReason: true,
@@ -114,7 +106,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ...provider,
-      logo: settings?.logo ?? DEFAULT_SETTINGS.logo,
       currency: settings?.currency ?? DEFAULT_SETTINGS.currency,
       taxRate: settings?.taxRate ?? DEFAULT_SETTINGS.taxRate,
       language: settings?.language ?? DEFAULT_SETTINGS.language,
@@ -189,33 +180,12 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // licenseFile — uploaded as data: URL.
-    if (typeof body.licenseFile === "string" && body.licenseFile.startsWith("data:")) {
-      const uploadedUrl = await uploadFile(body.licenseFile, "licenses");
-      coreChanges.licenseFile = uploadedUrl;
-    }
-
     // ── Settings (operational) changes — instant ──
     const settingsChanges: Record<string, unknown> = {};
     for (const k of EDITABLE_SETTINGS) {
       if (body[k] !== undefined) {
-        // logo can be null (cleared) or a data: URL (new upload).
-        if (k === "logo" && typeof body[k] === "string" && (body[k] as string).startsWith("data:")) {
-          settingsChanges.logo = await uploadFile(body[k] as string, "logos");
-        } else {
-          settingsChanges[k] = body[k];
-        }
+        settingsChanges[k] = body[k];
       }
-    }
-
-    // ── GPS coordinates — instant, no re-approval ──
-    if (body.latitude !== undefined) {
-      const lat = parseFloat(body.latitude);
-      if (!isNaN(lat)) coreChanges.latitude = lat;
-    }
-    if (body.longitude !== undefined) {
-      const lng = parseFloat(body.longitude);
-      if (!isNaN(lng)) coreChanges.longitude = lng;
     }
 
     // ── Apply Provider updates (auto-approved — no re-approval flow) ──

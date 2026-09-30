@@ -27,9 +27,6 @@ import {
   ShieldCheck,
   Clock,
   AlertTriangle,
-  FileCheck,
-  Upload,
-  MapPin,
   CheckCircle2,
 } from "lucide-react";
 
@@ -44,10 +41,7 @@ interface MyProvider {
   address: string;
   type: string;
   licenseNo: string;
-  licenseFile: string;
   status: string;
-  latitude: number;
-  longitude: number;
   approvedBy: string | null;
   approvedAt: string | null;
   rejectionReason: string;
@@ -60,7 +54,6 @@ interface MyProvider {
   createdAt: string;
   updatedAt: string;
   // Operational config from Settings
-  logo: string | null;
   currency: string;
   taxRate: number;
   language: string;
@@ -84,15 +77,6 @@ const STATUS_BADGE: Record<string, { color: string; icon: typeof ShieldCheck }> 
 };
 
 // ── Helpers ──
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
-}
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return "—";
@@ -127,7 +111,6 @@ export default function OrganizationInfoPage() {
   const [address, setAddress] = useState("");
   const [type, setType] = useState("GUEST_HOUSE");
   const [licenseNo, setLicenseNo] = useState("");
-  const [licenseFile, setLicenseFile] = useState<string>("");
 
   // Operational form fields
   const [currency, setCurrency] = useState("ETB");
@@ -135,7 +118,6 @@ export default function OrganizationInfoPage() {
   const [language, setLanguage] = useState("en");
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [checkOutTime, setCheckOutTime] = useState("12:00");
-  const [logo, setLogo] = useState<string>("");
 
   // Track which sections have unsaved changes
   const [coreDirty, setCoreDirty] = useState(false);
@@ -153,13 +135,11 @@ export default function OrganizationInfoPage() {
       setAddress(d.address || "");
       setType(d.type || "GUEST_HOUSE");
       setLicenseNo(d.licenseNo || "");
-      setLicenseFile("");
       setCurrency(d.currency || "ETB");
       setTaxRate(d.taxRate || 0);
       setLanguage(d.language || "en");
       setCheckInTime(d.checkInTime || "14:00");
       setCheckOutTime(d.checkOutTime || "12:00");
-      setLogo("");
       setCoreDirty(false);
       setOpsDirty(false);
     } catch (err: unknown) {
@@ -178,34 +158,6 @@ export default function OrganizationInfoPage() {
   function onCoreChange() { if (!coreDirty) setCoreDirty(true); }
   function onOpsChange() { if (!opsDirty) setOpsDirty(true); }
 
-  async function handleLicenseFileUpload(file: File) {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error(t("errorFileTooLarge", { defaultValue: "File too large (max 5MB)" }));
-      return;
-    }
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setLicenseFile(dataUrl);
-      onCoreChange();
-    } catch {
-      toast.error(t("errorFileRead", { defaultValue: "Failed to read file" }));
-    }
-  }
-
-  async function handleLogoUpload(file: File) {
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error(t("errorLogoTooLarge", { defaultValue: "Logo too large (max 2MB)" }));
-      return;
-    }
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setLogo(dataUrl);
-      onOpsChange();
-    } catch {
-      toast.error(t("errorFileRead", { defaultValue: "Failed to read file" }));
-    }
-  }
-
   // ── Save handlers ──
 
   async function saveCore() {
@@ -214,7 +166,6 @@ export default function OrganizationInfoPage() {
       const payload: Record<string, unknown> = {
         name, ownerName, phone, email, address, type, licenseNo,
       };
-      if (licenseFile) payload.licenseFile = licenseFile;
       const res = (await apiUpdateMyProvider(payload)) as {
         success: boolean;
         provider?: MyProvider;
@@ -237,7 +188,6 @@ export default function OrganizationInfoPage() {
       const payload: Record<string, unknown> = {
         currency, taxRate, language, checkInTime, checkOutTime,
       };
-      if (logo) payload.logo = logo;
       const res = (await apiUpdateMyProvider(payload)) as { success: boolean };
       if (res.success) {
         toast.success(t("opsSaved", { defaultValue: "Operational config saved" }));
@@ -503,114 +453,6 @@ export default function OrganizationInfoPage() {
             </div>
           </div>
 
-          {/* License file upload */}
-          <div>
-            <Label className="text-xs">
-              {t("licenseFile", { defaultValue: "License Document" })}
-            </Label>
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center gap-3">
-                {data.licenseFile && !licenseFile ? (
-                  <a
-                    href={data.licenseFile}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:underline"
-                  >
-                    <FileCheck className="h-4 w-4" />
-                    {t("viewCurrentLicense", { defaultValue: "View current license" })}
-                  </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {t("noLicenseOnFile", { defaultValue: "No license document on file." })}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleLicenseFileUpload(f);
-                  }}
-                  className="hidden"
-                  id="license-file-upload"
-                  disabled={data.status === "SUSPENDED"}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("license-file-upload")?.click()}
-                  disabled={data.status === "SUSPENDED"}
-                >
-                  <Upload className="h-3.5 w-3.5 mr-1.5" />
-                  {licenseFile
-                    ? t("newLicenseSelected", { defaultValue: "New file selected" })
-                    : t("uploadNewLicense", { defaultValue: "Upload new license" })}
-                </Button>
-                {licenseFile && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setLicenseFile(""); onCoreChange(); }}
-                  >
-                    {t("clear", { defaultValue: "Clear" })}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* GPS Coordinates (optional, instant) */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div>
-              <Label htmlFor="latitude" className="text-xs flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {t("latitude", { defaultValue: "Latitude" })}
-              </Label>
-              <Input
-                id="latitude"
-                type="number"
-                step="0.0001"
-                defaultValue={data.latitude}
-                onBlur={(e) => {
-                  // GPS coordinates don't trigger re-approval — sent separately.
-                  if (e.target.value !== String(data.latitude)) {
-                    apiUpdateMyProvider({
-                      latitude: parseFloat(e.target.value) || data.latitude,
-                    }).then(() => toast.success(t("gpsSaved", { defaultValue: "GPS coordinates saved" })))
-                      .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));
-                  }
-                }}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="longitude" className="text-xs flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {t("longitude", { defaultValue: "Longitude" })}
-              </Label>
-              <Input
-                id="longitude"
-                type="number"
-                step="0.0001"
-                defaultValue={data.longitude}
-                onBlur={(e) => {
-                  if (e.target.value !== String(data.longitude)) {
-                    apiUpdateMyProvider({
-                      longitude: parseFloat(e.target.value) || data.longitude,
-                    }).then(() => toast.success(t("gpsSaved", { defaultValue: "GPS coordinates saved" })))
-                      .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));
-                  }
-                }}
-                className="mt-1"
-              />
-            </div>
-          </div>
-
           {/* Save button */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
             <Button
@@ -718,51 +560,6 @@ export default function OrganizationInfoPage() {
                   className="mt-1"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Logo upload */}
-          <div>
-            <Label className="text-xs">
-              {t("logo", { defaultValue: "Logo" })}
-            </Label>
-            <div className="mt-2 flex items-center gap-4">
-              {data.logo && !logo ? (
-                <img
-                  src={data.logo}
-                  alt="logo"
-                  className="h-12 w-12 rounded border object-contain"
-                />
-              ) : logo ? (
-                <img
-                  src={logo}
-                  alt="new logo"
-                  className="h-12 w-12 rounded border object-contain"
-                />
-              ) : (
-                <div className="h-12 w-12 rounded border bg-slate-50 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-slate-300" />
-                </div>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleLogoUpload(f);
-                }}
-                className="hidden"
-                id="logo-upload"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById("logo-upload")?.click()}
-              >
-                <Upload className="h-3.5 w-3.5 mr-1.5" />
-                {t("uploadLogo", { defaultValue: "Upload logo" })}
-              </Button>
             </div>
           </div>
 
