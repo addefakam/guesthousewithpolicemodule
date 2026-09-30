@@ -1453,7 +1453,10 @@
     "itemCustom": "Kan biroo (addaa)",
     "itemCustomPlaceholder": "Maqaa waan addaa barreessi",
     "lbldate": "Guyyaa",
-    "lblamount": "Hanga"
+    "lblamount": "Hanga",
+    "lbltaxAmount": "Hanga Baaksii",
+    "lblpaymentMethod": "Malaa Kaawwaa",
+    "lblreceiptNumber": "Lakkoofsa Galaagaa"
   },
   "providers": {
     "cardTotal": "Ida'ama",
