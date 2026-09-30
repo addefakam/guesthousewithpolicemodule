@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, AuthError } from "@/lib/tenant";
+import { ensureNewTables } from "@/lib/ensure-tables";
 
 /**
  * GET /api/resources/[id]/movements
@@ -21,6 +22,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     const { id } = await params;
 

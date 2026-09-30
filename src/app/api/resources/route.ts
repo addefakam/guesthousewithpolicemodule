@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import { getAuthContext,
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
+import { ensureNewTables } from "@/lib/ensure-tables";
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     const filter = getProviderFilter(auth);
 
@@ -44,6 +46,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     checkWritePermission(auth, { requireSuperuserOrOperator: true });
 
