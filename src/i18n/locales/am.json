@@ -1439,7 +1439,17 @@
     "thcostunit": "ዋጋ/መለኪያ",
     "thsupplier": "አቅራቢ",
     "thlastRestocked": "መጨረሻ የተመለሰበት",
-    "thactions": "እርምጫዎች"
+    "thactions": "እርምጫዎች",
+    "category_Linen": "ተለበጦች",
+    "category_Toiletries": "የንጽህና እቃዎች",
+    "category_Beverage": "መጠጦች",
+    "category_Food": "ምግብ",
+    "category_Cleaning": "ማፅዳት",
+    "category_Maintenance": "ጥገና",
+    "category_Office_Supplies": "የቢሮ እቃዎች",
+    "category_Amenities": "ተጨማሪ አገልግሎቶች",
+    "categoryCustom": "ሌላ (ብጁ)",
+    "categoryCustomPlaceholder": "ብጁ ምድብ ይጻፉ"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",
@@ -1654,7 +1664,8 @@
     "page_staff-logs": "የሰራተኛ እንቅስቃሴዎች",
     "page_my-subscription": "ምዝገባ",
     "page_settings": "ቅንብሮች",
-    "page_resources": "የክምችት አስተዳደር"
+    "page_resources": "የክምችት አስተዳደር",
+    "page_expenses": "ወጪዎች"
   },
   "daytime": {
     "pageTitle": "የቀን አገልግሎቶች",

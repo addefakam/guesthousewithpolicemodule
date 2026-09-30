@@ -1439,7 +1439,17 @@
     "thcostunit": "Cost/Unit",
     "thsupplier": "Supplier",
     "thlastRestocked": "Last Restocked",
-    "thactions": "Actions"
+    "thactions": "Actions",
+    "category_Linen": "Linen",
+    "category_Toiletries": "Toiletries",
+    "category_Beverage": "Beverage",
+    "category_Food": "Food",
+    "category_Cleaning": "Cleaning",
+    "category_Maintenance": "Maintenance",
+    "category_Office_Supplies": "Office Supplies",
+    "category_Amenities": "Amenities",
+    "categoryCustom": "Other (custom)",
+    "categoryCustomPlaceholder": "Type a custom category"
   },
   "providers": {
     "cardTotal": "Total",
@@ -1654,7 +1664,8 @@
     "page_staff-logs": "Staff Activity",
     "page_my-subscription": "Subscription",
     "page_settings": "Settings",
-    "page_resources": "Stock Management"
+    "page_resources": "Stock Management",
+    "page_expenses": "Expenses"
   },
   "daytime": {
     "pageTitle": "Daytime Services",

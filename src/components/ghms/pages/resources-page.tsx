@@ -116,6 +116,20 @@ const emptyForm = {
   name: "", category: "", quantity: "", unit: "", minLevel: "0", costPerUnit: "0", supplier: "",
 };
 
+// Predefined inventory categories — covers the common guesthouse stock items.
+// Operators can also pick 'Other (custom)' to type their own.
+const INVENTORY_CATEGORIES = [
+  "Linen",          // bed sheets, pillow cases, towels, blankets
+  "Toiletries",     // soap, shampoo, toilet paper, tissues
+  "Beverage",       // tea, coffee, sugar, water, juice
+  "Food",           // breakfast items, snacks
+  "Cleaning",       // detergent, bleach, mops, gloves
+  "Maintenance",    // light bulbs, batteries, tools
+  "Office Supplies", // pens, paper, printer ink
+  "Amenities",      // slippers, robes, welcome gifts
+  "Other (custom)",  // opens a free-text input
+];
+
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function ResourcesPage() {
@@ -131,6 +145,9 @@ export default function ResourcesPage() {
   const [editing, setEditing] = useState<Resource | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  // When the operator picks 'Other (custom)' from the category dropdown,
+  // we show a free-text input below it. isCustomCategory tracks that state.
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
 
   // Delete & Restock
   const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
@@ -175,6 +192,7 @@ export default function ResourcesPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setIsCustomCategory(false);
     setDialogOpen(true);
   };
 
@@ -189,6 +207,9 @@ export default function ResourcesPage() {
       costPerUnit: String(res.costPerUnit),
       supplier: res.supplier,
     });
+    // If the resource's category isn't in our predefined list, switch to
+    // custom mode so the operator sees their existing custom value.
+    setIsCustomCategory(!INVENTORY_CATEGORIES.includes(res.category));
     setDialogOpen(true);
   };
 
@@ -501,7 +522,50 @@ export default function ResourcesPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t("lblcategory")}</Label>
-                <Input placeholder={t("categoryPlaceholder")} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                {/* Category dropdown with predefined inventory categories.
+                    Operators can pick from the list OR choose 'Other (custom)'
+                    to type their own value. */}
+                <Select
+                  value={isCustomCategory ? "__custom__" : form.category}
+                  onValueChange={(v) => {
+                    if (v === "__custom__") {
+                      setIsCustomCategory(true);
+                      // Clear the category so the operator types a fresh value
+                      setForm({ ...form, category: "" });
+                    } else {
+                      setIsCustomCategory(false);
+                      setForm({ ...form, category: v });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("categoryPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INVENTORY_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat === "Other (custom)" ? "__custom__" : cat}>
+                        {cat === "Other (custom)"
+                          ? t("categoryCustom", { defaultValue: "Other (custom)" })
+                          : t(`category_${cat.replace(/\s+/g, "_")}`, { defaultValue: cat })}
+                      </SelectItem>
+                    ))}
+                    {/* If the resource has a custom category that's not in the
+                        predefined list (e.g. legacy data), show it as a selected
+                        option so the operator sees what's currently set. */}
+                    {form.category && !INVENTORY_CATEGORIES.includes(form.category) && !isCustomCategory && (
+                      <SelectItem value={form.category}>{form.category}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {isCustomCategory && (
+                  <Input
+                    placeholder={t("categoryCustomPlaceholder", { defaultValue: "Type a custom category" })}
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="mt-2"
+                    autoFocus
+                  />
+                )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

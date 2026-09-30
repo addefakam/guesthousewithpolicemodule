@@ -1439,7 +1439,17 @@
     "thcostunit": "Gataa/Safartuu",
     "thsupplier": "Bitaa",
     "thlastRestocked": "Dhumarratti irra deebi'ame",
-    "thactions": "Hojii"
+    "thactions": "Hojii",
+    "category_Linen": "Maamiloo",
+    "category_Toiletries": "Waan qulqullinaa",
+    "category_Beverage": "Dhangoo",
+    "category_Food": "Nyaata",
+    "category_Cleaning": "Qulqulleessuu",
+    "category_Maintenance": "Tasa-qopheessituu",
+    "category_Office_Supplies": "Waan biroo",
+    "category_Amenities": "Dabalata tajaajila",
+    "categoryCustom": "Kan biroo (addaa)",
+    "categoryCustomPlaceholder": "Garee addaa barreessi"
   },
   "providers": {
     "cardTotal": "Ida'ama",
@@ -1654,7 +1664,8 @@
     "page_staff-logs": "Hojii Hojjettootaa",
     "page_my-subscription": "Kaffaltii",
     "page_settings": "Qindaa'ina",
-    "page_resources": "Bulchaa Kuusaa"
+    "page_resources": "Bulchaa Kuusaa",
+    "page_expenses": "Baajata"
   },
   "daytime": {
     "pageTitle": "Tajaajila Guyyaa",

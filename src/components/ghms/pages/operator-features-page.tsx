@@ -25,6 +25,7 @@ import {
   CreditCard,
   Settings,
   Package,
+  Receipt,
   AlertTriangle,
 } from "lucide-react";
 
@@ -47,6 +48,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CreditCard,
   Settings,
   Package,
+  Receipt,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
