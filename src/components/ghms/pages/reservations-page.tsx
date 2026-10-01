@@ -104,6 +104,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import AddressFields from "@/components/shared/address-fields";
 import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-divisions";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
+import { NationalityCombobox } from "@/components/shared/nationality-combobox";
 import { isValidPhone, isCheckoutDue, isCheckInDue } from "@/lib/utils";
 
 interface GuestOption {
@@ -2374,21 +2375,12 @@ export default function ReservationsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="whitespace-nowrap">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
-                      <Select
+                      <NationalityCombobox
                         value={newGuestForm.nationality || DEFAULT_NATIONALITY}
                         onValueChange={(v) => setNewGuestForm({ ...newGuestForm, nationality: v })}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder={t("placeholderNationality")} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {COUNTRIES.map((c) => (
-                            <SelectItem key={c.code} value={c.name}>
-                              {c.displayAs || c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder={t("placeholderNationality")}
+                        t={t}
+                      />
                     </div>
                   </div>
                   {/* ID Type, ID Number, and Guest Address — all on one row.

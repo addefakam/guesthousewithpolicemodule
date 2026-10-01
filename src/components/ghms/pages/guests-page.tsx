@@ -79,6 +79,7 @@ import {
 } from "lucide-react";
 import AddressFields, { getEmptyAddress, AddressDisplay } from "@/components/shared/address-fields";
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
+import { NationalityCombobox } from "@/components/shared/nationality-combobox";
 import { ID_TYPES, getIdFieldConfig, normalizeIdType } from "@/lib/national-id";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
@@ -728,21 +729,12 @@ export default function GuestsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="guest-nationality">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
-              <Select
+              <NationalityCombobox
                 value={form.nationality || DEFAULT_NATIONALITY}
                 onValueChange={(v) => setForm({ ...form, nationality: v })}
-              >
-                <SelectTrigger id="guest-nationality">
-                  <SelectValue placeholder="Select nationality" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c.code} value={c.name}>
-                      {c.displayAs || c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select nationality"
+                t={t}
+              />
             </div>
 
             <div className="space-y-2">

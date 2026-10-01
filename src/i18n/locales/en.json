@@ -271,7 +271,9 @@
     "guestBadgeCancelled": "Cancelled",
     "guestBadgeUpdated": "Updated",
     "thHistory": "History",
-    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00",
+    "searchNationality": "Search country...",
+    "noCountryFound": "No country found."
   },
   "login": {
     "errorEmptyCredentials": "Please enter both username and password.",

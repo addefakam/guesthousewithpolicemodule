@@ -271,7 +271,9 @@
     "guestBadgeCancelled": "Haqame",
     "guestBadgeUpdated": "Haaroomsame",
     "thHistory": "Seenaa",
-    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00",
+    "searchNationality": "Biyya barbaadi...",
+    "noCountryFound": "Biyyi hin jiru."
   },
   "login": {
     "errorEmptyCredentials": "Maaloo maqaa fayyadamaa fi jecha iccitii galchaa.",

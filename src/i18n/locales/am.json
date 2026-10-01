@@ -271,7 +271,9 @@
     "guestBadgeCancelled": "ተሰርዟል",
     "guestBadgeUpdated": "ተዘምኗል",
     "thHistory": "ታሪክ",
-    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00"
+    "nationalIdPlaceholder": "FAN 00 00 00 00 00 00 00 00",
+    "searchNationality": "ሀገር ይፈልጉ...",
+    "noCountryFound": "ሀገር አልተገኘም።"
   },
   "login": {
     "errorEmptyCredentials": "እባክዎ የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ።",
