@@ -2384,7 +2384,7 @@ export default function ReservationsPage() {
                         <SelectContent className="max-h-60">
                           {COUNTRIES.map((c) => (
                             <SelectItem key={c.code} value={c.name}>
-                              {c.name}
+                              {c.displayAs || c.name}
                             </SelectItem>
                           ))}
                         </SelectContent>

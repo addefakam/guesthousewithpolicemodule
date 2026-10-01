@@ -6,10 +6,19 @@
  */
 
 export interface Country {
-  /** Common English short name (e.g., "Ethiopia", "Kenya") */
+  /** Common English short name (e.g., "Ethiopia", "Kenya").
+   *  This is the canonical name stored in the database — do not change it
+   *  once data exists, or you'll break existing guest records. */
   name: string;
   /** ISO 3166-1 alpha-2 code (e.g., "ET", "KE") */
   code: string;
+  /** Optional display label with common aliases in parentheses.
+   *  Used by the dropdown UI so users can find a country by its
+   *  abbreviation or alternative name without breaking the stored value.
+   *  e.g., "United States (USA, America)" — the SelectItem value is
+   *  still "United States", but the label shows the alias for searchability.
+   *  If omitted, the dropdown falls back to `name`. */
+  displayAs?: string;
 }
 
 export const COUNTRIES: Country[] = [
@@ -42,7 +51,7 @@ export const COUNTRIES: Country[] = [
   { name: "Bulgaria", code: "BG" },
   { name: "Burkina Faso", code: "BF" },
   { name: "Burundi", code: "BI" },
-  { name: "Cabo Verde", code: "CV" },
+  { name: "Cabo Verde", code: "CV", displayAs: "Cabo Verde (Cape Verde)" },
   { name: "Cambodia", code: "KH" },
   { name: "Cameroon", code: "CM" },
   { name: "Canada", code: "CA" },
@@ -58,7 +67,7 @@ export const COUNTRIES: Country[] = [
   { name: "Croatia", code: "HR" },
   { name: "Cuba", code: "CU" },
   { name: "Cyprus", code: "CY" },
-  { name: "Czechia", code: "CZ" },
+  { name: "Czechia", code: "CZ", displayAs: "Czechia (Czech Republic)" },
   { name: "Denmark", code: "DK" },
   { name: "Djibouti", code: "DJ" },
   { name: "Dominica", code: "DM" },
@@ -69,7 +78,7 @@ export const COUNTRIES: Country[] = [
   { name: "Equatorial Guinea", code: "GQ" },
   { name: "Eritrea", code: "ER" },
   { name: "Estonia", code: "EE" },
-  { name: "Eswatini", code: "SZ" },
+  { name: "Eswatini", code: "SZ", displayAs: "Eswatini (Swaziland)" },
   { name: "Fiji", code: "FJ" },
   { name: "Finland", code: "FI" },
   { name: "France", code: "FR" },
@@ -129,7 +138,7 @@ export const COUNTRIES: Country[] = [
   { name: "Montenegro", code: "ME" },
   { name: "Morocco", code: "MA" },
   { name: "Mozambique", code: "MZ" },
-  { name: "Myanmar", code: "MM" },
+  { name: "Myanmar", code: "MM", displayAs: "Myanmar (Burma)" },
   { name: "Namibia", code: "NA" },
   { name: "Nauru", code: "NR" },
   { name: "Nepal", code: "NP" },
@@ -138,7 +147,7 @@ export const COUNTRIES: Country[] = [
   { name: "Nicaragua", code: "NI" },
   { name: "Niger", code: "NE" },
   { name: "Nigeria", code: "NG" },
-  { name: "North Korea", code: "KP" },
+  { name: "North Korea", code: "KP", displayAs: "North Korea (DPRK)" },
   { name: "North Macedonia", code: "MK" },
   { name: "Norway", code: "NO" },
   { name: "Oman", code: "OM" },
@@ -154,7 +163,7 @@ export const COUNTRIES: Country[] = [
   { name: "Portugal", code: "PT" },
   { name: "Qatar", code: "QA" },
   { name: "Romania", code: "RO" },
-  { name: "Russia", code: "RU" },
+  { name: "Russia", code: "RU", displayAs: "Russia (Russian Federation)" },
   { name: "Rwanda", code: "RW" },
   { name: "Saint Kitts and Nevis", code: "KN" },
   { name: "Saint Lucia", code: "LC" },
@@ -173,7 +182,7 @@ export const COUNTRIES: Country[] = [
   { name: "Solomon Islands", code: "SB" },
   { name: "Somalia", code: "SO" },
   { name: "South Africa", code: "ZA" },
-  { name: "South Korea", code: "KR" },
+  { name: "South Korea", code: "KR", displayAs: "South Korea (Republic of Korea)" },
   { name: "South Sudan", code: "SS" },
   { name: "Spain", code: "ES" },
   { name: "Sri Lanka", code: "LK" },
@@ -186,7 +195,7 @@ export const COUNTRIES: Country[] = [
   { name: "Tajikistan", code: "TJ" },
   { name: "Tanzania", code: "TZ" },
   { name: "Thailand", code: "TH" },
-  { name: "Timor-Leste", code: "TL" },
+  { name: "Timor-Leste", code: "TL", displayAs: "Timor-Leste (East Timor)" },
   { name: "Togo", code: "TG" },
   { name: "Tonga", code: "TO" },
   { name: "Trinidad and Tobago", code: "TT" },
@@ -196,18 +205,22 @@ export const COUNTRIES: Country[] = [
   { name: "Tuvalu", code: "TV" },
   { name: "Uganda", code: "UG" },
   { name: "Ukraine", code: "UA" },
-  { name: "United Arab Emirates", code: "AE" },
-  { name: "United Kingdom", code: "GB" },
-  { name: "United States", code: "US" },
+  { name: "United Arab Emirates", code: "AE", displayAs: "United Arab Emirates (UAE)" },
+  { name: "United Kingdom", code: "GB", displayAs: "United Kingdom (UK, Britain)" },
+  { name: "United States", code: "US", displayAs: "United States (USA, America)" },
   { name: "Uruguay", code: "UY" },
   { name: "Uzbekistan", code: "UZ" },
   { name: "Vanuatu", code: "VU" },
-  { name: "Vatican City", code: "VA" },
+  { name: "Vatican City", code: "VA", displayAs: "Vatican City (Holy See)" },
   { name: "Venezuela", code: "VE" },
-  { name: "Vietnam", code: "VN" },
+  { name: "Vietnam", code: "VN", displayAs: "Vietnam (Viet Nam)" },
   { name: "Yemen", code: "YE" },
   { name: "Zambia", code: "ZM" },
   { name: "Zimbabwe", code: "ZW" },
+  // ── Partially-recognized states commonly encountered by guesthouses ──
+  // Kosovo declared independence in 2008 and is recognized by ~100 UN members.
+  // Not in ISO 3166-1 but uses the user-assigned code XK per ISO 3166-1 alpha-2.
+  { name: "Kosovo", code: "XK" },
 ];
 
 /** Default nationality value — Ethiopian (canonical demonym form, was "Ethiopia"). */
