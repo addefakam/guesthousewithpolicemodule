@@ -72,3 +72,7 @@ server.log
 # IDE
 .idea/
 .vscode/tool-results/
+
+# Superuser creation script output — contains plaintext credentials.
+# Never commit this file. Delete after recording the password.
+.superuser-credentials.txt
