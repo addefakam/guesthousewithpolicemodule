@@ -304,6 +304,54 @@ async function performMaintenance(
     }
   }
 
+  // ── (d) Reconcile orphaned RESERVED rooms ─────────────────────────────
+  // Heal any room still flagged RESERVED with no UPCOMING reservation.
+  // This is the "No upcoming reservation found for this room" anomaly:
+  //
+  //   Room status = RESERVED, but no UPCOMING reservation exists for it.
+  //
+  // Causes:
+  //   - Reservation was cancelled but the room status wasn't reset
+  //   - Reservation was deleted directly in the DB (admin/developer)
+  //   - A race condition left the room RESERVED after a failed booking
+  //   - An operator manually set the room to RESERVED via Edit Room
+  //
+  // Fix: find all RESERVED rooms with no UPCOMING reservation, reset
+  // them to AVAILABLE so they're bookable again. This is the same
+  // pattern as the OCCUPIED reconciliation above, but for RESERVED.
+  const orphanedReservedRooms = await db.room.findMany({
+    where: { ...scopeWhere, status: "RESERVED" },
+    select: { id: true },
+    take: 500,
+  });
+  if (orphanedReservedRooms.length > 0) {
+    const upcomingRoomIds = new Set(
+      (
+        await db.reservation.findMany({
+          where: {
+            roomId: { in: orphanedReservedRooms.map((r) => r.id) },
+            status: "UPCOMING",
+          },
+          select: { roomId: true },
+        })
+      ).map((r) => r.roomId)
+    );
+    const toReleaseReserved = orphanedReservedRooms
+      .map((r) => r.id)
+      .filter((id) => !upcomingRoomIds.has(id));
+    if (toReleaseReserved.length > 0) {
+      const upd = await db.room.updateMany({
+        where: { id: { in: toReleaseReserved } },
+        data: { status: "AVAILABLE" },
+      });
+      roomsReleased += upd.count;
+      // Log so we can track how often this happens in production
+      console.log(
+        `[reservation-maintenance] Reconciled ${upd.count} orphaned RESERVED room(s) to AVAILABLE (no upcoming reservation found).`
+      );
+    }
+  }
+
   return {
     ok: true,
     ranAt: new Date().toISOString(),
