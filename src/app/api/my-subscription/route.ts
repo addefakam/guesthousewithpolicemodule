@@ -74,23 +74,31 @@ export async function GET(req: NextRequest) {
 
     // ── Bed count for billing ──
     // Priority: 1) Admin-set Provider.bedCount (manual override)
-    //           2) Auto-calculated from room types (DOUBLE=2, others=1)
-    //           3) Fallback: sum of room capacities (legacy behavior)
+    //           2) Auto-calculated from room types (DOUBLE + TWIN = 2 beds, all others = 1)
     let totalBeds: number;
     if (provider?.bedCount != null && provider.bedCount > 0) {
       // Admin manually set the bed count on the Provider page — use it.
       totalBeds = provider.bedCount;
     } else {
-      // Auto-calculate from room types: DOUBLE rooms have 2 beds,
-      // all other types have 1 bed. The difference between room types
-      // (SINGLE vs SUITE vs KING) is bed SIZE, not bed COUNT.
+      // Auto-calculate from room types:
+      //   DOUBLE rooms have 2 beds (one double-size bed = 2 sleeping positions)
+      //   TWIN   rooms have 2 beds (two single-size beds)
+      //   All other room types have 1 bed (the difference is SIZE, not COUNT)
+      //     SINGLE         = 1 single bed
+      //     SUITE          = 1 king/queen bed
+      //     DELUXE         = 1 large bed
+      //     KING           = 1 king-size bed
+      //     STANDARD       = 1 standard bed
+      //     STANDARD_SUITE = 1 bed + living area
+      //     JUNIOR_SUITE   = 1 queen bed + sitting area
+      //     EXECUTIVE_SUITE= 1 king bed + living room
       const rooms = await db.room.findMany({
         where: { providerId: auth.providerId },
-        select: { type: true, capacity: true },
+        select: { type: true },
       });
       totalBeds = rooms.reduce((sum, r) => {
-        // DOUBLE rooms have 2 beds; all others have 1 bed
-        const beds = r.type === "DOUBLE" ? 2 : 1;
+        // DOUBLE and TWIN rooms have 2 beds; all others have 1 bed
+        const beds = (r.type === "DOUBLE" || r.type === "TWIN") ? 2 : 1;
         return sum + beds;
       }, 0);
     }

@@ -1373,7 +1373,7 @@ export default function ProvidersPage() {
                 className="bg-white"
               />
               <p className="text-[11px] text-slate-400">
-                {t("bedCountHint", { defaultValue: "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE = 2 beds, all others = 1 bed)." })}
+                {t("bedCountHint", { defaultValue: "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE and TWIN = 2 beds, all others = 1 bed)." })}
               </p>
             </div>
 

@@ -1458,7 +1458,7 @@
     "lblamount": "Amount",
     "labelBedCount": "Bed Count (for billing)",
     "placeholderBedCount": "e.g. 20 (leave blank to auto-calculate from rooms)",
-    "bedCountHint": "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE = 2 beds, all others = 1 bed)."
+    "bedCountHint": "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE and TWIN = 2 beds, all others = 1 bed)."
   },
   "providers": {
     "cardTotal": "Total",
