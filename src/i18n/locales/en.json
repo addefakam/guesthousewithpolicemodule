@@ -636,7 +636,7 @@
     "labelRoomType": "Room Type",
     "labelPriceNight": "Price/Night",
     "labelFloor": "Floor",
-    "labelCapacity": "Capacity",
+    "labelCapacity": "Guest Capacity (max guests)",
     "labelAmenities": "Amenities (comma-separated)",
     "labelDescription": "Description",
     "placeholderDescription": "Describe the room...",
@@ -1455,7 +1455,10 @@
     "itemCustom": "Other (custom)",
     "itemCustomPlaceholder": "Type a custom item name",
     "lbldate": "Date",
-    "lblamount": "Amount"
+    "lblamount": "Amount",
+    "labelBedCount": "Bed Count (for billing)",
+    "placeholderBedCount": "e.g. 20 (leave blank to auto-calculate from rooms)",
+    "bedCountHint": "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE = 2 beds, all others = 1 bed)."
   },
   "providers": {
     "cardTotal": "Total",

@@ -128,6 +128,7 @@ interface RegisterForm {
   licenseFileName: string;
   username: string;
   password: string;
+  bedCount: string;
 }
 
 const emptyRegisterForm: RegisterForm = {
@@ -142,6 +143,7 @@ const emptyRegisterForm: RegisterForm = {
   licenseNo: "",
   licenseFileData: "",
   licenseFileName: "",
+  bedCount: "",
   username: "",
   password: "",
 };
@@ -377,6 +379,7 @@ export default function ProvidersPage() {
         ...registerForm,
         address,
         licenseFile: registerForm.licenseFileData || undefined,
+        bedCount: registerForm.bedCount ? parseInt(registerForm.bedCount, 10) : undefined,
       });
       toast.success(t('registeredAndApproved', { name: registerForm.name }));
       setRegisterOpen(false);
@@ -1351,6 +1354,27 @@ export default function ProvidersPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Bed Count — used for subscription billing. Admin manually
+                sets how many beds the guesthouse has. If left blank,
+                the system auto-calculates from room types (DOUBLE=2, others=1). */}
+            <div className="grid gap-2">
+              <Label htmlFor="reg-bedCount" className="text-sm">
+                {t("labelBedCount", { defaultValue: "Bed Count (for billing)" })}
+              </Label>
+              <Input
+                id="reg-bedCount"
+                type="number"
+                min="0"
+                placeholder={t("placeholderBedCount", { defaultValue: "e.g. 20 (leave blank to auto-calculate from rooms)" })}
+                value={registerForm.bedCount}
+                onChange={(e) => setRegisterForm((f) => ({ ...f, bedCount: e.target.value }))}
+                className="bg-white"
+              />
+              <p className="text-[11px] text-slate-400">
+                {t("bedCountHint", { defaultValue: "Total number of beds in the guesthouse. Used to calculate subscription price. Leave blank to auto-calculate from room types (DOUBLE = 2 beds, all others = 1 bed)." })}
+              </p>
             </div>
 
             {/* Info banner */}

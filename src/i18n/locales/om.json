@@ -636,7 +636,7 @@
     "labelRoomType": "Gosa Kutaa",
     "labelPriceNight": "Gatii/Halkan",
     "labelFloor": "Darbii",
-    "labelCapacity": "Gatii",
+    "labelCapacity": "Qabiyyee Oduu (odaa olaanaa)",
     "labelAmenities": "Tajaajiloota (Qoodamaa)",
     "labelDescription": "Ibsa",
     "placeholderDescription": "Kutaa ibsi...",
@@ -1458,7 +1458,10 @@
     "lblamount": "Hanga",
     "lbltaxAmount": "Hanga Baaksii",
     "lblpaymentMethod": "Malaa Kaawwaa",
-    "lblreceiptNumber": "Lakkoofsa Galaagaa"
+    "lblreceiptNumber": "Lakkoofsa Galaagaa",
+    "labelBedCount": "Lakkoofsa Looxii (baajataaf)",
+    "placeholderBedCount": "Fkn. 20 (kutaa irraa ofii hin helawwan dhiisi)",
+    "bedCountHint": "Lakkoofsa looxii mana-jeecharaa walumaagalatti. Gatii tajaajilaa shallaguuf gargaara. Kutaa irraa ofii shallaguuf dhiisi (DOUBLE = 2 looxii, kan biroo hunda = 1 looxii)."
   },
   "providers": {
     "cardTotal": "Ida'ama",

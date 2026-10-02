@@ -140,6 +140,10 @@ model Provider {
   certIssuedAt  DateTime?
   certIssuedBy  String?         // userId of the admin who issued
   certIssuedByName String?      // admin's display name (denormalized for the cert)
+  // Manually-set bed count for subscription billing. Set by the system
+  // admin on the Provider management page. If null, the system falls
+  // back to auto-calculating from room types (DOUBLE=2 beds, all others=1).
+  bedCount      Int?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 

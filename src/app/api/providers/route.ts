@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       }
 
       const body = await req.json();
-      const { name, ownerName, phone, email, address, type, licenseNo, licenseFile, username, password } = body;
+      const { name, ownerName, phone, email, address, type, licenseNo, licenseFile, username, password, bedCount } = body;
 
       if (!name?.trim() || !ownerName?.trim() || !phone?.trim()) {
         return NextResponse.json(
@@ -162,6 +162,7 @@ export async function POST(req: NextRequest) {
             status: "APPROVED",
             approvedBy: auth.userId || auth.userName || "superuser",
             approvedAt: new Date(),
+            bedCount: bedCount != null && !isNaN(Number(bedCount)) ? Number(bedCount) : null,
           },
         });
 

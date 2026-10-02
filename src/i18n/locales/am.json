@@ -636,7 +636,7 @@
     "labelRoomType": "የክፍል ዓይነት",
     "labelPriceNight": "ዋጋ/ሌሊት",
     "labelFloor": "ፎቅ",
-    "labelCapacity": "አቅም",
+    "labelCapacity": "የእንግዳ አቅም (ከፍተኛ የእንግዳ ቁጥር)",
     "labelAmenities": "ምቹ ሁኔታዎች (በኮማ የተለዩ)",
     "labelDescription": "መግለጫ",
     "placeholderDescription": "ክፍሉን ይግለጹ...",
@@ -1455,7 +1455,10 @@
     "itemCustom": "ሌላ (ብጁ)",
     "itemCustomPlaceholder": "ብጁ የእቃ ስም ይጻፉ",
     "lbldate": "ቀን",
-    "lblamount": "መጠን"
+    "lblamount": "መጠን",
+    "labelBedCount": "የአልጋ ብዛት (ለቢል ክፍያ)",
+    "placeholderBedCount": "ለምሳሌ 20 (ከክፍሎች ራስ-ሰር ለማስላት ባዶ ይተዉ)",
+    "bedCountHint": "በእንግዳ ቤቱ ውስጥ ያሉ የአልጋ ብዛት ጠቅላላ ቁጥር። የደንበኝነት ዋጋ ለማስላት ጥቅም ላይ ይውላል። ከክፍል አይነቶች ራስ-ሰር ለማስላት ባዶ ይተዉ (DOUBLE = 2 አልጋዎች፣ ሌላ ሁሉ = 1 አልጋ)።"
   },
   "providers": {
     "cardTotal": "ጠቅላላ",

@@ -629,6 +629,7 @@ DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'JUNIOR_SUITE'; EXCEPT
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'EXECUTIVE_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "Expense" ADD COLUMN "stockMovementId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 CREATE INDEX IF NOT EXISTS "Expense_stockMovementId_idx" ON "Expense" ("stockMovementId");
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "bedCount" INTEGER; EXCEPTION WHEN duplicate_column THEN null; END $$;
 
 
 `;
