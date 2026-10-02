@@ -3591,7 +3591,8 @@
       "colPrice": "Price",
       "noAvailable": "No available rooms right now",
       "resultGuesthouses_one": "{{count}} guesthouse",
-      "resultGuesthouses_other": "{{count}} guesthouses"
+      "resultGuesthouses_other": "{{count}} guesthouses",
+      "rooms.capacity": "Beds"
     },
     "guests": {
       "title": "Active Stays",

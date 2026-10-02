@@ -73,11 +73,11 @@ export async function GET(req: NextRequest) {
       id: string; name: string; ownerName: string; phone: string;
       address: string; licenseNo: string; latitude: number; longitude: number;
       roomId: string; roomNumber: string; roomName: string; roomType: string;
-      roomStatus: string; roomFloor: number; roomCapacity: number; roomPrice: number;
+      roomStatus: string; roomFloor: number; roomCapacity: number; roomPrice: number; roomType: string;
     }[]>`
       SELECT
         p."id", p."name", p."ownerName", p."phone",
-        p."address", p."licenseNo", p."latitude", p."longitude",
+        p."address", p."licenseNo", p."latitude", p."longitude", p."bedCount",
         r."id" AS "roomId", r."number" AS "roomNumber", r."name" AS "roomName",
         r."type"::text AS "roomType", r."status" AS "roomStatus",
         r."floor" AS "roomFloor", r."capacity" AS "roomCapacity",
@@ -114,6 +114,20 @@ export async function GET(req: NextRequest) {
 
     const providers = Array.from(providerMap.values());
 
+    // Fetch Provider.bedCount overrides (manual admin-set bed counts)
+    // so we can use them instead of auto-calculating from room types.
+    const providerIds = providers.map((p) => p.id);
+    const providerOverrides = providerIds.length > 0
+      ? await db.provider.findMany({
+          where: { id: { in: providerIds } },
+          select: { id: true, bedCount: true },
+        })
+      : [];
+    const bedCountOverrides = new Map<string, number | null>();
+    for (const p of providerOverrides) {
+      bedCountOverrides.set(p.id, p.bedCount);
+    }
+
     // Build per-provider stats with room counts by status
     const providerStats = providers.map((p) => {
       const rooms = p.rooms;
@@ -123,7 +137,14 @@ export async function GET(req: NextRequest) {
       const reserved = rooms.filter((r) => r.status === "RESERVED").length;
       const maintenance = rooms.filter((r) => r.status === "MAINTENANCE").length;
       const utilizationRate = total > 0 ? Math.round(((occupied + reserved) / total) * 100) : 0;
-      const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+
+      // Bed count: priority 1) admin override (Provider.bedCount)
+      //                    2) auto-calc (DOUBLE + TWIN = 2 beds, all others = 1)
+      const override = bedCountOverrides.get(p.id);
+      const totalCapacity = (override != null && override > 0)
+        ? override
+        : rooms.reduce((sum, r) => sum + ((r.type === "DOUBLE" || r.type === "TWIN") ? 2 : 1), 0);
+
       const avgPrice = total > 0 ? Math.round(rooms.reduce((sum, r) => sum + r.pricePerNight, 0) / total) : 0;
 
       return {

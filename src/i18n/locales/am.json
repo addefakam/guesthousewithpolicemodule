@@ -3488,7 +3488,8 @@
       "colPrice": "ዋጋ",
       "noAvailable": "አሁን ክፍት ክፍሎች የሉም",
       "resultGuesthouses_one": "{{count}} አቅራቢ",
-      "resultGuesthouses_other": "{{count}} አቅራቢዎች"
+      "resultGuesthouses_other": "{{count}} አቅራቢዎች",
+      "rooms.capacity": "አልጋዎች"
     },
     "guests": {
       "title": "ንቁዎች ቆይታዎች",

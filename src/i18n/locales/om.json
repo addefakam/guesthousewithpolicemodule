@@ -3574,7 +3574,7 @@
       "utilization": "Faayidaa",
       "totalRooms": "Kutaa",
       "guesthouses": "Mana Sirree Walumaagalatti",
-      "capacity": "Sangaroo",
+      "capacity": "Looxii",
       "roomsWord": "kutaa",
       "matchCount": "{{matched}} of {{total}} kutaa",
       "resultGuesthouses": "{{count}} Mana Sirree Walumaagalatti",
@@ -3594,7 +3594,8 @@
       "colPrice": "Gatii",
       "noAvailable": "Har'a kutaa duwwaa hin jiru",
       "resultGuesthouses_one": "{{count}} Mana Sirree Walumaagalatti",
-      "resultGuesthouses_other": "{{count}} Mana Sirree Walumaagalatti"
+      "resultGuesthouses_other": "{{count}} Mana Sirree Walumaagalatti",
+      "rooms.capacity": "Looxii"
     },
     "guests": {
       "title": "Dhaabbannoo Sochii",
