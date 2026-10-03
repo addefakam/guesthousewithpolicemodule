@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, AuthError } from "@/lib/tenant";
-import { ensureDatabase, resetInitFlag } from "@/lib/init-db";
+import { resetInitFlag, ensureDatabase } from "@/lib/init-db";
 
 // ── Bishoftu sub-cities and woredas ──
 const SUB_CITIES: Record<string, string[]> = {
@@ -66,17 +66,21 @@ function parseAddress(address: string): { subCity: string; woreda: string } {
 /**
  * POST /api/admin/backfill-jurisdiction
  *
- * SUPERUSER only. Parses existing Provider address strings and
- * populates the structured subCity + woreda fields.
+ * SUPERUSER only. Uses raw SQL to:
+ * 1. Ensure Provider.subCity and Provider.woreda columns exist
+ * 2. Parse existing Provider address strings
+ * 3. Update the subCity + woreda fields
  *
- * Returns: { updated, skipped, total, details: [...] }
+ * Uses raw SQL ($executeRawUnsafe) instead of Prisma's generated client
+ * because the Prisma client may not match the actual DB schema if
+ * migrations haven't run yet.
  */
 export async function POST(req: NextRequest) {
   try {
     resetInitFlag();
     await ensureDatabase();
-    const auth = await getAuthContext(req);
 
+    const auth = await getAuthContext(req);
     if (auth.role !== "SUPERUSER") {
       return NextResponse.json(
         { error: "Superuser access required" },
@@ -84,26 +88,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get all providers with empty subCity
-    const providers = await db.provider.findMany({
-      where: {
-        OR: [{ subCity: "" }, { subCity: null }],
-      },
-      select: { id: true, name: true, address: true },
-    });
+    // ── Step 1: Ensure columns exist via raw SQL ──
+    try {
+      await db.$executeRawUnsafe(`ALTER TABLE "Provider" ADD COLUMN IF NOT EXISTS "subCity" TEXT NOT NULL DEFAULT ''`);
+      await db.$executeRawUnsafe(`ALTER TABLE "Provider" ADD COLUMN IF NOT EXISTS "woreda" TEXT NOT NULL DEFAULT ''`);
+      await db.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "jurisdictionType" TEXT NOT NULL DEFAULT 'CITY'`);
+      await db.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "subCity" TEXT`);
+      await db.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "woreda" TEXT`);
+    } catch (colErr) {
+      console.error("[backfill] Column creation error:", colErr);
+      // Continue anyway — columns might already exist
+    }
+
+    // ── Step 2: Fetch all providers with empty subCity ──
+    const providers = await db.$queryRawUnsafe<{
+      id: string; name: string; address: string; subCity: string;
+    }[]>(`SELECT "id", "name", "address", "subCity" FROM "Provider" WHERE "subCity" = '' OR "subCity" IS NULL`);
 
     const details: { name: string; address: string; subCity: string; woreda: string; status: string }[] = [];
     let updated = 0;
     let skipped = 0;
 
+    // ── Step 3: Parse + update each provider ──
     for (const provider of providers) {
       const { subCity, woreda } = parseAddress(provider.address || "");
 
       if (subCity) {
-        await db.provider.update({
-          where: { id: provider.id },
-          data: { subCity, woreda: woreda || "" },
-        });
+        // Use raw SQL to update — avoids Prisma client type issues
+        const escapedSubCity = subCity.replace(/'/g, "''");
+        const escapedWoreda = (woreda || "").replace(/'/g, "''");
+        await db.$executeRawUnsafe(
+          `UPDATE "Provider" SET "subCity" = '${escapedSubCity}', "woreda" = '${escapedWoreda}' WHERE "id" = '${provider.id}'`
+        );
         updated++;
         details.push({
           name: provider.name,
