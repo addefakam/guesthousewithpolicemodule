@@ -94,7 +94,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   // ── Filter tabs by police module permissions ──
   // If the user has police_* permissions, only show tabs they have access to.
   // If no police_* permissions are set, show all (backwards compat).
-  const hasPolicePerms = currentUser?.permissions?.some((p: string) => p.startsWith("police_")) ?? false;
+  const hasPolicePerms = user?.permissions?.some((p: string) => p.startsWith("police_")) ?? false;
 
   const allTabs: { key: Tab; label: string; icon: React.ReactNode; permKey?: string }[] = [
     { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" />, permKey: "police_dashboard" },
