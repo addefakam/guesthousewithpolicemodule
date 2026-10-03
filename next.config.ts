@@ -4,9 +4,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Note: eslint.ignoreDuringBuilds was removed in Next.js 16.
+  // ESLint warnings no longer block the build by default.
   reactStrictMode: false,
   compress: true,
   images: {
