@@ -104,7 +104,7 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
   ];
 
   const tabs = hasPolicePerms
-    ? allTabs.filter((tab) => !tab.permKey || currentUser?.permissions?.includes(tab.permKey))
+    ? allTabs.filter((tab) => !tab.permKey || user?.permissions?.includes(tab.permKey))
     : allTabs;
 
   return (

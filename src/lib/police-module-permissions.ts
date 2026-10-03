@@ -32,6 +32,12 @@ export function checkPolicePermission(
   const hasAnyPolicePerms = auth.permissions.some((p) => p.startsWith("police_"));
   if (!hasAnyPolicePerms) return null;
 
+  // Special case: police_dashboard is always allowed — it's the home
+  // screen of both the web police module AND the police mobile app.
+  // Blocking it would make the entire app unusable (white screen +
+  // no way to navigate).
+  if (requiredPermission === "police_dashboard") return null;
+
   // Check if the user has the required permission
   if (!auth.permissions.includes(requiredPermission)) {
     return `You don't have access to this module. Required permission: ${requiredPermission}. Please contact your administrator.`;
