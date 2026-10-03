@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, AuthError } from "@/lib/tenant";
-import { ensureNewTables } from "@/lib/ensure-tables";
+import { ensureDatabase, resetInitFlag } from "@/lib/init-db";
 
 // ── Bishoftu sub-cities and woredas ──
 const SUB_CITIES: Record<string, string[]> = {
@@ -73,7 +73,8 @@ function parseAddress(address: string): { subCity: string; woreda: string } {
  */
 export async function POST(req: NextRequest) {
   try {
-    await ensureNewTables();
+    resetInitFlag();
+    await ensureDatabase();
     const auth = await getAuthContext(req);
 
     if (auth.role !== "SUPERUSER") {
@@ -138,8 +139,9 @@ export async function POST(req: NextRequest) {
       );
     }
     console.error("[backfill-jurisdiction]", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to backfill jurisdiction data" },
+      { error: "Failed to backfill jurisdiction data: " + msg },
       { status: 500 }
     );
   }
