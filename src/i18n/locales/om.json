@@ -1336,7 +1336,7 @@
     "addNewResource": "Qophaa Haaraa Dabali",
     "updateResourceDesc": "Odeeffannoo qophaa haalati haaraan gaafii",
     "addNewResourceDesc": "Suuraa haaraa maaloo keessani dabaluu",
-    "namePlaceholder": "Fkn. Looxii madaalaa",
+    "namePlaceholder": "Fkn. SIRREE madaalaa",
     "categoryPlaceholder": "Fkn. Hadiima",
     "unitPlaceholder": "Fkn. lakkoofsa, kg",
     "supplierPlaceholder": "Maqaa bitaa",
@@ -1459,9 +1459,9 @@
     "lbltaxAmount": "Hanga Baaksii",
     "lblpaymentMethod": "Malaa Kaawwaa",
     "lblreceiptNumber": "Lakkoofsa Galaagaa",
-    "labelBedCount": "Lakkoofsa Looxii (baajataaf)",
+    "labelBedCount": "Lakkoofsa SIRREE (baajataaf)",
     "placeholderBedCount": "Fkn. 20 (kutaa irraa ofii hin helawwan dhiisi)",
-    "bedCountHint": "Lakkoofsa looxii mana-jeecharaa walumaagalatti. Gatii tajaajilaa shallaguuf gargaara. Kutaa irraa ofii shallaguuf dhiisi (DOUBLE fi TWIN = 2 looxii, kan biroo hunda = 1 looxii)."
+    "bedCountHint": "Lakkoofsa SIRREE mana-jeecharaa walumaagalatti. Gatii tajaajilaa shallaguuf gargaara. Kutaa irraa ofii shallaguuf dhiisi (DOUBLE fi TWIN = 2 SIRREE, kan biroo hunda = 1 SIRREE)."
   },
   "providers": {
     "cardTotal": "Ida'ama",
@@ -2197,7 +2197,7 @@
     "statusReserved": "Qabameera",
     "statusOccupied": "Hordoffii",
     "statusMaintenance": "Suphaa",
-    "statusUpcoming": "Dhufaa",
+    "statusUpcoming": "Dhufaa jirraa",
     "statusActive": "Seenee",
     "statusCompleted": "Xumurame",
     "statusCancelled": "Haqame",
@@ -3360,7 +3360,7 @@
     "thphoneId": "Bilbila / ID",
     "thprovider": "Kennitoo",
     "thrate": "Qabiyyee",
-    "threserved": "Eegame",
+    "threserved": "Eegamaa",
     "thrisk": "Balaa",
     "throoms": "Kutaa",
     "thstays": "Turtii",
@@ -3569,12 +3569,12 @@
       "filterAll": "Hunda",
       "available": "Duwwaa",
       "occupied": "Qabatamaa",
-      "reserved": "Eegame",
+      "reserved": "Eegamaa",
       "maintenance": "Tasa-qopheessituu",
       "utilization": "Faayidaa",
       "totalRooms": "Kutaa",
       "guesthouses": "Mana Sirree Walumaagalatti",
-      "capacity": "Looxii",
+      "capacity": "SIRREE",
       "roomsWord": "kutaa",
       "matchCount": "{{matched}} of {{total}} kutaa",
       "resultGuesthouses": "{{count}} Mana Sirree Walumaagalatti",
@@ -3595,7 +3595,7 @@
       "noAvailable": "Har'a kutaa duwwaa hin jiru",
       "resultGuesthouses_one": "{{count}} Mana Sirree Walumaagalatti",
       "resultGuesthouses_other": "{{count}} Mana Sirree Walumaagalatti",
-      "rooms.capacity": "Looxii"
+      "rooms.capacity": "SIRREE"
     },
     "guests": {
       "title": "Dhaabbannoo Sochii",
