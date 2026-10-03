@@ -42,14 +42,45 @@ export async function GET(req: NextRequest) {
     // If the user specifies a providerId, it takes precedence (they're
     // drilling down into a specific provider). Otherwise, apply the
     // jurisdiction filter (CITY/SUBCITY/WOREDA).
+    //
+    // Not all models (SuspectMatch, DaytimeBooking) have a Prisma `provider`
+    // relation — they only have `providerId` (string). So we fetch the
+    // list of provider IDs in the jurisdiction first, then use
+    // `providerId: { in: [...] }` for all queries.
     const jFilter = getJurisdictionFilter(auth);
-    const providerFilter = providerId
-      ? { providerId }
-      : jFilter.subCity
-        ? jFilter.woreda
-          ? { provider: { subCity: jFilter.subCity, woreda: jFilter.woreda } }
-          : { provider: { subCity: jFilter.subCity } }
+
+    let providerIdFilter: string | undefined = undefined;
+    let jurisdictionProviderIds: string[] | undefined = undefined;
+
+    if (providerId) {
+      // User explicitly selected a provider — use it
+      providerIdFilter = providerId;
+    } else if (jFilter.subCity) {
+      // Fetch provider IDs matching the jurisdiction
+      const matchingProviders = await db.provider.findMany({
+        where: jFilter,
+        select: { id: true },
+      });
+      jurisdictionProviderIds = matchingProviders.map((p) => p.id);
+    }
+
+    // Build the Prisma where filter for models WITH a provider relation
+    // (Guest, Reservation have `provider: Provider` relation)
+    const relationFilter = providerIdFilter
+      ? { providerId: providerIdFilter }
+      : jurisdictionProviderIds
+        ? { providerId: { in: jurisdictionProviderIds } }
         : {};
+
+    // Build the Prisma where filter for models WITHOUT a provider relation
+    // (SuspectMatch, DaytimeBooking have only `providerId` string)
+    const idFilter = providerIdFilter
+      ? { providerId: providerIdFilter }
+      : jurisdictionProviderIds
+        ? { providerId: { in: jurisdictionProviderIds } }
+        : {};
+
+    const providerFilter = relationFilter;
 
     // ── 1. Summary KPIs ──
     const [totalGuests, totalReservations, totalCheckIns, totalCheckOuts, totalMatches, totalProviders, totalRooms] =
@@ -67,7 +98,7 @@ export async function GET(req: NextRequest) {
           where: { ...providerFilter, actualCheckOut: { gte: startDate, lte: endDate } },
         }),
         db.suspectMatch.count({
-          where: { ...providerFilter, createdAt: { gte: startDate, lte: endDate } },
+          where: { ...idFilter, createdAt: { gte: startDate, lte: endDate } },
         }),
         providerId ? Promise.resolve(0) : db.provider.count({ where: { status: "APPROVED", ...(jFilter.subCity ? { subCity: jFilter.subCity as string, ...(jFilter.woreda ? { woreda: jFilter.woreda as string } : {}) } : {}) } }),
         providerId ? db.room.count({ where: { providerId } }) : (jFilter.subCity ? db.room.count({ where: { provider: { subCity: jFilter.subCity as string, ...(jFilter.woreda ? { woreda: jFilter.woreda as string } : {}) } } }) : db.room.count()),
