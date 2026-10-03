@@ -3,9 +3,13 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
+import { resetInitFlag, ensureDatabase } from "@/lib/init-db";
 
 export async function GET(req: NextRequest) {
   try {
+    resetInitFlag();
+    await ensureDatabase();
+
     const auth = await getAuthContext(req);
     requirePolice(auth);
 

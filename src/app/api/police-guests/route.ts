@@ -1,3 +1,4 @@
+import { resetInitFlag, ensureDatabase } from "@/lib/init-db";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
@@ -8,6 +9,8 @@ const DEFAULT_PAGE_SIZE = 5;
 
 export async function GET(req: NextRequest) {
   try {
+    resetInitFlag();
+    await ensureDatabase();
     const auth = await getAuthContext(req);
     requirePolice(auth);
 
