@@ -1,3 +1,4 @@
+import { checkPolicePermission } from "@/lib/police-module-permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
@@ -9,6 +10,8 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_anomalies");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
 
     const { searchParams } = req.nextUrl;
     const type = searchParams.get("type") || "";
@@ -63,6 +66,8 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_anomalies");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
 
     const body = await req.json();
     const { action } = body;

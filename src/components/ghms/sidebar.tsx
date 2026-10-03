@@ -227,6 +227,22 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   group_bookings_view: { page: "group-bookings", label: "Group Bookings", icon: Users },
 };
 
+// ── Police permission → page mapping ──
+// Maps police permission keys (stored in User.permissions) to sidebar pages.
+// Used to filter which police nav items a police user sees based on their
+// selected module access.
+const POLICE_PERMISSION_PAGE_MAP: Record<string, string[]> = {
+  police_dashboard: ["police-dashboard"],
+  police_guests: ["police-guests"],
+  police_providers: ["providers"],
+  police_reports: ["police-reports"],
+  police_suspects: ["suspect-alerts", "suspected-persons"],
+  police_intelligence: ["police-intelligence"],
+  police_anomalies: ["anomaly-detection"],
+  police_security: ["police-security"],
+  police_dispatch: ["notification-dispatch"],
+};
+
 // ── Helper: get nav items based on role ──
 function getNavItems(user: CurrentUser, disabledPages: string[] = []): NavItem[] {
   const disabledSet = new Set(disabledPages);
@@ -235,6 +251,25 @@ function getNavItems(user: CurrentUser, disabledPages: string[] = []): NavItem[]
     case "POLICE": {
       const rank = (user.policeRank || "OFFICER") as PoliceRank;
       const allowedPages = POLICE_RANK_PERMISSIONS[rank] || POLICE_RANK_PERMISSIONS.OFFICER;
+
+      // ── Filter by police module permissions ──
+      // If the user has police_* permission keys in their permissions array,
+      // filter the nav items to only show pages they have access to.
+      // If no police_* permissions are set, show all (backwards compat).
+      const hasPolicePerms = user.permissions.some((p) => p.startsWith("police_"));
+      if (hasPolicePerms) {
+        // Build set of allowed page keys from the user's police permissions
+        const allowedPageKeys = new Set<string>();
+        for (const perm of user.permissions) {
+          const pages = POLICE_PERMISSION_PAGE_MAP[perm];
+          if (pages) pages.forEach((p) => allowedPageKeys.add(p));
+        }
+        return POLICE_NAV_ITEMS.filter(
+          (item) => allowedPages.includes(item.page) && allowedPageKeys.has(item.page)
+        );
+      }
+
+      // No police permissions set → show all (existing behavior)
       return POLICE_NAV_ITEMS.filter((item) => allowedPages.includes(item.page));
     }
 

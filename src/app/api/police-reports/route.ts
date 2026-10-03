@@ -1,3 +1,4 @@
+import { checkPolicePermission } from "@/lib/police-module-permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest) {
 
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_reports");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
 
     const sp = req.nextUrl.searchParams;
     const period = sp.get("period") || "monthly"; // daily | monthly | yearly

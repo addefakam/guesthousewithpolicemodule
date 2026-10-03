@@ -1,3 +1,4 @@
+import { checkPolicePermission } from "@/lib/police-module-permissions";
 import { resetInitFlag, ensureDatabase } from "@/lib/init-db";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest) {
     await ensureDatabase();
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_guests");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
 
     try {
       await runReservationMaintenance({});

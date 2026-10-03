@@ -1,3 +1,4 @@
+import { checkPolicePermission } from "@/lib/police-module-permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
@@ -13,6 +14,8 @@ export async function GET(req: NextRequest) {
     await ensureNewTables();
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_dashboard");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
 
     try {
       await runReservationMaintenance({});

@@ -91,19 +91,21 @@ export default function PoliceApp({ user }: { user: CurrentUser }) {
     setCurrentUser(null); // gate renders the PoliceLogin screen
   }
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" /> },
-    { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" /> },
-    // Renamed from "Guests" to "Active Stays" — this tab shows ACTIVE +
-    // UPCOMING reservations (guests currently in-house or expected soon),
-    // NOT the full guest registry. The old label caused confusion because
-    // the count didn't match the dashboard's totalGuests KPI.
-    { key: "guests", label: t("nav.activeStays"), icon: <Users className="h-5 w-5" /> },
-    // "Providers" (Guesthouses) tab removed per request — the Room
-    // Availability screen already shows every guesthouse with its rooms,
-    // so the separate Guesthouses tab was redundant.
+  // ── Filter tabs by police module permissions ──
+  // If the user has police_* permissions, only show tabs they have access to.
+  // If no police_* permissions are set, show all (backwards compat).
+  const hasPolicePerms = currentUser?.permissions?.some((p: string) => p.startsWith("police_")) ?? false;
+
+  const allTabs: { key: Tab; label: string; icon: React.ReactNode; permKey?: string }[] = [
+    { key: "home", label: t("nav.home"), icon: <LayoutDashboard className="h-5 w-5" />, permKey: "police_dashboard" },
+    { key: "rooms", label: t("nav.rooms"), icon: <BedDouble className="h-5 w-5" />, permKey: "police_dashboard" },
+    { key: "guests", label: t("nav.activeStays"), icon: <Users className="h-5 w-5" />, permKey: "police_guests" },
     { key: "system", label: t("nav.system"), icon: <Monitor className="h-5 w-5" /> },
   ];
+
+  const tabs = hasPolicePerms
+    ? allTabs.filter((tab) => !tab.permKey || currentUser?.permissions?.includes(tab.permKey))
+    : allTabs;
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-[#F6F7FB] text-slate-900">

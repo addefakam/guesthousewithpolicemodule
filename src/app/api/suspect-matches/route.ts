@@ -1,3 +1,4 @@
+import { checkPolicePermission } from "@/lib/police-module-permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
@@ -104,6 +105,8 @@ export async function PUT(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
+    const permError = checkPolicePermission(auth, "police_suspects");
+    if (permError) return NextResponse.json({ error: permError }, { status: 403 });
     await ensureSuspectTables();
 
     const body = await req.json();

@@ -180,6 +180,23 @@ const PERMISSION_OPTIONS = [
   { value: "settings", label: "Settings" },
 ];
 
+// ── Police module permissions ──
+// Each key maps to a page in the web police module AND a tab in the
+// police mobile app. The super-admin selects which of these the police
+// user can access — same pattern as operator→staff permissions but
+// for the police module.
+const POLICE_PERMISSION_OPTIONS = [
+  { value: "police_dashboard", label: "Dashboard", desc: "City-wide KPIs, occupancy, revenue" },
+  { value: "police_guests", label: "Active Stays + Guests", desc: "Live reservations + guest registry" },
+  { value: "police_providers", label: "Providers", desc: "Guesthouse management (view/approve/suspend)" },
+  { value: "police_reports", label: "Reports", desc: "Analytics, demographics, export" },
+  { value: "police_suspects", label: "Suspect Alerts + Watchlist", desc: "Suspect matching, watchlist management" },
+  { value: "police_intelligence", label: "Intelligence", desc: "Crime analytics, hotspot analysis" },
+  { value: "police_anomalies", label: "Anomaly Detection", desc: "Fraud detection dashboard" },
+  { value: "police_security", label: "Security", desc: "Geofences, officer management" },
+  { value: "police_dispatch", label: "Notification Dispatch", desc: "Emergency broadcast to guesthouses" },
+];
+
 const ROLE_TABS = [
   { value: "", label: "All Users" },
   { value: "SUPERUSER", label: "Superusers" },
@@ -543,7 +560,7 @@ export default function SuperUserManagementPage() {
         phone: form.phone.trim() || null,
         role: form.role,
         policeRank: form.role === "POLICE" ? form.policeRank : "",
-        permissions: form.role === "STAFF" ? form.permissions : [],
+        permissions: (form.role === "STAFF" || form.role === "POLICE") ? form.permissions : [],
         providerId: (form.providerId && form.providerId !== "__none__") ? form.providerId : null,
         isActive: form.isActive,
         // ── Police jurisdiction ──
@@ -1141,6 +1158,44 @@ export default function SuperUserManagementPage() {
                       : `This user will see all guesthouses in ${form.subCity} sub-city.`
                     }
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Police Module Access — select which police pages this user can access */}
+            {form.role === "POLICE" && (
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">{t('lblModuleAccess', 'Module Access')}</Label>
+                <p className="text-xs text-slate-400">Select which police module pages this user can access. Applies to both web and mobile app.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3">
+                  {POLICE_PERMISSION_OPTIONS.map((perm) => {
+                    const isChecked = form.permissions.includes(perm.value);
+                    return (
+                      <label
+                        key={perm.value}
+                        className="flex items-start gap-2 text-sm cursor-pointer rounded-md p-2 hover:bg-slate-50 transition-colors"
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              permissions: checked
+                                ? [...prev.permissions, perm.value]
+                                : prev.permissions.filter((p) => p !== perm.value),
+                            }));
+                          }}
+                        />
+                        <div>
+                          <span className="font-medium text-slate-700">{perm.label}</span>
+                          <p className="text-[10px] text-slate-400">{perm.desc}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.permissions.length === 0 && (
+                  <p className="text-xs text-amber-600">No modules selected — this user will not see any police pages.</p>
                 )}
               </div>
             )}
