@@ -776,13 +776,17 @@ function SidebarContent({
                     <UserCircle className="size-4 text-slate-500" />
                     <span>{t("My Profile")}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="flex items-center gap-2.5 cursor-pointer"
-                    onClick={() => onNavigate("organization-info")}
-                  >
-                    <Building2 className="size-4 text-slate-500" />
-                    <span>{t("Organization Profile")}</span>
-                  </DropdownMenuItem>
+                  {/* Organization Profile — only show for operators/staff (users with a providerId).
+                      Superusers and Police don't have an organization to manage. */}
+                  {user.providerId && (
+                    <DropdownMenuItem
+                      className="flex items-center gap-2.5 cursor-pointer"
+                      onClick={() => onNavigate("organization-info")}
+                    >
+                      <Building2 className="size-4 text-slate-500" />
+                      <span>{t("Organization Profile")}</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="flex items-center gap-2.5 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50"
