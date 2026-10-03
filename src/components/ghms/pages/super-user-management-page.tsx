@@ -131,6 +131,8 @@ interface StatsInfo {
 }
 
 // ── Role Configuration ──
+// Super-admin can only create: SUPERUSER, POLICE
+// STAFF and OPERATOR are managed by operators themselves via Account Management
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType; desc: string }> = {
   SUPERUSER: {
     label: "Superuser",
@@ -139,6 +141,16 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
     icon: Crown,
     desc: "Full system access",
   },
+  POLICE: {
+    label: "Police",
+    color: "text-rose-700",
+    bg: "bg-rose-50 border-rose-200",
+    icon: Shield,
+    desc: "Law enforcement access",
+  },
+  // OPERATOR and STAFF are listed for display purposes (viewing existing
+  // users) but are NOT available as selectable roles when creating a
+  // new user from the super-admin panel.
   OPERATOR: {
     label: "Operator",
     color: "text-emerald-700",
@@ -152,13 +164,6 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
     bg: "bg-sky-50 border-sky-200",
     icon: UserCog,
     desc: "Limited access based on permissions",
-  },
-  POLICE: {
-    label: "Police",
-    color: "text-rose-700",
-    bg: "bg-rose-50 border-rose-200",
-    icon: Shield,
-    desc: "Law enforcement access",
   },
 };
 
@@ -901,7 +906,9 @@ export default function SuperUserManagementPage() {
             <div className="grid gap-2">
               <Label>{t('lblrole', 'Role')}</Label>
               <div className="grid grid-cols-2 gap-2">
-                {Object.entries(ROLE_CONFIG).map(([key, conf]) => {
+                {/* Only SUPERUSER and POLICE can be created by the super-admin.
+                    STAFF creation is handled by operators via Account Management. */}
+                {Object.entries(ROLE_CONFIG).filter(([key]) => ["SUPERUSER", "POLICE"].includes(key) || (editingUser && editingUser.role === key)).map(([key, conf]) => {
                   const Icon = conf.icon;
                   const isSelected = form.role === key;
                   return (
