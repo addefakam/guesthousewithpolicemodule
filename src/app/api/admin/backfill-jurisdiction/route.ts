@@ -20,6 +20,18 @@ const SUB_CITY_ALIASES: Record<string, string> = {
   dukam: "Dukem",
 };
 
+// Woreda aliases — old spelling → canonical spelling
+const WOREDA_ALIASES: Record<string, string> = {
+  "dhaka booraa": "Dhakaa Boora",
+  "dhakaa boora": "Dhakaa Boora",
+  "er": "Erere",
+  "erer": "Erere",
+  "erere": "Erere",
+  "arsadee": "Arsedee",
+  "arsedee": "Arsedee",
+  "arsade": "Arsedee",
+};
+
 function parseAddress(address: string): { subCity: string; woreda: string } {
   if (!address) return { subCity: "", woreda: "" };
   const parts = address.split(",").map((p) => p.trim());
@@ -28,9 +40,9 @@ function parseAddress(address: string): { subCity: string; woreda: string } {
 
   for (const part of parts) {
     if (!part || part.toLowerCase() === "bishoftu") continue;
-    const partLower = part.toLowerCase();
+    const partLower = part.toLowerCase().replace(/\s+/g, " ");
 
-    // Match sub-city
+    // Match sub-city (with aliases)
     for (const [alias, canonical] of Object.entries(SUB_CITY_ALIASES)) {
       if (partLower === alias || partLower.includes(alias)) {
         subCity = canonical;
@@ -38,24 +50,42 @@ function parseAddress(address: string): { subCity: string; woreda: string } {
       }
     }
 
-    // Match woreda (if sub-city found)
+    // Match woreda (if sub-city found) — check canonical names + aliases
     if (subCity && !woreda) {
+      // Try canonical woreda names first
       for (const w of SUB_CITIES[subCity] || []) {
         if (partLower === w.toLowerCase() || partLower.includes(w.toLowerCase())) {
           woreda = w;
           break;
         }
       }
+      // Try woreda aliases (old spelling → canonical)
+      if (!woreda) {
+        for (const [alias, canonical] of Object.entries(WOREDA_ALIASES)) {
+          if (partLower === alias || partLower.includes(alias)) {
+            woreda = canonical;
+            break;
+          }
+        }
+      }
     }
   }
 
-  // Fallback: search entire address for woreda names
+  // Fallback: search entire address for woreda names + aliases
   if (subCity && !woreda) {
     const addrLower = address.toLowerCase();
     for (const w of SUB_CITIES[subCity] || []) {
       if (addrLower.includes(w.toLowerCase())) {
         woreda = w;
         break;
+      }
+    }
+    if (!woreda) {
+      for (const [alias, canonical] of Object.entries(WOREDA_ALIASES)) {
+        if (addrLower.includes(alias)) {
+          woreda = canonical;
+          break;
+        }
       }
     }
   }

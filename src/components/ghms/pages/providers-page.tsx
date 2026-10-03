@@ -109,9 +109,9 @@ const GUESTHOUSE_TYPES = [
 ];
 
 const SUB_CITY_WOREDAS: Record<string, string[]> = {
-  "Cheleleka": ["Erer", "Arsadee", "Kilolee"],
-  "Dhibaayyuu": ["Dhaka Booraa", "Dirree", "Horaa", "Biiftuu"],
-  "Dukam": ["Odaa Nabee", "Xaddachaa", "Malkaa", "Abbuu Seeraa"],
+  "Debaayyuu": ["Dhakaa Boora", "Dirree", "Horaa", "Biiftuu"],
+  "Chalaleka": ["Erere", "Arsedee", "Kilolee"],
+  "Dukem": ["Odaa Nabee", "Xaddachaa", "Malkaa", "Abbuu Seeraa"],
 };
 
 interface RegisterForm {
