@@ -495,6 +495,15 @@ export default function SuperUserManagementPage() {
     setFormOpen(true);
   };
 
+  // ── Default police permissions ──
+  // When a new POLICE user is created, pre-select these modules
+  // so the admin doesn't have to check them manually.
+  const DEFAULT_POLICE_PERMISSIONS = [
+    "police_dashboard",
+    "police_providers",
+    "police_reports",
+  ];
+
   const openEdit = (user: UserRecord) => {
     setEditingUser(user);
     let perms: string[] = [];
@@ -899,7 +908,17 @@ export default function SuperUserManagementPage() {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, role: key, providerId: (key === "OPERATOR" || key === "STAFF") ? f.providerId : "" }))}
+                      onClick={() => {
+                        setForm((f) => ({
+                          ...f,
+                          role: key,
+                          providerId: (key === "OPERATOR" || key === "STAFF") ? f.providerId : "",
+                          // Pre-select default police permissions when switching to POLICE
+                          permissions: key === "POLICE" && !editingUser
+                            ? DEFAULT_POLICE_PERMISSIONS
+                            : (key === "STAFF" ? f.permissions.filter((p) => !p.startsWith("police_")) : f.permissions),
+                        }));
+                      }}
                       className={`flex items-center gap-2.5 rounded-lg border-2 p-3 text-left transition-all ${
                         isSelected
                           ? `${conf.bg} ${conf.color} border-current`
