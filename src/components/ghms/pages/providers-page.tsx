@@ -970,7 +970,8 @@ export default function ProvidersPage() {
                               title={t('btnDeleteProvider')}
                             >
                               <Trash2 className="h-4 w-4" />
-                          </Button>
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
