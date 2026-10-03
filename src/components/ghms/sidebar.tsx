@@ -181,7 +181,8 @@ const JOINT_SESSION_POLICE_ITEMS: NavItem[] = [
 // SUPERUSER (admin): admin dashboard, user management, guesthouses, subscriptions, system config, operator features, audit logs, data & reports, notifications
 const SUPERUSER_NAV_ITEMS: NavItem[] = [
   { page: "super-admin-dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
-  { page: "guesthouse-user-management", label: "Guesthouse & User Mgmt", icon: Hotel },
+  { page: "super-user-management", label: "User Management", icon: UserCog },
+  { page: "guesthouse-user-management", label: "Guesthouses", icon: Hotel },
   { page: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { page: "super-system-config", label: "System Configuration", icon: Settings },
   { page: "operator-features", label: "Operator Features", icon: ShieldCheck },
