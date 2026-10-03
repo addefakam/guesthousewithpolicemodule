@@ -3298,7 +3298,7 @@
     "kpiInSelectedProvider": "Kennitoo filatame keessatti",
     "kpiAcrossProviders": "Kennitoota {{count}} keessatti",
     "kpiCheckIns": "Seensa",
-    "kpiCurrentlyActive": "har'a sochii qabu",
+    "kpiCurrentlyActive": "Keessummoota jiran",
     "kpiCheckOuts": "Ba'iinsa",
     "kpiTotalReservations": "qabannoo walumaagalatti",
     "kpiSuspectMatches": "Wal-makii Sakatta'ii",
@@ -3312,7 +3312,7 @@
     "frequentStayAlerts": "Beeksisa Turtii Irra Nyaaphii",
     "kpiTotalProviders": "Kennitoota Walumaagalatti",
     "kpiTotalRooms": "Kutaa Walumaagalatti",
-    "kpiActiveGuests": "Oduu Sochii Qabu",
+    "kpiActiveGuests": "Keessummoota jiran ",
     "kpiCurrentlyCheckedIn": "Har'a seenan",
     "occupancyByProvider": "Qabiyyee Kutaa Kennitootaan",
     "occupancyProviderHint": "Qabiyyee kutaa kennitootaan yoo 'Kennitoota Hunda' filatame qofa mul'ata",
@@ -3545,7 +3545,7 @@
       "guests": "Keessummoota",
       "more": "Dabalata",
       "system": "Sirni Guutu",
-      "activeStays": "Dhaabbannoo Sochii"
+      "activeStays": "Keessummaa Ammaa"
     },
     "home": {
       "title": "Daashboordii",
@@ -3560,7 +3560,7 @@
       "busiest": "Mana Sirree Walumaagalatti hojiirra oolan",
       "viewRooms": "Kutaa ilaali",
       "providerBreakdown": "Caccaba Kutaa Kennitootaa",
-      "activeWord": "sochii qabu"
+      "activeWord": "Keessummoota jiran"
     },
     "rooms": {
       "title": "Qabiyyee Kutaa",
@@ -3598,14 +3598,14 @@
       "rooms.capacity": "SIRREE"
     },
     "guests": {
-      "title": "Dhaabbannoo Sochii",
-      "subtitle": "Har'a seenan jiran ykn dhufuu eegalan Keessummoota",
-      "searchPlaceholder": "Keessummoota, bilbila, ID, kutaa barbaadi…",
-      "empty": "Qabannoo sochii qabu ykn eegamaa hin jiru",
+      "title": "Keessummaa Ammaa",
+      "subtitle": "Keessummoota Har'a Seenanii fi Eeggaman",
+      "searchPlaceholder": "Keessummoota, bilbilan, IDn, kutaan barbaadi…",
+      "empty": "Duuwaa",
       "noMatch": "Keessummoota barbaaddaa kee waliin wal mada'u hin jiru",
       "showing": "Qabannoo {{count}} agarsiisa",
-      "statusActive": "Sochii qabu",
-      "statusUpcoming": "Eegama",
+      "statusActive": "Keessummoota jiran",
+      "statusUpcoming": "Eegamaan",
       "phone": "Bilbila",
       "idNumber": "Lakkoofsa ID",
       "nationality": "Lammummaa",
