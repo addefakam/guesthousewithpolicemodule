@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         id: true, username: true, name: true, role: true,
         password: true, providerId: true, permissions: true,
         policeRank: true,
+        jurisdictionType: true, subCity: true, woreda: true,
         provider: { select: { id: true, name: true, status: true } },
       },
     });
@@ -85,6 +86,9 @@ export async function POST(req: NextRequest) {
       permissions,
       policeRank,
       providerName: user.provider?.name ?? undefined,
+      jurisdictionType: user.jurisdictionType || "CITY",
+      subCity: user.subCity || null,
+      woreda: user.woreda || null,
     };
 
     const token = await createToken(tokenPayload);

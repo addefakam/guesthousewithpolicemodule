@@ -630,6 +630,14 @@ DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'EXECUTIVE_SUITE'; EXC
 DO $$ BEGIN ALTER TABLE "Expense" ADD COLUMN "stockMovementId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 CREATE INDEX IF NOT EXISTS "Expense_stockMovementId_idx" ON "Expense" ("stockMovementId");
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "bedCount" INTEGER; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "subCity" TEXT NOT NULL DEFAULT ''; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "woreda" TEXT NOT NULL DEFAULT ''; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "User" ADD COLUMN "jurisdictionType" TEXT NOT NULL DEFAULT 'CITY'; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "User" ADD COLUMN "subCity" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "User" ADD COLUMN "woreda" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
+CREATE INDEX IF NOT EXISTS "User_jurisdictionType_idx" ON "User" ("jurisdictionType");
+CREATE INDEX IF NOT EXISTS "User_subCity_idx" ON "User" ("subCity");
+CREATE INDEX IF NOT EXISTS "User_woreda_idx" ON "User" ("woreda");
 
 
 `;

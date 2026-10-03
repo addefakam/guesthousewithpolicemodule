@@ -144,6 +144,11 @@ model Provider {
   // admin on the Provider management page. If null, the system falls
   // back to auto-calculating from room types (DOUBLE=2 beds, all others=1).
   bedCount      Int?
+  // ── Structured location for jurisdiction-based filtering ──
+  // These are extracted from the address string during registration
+  // and used by police API routes to filter by sub-city/woreda.
+  subCity     String  @default("")
+  woreda      String  @default("")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -183,6 +188,13 @@ model User {
   lastLogin   DateTime?
   providerId  String?
   createdBy    String?         // User ID of the OPERATOR who created this account
+  // ── Police jurisdiction (for POLICE role only) ──
+  // CITY = full city access (existing behavior)
+  // SUBCITY = filtered to one sub-city
+  // WOREDA = filtered to one woreda
+  jurisdictionType String  @default("CITY")
+  subCity     String?         // e.g. "Debaayyuu" — set when jurisdictionType = SUBCITY or WOREDA
+  woreda      String?         // e.g. "Dirree" — set only when jurisdictionType = WOREDA
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -191,6 +203,9 @@ model User {
   @@index([providerId])
   @@index([isActive])
   @@index([createdBy])
+  @@index([jurisdictionType])
+  @@index([subCity])
+  @@index([woreda])
 }
 
 model Room {

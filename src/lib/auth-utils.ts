@@ -48,6 +48,10 @@ export interface JWTPayload {
   policeRank: string;
   name: string;
   providerName?: string;
+  // ── Police jurisdiction ──
+  jurisdictionType: string;  // CITY | SUBCITY | WOREDA
+  subCity?: string | null;    // set when SUBCITY or WOREDA
+  woreda?: string | null;     // set only when WOREDA
 }
 
 // Token expiry: 24 hours
@@ -78,6 +82,9 @@ export async function verifyToken(
       policeRank: (payload.policeRank as string) || "",
       name: (payload.name as string) || "",
       providerName: (payload.providerName as string) || undefined,
+      jurisdictionType: (payload.jurisdictionType as string) || "CITY",
+      subCity: (payload.subCity as string) || null,
+      woreda: (payload.woreda as string) || null,
     };
   } catch {
     return null;

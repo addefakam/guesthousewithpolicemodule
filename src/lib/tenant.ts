@@ -8,6 +8,10 @@ export interface AuthContext {
   permissions: string[];
   policeRank: string;
   userName: string;
+  // ── Police jurisdiction ──
+  jurisdictionType: string;  // CITY | SUBCITY | WOREDA
+  subCity?: string | null;
+  woreda?: string | null;
   // Raw JWT payload for reference
   token: JWTPayload;
 }
@@ -36,6 +40,9 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext> {
     permissions: payload.permissions,
     policeRank: payload.policeRank,
     userName: payload.name,
+    jurisdictionType: payload.jurisdictionType || "CITY",
+    subCity: payload.subCity || null,
+    woreda: payload.woreda || null,
     token: payload,
   };
 }
@@ -66,6 +73,39 @@ export function requirePolice(auth: AuthContext): void {
   if (auth.role !== "POLICE" && auth.role !== "SUPERUSER") {
     throw new Error("Police access required");
   }
+}
+
+/**
+ * Get a jurisdiction filter for Provider queries.
+ *
+ * - CITY level → returns {} (no filter, sees all providers)
+ * - SUBCITY level → returns { subCity: auth.subCity }
+ * - WOREDA level → returns { subCity: auth.subCity, woreda: auth.woreda }
+ *
+ * This filter should be spread into the `where` clause of any
+ * Prisma query that fetches Provider-scoped data (reservations,
+ * guests, rooms, etc.) when the caller is POLICE.
+ *
+ * SUPERUSER always gets CITY-level access (sees everything).
+ */
+export function getJurisdictionFilter(auth: AuthContext): Record<string, unknown> {
+  // SUPERUSER always has full city access
+  if (auth.role === "SUPERUSER") return {};
+
+  // POLICE — filter by jurisdiction
+  if (auth.role === "POLICE") {
+    const jt = auth.jurisdictionType || "CITY";
+    if (jt === "CITY") return {};
+    if (jt === "SUBCITY" && auth.subCity) {
+      return { subCity: auth.subCity };
+    }
+    if (jt === "WOREDA" && auth.subCity && auth.woreda) {
+      return { subCity: auth.subCity, woreda: auth.woreda };
+    }
+  }
+
+  // Default: no filter (shouldn't reach here for non-police)
+  return {};
 }
 
 export function blockPoliceWrites(auth: AuthContext): void {
