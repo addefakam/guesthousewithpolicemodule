@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
 const MAX_PAGE_SIZE = 100;
@@ -20,6 +20,15 @@ export async function GET(req: NextRequest) {
     );
     const skip = (page - 1) * pageSize;
 
+    // ── Jurisdiction filter ──
+    // Apply the jurisdiction filter to the Guest query via the Provider relation.
+    // CITY → no filter (sees all guests)
+    // SUBCITY → only guests whose provider is in auth.subCity
+    // WOREDA → only guests whose provider is in auth.subCity + auth.woreda
+    const jFilter = getJurisdictionFilter(auth);
+    const hasSubCity = !!jFilter.subCity;
+    const hasWoreda = !!jFilter.woreda;
+
     const where: Record<string, unknown> = {};
     if (q) {
       where.OR = [
@@ -27,6 +36,13 @@ export async function GET(req: NextRequest) {
         { phone: { contains: q } },
         { idNumber: { contains: q } },
       ];
+    }
+
+    // Add jurisdiction filter to the where clause
+    if (hasSubCity) {
+      where.provider = hasWoreda
+        ? { subCity: jFilter.subCity, woreda: jFilter.woreda }
+        : { subCity: jFilter.subCity };
     }
 
     const [guests, total] = await Promise.all([

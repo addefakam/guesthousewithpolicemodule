@@ -39,24 +39,17 @@ export async function GET(req: NextRequest) {
       : null;
 
     // ── Count ALL providers (regardless of status) ──
-    // The rooms breakdown below filters by APPROVED (since PENDING /
-    // REJECTED / SUSPENDED providers have no operational rooms to show),
-    // but the "totalProviders" KPI on the police rooms screen must match
-    // the count shown on the main system's providers page (which lists
-    // ALL providers regardless of status). Without this separate count,
-    // the police app showed 22 (APPROVED only) while the main system
-    // showed 31 (all providers) — a confusing discrepancy.
-    const allProvidersCountRaw = await db.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count FROM "Provider"
-    `;
+    const allProvidersCountSQL = providerIdsSubquery
+      ? `SELECT COUNT(*)::bigint AS count FROM "Provider" WHERE "id" IN (${providerIdsSubquery})`
+      : `SELECT COUNT(*)::bigint AS count FROM "Provider"`;
+    const allProvidersCountRaw = await db.$queryRawUnsafe<{ count: bigint }[]>(allProvidersCountSQL);
     const allProvidersCount = Number(allProvidersCountRaw[0].count);
 
-    // ── City-wide room statistics ──
-    // Use raw SQL for ALL room queries to avoid Prisma's prepared-statement
-    // cache issue with the RoomType enum .
-    const statsRaw = await db.$queryRaw<{ status: string; count: bigint }[]>`
-      SELECT "status", COUNT(*)::bigint as count FROM "Room" GROUP BY "status"
-    `;
+    // ── Room statistics (filtered by jurisdiction) ──
+    const statsSQL = providerIdsSubquery
+      ? `SELECT "status", COUNT(*)::bigint as count FROM "Room" WHERE "providerId" IN (${providerIdsSubquery}) GROUP BY "status"`
+      : `SELECT "status", COUNT(*)::bigint as count FROM "Room" GROUP BY "status"`;
+    const statsRaw = await db.$queryRawUnsafe<{ status: string; count: bigint }[]>(statsSQL);
     const statsMap: Record<string, number> = {};
     for (const s of statsRaw) {
       statsMap[s.status] = Number(s.count);
@@ -67,22 +60,15 @@ export async function GET(req: NextRequest) {
     const reservedRooms = statsMap["RESERVED"] || 0;
     const maintenanceRooms = statsMap["MAINTENANCE"] || 0;
 
-    // ── Room type breakdown ──
-    const roomTypesRaw = await db.$queryRaw<{ type: string; count: bigint }[]>`
-      SELECT type, COUNT(*)::bigint as count FROM "Room" GROUP BY type
-    `;
+    // ── Room type breakdown (filtered by jurisdiction) ──
+    const roomTypesSQL = providerIdsSubquery
+      ? `SELECT type, COUNT(*)::bigint as count FROM "Room" WHERE "providerId" IN (${providerIdsSubquery}) GROUP BY type`
+      : `SELECT type, COUNT(*)::bigint as count FROM "Room" GROUP BY type`;
+    const roomTypesRaw = await db.$queryRawUnsafe<{ type: string; count: bigint }[]>(roomTypesSQL);
     const roomTypes = roomTypesRaw.map(r => ({ type: r.type, _count: { id: Number(r.count) } }));
 
-    // ── Per-provider room breakdown ──
-    // Use raw SQL to avoid Prisma's prepared-statement cache issue with
-    // the RoomType enum 
-    // query plans). Casting type::text avoids enum validation entirely.
-    const providersRaw = await db.$queryRaw<{
-      id: string; name: string; ownerName: string; phone: string;
-      address: string; licenseNo: string; latitude: number; longitude: number;
-      roomId: string; roomNumber: string; roomName: string; roomType: string;
-      roomStatus: string; roomFloor: number; roomCapacity: number; roomPrice: number; roomType: string;
-    }[]>`
+    // ── Per-provider room breakdown (filtered by jurisdiction) ──
+    const providersSQL = `
       SELECT
         p."id", p."name", p."ownerName", p."phone",
         p."address", p."licenseNo", p."latitude", p."longitude", p."bedCount",
@@ -92,9 +78,16 @@ export async function GET(req: NextRequest) {
         r."pricePerNight" AS "roomPrice"
       FROM "Provider" p
       LEFT JOIN "Room" r ON r."providerId" = p."id"
-      WHERE p."status" = 'APPROVED'
+      WHERE p."status" = 'APPROVED' ${providerJurisdictionWhere}
       ORDER BY p."name" ASC, r."number" ASC
     `;
+
+    const providersRaw = await db.$queryRawUnsafe<{
+      id: string; name: string; ownerName: string; phone: string;
+      address: string; licenseNo: string; latitude: number; longitude: number;
+      roomId: string; roomNumber: string; roomName: string; roomType: string;
+      roomStatus: string; roomFloor: number; roomCapacity: number; roomPrice: number;
+    }[]>(providersSQL);
 
     // Group rooms by provider
     const providerMap = new Map<string, {
