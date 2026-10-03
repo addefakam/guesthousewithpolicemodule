@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
     const revenue = reservationRevenue + daytimeRevenue;
 
     // Per-provider breakdown — add jurisdiction WHERE clause
+    // IMPORTANT: WHERE must come AFTER all LEFT JOINs in SQL
     const breakdownSQL = `
       SELECT
         p."id", p."name", p."status",
@@ -94,13 +95,13 @@ export async function GET(req: NextRequest) {
         COALESCE(ar.c, 0)::int AS "activeReservations",
         COALESCE(rr.total, 0)::float + COALESCE(dr.total, 0)::float AS "revenue"
       FROM "Provider" p
-      ${providerWhere ? providerWhere.replace("WHERE p.", "WHERE p.") : ""}
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Room" GROUP BY "providerId") r ON r."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Guest" GROUP BY "providerId") g ON g."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" GROUP BY "providerId") rv ON rv."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" WHERE "status" IN ('UPCOMING','ACTIVE') GROUP BY "providerId") ar ON ar."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", SUM("paidAmount") AS total FROM "Reservation" GROUP BY "providerId") rr ON rr."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", SUM("paidAmount") AS total FROM "DaytimeBooking" GROUP BY "providerId") dr ON dr."providerId" = p."id"
+      ${providerWhere}
       ORDER BY
         CASE p."status"
           WHEN 'PENDING' THEN 0
