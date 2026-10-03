@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureDatabase } from "@/lib/init-db";
 import { db } from "@/lib/db";
-import { getAuthContext, AuthError } from "@/lib/tenant";
+import { getAuthContext, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { hashPassword } from "@/lib/auth-utils";
 import { uploadFile } from "@/lib/storage";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
@@ -23,29 +23,41 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const providers = await db.provider.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        ownerName: true,
-        phone: true,
-        email: true,
-        address: true,
-        type: true,
-        licenseNo: true,
-        licenseFile: false as const,
-        status: true,
-        approvedBy: true,
-        approvedAt: true,
-        rejectionReason: true,
-        suspensionReason: true,
-        suspendedAt: true,
-        suspendedBy: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    // ── Jurisdiction filter ──
+    // CITY → sees all providers
+    // SUBCITY → only providers in auth.subCity
+    // WOREDA → only providers in auth.subCity + auth.woreda
+    const jFilter = getJurisdictionFilter(auth);
+
+    // Use raw SQL to avoid Prisma client schema mismatch issues
+    const hasSubCity = !!jFilter.subCity;
+    const hasWoreda = !!jFilter.woreda;
+    const subCity = hasSubCity ? String(jFilter.subCity).replace(/'/g, "''") : "";
+    const woreda = hasWoreda ? String(jFilter.woreda).replace(/'/g, "''") : "";
+
+    const jurisdictionWhere = hasSubCity
+      ? (hasWoreda
+          ? `WHERE "subCity" = '${subCity}' AND "woreda" = '${woreda}'`
+          : `WHERE "subCity" = '${subCity}'`)
+      : "";
+
+    const providers = await db.$queryRawUnsafe<{
+      id: string; name: string; ownerName: string; phone: string; email: string;
+      address: string; type: string; licenseNo: string; status: string;
+      approvedBy: string | null; approvedAt: Date | null; rejectionReason: string;
+      suspensionReason: string; suspendedAt: Date | null; suspendedBy: string;
+      createdAt: Date; updatedAt: Date;
+    }[]>(`
+      SELECT
+        "id", "name", "ownerName", "phone", "email", "address",
+        "type", "licenseNo", "status",
+        "approvedBy", "approvedAt", "rejectionReason",
+        "suspensionReason", "suspendedAt", "suspendedBy",
+        "createdAt", "updatedAt"
+      FROM "Provider"
+      ${jurisdictionWhere}
+      ORDER BY "createdAt" DESC
+    `);
 
     // Return with empty licenseFile so frontend type stays consistent
     const result = providers.map(p => ({ ...p, licenseFile: "" }));

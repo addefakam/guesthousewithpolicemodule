@@ -11,6 +11,10 @@ export interface CurrentUser {
   permissions: string[];
   policeRank: string;
   providerName?: string;
+  // Police jurisdiction
+  jurisdictionType?: string;
+  subCity?: string | null;
+  woreda?: string | null;
 }
 
 interface PreselectedRoom {

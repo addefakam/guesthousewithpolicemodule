@@ -152,6 +152,9 @@ export default function ProvidersPage() {
   const { t } = useTranslation('providers');
   const { refreshKey, triggerRefresh, currentUser } = useAppStore();
   const isSuperuser = currentUser?.role === "SUPERUSER";
+  // City-level police admin (jurisdictionType=CITY or undefined) can
+  // approve/reject/suspend. Sub-city and woreda police are read-only.
+  const isCityLevel = isSuperuser || (currentUser?.role === "POLICE" && (!currentUser?.jurisdictionType || currentUser.jurisdictionType === "CITY"));
 
   const getStatusConfig = (status: string): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
     const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -853,35 +856,36 @@ export default function ProvidersPage() {
                     <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100" onClick={() => openDetail(provider)}>
                       <Eye className="h-3.5 w-3.5" /> {t('btnDetails')}
                     </button>
-                    {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+                    {isCityLevel && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
                         <CheckCircle2 className="h-3.5 w-3.5" /> {t('btnApprove')}
                       </button>
                     )}
-                    {provider.status === "SUSPENDED" && (
+                    {isCityLevel && provider.status === "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
                         <RotateCcw className="h-3.5 w-3.5" /> {t('btnReactivate')}
                       </button>
                     )}
-                    {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+                    {isCityLevel && provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
                         <XCircle className="h-3.5 w-3.5" /> {t('btnReject')}
                       </button>
                     )}
-                    {provider.status === "APPROVED" && (
+                    {isCityLevel && provider.status === "APPROVED" && (
                       <button className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
                         <Ban className="h-3.5 w-3.5" /> {t('btnSuspend')}
                       </button>
                     )}
-                    {/* Delete — irreversible. Confirmation dialog requires
-                        typing the guesthouse name to prevent accidents. */}
-                    <button
-                      className="ml-auto flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                      onClick={() => openDelete(provider)}
-                      title={t('btnDeleteProvider')}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> {t('btnDelete')}
-                    </button>
+                    {/* Delete — only city-level can delete (irreversible) */}
+                    {isCityLevel && (
+                      <button
+                        className="ml-auto flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50"
+                        onClick={() => openDelete(provider)}
+                        title={t('btnDeleteProvider')}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> {t('btnDelete')}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -930,39 +934,42 @@ export default function ProvidersPage() {
                       <TableCell><StatusBadge status={provider.status} /></TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          {provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+                          {/* View Details — available to all police levels */}
+                          {!isCityLevel && (
+                            <Button size="sm" variant="ghost" className="h-8 text-slate-600 hover:bg-slate-50" onClick={() => openDetail(provider)}>
+                              <Eye className="mr-1 h-4 w-4" /> {t('btnDetails')}
+                            </Button>
+                          )}
+                          {isCityLevel && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-emerald-600 hover:bg-emerald-50" onClick={() => setConfirmAction({ provider, action: "APPROVED" })}>
                               <CheckCircle2 className="mr-1 h-4 w-4" /> {t('btnApprove')}
                             </Button>
                           )}
-                          {provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
+                          {isCityLevel && provider.status !== "REJECTED" && provider.status !== "APPROVED" && provider.status !== "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-red-600 hover:bg-red-50" onClick={() => openReject(provider)}>
                               <XCircle className="mr-1 h-4 w-4" /> {t('btnReject')}
                             </Button>
                           )}
-                          {provider.status === "APPROVED" && (
+                          {isCityLevel && provider.status === "APPROVED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-orange-600 hover:bg-orange-50" onClick={() => openSuspend(provider)}>
                               <Ban className="mr-1 h-4 w-4" /> {t('btnSuspend')}
                             </Button>
                           )}
-                          {provider.status === "SUSPENDED" && (
+                          {isCityLevel && provider.status === "SUSPENDED" && (
                             <Button size="sm" variant="ghost" className="h-8 text-teal-600 hover:bg-teal-50" onClick={() => setConfirmAction({ provider, action: "REACTIVATE" })}>
                               <RotateCcw className="mr-1 h-4 w-4" /> {t('btnReactivate')}
                             </Button>
                           )}
-                          {/* Delete — irreversible cascade. Always
-                              available regardless of provider status
-                              (operator may want to delete a pending
-                              application OR a long-suspended guesthouse).
-                              Confirmation dialog requires typing the name. */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-rose-600 hover:bg-rose-50"
-                            onClick={() => openDelete(provider)}
-                            title={t('btnDeleteProvider')}
-                          >
-                            <Trash2 className="h-4 w-4" />
+                          {/* Delete — only city-level can delete */}
+                          {isCityLevel && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-rose-600 hover:bg-rose-50"
+                              onClick={() => openDelete(provider)}
+                              title={t('btnDeleteProvider')}
+                            >
+                              <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
