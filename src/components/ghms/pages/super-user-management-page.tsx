@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { SUB_CITY_NAMES, getWoredasForSubCity } from "@/lib/bishoftu-divisions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -198,6 +199,10 @@ const emptyForm = {
   permissions: [] as string[],
   providerId: "",
   isActive: true,
+  // ── Police jurisdiction ──
+  jurisdictionType: "CITY",
+  subCity: "",
+  woreda: "",
 };
 
 // ── Stat Card Component ──
@@ -479,6 +484,9 @@ export default function SuperUserManagementPage() {
       permissions: perms,
       providerId: user.providerId || "",
       isActive: user.isActive,
+      jurisdictionType: (user as Record<string, unknown>).jurisdictionType as string || "CITY",
+      subCity: (user as Record<string, unknown>).subCity as string || "",
+      woreda: (user as Record<string, unknown>).woreda as string || "",
     });
     setFormOpen(true);
   };
@@ -525,6 +533,10 @@ export default function SuperUserManagementPage() {
         permissions: form.role === "STAFF" ? form.permissions : [],
         providerId: (form.providerId && form.providerId !== "__none__") ? form.providerId : null,
         isActive: form.isActive,
+        // ── Police jurisdiction ──
+        jurisdictionType: form.role === "POLICE" ? form.jurisdictionType : "CITY",
+        subCity: form.role === "POLICE" && form.jurisdictionType !== "CITY" ? form.subCity : null,
+        woreda: form.role === "POLICE" && form.jurisdictionType === "WOREDA" ? form.woreda : null,
       };
       if (form.password) payload.password = form.password;
 
@@ -1034,6 +1046,89 @@ export default function SuperUserManagementPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Police Jurisdiction — shows when role is POLICE */}
+            {form.role === "POLICE" && (
+              <div className="grid gap-3 rounded-lg border-2 border-indigo-100 bg-indigo-50/30 p-4">
+                <div>
+                  <Label className="text-sm font-semibold">{t('lblJurisdiction', 'Jurisdiction Level')}</Label>
+                  <p className="text-xs text-slate-400 mt-0.5">Controls which guesthouses this police user can see.</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "CITY", label: "City Level", desc: "Full access" },
+                    { value: "SUBCITY", label: "Sub-City", desc: "One sub-city" },
+                    { value: "WOREDA", label: "Woreda", desc: "One woreda" },
+                  ].map((j) => (
+                    <button
+                      key={j.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, jurisdictionType: j.value, subCity: j.value === "CITY" ? "" : f.subCity, woreda: j.value !== "WOREDA" ? "" : f.woreda }))}
+                      className={`rounded-lg border-2 p-3 text-left transition-all ${
+                        form.jurisdictionType === j.value
+                          ? "border-indigo-500 bg-indigo-50"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <p className={`text-sm font-semibold ${form.jurisdictionType === j.value ? "text-indigo-600" : "text-slate-700"}`}>
+                        {j.label}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">{j.desc}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sub-city dropdown — shows when SUBCITY or WOREDA */}
+                {form.jurisdictionType !== "CITY" && (
+                  <div className="grid gap-2">
+                    <Label className="text-xs">Sub-City</Label>
+                    <Select
+                      value={form.subCity}
+                      onValueChange={(v) => setForm((f) => ({ ...f, subCity: v, woreda: "" }))}
+                    >
+                      <SelectTrigger className="w-full bg-white">
+                        <SelectValue placeholder="Select sub-city..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUB_CITY_NAMES.map((sc) => (
+                          <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Woreda dropdown — shows only when WOREDA */}
+                {form.jurisdictionType === "WOREDA" && form.subCity && (
+                  <div className="grid gap-2">
+                    <Label className="text-xs">Woreda</Label>
+                    <Select
+                      value={form.woreda}
+                      onValueChange={(v) => setForm((f) => ({ ...f, woreda: v }))}
+                    >
+                      <SelectTrigger className="w-full bg-white">
+                        <SelectValue placeholder="Select woreda..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getWoredasForSubCity(form.subCity).map((w) => (
+                          <SelectItem key={w} value={w}>{w}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Summary of what this user will see */}
+                {form.jurisdictionType !== "CITY" && form.subCity && (
+                  <div className="rounded-md bg-indigo-100 px-3 py-2 text-xs text-indigo-700">
+                    {form.jurisdictionType === "WOREDA" && form.woreda
+                      ? `This user will see only guesthouses in ${form.woreda} woreda (${form.subCity} sub-city).`
+                      : `This user will see all guesthouses in ${form.subCity} sub-city.`
+                    }
+                  </div>
+                )}
               </div>
             )}
 

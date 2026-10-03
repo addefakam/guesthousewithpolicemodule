@@ -33,6 +33,9 @@ export async function GET(
         permissions: true,
         providerId: true,
         isActive: true,
+        jurisdictionType: true,
+        subCity: true,
+        woreda: true,
         createdAt: true,
         updatedAt: true,
         lastLogin: true,
@@ -71,7 +74,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const { username, password, name, email, phone, role, policeRank, permissions, providerId, isActive } = body;
+    const { username, password, name, email, phone, role, policeRank, permissions, providerId, isActive, jurisdictionType, subCity, woreda } = body;
 
     const existing = await db.user.findUnique({ where: { id } });
     if (!existing) {
@@ -112,6 +115,10 @@ export async function PUT(
     }
     if (providerId !== undefined) updateData.providerId = providerId || null;
     if (isActive !== undefined) updateData.isActive = isActive;
+    // ── Police jurisdiction ──
+    if (jurisdictionType !== undefined) updateData.jurisdictionType = jurisdictionType;
+    if (subCity !== undefined) updateData.subCity = subCity || null;
+    if (woreda !== undefined) updateData.woreda = woreda || null;
 
     const updated = await db.user.update({
       where: { id },
@@ -127,6 +134,9 @@ export async function PUT(
         permissions: true,
         providerId: true,
         isActive: true,
+        jurisdictionType: true,
+        subCity: true,
+        woreda: true,
         createdAt: true,
         updatedAt: true,
         provider: {

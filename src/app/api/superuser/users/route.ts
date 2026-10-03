@@ -56,6 +56,9 @@ export async function GET(req: NextRequest) {
           permissions: true,
           providerId: true,
           isActive: true,
+          jurisdictionType: true,
+          subCity: true,
+          woreda: true,
           createdAt: true,
           updatedAt: true,
           lastLogin: true,
@@ -121,7 +124,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { username, password, name, email, phone, role, policeRank, permissions, providerId, isActive } = body;
+    const { username, password, name, email, phone, role, policeRank, permissions, providerId, isActive, jurisdictionType, subCity, woreda } = body;
 
     if (!username || !password || !name || !role) {
       return NextResponse.json(
@@ -171,6 +174,9 @@ export async function POST(req: NextRequest) {
         permissions: typeof permissions === "string" ? permissions : JSON.stringify(permissions || []),
         providerId: providerId || null,
         isActive: isActive !== undefined ? isActive : true,
+        jurisdictionType: jurisdictionType || "CITY",
+        subCity: subCity || null,
+        woreda: woreda || null,
       },
       select: {
         id: true,
@@ -183,6 +189,9 @@ export async function POST(req: NextRequest) {
         permissions: true,
         providerId: true,
         isActive: true,
+        jurisdictionType: true,
+        subCity: true,
+        woreda: true,
         createdAt: true,
         updatedAt: true,
         provider: {
