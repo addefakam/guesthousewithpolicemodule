@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureDatabase } from "@/lib/init-db";
+import { ensureDatabase, resetInitFlag } from "@/lib/init-db";
 import { db } from "@/lib/db";
 import { getAuthContext, AuthError } from "@/lib/tenant";
 import { hashPassword } from "@/lib/auth-utils";
@@ -8,6 +8,7 @@ import { isValidPhone, isValidEmail } from "@/lib/utils";
 // GET /api/superuser/users — List ALL users across all providers with stats
 export async function GET(req: NextRequest) {
   try {
+    resetInitFlag();
     await ensureDatabase();
 
     const auth = await getAuthContext(req);
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
 // POST /api/superuser/users — Create a new user (any role, any provider)
 export async function POST(req: NextRequest) {
   try {
+    resetInitFlag();
     await ensureDatabase();
 
     const auth = await getAuthContext(req);

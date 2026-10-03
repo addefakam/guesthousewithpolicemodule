@@ -897,10 +897,10 @@ export async function ensureDatabase(): Promise<void> {
   if (_initDone) {
     // Always run migrations synchronously to ensure columns exist
     // before any query executes. Migrations are idempotent.
-    if (!_migrationsRan) {
-      _migrationsRan = true;
-      await runMigrationsOnly();
-    }
+    // Note: _migrationsRan flag is intentionally NOT used here —
+    // we want migrations to run on EVERY cold start because new
+    // ALTER TABLE statements may have been added since the last deploy.
+    await runMigrationsOnly();
     return;
   }
   if (_initPromise) return _initPromise;

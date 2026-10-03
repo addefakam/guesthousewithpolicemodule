@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureDatabase } from "@/lib/init-db";
+import { ensureDatabase, resetInitFlag } from "@/lib/init-db";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { hashPassword, verifyPassword, createToken, type JWTPayload } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
-    // Ensure database tables exist before any Prisma operation
+    // Ensure database tables exist before any Prisma operation.
+    // Reset the init flag first so migrations always re-run on cold
+    // starts — catches any new ALTER TABLE statements added since
+    // the last deploy.
+    resetInitFlag();
     await ensureDatabase();
 
     const body = await req.json();
