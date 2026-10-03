@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 // ── Force dynamic rendering ──
@@ -13,35 +13,68 @@ export async function GET(req: NextRequest) {
     requirePolice(auth);
 
     // ── Lazy maintenance (global scope, throttled + idempotent) ──
-    // Police endpoints were previously reading raw SQL without running
-    // this, so they showed stale data — past-checkout reservations that
-    // the operator side had already auto-cancelled still appeared as
-    // ACTIVE on the police dashboard. Running this here (with no scope
-    // = city-wide) ensures police see the SAME fresh state the operator
-    // sees after they open their app.
-    //
-    // Throttled to max-once-per-30s in the lib — repeated reads are
-    // cheap no-ops. Never blocks reads on maintenance failures.
     try {
       await runReservationMaintenance({});
     } catch {
       // Maintenance must never break police dashboard reads.
     }
 
-    // Single $queryRaw for all city-wide stats — 1 round-trip instead of 6
-    const stats = await db.$queryRawUnsafe<Array<{ count?: bigint; total?: number | null }>>(`
-      SELECT COUNT(*)::bigint AS count FROM "Provider"
-      UNION ALL
-      SELECT COUNT(*)::bigint AS count FROM "Room"
-      UNION ALL
-      SELECT COUNT(*)::bigint AS count FROM "Guest"
-      UNION ALL
-      SELECT COUNT(*)::bigint AS count FROM "Reservation" WHERE "status" IN ('UPCOMING','ACTIVE')
-      UNION ALL
-      SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "Reservation"
-      UNION ALL
-      SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "DaytimeBooking"
-    `);
+    // ── Jurisdiction filter ──
+    // CITY → sees everything (no WHERE clause)
+    // SUBCITY → only providers in auth.subCity
+    // WOREDA → only providers in auth.subCity + auth.woreda
+    const jFilter = getJurisdictionFilter(auth);
+    const hasSubCity = !!jFilter.subCity;
+    const hasWoreda = !!jFilter.woreda;
+    const subCity = hasSubCity ? String(jFilter.subCity).replace(/'/g, "''") : "";
+    const woreda = hasWoreda ? String(jFilter.woreda).replace(/'/g, "''") : "";
+
+    // Build the provider WHERE clause for jurisdiction filtering
+    // Used in all SQL queries below to scope data to the user's jurisdiction
+    const providerWhere = hasSubCity
+      ? (hasWoreda
+          ? `WHERE p."subCity" = '${subCity}' AND p."woreda" = '${woreda}'`
+          : `WHERE p."subCity" = '${subCity}'`)
+      : "";
+    // For counts that don't join Provider directly, we need a subquery to get provider IDs
+    const providerIdsSubquery = hasSubCity
+      ? (hasWoreda
+          ? `SELECT "id" FROM "Provider" WHERE "subCity" = '${subCity}' AND "woreda" = '${woreda}'`
+          : `SELECT "id" FROM "Provider" WHERE "subCity" = '${subCity}'`)
+      : null;
+
+    // ── Build SQL for stats ──
+    // When jurisdiction is CITY, no Provider join needed (counts across all)
+    // When jurisdiction is SUBCITY/WOREDA, we need to filter by provider
+    const statsSQL = providerIdsSubquery
+      ? `
+        SELECT COUNT(*)::bigint AS count FROM "Provider" WHERE "id" IN (${providerIdsSubquery})
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Room" WHERE "providerId" IN (${providerIdsSubquery})
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Guest" WHERE "providerId" IN (${providerIdsSubquery})
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Reservation" WHERE "providerId" IN (${providerIdsSubquery}) AND "status" IN ('UPCOMING','ACTIVE')
+        UNION ALL
+        SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "Reservation" WHERE "providerId" IN (${providerIdsSubquery})
+        UNION ALL
+        SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "DaytimeBooking" WHERE "providerId" IN (${providerIdsSubquery})
+      `
+      : `
+        SELECT COUNT(*)::bigint AS count FROM "Provider"
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Room"
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Guest"
+        UNION ALL
+        SELECT COUNT(*)::bigint AS count FROM "Reservation" WHERE "status" IN ('UPCOMING','ACTIVE')
+        UNION ALL
+        SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "Reservation"
+        UNION ALL
+        SELECT COALESCE(SUM("paidAmount"), 0)::float AS total FROM "DaytimeBooking"
+      `;
+
+    const stats = await db.$queryRawUnsafe<Array<{ count?: bigint; total?: number | null }>>(statsSQL);
 
     const totalProviders = Number(stats[0].count);
     const totalRooms = Number(stats[1].count);
@@ -51,12 +84,8 @@ export async function GET(req: NextRequest) {
     const daytimeRevenue = stats[5].total || 0;
     const revenue = reservationRevenue + daytimeRevenue;
 
-    // Per-provider breakdown — single $queryRaw instead of 3 groupBy round-trips
-    const providerBreakdown = await db.$queryRawUnsafe<{
-      id: string; name: string; status: string;
-      rooms: number; guests: number; totalReservations: number;
-      activeReservations: number; revenue: number;
-    }[]>(`
+    // Per-provider breakdown — add jurisdiction WHERE clause
+    const breakdownSQL = `
       SELECT
         p."id", p."name", p."status",
         COALESCE(r.c, 0)::int AS "rooms",
@@ -65,6 +94,7 @@ export async function GET(req: NextRequest) {
         COALESCE(ar.c, 0)::int AS "activeReservations",
         COALESCE(rr.total, 0)::float + COALESCE(dr.total, 0)::float AS "revenue"
       FROM "Provider" p
+      ${providerWhere ? providerWhere.replace("WHERE p.", "WHERE p.") : ""}
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Room" GROUP BY "providerId") r ON r."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Guest" GROUP BY "providerId") g ON g."providerId" = p."id"
       LEFT JOIN (SELECT "providerId", COUNT(*) AS c FROM "Reservation" GROUP BY "providerId") rv ON rv."providerId" = p."id"
@@ -80,7 +110,13 @@ export async function GET(req: NextRequest) {
           ELSE 4
         END ASC,
         p."createdAt" DESC
-    `);
+    `;
+
+    const providerBreakdown = await db.$queryRawUnsafe<{
+      id: string; name: string; status: string;
+      rooms: number; guests: number; totalReservations: number;
+      activeReservations: number; revenue: number;
+    }[]>(breakdownSQL);
 
     return NextResponse.json({
       totalProviders,

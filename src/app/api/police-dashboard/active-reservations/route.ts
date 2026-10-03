@@ -1,32 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 
 export const dynamic = "force-dynamic";
 
-// ── City-wide list of live reservations (ACTIVE first, then upcoming) ──
-// Used by the standalone Police App "Guests" screen and available to any
-// police-grade surface. Read-only, capped, police-only.
-//
-// Uses raw SQL to avoid Prisma's prepared-statement cache issue with
-// the RoomType enum 
-// values are cast to text to bypass enum validation.
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     requirePolice(auth);
 
-    // ── Lazy maintenance (global scope, throttled + idempotent) ──
-    // Without this, police would see "ghost" ACTIVE reservations that
-    // the operator side has already auto-cancelled (past-checkout
-    // reservations are auto-cancelled by runReservationMaintenance,
-    // but only the operator endpoints were triggering it). Running it
-    // here with no scope = city-wide ensures police and operator see
-    // the same live state.
-    //
-    // Throttled to max-once-per-30s in the lib — repeated reads are
-    // cheap no-ops. Never blocks reads on maintenance failures.
     try {
       await runReservationMaintenance({});
     } catch {
@@ -36,15 +19,21 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const limit = Math.min(Number(url.searchParams.get("limit")) || 500, 500);
 
-    const rows = await db.$queryRaw<{
-      id: string; status: string; checkIn: string; checkOut: string;
-      nights: number; totalCost: number; paidAmount: number; balance: number;
-      secondGuestName: string | null; secondGuestIdNumber: string | null;
-      guestId: string | null;
-      guestName: string; guestPhone: string; guestIdNumber: string; guestNationality: string;
-      roomNumber: string; roomName: string; roomType: string;
-      providerId: string; providerName: string; providerPhone: string; providerAddress: string;
-    }[]>`
+    // ── Jurisdiction filter ──
+    const jFilter = getJurisdictionFilter(auth);
+    const hasSubCity = !!jFilter.subCity;
+    const hasWoreda = !!jFilter.woreda;
+    const subCity = hasSubCity ? String(jFilter.subCity).replace(/'/g, "''") : "";
+    const woreda = hasWoreda ? String(jFilter.woreda).replace(/'/g, "''") : "";
+
+    // Build jurisdiction WHERE clause for the Provider join
+    const jurisdictionClause = hasSubCity
+      ? (hasWoreda
+          ? `AND p."subCity" = '${subCity}' AND p."woreda" = '${woreda}'`
+          : `AND p."subCity" = '${subCity}'`)
+      : "";
+
+    const sql = `
       SELECT
         r."id", r."status", r."checkIn", r."checkOut",
         r."nights", r."totalCost", r."paidAmount", r."balance",
@@ -60,10 +49,20 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "Guest" g ON g."id" = r."guestId"
       LEFT JOIN "Room" rm ON rm."id" = r."roomId"
       LEFT JOIN "Provider" p ON p."id" = r."providerId"
-      WHERE r."status" IN ('ACTIVE', 'UPCOMING')
+      WHERE r."status" IN ('ACTIVE', 'UPCOMING') ${jurisdictionClause}
       ORDER BY r."status" ASC, r."checkIn" ASC
       LIMIT ${limit}
     `;
+
+    const rows = await db.$queryRawUnsafe<{
+      id: string; status: string; checkIn: string; checkOut: string;
+      nights: number; totalCost: number; paidAmount: number; balance: number;
+      secondGuestName: string | null; secondGuestIdNumber: string | null;
+      guestId: string | null;
+      guestName: string; guestPhone: string; guestIdNumber: string; guestNationality: string;
+      roomNumber: string; roomName: string; roomType: string;
+      providerId: string; providerName: string; providerPhone: string; providerAddress: string;
+    }[]>(sql);
 
     const items = rows.map((r) => ({
       id: r.id,

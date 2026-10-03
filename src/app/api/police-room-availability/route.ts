@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
+import { ensureNewTables } from "@/lib/ensure-tables";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale room availability data at the edge.
@@ -9,26 +10,33 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureNewTables();
     const auth = await getAuthContext(req);
     requirePolice(auth);
 
-    // ── Lazy maintenance (global scope, throttled + idempotent) ──
-    // Critical for room status parity with the operator side: this is
-    // what heals stale OCCUPIED/RESERVED room flags back to AVAILABLE
-    // when the guest has already checked out (or the reservation was
-    // auto-cancelled). Without this, police would see rooms stuck in
-    // OCCUPIED that the operator side has already released.
-    //
-    // Throttled to max-once-per-30s in the lib — repeated reads are
-    // cheap no-ops. Never blocks reads on maintenance failures.
     try {
       await runReservationMaintenance({});
     } catch {
       // Maintenance must never break police room availability reads.
     }
 
-    // This is needed because Prisma's connection pool may have cached
-    // the old enum values .
+    // ── Jurisdiction filter ──
+    const jFilter = getJurisdictionFilter(auth);
+    const hasSubCity = !!jFilter.subCity;
+    const hasWoreda = !!jFilter.woreda;
+    const subCity = hasSubCity ? String(jFilter.subCity).replace(/'/g, "''") : "";
+    const woreda = hasWoreda ? String(jFilter.woreda).replace(/'/g, "''") : "";
+    // Provider WHERE clause for jurisdiction
+    const providerJurisdictionWhere = hasSubCity
+      ? (hasWoreda
+          ? `AND p."subCity" = '${subCity}' AND p."woreda" = '${woreda}'`
+          : `AND p."subCity" = '${subCity}'`)
+      : "";
+    const providerIdsSubquery = hasSubCity
+      ? (hasWoreda
+          ? `SELECT "id" FROM "Provider" WHERE "subCity" = '${subCity}' AND "woreda" = '${woreda}'`
+          : `SELECT "id" FROM "Provider" WHERE "subCity" = '${subCity}'`)
+      : null;
 
     // ── Count ALL providers (regardless of status) ──
     // The rooms breakdown below filters by APPROVED (since PENDING /
