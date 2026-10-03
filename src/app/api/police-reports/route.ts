@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { getAuthContext, requirePolice, AuthError } from "@/lib/tenant";
+import { getAuthContext, requirePolice, getJurisdictionFilter, AuthError } from "@/lib/tenant";
 import { logAudit } from "@/lib/audit";
 
 export async function GET(req: NextRequest) {
@@ -37,7 +37,19 @@ export async function GET(req: NextRequest) {
       label = now.toLocaleDateString("en-US", { year: "numeric", month: "long" });
     }
 
-    const providerFilter = providerId ? { providerId } : {};
+    // ── Jurisdiction filter ──
+    // Merge the jurisdiction filter with the explicit providerId filter.
+    // If the user specifies a providerId, it takes precedence (they're
+    // drilling down into a specific provider). Otherwise, apply the
+    // jurisdiction filter (CITY/SUBCITY/WOREDA).
+    const jFilter = getJurisdictionFilter(auth);
+    const providerFilter = providerId
+      ? { providerId }
+      : jFilter.subCity
+        ? jFilter.woreda
+          ? { provider: { subCity: jFilter.subCity, woreda: jFilter.woreda } }
+          : { provider: { subCity: jFilter.subCity } }
+        : {};
 
     // ── 1. Summary KPIs ──
     const [totalGuests, totalReservations, totalCheckIns, totalCheckOuts, totalMatches, totalProviders, totalRooms] =
@@ -57,8 +69,8 @@ export async function GET(req: NextRequest) {
         db.suspectMatch.count({
           where: { ...providerFilter, createdAt: { gte: startDate, lte: endDate } },
         }),
-        providerId ? Promise.resolve(0) : db.provider.count({ where: { status: "APPROVED" } }),
-        providerId ? db.room.count({ where: { providerId } }) : db.room.count(),
+        providerId ? Promise.resolve(0) : db.provider.count({ where: { status: "APPROVED", ...(jFilter.subCity ? { subCity: jFilter.subCity as string, ...(jFilter.woreda ? { woreda: jFilter.woreda as string } : {}) } : {}) } }),
+        providerId ? db.room.count({ where: { providerId } }) : (jFilter.subCity ? db.room.count({ where: { provider: { subCity: jFilter.subCity as string, ...(jFilter.woreda ? { woreda: jFilter.woreda as string } : {}) } } }) : db.room.count()),
       ]);
 
     // Active guests (checked in and not checked out during this period)

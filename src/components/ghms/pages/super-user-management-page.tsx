@@ -293,6 +293,19 @@ function UserRow({
               {user.policeRank}
             </Badge>
           )}
+          {/* Jurisdiction badge — shows sub-city/woreda level for police users */}
+          {user.role === "POLICE" && (user as Record<string, unknown>).jurisdictionType && (user as Record<string, unknown>).jurisdictionType !== "CITY" && (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-semibold px-1.5 py-0 bg-indigo-50 text-indigo-700 border-indigo-200"
+            >
+              {(user as Record<string, unknown>).jurisdictionType === "WOREDA" && (user as Record<string, unknown>).woreda
+                ? `${(user as Record<string, unknown>).woreda} (${(user as Record<string, unknown>).subCity})`
+                : (user as Record<string, unknown>).subCity
+                ? `${(user as Record<string, unknown>).subCity} Sub-City`
+                : "Sub-City"}
+            </Badge>
+          )}
         </div>
         <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
           <span className="flex items-center gap-1">
@@ -1231,6 +1244,15 @@ export default function SuperUserManagementPage() {
                     {viewingUser.role === "POLICE" && viewingUser.policeRank && (
                       <Badge variant="outline" className="text-xs">
                         {viewingUser.policeRank}
+                      </Badge>
+                    )}
+                    {/* Jurisdiction badge in view dialog */}
+                    {viewingUser.role === "POLICE" && (viewingUser as Record<string, unknown>).jurisdictionType && (viewingUser as Record<string, unknown>).jurisdictionType !== "CITY" && (
+                      <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+                        {(viewingUser as Record<string, unknown>).jurisdictionType === "WOREDA" && (viewingUser as Record<string, unknown>).woreda
+                          ? `${(viewingUser as Record<string, unknown>).woreda} woreda · ${(viewingUser as Record<string, unknown>).subCity}`
+                          : `${(viewingUser as Record<string, unknown>).subCity} Sub-City`
+                        }
                       </Badge>
                     )}
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
