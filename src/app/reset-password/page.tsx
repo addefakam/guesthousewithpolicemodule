@@ -8,10 +8,14 @@
 // expires or the user manually clears site data.
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, KeyRound, Phone, MessageCircle } from "lucide-react";
 import { apiConfirmReset } from "@/lib/api";
+
+// Hardcoded per spec — system admin's contact number shown on every
+// reset-password page state so users can always reach the admin.
+const ADMIN_PHONE = "+251913169652";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -35,6 +39,39 @@ function ResetPasswordForm() {
           The reset link is missing a token. Please request a new password reset
           link from the login page.
         </p>
+
+        {/* Admin contact — call to action for users who hit this dead-end */}
+        <div className="mb-6 w-full max-w-sm rounded-2xl border border-indigo-100 bg-indigo-50 px-5 py-4 text-left">
+          <div className="flex items-center gap-2 text-indigo-700 font-semibold text-sm">
+            <Phone className="h-4 w-4" />
+            <span>Call the system admin</span>
+          </div>
+          <p className="mt-1.5 text-xs text-indigo-600 leading-relaxed">
+            Tell the admin you need a password reset. They will generate a new
+            reset link and send it to you.
+          </p>
+          <div className="mt-3 flex flex-col gap-2">
+            <a
+              href={`tel:${ADMIN_PHONE}`}
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Call {ADMIN_PHONE}
+            </a>
+            <a
+              href={`https://wa.me/${ADMIN_PHONE.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                "Hello admin, I need a password reset link for my GHMS account."
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              WhatsApp {ADMIN_PHONE}
+            </a>
+          </div>
+        </div>
+
         <button
           onClick={() => router.push("/")}
           className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white active:bg-slate-800 transition-colors"
@@ -171,6 +208,20 @@ function ResetPasswordForm() {
         >
           ← Back to Login
         </button>
+
+        {/* Admin contact footer — always visible on the reset page */}
+        <div className="mt-8 w-full rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-center">
+          <p className="text-xs text-indigo-700 font-medium">
+            Need help? Call the system admin:
+          </p>
+          <a
+            href={`tel:${ADMIN_PHONE}`}
+            className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:underline"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            {ADMIN_PHONE}
+          </a>
+        </div>
       </div>
     </div>
   );

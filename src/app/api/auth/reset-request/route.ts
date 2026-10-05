@@ -4,6 +4,14 @@ import { db } from "@/lib/db";
 import { ensureDatabase } from "@/lib/init-db";
 
 /**
+ * Hardcoded per spec — the system admin's contact number that every
+ * reset request must surface to the user. Returned in the API response
+ * so clients (web, mobile, police app) can render it consistently
+ * without each one hardcoding the number.
+ */
+const ADMIN_PHONE = "+251913169652";
+
+/**
  * POST /api/auth/reset-request
  *
  * Body: { email: string }
@@ -18,6 +26,9 @@ import { ensureDatabase } from "@/lib/init-db";
  * If not found, returns a generic 200 with `sent: false` so the endpoint
  * can't be used to enumerate which emails are registered.
  *
+ * Every response includes `adminPhone` so clients can show
+ * "Call the system admin at <number>" in the reset UI.
+ *
  * No authentication required — this is the public reset-request endpoint.
  */
 export async function POST(req: NextRequest) {
@@ -28,7 +39,12 @@ export async function POST(req: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { error: "Email is required" },
+        {
+          error: "Email is required",
+          adminPhone: ADMIN_PHONE,
+          adminMessage:
+            "Call the system admin to receive your reset link.",
+        },
         { status: 400 },
       );
     }
@@ -47,10 +63,14 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       // Don't reveal whether the email exists — return generic success.
+      // Still surface the admin phone so the user knows who to call.
       return NextResponse.json({
         sent: false,
         message:
           "If an account with that email exists, a reset link has been generated.",
+        adminPhone: ADMIN_PHONE,
+        adminMessage:
+          "Call the system admin to receive your reset link.",
       });
     }
 
@@ -88,6 +108,12 @@ export async function POST(req: NextRequest) {
         username: user.username,
         email: user.email,
       },
+      // Always present — clients render the admin-contact message using
+      // these fields. Kept here so a single source of truth is enforced
+      // on the server, not duplicated across client files.
+      adminPhone: ADMIN_PHONE,
+      adminMessage:
+        "Call the system admin to receive your reset link.",
     });
   } catch (error: unknown) {
     console.error(
@@ -96,6 +122,14 @@ export async function POST(req: NextRequest) {
     );
     const message =
       error instanceof Error ? error.message : "Failed to request reset";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: message,
+        adminPhone: ADMIN_PHONE,
+        adminMessage:
+          "Call the system admin to receive your reset link.",
+      },
+      { status: 500 },
+    );
   }
 }

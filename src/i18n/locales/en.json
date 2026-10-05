@@ -77,6 +77,11 @@
       "mobileTitle": "Install the GHMS app",
       "mobileDesc": "Tap anywhere to install the app on your home screen — no app store needed. Faster access, works offline, opens full-screen."
     },
+    "resetPassword": {
+      "adminContactLabel": "Call the system admin",
+      "adminContactHelp": "Tell the admin you requested a password reset. They will give you a reset link to set a new password.",
+      "adminPhone": "+251913169652"
+    },
     "URGENT": "URGENT",
     "Click to view": "Click to view →",
     "lblguest": "Guest",

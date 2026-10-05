@@ -12,8 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Copy, Check, Mail, ExternalLink } from "lucide-react";
+import { Loader2, Copy, Check, Mail, ExternalLink, Phone, MessageCircle } from "lucide-react";
 import { apiRequestReset } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+
+// Hardcoded per spec — the system admin's contact number that every
+// reset request must display to the user. Pulled from i18n so the
+// label/help text is translated, but the number itself is identical
+// in every locale.
+const ADMIN_PHONE = "+251913169652";
 
 /**
  * ResetPasswordDialog — modal that lets a user request a password reset
@@ -53,6 +60,49 @@ export function ResetPasswordDialog({
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // i18n hook — the dialog is used by all three login screens (web, mobile,
+  // police) which run under different i18n namespaces, so we use the
+  // default namespace which falls back to the common translation files.
+  const { t } = useTranslation();
+
+  // The admin-contact message is shown both in the form state (before submit)
+  // and in the result state (after submit). Defined here so both states can
+  // share the same JSX block.
+  const adminContactBlock = (
+    <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs">
+      <div className="flex items-center gap-2 text-indigo-700 font-semibold">
+        <Phone className="h-3.5 w-3.5" />
+        <span>{t("common:resetPassword.adminContactLabel", "Call the system admin")}</span>
+      </div>
+      <p className="mt-1.5 text-indigo-600 leading-relaxed">
+        {t(
+          "common:resetPassword.adminContactHelp",
+          "Tell the admin you requested a password reset. They will give you a reset link to set a new password.",
+        )}
+      </p>
+      <div className="mt-3 flex flex-col gap-2">
+        <a
+          href={`tel:${ADMIN_PHONE}`}
+          className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+        >
+          <Phone className="h-3.5 w-3.5" />
+          Call {ADMIN_PHONE}
+        </a>
+        <a
+          href={`https://wa.me/${ADMIN_PHONE.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+            `Hello admin, I requested a password reset for my GHMS account. My email is: ${email || "(my email)"}`
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          WhatsApp {ADMIN_PHONE}
+        </a>
+      </div>
+    </div>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +170,15 @@ export function ResetPasswordDialog({
             Reset Password
           </DialogTitle>
           <DialogDescription>
-            Enter your account email and we&apos;ll generate a reset link for you.
+            Enter your account email. After submitting, call the system admin
+            to receive your reset link.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Admin contact — shown in BOTH the form and result state so the
+            user sees the call-to-action message at every step of the reset
+            flow, as required by the spec. */}
+        {adminContactBlock}
 
         {result ? (
           // Success state — show the generated reset link

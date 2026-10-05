@@ -77,6 +77,11 @@
       "mobileTitle": "App GHMS dhaabi",
       "mobileDesc": "App isin haawarii isiniif dhaabadhuuf as tuqi — app store barbaachisa miti. Saffisaan dhihaachu, offline t'u hojjeta, guutuu isaa bana."
     },
+    "resetPassword": {
+      "adminContactLabel": "Bulchaaa sirnaa waami",
+      "adminContactHelp": "Jechaawwan iccitiwwan kee deebisuu gaafatte jechuun bulchaatti himaa. Jechoota haaraa qabiyyeeffachuuf linkii deebii'aa siif kennaa.",
+      "adminPhone": "+251913169652"
+    },
     "URGENT": "ARIFATISAA",
     "Click to view": "Ilaaluuf tuqi →",
     "lblguest": "Keessummoota",
