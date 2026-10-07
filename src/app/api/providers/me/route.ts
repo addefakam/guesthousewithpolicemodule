@@ -6,8 +6,11 @@ import { isValidPhone, isValidEmail } from "@/lib/utils";
 /**
  * /api/providers/me
  *
- * Lets an OPERATOR (or STAFF with permission) VIEW and EDIT their own
+ * Lets an OPERATOR (or SUPERUSER with a providerId) VIEW and EDIT their own
  * organization info — the Provider record + the per-provider Settings row.
+ *
+ * STAFF can VIEW (GET) but cannot EDIT (PATCH) — they get a 403.
+ * POLICE is rejected on both — they manage providers via /api/providers/[id].
  *
  * GET  → returns merged { ...providerFields, ...settingsFields }
  * PATCH → splits the body into:
@@ -16,8 +19,8 @@ import { isValidPhone, isValidEmail } from "@/lib/utils";
  *   - Operational fields (currency, taxRate, language, checkInTime,
  *     checkOutTime) → written to Settings. Instant.
  *
- * Access: OPERATOR + STAFF + SUPERUSER (when they have a providerId).
- * POLICE is rejected — they manage providers via /api/providers/[id].
+ * Access: OPERATOR + SUPERUSER (when they have a providerId).
+ *         STAFF may GET only. POLICE is fully rejected.
  */
 
 const DEFAULT_SETTINGS = {
@@ -137,6 +140,19 @@ export async function PATCH(req: NextRequest) {
     if (auth.role === "POLICE") {
       return NextResponse.json(
         { error: "Police accounts cannot edit organization info here." },
+        { status: 403 }
+      );
+    }
+
+    // STAFF are view-only on this endpoint — they may not modify the
+    // organization profile at all. Operators and super-users (with a
+    // providerId) retain full edit access.
+    if (auth.role === "STAFF") {
+      return NextResponse.json(
+        {
+          error:
+            "Staff accounts cannot modify organization profile. Please ask the operator or owner to make changes.",
+        },
         { status: 403 }
       );
     }

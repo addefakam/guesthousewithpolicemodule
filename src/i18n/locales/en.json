@@ -3719,6 +3719,8 @@
     "gpsSaved": "GPS coordinates saved",
     "saveCore": "Save Core Info",
     "suspendedEditBlocked": "Editing is disabled while your account is suspended.",
+    "staffViewOnlyTitle": "View-only access",
+    "staffViewOnlyMessage": "Staff accounts cannot modify the organization profile. Please ask the operator or owner to make any changes.",
     "savedWithReapproval": "Core info updated. Status reverted to PENDING — police will re-review your changes.",
     "saved": "Organization info saved",
     "errorFileTooLarge": "File too large (max 5MB)",

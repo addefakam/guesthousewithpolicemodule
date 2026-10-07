@@ -3722,6 +3722,8 @@
     "gpsSaved": "Gabaasa GPS olkaa'ameera",
     "saveCore": "Odeeffannoo Ijoo Olkaa'i",
     "suspendedEditBlocked": "Yoo herregni kee cufame haala jijjiiruu hin dandeessu.",
+    "staffViewOnlyTitle": "Ilaalu qofa",
+    "staffViewOnlyMessage": "Herregni hojjettootaa profaayilii dargaggeessaa jijjiiruu hin danda'u. Haala jijjiiruuf abbaa ykn hoogganaa dargaggeessichaat walitti gaafadhaa.",
     "savedWithReapproval": "Odeeffannoo ijoo goci. Haalli gara EEGAMAA deebi'e — poolisiin yaalii haaruu kee irra deebi'a.",
     "saved": "Odeeffannoo dargaggeessaa olkaa'ameera",
     "errorFileTooLarge": "Faayili gudda (max 5MB)",

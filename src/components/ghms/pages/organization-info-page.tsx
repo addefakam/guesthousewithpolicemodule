@@ -28,6 +28,7 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
+  Eye,
 } from "lucide-react";
 
 // ── Types ──
@@ -98,6 +99,18 @@ function formatDate(d: string | null | undefined): string {
 export default function OrganizationInfoPage() {
   const { t } = useTranslation("organization");
   const refreshKey = useAppStore((s) => s.refreshKey);
+  const currentUser = useAppStore((s) => s.currentUser);
+
+  // STAFF are view-only on this page — they cannot modify the organization
+  // profile at all (server-side enforced by /api/providers/me PATCH → 403).
+  // We also disable every input and hide every Save button on the client
+  // so they get immediate visual feedback that they have no edit rights.
+  const isStaff = currentUser?.role === "STAFF";
+
+  // Inputs are disabled if the org is suspended OR the user is staff.
+  // Both conditions block edits — suspended orgs can't be edited by anyone,
+  // staff can't edit even unsuspended orgs.
+  const readOnly = isStaff;
 
   const [data, setData] = useState<MyProvider | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,6 +258,30 @@ export default function OrganizationInfoPage() {
         </p>
       </div>
 
+      {/* ── Staff view-only banner ──
+          STAFF users cannot modify any field on this page. The banner
+          explains why and tells them who to ask. Server-side PATCH also
+          returns 403 for STAFF, so even if a staff user bypasses the
+          disabled UI, the save will be rejected. */}
+      {isStaff && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 flex items-start gap-3">
+          <Eye className="h-5 w-5 text-indigo-600 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-semibold text-indigo-900">
+              {t("staffViewOnlyTitle", {
+                defaultValue: "View-only access",
+              })}
+            </p>
+            <p className="mt-0.5 text-indigo-700">
+              {t("staffViewOnlyMessage", {
+                defaultValue:
+                  "Staff accounts cannot modify the organization profile. Please ask the operator or owner to make any changes.",
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Section A — Status Banner (READ-ONLY) ── */}
       <Card>
         <CardHeader>
@@ -359,7 +396,7 @@ export default function OrganizationInfoPage() {
                 value={name}
                 onChange={(e) => { setName(e.target.value); onCoreChange(); }}
                 className="mt-1"
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
             </div>
             <div>
@@ -371,7 +408,7 @@ export default function OrganizationInfoPage() {
                 value={ownerName}
                 onChange={(e) => { setOwnerName(e.target.value); onCoreChange(); }}
                 className="mt-1"
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
             </div>
             <div>
@@ -384,7 +421,7 @@ export default function OrganizationInfoPage() {
                 onChange={(e) => { setPhone(e.target.value); onCoreChange(); }}
                 className="mt-1"
                 placeholder="+251 9XX XXX XXX"
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
             </div>
             <div>
@@ -397,7 +434,7 @@ export default function OrganizationInfoPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); onCoreChange(); }}
                 className="mt-1"
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
             </div>
             <div className="md:col-span-2">
@@ -410,7 +447,7 @@ export default function OrganizationInfoPage() {
                 onChange={(e) => { setAddress(e.target.value); onCoreChange(); }}
                 className="mt-1"
                 rows={2}
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
             </div>
             <div>
@@ -420,7 +457,7 @@ export default function OrganizationInfoPage() {
               <Select
                 value={type}
                 onValueChange={(v) => { setType(v); onCoreChange(); }}
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               >
                 <SelectTrigger id="type" className="mt-1">
                   <SelectValue />
@@ -443,7 +480,7 @@ export default function OrganizationInfoPage() {
                 value={licenseNo}
                 onChange={(e) => { setLicenseNo(e.target.value); onCoreChange(); }}
                 className="mt-1 font-mono"
-                disabled={data.status === "SUSPENDED"}
+                disabled={readOnly || data.status === "SUSPENDED"}
               />
               <p className="text-[10px] text-muted-foreground mt-1">
                 {t("licenseNoHint", {
@@ -453,20 +490,22 @@ export default function OrganizationInfoPage() {
             </div>
           </div>
 
-          {/* Save button */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t">
-            <Button
-              onClick={saveCore}
-              disabled={saving || !coreDirty || data.status === "SUSPENDED"}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-1.5" />
-              )}
-              {t("saveCore", { defaultValue: "Save Core Info" })}
-            </Button>
-          </div>
+          {/* Save button — hidden for STAFF (view-only) */}
+          {!isStaff && (
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <Button
+                onClick={saveCore}
+                disabled={saving || !coreDirty || data.status === "SUSPENDED"}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1.5" />
+                )}
+                {t("saveCore", { defaultValue: "Save Core Info" })}
+              </Button>
+            </div>
+          )}
           {data.status === "SUSPENDED" && (
             <p className="text-xs text-amber-600 text-right">
               {t("suspendedEditBlocked", {
@@ -501,6 +540,7 @@ export default function OrganizationInfoPage() {
                 value={currency}
                 onChange={(e) => { setCurrency(e.target.value); onOpsChange(); }}
                 className="mt-1"
+                disabled={readOnly}
               />
             </div>
             <div>
@@ -515,6 +555,7 @@ export default function OrganizationInfoPage() {
                 value={taxRate}
                 onChange={(e) => { setTaxRate(parseFloat(e.target.value) || 0); onOpsChange(); }}
                 className="mt-1"
+                disabled={readOnly}
               />
             </div>
             <div>
@@ -524,6 +565,7 @@ export default function OrganizationInfoPage() {
               <Select
                 value={language}
                 onValueChange={(v) => { setLanguage(v); onOpsChange(); }}
+                disabled={readOnly}
               >
                 <SelectTrigger id="language" className="mt-1">
                   <SelectValue />
@@ -546,6 +588,7 @@ export default function OrganizationInfoPage() {
                   value={checkInTime}
                   onChange={(e) => { setCheckInTime(e.target.value); onOpsChange(); }}
                   className="mt-1"
+                  disabled={readOnly}
                 />
               </div>
               <div>
@@ -558,26 +601,29 @@ export default function OrganizationInfoPage() {
                   value={checkOutTime}
                   onChange={(e) => { setCheckOutTime(e.target.value); onOpsChange(); }}
                   className="mt-1"
+                  disabled={readOnly}
                 />
               </div>
             </div>
           </div>
 
-          {/* Save button */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t">
-            <Button
-              onClick={saveOps}
-              disabled={saving || !opsDirty}
-              variant="outline"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-1.5" />
-              )}
-              {t("saveOps", { defaultValue: "Save Operational Config" })}
-            </Button>
-          </div>
+          {/* Save button — hidden for STAFF (view-only) */}
+          {!isStaff && (
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <Button
+                onClick={saveOps}
+                disabled={saving || !opsDirty}
+                variant="outline"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1.5" />
+                )}
+                {t("saveOps", { defaultValue: "Save Operational Config" })}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
