@@ -128,7 +128,7 @@ export async function DELETE(
       targetType: "USER",
       targetId: id,
       details: { name: existing.name || "", role: existing.role || "" },
-      providerId,
+      providerId: existing.providerId || "",
     });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

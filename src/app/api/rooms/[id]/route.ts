@@ -241,7 +241,7 @@ export async function DELETE(
       targetType: "ROOM",
       targetId: id,
       details: { roomNumber: existing.number || "" },
-      providerId,
+      providerId: existing.providerId,
     });
     await db.room.delete({ where: { id } });
 

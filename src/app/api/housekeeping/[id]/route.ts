@@ -115,7 +115,7 @@ export async function DELETE(
       targetType: "HOUSEKEEPING",
       targetId: id,
       details: { roomNumber: existing.roomNumber || "" },
-      providerId,
+      providerId: existing.providerId,
     });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
