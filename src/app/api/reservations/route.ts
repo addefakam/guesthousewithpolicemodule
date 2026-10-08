@@ -294,7 +294,10 @@ export async function POST(req: NextRequest) {
           checkIn: checkInDay,
           checkOut: checkOutDay,
           nights,
-          roomRate: rate,
+          // Store the baseline rate used for cost calculation:
+          // - If operator passed a custom roomRate, store that (it was applied to every night)
+          // - Otherwise store the room's pricePerNight as the baseline (weekend premium is captured in totalCost)
+          roomRate: roomRate && roomRate > 0 ? roomRate : room.pricePerNight,
           totalCost,
           paidAmount,
           balance,
