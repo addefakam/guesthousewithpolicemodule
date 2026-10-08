@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { uploadFile } from "@/lib/storage";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
+import { logStaffActivity } from "@/lib/staff-log";
 
 const DEFAULT_SETTINGS = {
   guestHouseName: "Guest House",

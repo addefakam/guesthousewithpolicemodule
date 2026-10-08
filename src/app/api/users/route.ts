@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { hashPassword } from "@/lib/auth-utils";
+import { logStaffActivity } from "@/lib/staff-log";
 
 export async function GET(req: NextRequest) {
   try {
