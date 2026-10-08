@@ -1027,7 +1027,7 @@ export default function RoomsPage() {
                              "Enable (Back to Service)" toggle. */
                           null
                         ) : (
-                          <DropdownMenuItem onClick={() => openEdit(room)}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(room); }}>
                             <Pencil className="mr-2 h-4 w-4" />
                             {t("btnEdit")}
                           </DropdownMenuItem>
@@ -1036,7 +1036,8 @@ export default function RoomsPage() {
                             MAINTENANCE → AVAILABLE (Back to Service) */}
                         {(room.status === "AVAILABLE" || room.status === "MAINTENANCE") && (
                           <DropdownMenuItem
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const nextStatus = room.status === "AVAILABLE" ? "MAINTENANCE" : "AVAILABLE";
                               handleStatusChange(room, nextStatus);
                             }}
@@ -1050,7 +1051,7 @@ export default function RoomsPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-rose-600 focus:text-rose-600"
-                          onClick={() => setDeleteDialog(room)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteDialog(room); }}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           {t("btnDelete")}
