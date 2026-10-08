@@ -230,7 +230,7 @@ const PAYMENT_STATUS: Record<string, { color: string; icon: "check" | "alert" | 
 const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
 
 const ROOM_FORM_DEFAULTS = {
-  number: "", type: "SINGLE", pricePerNight: "", floor: "1", capacity: "1", amenities: "",
+  number: "", type: "SINGLE", pricePerNight: "", floor: "", capacity: "1", amenities: "",
 };
 
 const RES_FORM_DEFAULTS = {
@@ -1220,7 +1220,7 @@ export default function MobileApp() {
       number: room.number,
       type: room.type,
       pricePerNight: String(room.pricePerNight || ""),
-      floor: String(room.floor || "1"),
+      floor: String(room.floor || ""),
       capacity: String(room.capacity || "1"),
       amenities: room.amenities || "",
     });
