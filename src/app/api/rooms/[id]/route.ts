@@ -22,7 +22,21 @@ export async function PUT(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
+    // Fetch existing room — wrap in try/catch in case the pricePerNightWeekend
+    // column hasn't been added to the production DB yet (init-db.ts ALTER
+    // TABLE runs on the first ensureDatabase() call, but this route may be
+    // hit before that happens). Fall back to a SELECT without the new column.
+    let existing;
+    try {
+      existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
+    } catch (findErr: unknown) {
+      const errMsg = findErr instanceof Error ? findErr.message : String(findErr);
+      if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+        existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
+      } else {
+        throw findErr;
+      }
+    }
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
@@ -59,40 +73,80 @@ export async function PUT(
       }
     }
 
-    const room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true },
-      where: { id },
-      data: {
-        ...(body.number !== undefined && { number: body.number }),
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.type !== undefined && { type: body.type }),
-        ...(body.pricePerNight !== undefined && {
-          pricePerNight: Number(body.pricePerNight),
-        }),
-        // Weekend price — null/empty clears it (back to single-rate), any
-        // positive number sets the Fri+Sat premium rate.
-        ...(body.pricePerNightWeekend !== undefined && {
-          pricePerNightWeekend:
-            body.pricePerNightWeekend === null ||
-            body.pricePerNightWeekend === "" ||
-            Number(body.pricePerNightWeekend) === 0
-              ? null
-              : Number(body.pricePerNightWeekend),
-        }),
-        ...(body.floor !== undefined && { floor: Number(body.floor) }),
-        ...(body.capacity !== undefined && {
-          capacity: Number(body.capacity),
-        }),
-        ...(body.amenities !== undefined && { amenities: body.amenities }),
-        ...(body.description !== undefined && {
-          description: body.description,
-        }),
-        ...(body.image !== undefined && {
-          image: body.image?.startsWith("data:")
-            ? await uploadFile(body.image, "rooms")
-            : body.image || "",
-        }),
-      },
-    });
+    // Update room — wrap in try/catch. If pricePerNightWeekend column doesn't
+    // exist on the production DB, retry the update without that field (the
+    // weekend price will be silently dropped, but the rest of the update
+    // succeeds — better than blocking all room edits until init-db runs).
+    let room;
+    try {
+      room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true },
+        where: { id },
+        data: {
+          ...(body.number !== undefined && { number: body.number }),
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.type !== undefined && { type: body.type }),
+          ...(body.pricePerNight !== undefined && {
+            pricePerNight: Number(body.pricePerNight),
+          }),
+          // Weekend price — null/empty clears it (back to single-rate), any
+          // positive number sets the Fri+Sat premium rate.
+          ...(body.pricePerNightWeekend !== undefined && {
+            pricePerNightWeekend:
+              body.pricePerNightWeekend === null ||
+              body.pricePerNightWeekend === "" ||
+              Number(body.pricePerNightWeekend) === 0
+                ? null
+                : Number(body.pricePerNightWeekend),
+          }),
+          ...(body.floor !== undefined && { floor: Number(body.floor) }),
+          ...(body.capacity !== undefined && {
+            capacity: Number(body.capacity),
+          }),
+          ...(body.amenities !== undefined && { amenities: body.amenities }),
+          ...(body.description !== undefined && {
+            description: body.description,
+          }),
+          ...(body.image !== undefined && {
+            image: body.image?.startsWith("data:")
+              ? await uploadFile(body.image, "rooms")
+              : body.image || "",
+          }),
+        },
+      });
+    } catch (updateErr: unknown) {
+      const errMsg = updateErr instanceof Error ? updateErr.message : String(updateErr);
+      if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+        // Retry without the pricePerNightWeekend field — column will be
+        // added by init-db.ts on the next ensureDatabase() call.
+        console.warn("[rooms PUT] pricePerNightWeekend column not found — retrying update without it.");
+        room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
+          where: { id },
+          data: {
+            ...(body.number !== undefined && { number: body.number }),
+            ...(body.name !== undefined && { name: body.name }),
+            ...(body.type !== undefined && { type: body.type }),
+            ...(body.pricePerNight !== undefined && {
+              pricePerNight: Number(body.pricePerNight),
+            }),
+            ...(body.floor !== undefined && { floor: Number(body.floor) }),
+            ...(body.capacity !== undefined && {
+              capacity: Number(body.capacity),
+            }),
+            ...(body.amenities !== undefined && { amenities: body.amenities }),
+            ...(body.description !== undefined && {
+              description: body.description,
+            }),
+            ...(body.image !== undefined && {
+              image: body.image?.startsWith("data:")
+                ? await uploadFile(body.image, "rooms")
+                : body.image || "",
+            }),
+          },
+        });
+      } else {
+        throw updateErr;
+      }
+    }
 
     // Staff activity log
     logStaffActivity({

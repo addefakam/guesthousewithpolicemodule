@@ -195,8 +195,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Check-out date must be after the check-in date" }, { status: 400 });
     }
 
-    // Get room to check type
-    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true } });
+    // Get room to check type. Wrap in try/catch — if the pricePerNightWeekend
+    // column doesn't exist yet on the production DB, retry without selecting
+    // that column (the weekend calc will fall back to the weekday rate).
+    let room;
+    try {
+      room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true } });
+    } catch (findErr: unknown) {
+      const errMsg = findErr instanceof Error ? findErr.message : String(findErr);
+      if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+        console.warn("[reservations POST] pricePerNightWeekend column not found — retrying without it. init-db.ts should add it on the next ensureDatabase() call.");
+        room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
+      } else {
+        throw findErr;
+      }
+    }
     if (!room) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }

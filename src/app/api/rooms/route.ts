@@ -8,6 +8,7 @@ import {
 } from "@/lib/tenant";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 import { logStaffActivity } from "@/lib/staff-log";
+import { ensureDatabase } from "@/lib/init-db";
 
 // ── Force dynamic rendering ──
 // Without this, Vercel may cache the API response at the edge, causing
@@ -18,6 +19,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    // ensureDatabase runs the ALTER TABLE statements in init-db.ts that
+    // add new columns (like pricePerNightWeekend) to existing DBs. Without
+    // this call, the SELECT below fails on databases that haven't yet
+    // had the column added — causing "Failed to load guest data" on the
+    // accommodation page (which fetches rooms in parallel with guests).
+    await ensureDatabase();
     const auth = await getAuthContext(req);
     const filter = getProviderFilter(auth);
 
@@ -62,10 +69,31 @@ export async function GET(req: NextRequest) {
 
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
 
-    const roomsRaw = await db.$queryRawUnsafe(
-      `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "pricePerNightWeekend", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
-      ...params
-    ) as Record<string, unknown>[];
+    // Use a try/catch around the SELECT — if the pricePerNightWeekend column
+    // doesn't exist yet on this database (e.g. ensureDatabase didn't run on
+    // this cold start), retry with a SELECT that omits the new column. The
+    // rooms will load with pricePerNightWeekend = null (no weekend premium).
+    let roomsRaw: Record<string, unknown>[];
+    try {
+      roomsRaw = await db.$queryRawUnsafe(
+        `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "pricePerNightWeekend", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
+        ...params
+      ) as Record<string, unknown>[];
+    } catch (selectErr: unknown) {
+      const errMsg = selectErr instanceof Error ? selectErr.message : String(selectErr);
+      if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+        // Fallback: retry without the new column. The init-db ALTER TABLE
+        // will run on the next ensureDatabase() call and add it for good.
+        console.warn("[rooms GET] pricePerNightWeekend column not found — retrying without it. The ALTER TABLE in init-db.ts should add it on the next request.");
+        roomsRaw = await db.$queryRawUnsafe(
+          `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
+          ...params
+        ) as Record<string, unknown>[];
+      } else {
+        // Different error — re-throw so the outer catch handles it
+        throw selectErr;
+      }
+    }
 
     // Serialize ALL fields — $queryRawUnsafe returns BigInt for INT
     // columns and Date for TIMESTAMP columns. Both cause JSON.stringify
@@ -76,6 +104,9 @@ export async function GET(req: NextRequest) {
       name: String(r.name || ""),
       type: String(r.type || ""),
       pricePerNight: Number(r.pricePerNight),
+      // pricePerNightWeekend is undefined when the fallback SELECT (no
+      // such column) ran — coerce to null so the client treats it as
+      // "no weekend premium set".
       pricePerNightWeekend: r.pricePerNightWeekend == null ? null : Number(r.pricePerNightWeekend),
       floor: Number(r.floor),
       capacity: Number(r.capacity),
@@ -136,21 +167,45 @@ export async function POST(req: NextRequest) {
             results.push({ number: String(number), status: "skipped", error: "Room number already exists" });
             continue;
           }
-          await db.room.create({
-            data: {
-              number: String(number),
-              name: name ? String(name) : `Room ${number}`,
-              type: String(type).toUpperCase() as import("@prisma/client").RoomType,
-              pricePerNight: pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight),
-              // Weekend price is optional — null/empty/0 means "use weekday rate for all nights"
-              pricePerNightWeekend: pricePerNightWeekend == null || pricePerNightWeekend === "" ? null : Number(pricePerNightWeekend),
-              floor: Number(floor),
-              capacity: Number(capacity),
-              amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
-              description: description ? String(description) : "",
-              providerId: auth.providerId,
-            },
-          });
+          try {
+            await db.room.create({
+              data: {
+                number: String(number),
+                name: name ? String(name) : `Room ${number}`,
+                type: String(type).toUpperCase() as import("@prisma/client").RoomType,
+                pricePerNight: pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight),
+                // Weekend price is optional — null/empty/0 means "use weekday rate for all nights"
+                pricePerNightWeekend: pricePerNightWeekend == null || pricePerNightWeekend === "" ? null : Number(pricePerNightWeekend),
+                floor: Number(floor),
+                capacity: Number(capacity),
+                amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
+                description: description ? String(description) : "",
+                providerId: auth.providerId,
+              },
+            });
+          } catch (createErr: unknown) {
+            // Fallback for production DBs that don't have the pricePerNightWeekend
+            // column yet — create without the weekend price.
+            const errMsg = createErr instanceof Error ? createErr.message : String(createErr);
+            if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+              console.warn("[rooms bulk] pricePerNightWeekend column not found — creating room without weekend price.");
+              await db.room.create({
+                data: {
+                  number: String(number),
+                  name: name ? String(name) : `Room ${number}`,
+                  type: String(type).toUpperCase() as import("@prisma/client").RoomType,
+                  pricePerNight: pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight),
+                  floor: Number(floor),
+                  capacity: Number(capacity),
+                  amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
+                  description: description ? String(description) : "",
+                  providerId: auth.providerId,
+                },
+              });
+            } else {
+              throw createErr;
+            }
+          }
           results.push({ number: String(number), status: "created" });
         } catch {
           results.push({ number: String(number), status: "error", error: "Database error" });
@@ -246,7 +301,27 @@ export async function POST(req: NextRequest) {
     } catch (createErr: unknown) {
       const errMsg = createErr instanceof Error ? createErr.message : String(createErr);
 
-      if (errMsg.includes("22P02") || errMsg.includes("invalid input value for enum")) {
+      if (errMsg.includes("pricePerNightWeekend") && errMsg.includes("does not exist")) {
+        // Fallback: the production DB hasn't had the ALTER TABLE run yet.
+        // Create the room WITHOUT the weekend price (will be null). The
+        // ALTER TABLE in init-db.ts will run on the next ensureDatabase()
+        // call, after which weekend price can be set via PUT.
+        console.warn("[rooms POST] pricePerNightWeekend column not found — creating room without weekend price.");
+        room = await db.room.create({
+          data: {
+            number,
+            name: name || `Room ${number}`,
+            type,
+            pricePerNight: priceVal,
+            floor: Number(floor),
+            capacity: Number(capacity),
+            amenities: amenities || "[]",
+            description: description || "",
+            image: image || null,
+            providerId: auth.providerId,
+          },
+        });
+      } else if (errMsg.includes("22P02") || errMsg.includes("invalid input value for enum")) {
 
         // Force-add the enum value (this works even if already present due to IF NOT EXISTS)
         const { Prisma, PrismaClient } = await import("@prisma/client");
