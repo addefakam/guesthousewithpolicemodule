@@ -1242,9 +1242,28 @@ export default function RoomsPage() {
                     // Auto-derive the floor from the first digit of the room
                     // number so the floor field always matches the room number.
                     const derivedFloor = getFloorFromNumber(newNumber);
+                    // Auto-sync the room name when it's currently a default
+                    // pattern (e.g. "Room 1000" or "1000"). If the operator
+                    // changed the number from 1000 → 1001 and the name was
+                    // "Room 1000" (auto-generated), we update the name to
+                    // "Room 1001" so it stays in sync. Custom names like
+                    // "Honeymoon Suite" are preserved — only default-pattern
+                    // names are auto-updated.
+                    const currentName = form.name;
+                    const oldNumber = form.number;
+                    let newName = currentName;
+                    if (isDefaultRoomName(currentName, oldNumber)) {
+                      // Name is a default pattern matching the OLD number.
+                      // Update it to the default pattern matching the NEW number.
+                      // Preserve the "Room " prefix if the original had it,
+                      // otherwise use the bare number (matches how the API
+                      // generates default names: `Room ${number}`).
+                      newName = newNumber ? `Room ${newNumber}` : "";
+                    }
                     setForm({
                       ...form,
                       number: newNumber,
+                      name: newName,
                       floor: derivedFloor !== null ? String(derivedFloor) : form.floor,
                     });
                   }}

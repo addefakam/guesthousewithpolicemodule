@@ -77,6 +77,32 @@ export async function PUT(
     // exist on the production DB, retry the update without that field (the
     // weekend price will be silently dropped, but the rest of the update
     // succeeds — better than blocking all room edits until init-db runs).
+    //
+    // Auto-sync name when number changes (defence-in-depth — the web client
+    // already does this in the form's onChange, but the mobile client and
+    // any direct API caller bypass that. If the operator changes the number
+    // AND the existing name is a default pattern matching the OLD number,
+    // we update the name to match the NEW number so the room card doesn't
+    // show "Room 1001 — Room 1000" (number ≠ stale auto-generated name).
+    let nameOverride: string | undefined = undefined;
+    if (body.number !== undefined && body.name === undefined) {
+      // Number is changing but the caller didn't pass an explicit name.
+      // Check if the existing name is a default pattern (e.g. "Room 1000").
+      const oldNumber = existing.number;
+      const oldName = existing.name;
+      const trimmedName = (oldName || "").trim();
+      const lowerName = trimmedName.toLowerCase();
+      const isDefaultName =
+        !trimmedName ||
+        trimmedName === oldNumber ||
+        lowerName === `room ${oldNumber}`.toLowerCase() ||
+        lowerName === `room${oldNumber}`.toLowerCase();
+      if (isDefaultName && body.number !== oldNumber) {
+        // Update the name to match the new number.
+        nameOverride = body.number ? `Room ${body.number}` : "";
+      }
+    }
+
     let room;
     try {
       room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true },
@@ -84,6 +110,7 @@ export async function PUT(
         data: {
           ...(body.number !== undefined && { number: body.number }),
           ...(body.name !== undefined && { name: body.name }),
+          ...(nameOverride !== undefined && { name: nameOverride }),
           ...(body.type !== undefined && { type: body.type }),
           ...(body.pricePerNight !== undefined && {
             pricePerNight: Number(body.pricePerNight),
@@ -124,6 +151,7 @@ export async function PUT(
           data: {
             ...(body.number !== undefined && { number: body.number }),
             ...(body.name !== undefined && { name: body.name }),
+            ...(nameOverride !== undefined && { name: nameOverride }),
             ...(body.type !== undefined && { type: body.type }),
             ...(body.pricePerNight !== undefined && {
               pricePerNight: Number(body.pricePerNight),
