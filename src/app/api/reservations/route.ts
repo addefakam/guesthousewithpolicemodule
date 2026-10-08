@@ -6,6 +6,7 @@ import { runAnomalyDetection } from "@/lib/anomaly-engine";
 import { isValidPhone } from "@/lib/utils";
 import { runReservationMaintenance } from "@/lib/reservation-maintenance";
 import { logStaffActivity } from "@/lib/staff-log";
+import { calculateStayTotal } from "@/lib/room-pricing";
 
 // ── Force dynamic rendering ──
 // Prevents Vercel from caching stale reservation data at the edge.
@@ -195,7 +196,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get room to check type
-    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true } });
+    const room = await db.room.findUnique({ where: { id: roomId }, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true } });
     if (!room) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
@@ -215,15 +216,25 @@ export async function POST(req: NextRequest) {
     const diffMs = endDate.getTime() - startDate.getTime();
     const nights = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 
-    // Get room rate if not provided
-    let rate = roomRate;
-    if (!rate) {
-      rate = room.pricePerNight;
+    // Get room rate if not provided.
+    // If the operator passed an explicit `roomRate` in the request body
+    // (e.g. custom negotiated rate), we honor it for every night — bypassing
+    // the weekend-aware calculation. Otherwise we use the new
+    // weekend-aware calculation that picks the right rate per night.
+    let subtotal: number;
+    if (roomRate && roomRate > 0) {
+      subtotal = roomRate * nights;
+    } else {
+      // Use the shared helper — iterates each night and picks weekday or
+      // weekend rate based on the day of week (Fri+Sat = weekend).
+      subtotal = calculateStayTotal(checkIn, checkOut, {
+        pricePerNight: room.pricePerNight,
+        pricePerNightWeekend: room.pricePerNightWeekend,
+      });
     }
 
     const tax = taxAmount || 0;
     const discount = discountAmount || 0;
-    const subtotal = rate * nights;
     const totalCost = subtotal + tax - discount;
     const paidAmount = 0;
     const balance = totalCost - paidAmount;

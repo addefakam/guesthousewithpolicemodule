@@ -106,6 +106,7 @@ import { ethiopianRegions, getLevel2Label } from "@/lib/ethiopian-admin-division
 import { COUNTRIES, DEFAULT_NATIONALITY } from "@/lib/countries";
 import { NationalityCombobox } from "@/components/shared/nationality-combobox";
 import { isValidPhone, isCheckoutDue, isCheckInDue } from "@/lib/utils";
+import { calculateStayTotal, formatCostBreakdown } from "@/lib/room-pricing";
 
 interface GuestOption {
   id: string;
@@ -145,6 +146,7 @@ interface RoomOption {
   type: string;
   status: string;
   pricePerNight: number;
+  pricePerNightWeekend?: number | null;
   capacity: number;
 }
 
@@ -886,6 +888,7 @@ export default function ReservationsPage() {
           type: r.type,
           status: r.status,
           pricePerNight: r.pricePerNight,
+          pricePerNightWeekend: (r as { pricePerNightWeekend?: number | null }).pricePerNightWeekend ?? null,
           capacity: Number(r.capacity) || 1,
         }))
       );
@@ -951,6 +954,7 @@ export default function ReservationsPage() {
           name: r.name,
           type: r.type,
           pricePerNight: r.pricePerNight,
+          pricePerNightWeekend: r.pricePerNightWeekend ?? null,
         };
       }
     }
@@ -1032,7 +1036,19 @@ export default function ReservationsPage() {
     return room ? room.pricePerNight : 0;
   }, [createForm.roomId, allRooms]);
 
-  const createTotal = createNights * createRate;
+  // Weekend-aware cost preview — uses calculateStayTotal which iterates each
+  // night and picks the weekday or weekend (Fri+Sat) rate based on the day
+  // of week. When no weekend price is set on the room, this falls back to
+  // the standard flat rate for every night (backward compatible).
+  const createTotal = useMemo(() => {
+    if (!createForm.checkIn || !createForm.checkOut || !createForm.roomId) return 0;
+    const room = allRooms.find((r) => r.id === createForm.roomId);
+    if (!room) return 0;
+    return calculateStayTotal(createForm.checkIn, createForm.checkOut, {
+      pricePerNight: room.pricePerNight,
+      pricePerNightWeekend: room.pricePerNightWeekend,
+    });
+  }, [createForm.checkIn, createForm.checkOut, createForm.roomId, allRooms]);
 
   const step1Valid = useMemo(() => {
     if (guestMode === "existing") return !!selectedGuestId;
@@ -1445,11 +1461,29 @@ export default function ReservationsPage() {
     const rate = Number(editForm.roomRate) || 0;
     const tax = Number(editForm.taxAmount) || 0;
     const discount = Number(editForm.discountAmount) || 0;
-    const subtotal = rate * nights;
+    // If the operator passed a custom roomRate (e.g. manually negotiated),
+    // use the simple rate × nights formula. Otherwise use the weekend-aware
+    // calculation that picks the weekday or Fri+Sat rate per night.
+    let subtotal: number;
+    if (rate > 0) {
+      subtotal = rate * nights;
+    } else if (inDay && outDay && editForm.roomId) {
+      const room = allRooms.find((r) => r.id === editForm.roomId);
+      if (room) {
+        subtotal = calculateStayTotal(inDay, outDay, {
+          pricePerNight: room.pricePerNight,
+          pricePerNightWeekend: room.pricePerNightWeekend,
+        });
+      } else {
+        subtotal = 0;
+      }
+    } else {
+      subtotal = 0;
+    }
     const total = nights > 0 ? subtotal + tax - discount : 0;
     const paid = editTarget?.paidAmount ?? 0;
     return { nights, subtotal, total, paid, balance: total - paid, valid: nights > 0 };
-  }, [editForm.checkIn, editForm.checkOut, editForm.roomRate, editForm.taxAmount, editForm.discountAmount, editTarget]);
+  }, [editForm.checkIn, editForm.checkOut, editForm.roomRate, editForm.taxAmount, editForm.discountAmount, editTarget, editForm.roomId, allRooms]);
 
   const handleEditSave = async () => {
     if (!editTarget) return;

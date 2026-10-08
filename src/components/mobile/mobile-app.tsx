@@ -118,7 +118,7 @@ import { NetworkStatusBanner, useTimeout } from "@/components/mobile/network-sta
 // ── Types ──
 interface Room {
   id: string; number: string; name: string; type: string; status: string;
-  pricePerNight: number; floor: number; capacity: number; amenities: string;
+  pricePerNight: number; pricePerNightWeekend?: number | null; floor: number; capacity: number; amenities: string;
 }
 
 interface Guest {
@@ -230,7 +230,7 @@ const PAYMENT_STATUS: Record<string, { color: string; icon: "check" | "alert" | 
 const DOUBLE_ROOM_TYPES = ["DOUBLE", "TWIN"];
 
 const ROOM_FORM_DEFAULTS = {
-  number: "", type: "SINGLE", pricePerNight: "", floor: "", capacity: "1", amenities: "",
+  number: "", type: "SINGLE", pricePerNight: "", pricePerNightWeekend: "", floor: "", capacity: "1", amenities: "",
 };
 
 const RES_FORM_DEFAULTS = {
@@ -1190,6 +1190,11 @@ export default function MobileApp() {
         number: roomForm.number.trim(),
         type: roomForm.type,
         pricePerNight: roomForm.pricePerNight ? Number(roomForm.pricePerNight) : 0,
+        // Weekend price — empty/0 sends null so the API stores NULL
+        // (means "no weekend premium, use weekday rate for all nights").
+        pricePerNightWeekend: roomForm.pricePerNightWeekend && Number(roomForm.pricePerNightWeekend) > 0
+          ? Number(roomForm.pricePerNightWeekend)
+          : null,
         floor: Number(roomForm.floor),
         capacity: Number(roomForm.capacity),
         amenities: roomForm.amenities || "[]",
@@ -1220,6 +1225,7 @@ export default function MobileApp() {
       number: room.number,
       type: room.type,
       pricePerNight: String(room.pricePerNight || ""),
+      pricePerNightWeekend: room.pricePerNightWeekend != null ? String(room.pricePerNightWeekend) : "",
       floor: String(room.floor || ""),
       capacity: String(room.capacity || "1"),
       amenities: room.amenities || "",
@@ -3068,6 +3074,18 @@ function AddRoomForm({ form, onUpdate, creating, onSubmit, onCancel, isEditing, 
         <div>
           <Label className="text-xs font-semibold">{t("addRoomPrice")}</Label>
           <Input type="number" value={form.pricePerNight} onChange={(e) => onUpdate({ pricePerNight: e.target.value })} placeholder="0 (optional)" className="mt-1.5 h-11 rounded-xl" />
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">
+            {t("addRoomPriceWeekend", { defaultValue: "Weekend Price" })}
+          </Label>
+          <Input
+            type="number"
+            value={form.pricePerNightWeekend || ""}
+            onChange={(e) => onUpdate({ pricePerNightWeekend: e.target.value })}
+            placeholder="0 (Fri+Sat)"
+            className="mt-1.5 h-11 rounded-xl"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">

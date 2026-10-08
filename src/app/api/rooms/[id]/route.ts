@@ -22,7 +22,7 @@ export async function PUT(
       ? { id }
       : { id, providerId: filter.providerId };
 
-    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
+    const existing = await db.room.findFirst({ where, select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true, type: true } });
     if (!existing) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
@@ -59,7 +59,7 @@ export async function PUT(
       }
     }
 
-    const room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, floor: true, capacity: true, status: true, providerId: true },
+    const room = await db.room.update({ select: { id: true, number: true, name: true, pricePerNight: true, pricePerNightWeekend: true, floor: true, capacity: true, status: true, providerId: true },
       where: { id },
       data: {
         ...(body.number !== undefined && { number: body.number }),
@@ -67,6 +67,16 @@ export async function PUT(
         ...(body.type !== undefined && { type: body.type }),
         ...(body.pricePerNight !== undefined && {
           pricePerNight: Number(body.pricePerNight),
+        }),
+        // Weekend price — null/empty clears it (back to single-rate), any
+        // positive number sets the Fri+Sat premium rate.
+        ...(body.pricePerNightWeekend !== undefined && {
+          pricePerNightWeekend:
+            body.pricePerNightWeekend === null ||
+            body.pricePerNightWeekend === "" ||
+            Number(body.pricePerNightWeekend) === 0
+              ? null
+              : Number(body.pricePerNightWeekend),
         }),
         ...(body.floor !== undefined && { floor: Number(body.floor) }),
         ...(body.capacity !== undefined && {

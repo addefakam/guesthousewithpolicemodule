@@ -108,6 +108,7 @@ interface Room {
   name: string;
   type: string;
   pricePerNight: number;
+  pricePerNightWeekend?: number | null;
   floor: number;
   capacity: number;
   status: string;
@@ -217,6 +218,7 @@ const emptyForm = {
   name: "",
   type: "SINGLE",
   pricePerNight: "",
+  pricePerNightWeekend: "",
   floor: "",
   capacity: "",
   amenities: "[]",
@@ -418,6 +420,7 @@ export default function RoomsPage() {
       name: room.name || "",
       type: room.type,
       pricePerNight: String(room.pricePerNight),
+      pricePerNightWeekend: room.pricePerNightWeekend != null ? String(room.pricePerNightWeekend) : "",
       floor: String(room.floor),
       capacity: String(room.capacity),
       amenities: room.amenities,
@@ -440,6 +443,11 @@ export default function RoomsPage() {
         name: form.name || "",
         type: form.type,
         pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : 0,
+        // Weekend price — empty string means "no weekend premium".
+        // Send null so the API stores NULL (DB) instead of 0.
+        pricePerNightWeekend: form.pricePerNightWeekend && Number(form.pricePerNightWeekend) > 0
+          ? Number(form.pricePerNightWeekend)
+          : null,
         floor: Number(form.floor),
         capacity: Number(form.capacity),
         amenities: form.amenities || "[]",
@@ -1292,6 +1300,26 @@ export default function RoomsPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="room-price-weekend">
+                  {t("labelPriceNightWeekend", { defaultValue: "Weekend Price / Night" })}{" "}
+                  <span className="text-gray-400 text-xs">
+                    {t("labelPriceNightWeekendHint", { defaultValue: "(Fri+Sat, optional)" })}
+                  </span>
+                </Label>
+                <Input
+                  id="room-price-weekend"
+                  type="number"
+                  placeholder="0"
+                  value={form.pricePerNightWeekend}
+                  onChange={(e) => setForm({ ...form, pricePerNightWeekend: e.target.value })}
+                />
+                {form.pricePerNightWeekend && Number(form.pricePerNightWeekend) > 0 && (
+                  <p className="text-[10px] text-emerald-600">
+                    {t("weekendPriceHint", { defaultValue: "Friday + Saturday nights will use this rate. Sunday uses the standard rate." })}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="room-floor">
                   {t("labelFloor")} <span className="text-rose-500">*</span>
                 </Label>
@@ -1516,6 +1544,12 @@ export default function RoomsPage() {
                   <div className="rounded-lg border p-3 bg-muted/50">
                     <p className="text-xs text-gray-500 mb-1">{t("infoPricePerNight")}</p>
                     <p className="text-sm font-semibold text-gray-900">{formatPrice(infoRoom.pricePerNight)}</p>
+                    {infoRoom.pricePerNightWeekend != null && Number(infoRoom.pricePerNightWeekend) > 0 && (
+                      <p className="text-xs text-emerald-700 mt-1">
+                        {t("infoPriceWeekend", { defaultValue: "Weekend (Fri+Sat):" })}{" "}
+                        <strong>{formatPrice(infoRoom.pricePerNightWeekend)}</strong>
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-lg border p-3 bg-muted/50">
                     <p className="text-xs text-gray-500 mb-1">{t("infoCapacity")}</p>

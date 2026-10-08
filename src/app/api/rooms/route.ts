@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
 
     const roomsRaw = await db.$queryRawUnsafe(
-      `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
+      `SELECT "id", "number", "name", "type"::text AS "type", "pricePerNight", "pricePerNightWeekend", "floor", "capacity", "status", "providerId", "createdAt", "updatedAt" FROM "Room"${whereClause} ORDER BY "floor" ASC, "number" ASC`,
       ...params
     ) as Record<string, unknown>[];
 
@@ -76,6 +76,7 @@ export async function GET(req: NextRequest) {
       name: String(r.name || ""),
       type: String(r.type || ""),
       pricePerNight: Number(r.pricePerNight),
+      pricePerNightWeekend: r.pricePerNightWeekend == null ? null : Number(r.pricePerNightWeekend),
       floor: Number(r.floor),
       capacity: Number(r.capacity),
       status: String(r.status || "AVAILABLE"),
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
       const results: { number: string; status: string; error?: string }[] = [];
 
       for (const row of body.bulk) {
-        const { number, type, pricePerNight, floor, capacity, amenities, description, name } = row;
+        const { number, type, pricePerNight, pricePerNightWeekend, floor, capacity, amenities, description, name } = row;
         // pricePerNight is optional — defaults to 0 when omitted.
         if (!number || !type || floor == null || capacity == null) {
           results.push({ number: String(number ?? "?"), status: "skipped", error: "Missing required fields" });
@@ -141,6 +142,8 @@ export async function POST(req: NextRequest) {
               name: name ? String(name) : `Room ${number}`,
               type: String(type).toUpperCase() as import("@prisma/client").RoomType,
               pricePerNight: pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight),
+              // Weekend price is optional — null/empty/0 means "use weekday rate for all nights"
+              pricePerNightWeekend: pricePerNightWeekend == null || pricePerNightWeekend === "" ? null : Number(pricePerNightWeekend),
               floor: Number(floor),
               capacity: Number(capacity),
               amenities: amenities ? JSON.stringify(String(amenities).split(",").map((s: string) => s.trim()).filter(Boolean)) : "[]",
@@ -165,6 +168,7 @@ export async function POST(req: NextRequest) {
       name,
       type,
       pricePerNight,
+      pricePerNightWeekend,
       floor,
       capacity,
       amenities,
@@ -215,6 +219,8 @@ export async function POST(req: NextRequest) {
 
     // pricePerNight is OPTIONAL — defaults to 0 when omitted/empty.
     const priceVal = pricePerNight == null || pricePerNight === "" ? 0 : Number(pricePerNight);
+    // Weekend price is OPTIONAL — null/empty means "no weekend premium, use weekday rate for all nights".
+    const weekendPriceVal = pricePerNightWeekend == null || pricePerNightWeekend === "" ? null : Number(pricePerNightWeekend);
 
     let room;
 
@@ -228,6 +234,7 @@ export async function POST(req: NextRequest) {
           name: name || `Room ${number}`,
           type,
           pricePerNight: priceVal,
+          pricePerNightWeekend: weekendPriceVal,
           floor: Number(floor),
           capacity: Number(capacity),
           amenities: amenities || "[]",
@@ -252,6 +259,7 @@ export async function POST(req: NextRequest) {
               name: name || `Room ${number}`,
               type,
               pricePerNight: priceVal,
+              pricePerNightWeekend: weekendPriceVal,
               floor: Number(floor),
               capacity: Number(capacity),
               amenities: amenities || "[]",

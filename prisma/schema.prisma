@@ -222,6 +222,11 @@ model Room {
   name          String
   type          RoomType
   pricePerNight Float
+  // Optional weekend rate — if set, applies to Friday + Saturday nights
+  // (Ethiopian weekend). If null or 0, falls back to pricePerNight for
+  // every night. Sunday is NOT charged the weekend rate by default —
+  // most Bishoftu guesthouses treat Fri+Sat as the premium nights.
+  pricePerNightWeekend Float?
   floor         Int
   capacity      Int
   status        RoomStatus @default(AVAILABLE)

@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS "Room" (
   "name" TEXT NOT NULL,
   "type" "RoomType" NOT NULL,
   "pricePerNight" DOUBLE PRECISION NOT NULL,
+  "pricePerNightWeekend" DOUBLE PRECISION,
   "floor" INTEGER NOT NULL,
   "capacity" INTEGER NOT NULL,
   "status" "RoomStatus" NOT NULL DEFAULT 'AVAILABLE',
@@ -662,6 +663,7 @@ DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'STANDARD_SUITE'; EXCE
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'JUNIOR_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'EXECUTIVE_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'PRESIDENTIAL_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Room" ADD COLUMN "pricePerNightWeekend" DOUBLE PRECISION; EXCEPTION WHEN duplicate_column THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "Expense" ADD COLUMN "stockMovementId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 CREATE INDEX IF NOT EXISTS "Expense_stockMovementId_idx" ON "Expense" ("stockMovementId");
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "bedCount" INTEGER; EXCEPTION WHEN duplicate_column THEN null; END $$;
