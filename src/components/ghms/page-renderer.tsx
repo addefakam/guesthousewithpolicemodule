@@ -158,6 +158,12 @@ const GuestCommunicationPage = lazyPage(
 const StaffLogsPage = lazyPage(
   () => import("@/components/ghms/pages/staff-logs-page")
 );
+const TasksPage = lazyPage(
+  () => import("@/components/ghms/pages/tasks-page")
+);
+const StaffPerformancePage = lazyPage(
+  () => import("@/components/ghms/pages/staff-performance-page")
+);
 const NotificationDispatchPage = lazyPage(
   () => import("@/components/ghms/pages/notification-dispatch-page")
 );
@@ -215,6 +221,8 @@ const PAGE_MAP: Record<string, React.LazyExoticComponent<React.ComponentType>> =
     "group-bookings": GroupBookingsPage,
     "guest-communication": GuestCommunicationPage,
     "staff-logs": StaffLogsPage,
+    "tasks": TasksPage,
+    "staff-performance": StaffPerformancePage,
     "notification-dispatch": NotificationDispatchPage,
     "police-reports": PoliceReportsPage,
     "my-subscription": MySubscriptionPage,

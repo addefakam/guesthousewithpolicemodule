@@ -123,6 +123,18 @@ export async function PUT(req: NextRequest) {
       settings = await db.settings.create({ data });
     }
 
+    // Staff activity log — operational settings change (currency, tax, language, etc.)
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "SETTINGS_UPDATE",
+      targetType: "PROVIDER",
+      targetId: providerId || "",
+      details: { guestHouseName: settings.guestHouseName || "" },
+      providerId: providerId || "",
+    });
+
     return NextResponse.json(settings);
   } catch (error: unknown) {
         if (error instanceof AuthError) {

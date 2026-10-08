@@ -595,7 +595,9 @@
     "permReports": "Gabaasa",
     "permReviews": "Gamaaggama",
     "permNotifications": "Beeksisa",
-    "permSettings": "Qindaa'ina"
+    "permSettings": "Qindaa'ina",
+    "permStaffLogsView": "Sochii Hojjettootaa (Ilaalu Qofa)",
+    "permTasks": "Goolii"
   },
   "rooms": {
     "pageTitle": "Bulchuuinsa Kutaawwanii",
@@ -2010,6 +2012,7 @@
     "roomTypeSTANDARD_SUITE": "Suutii Standard",
     "roomTypeJUNIOR_SUITE": "Suutii Juuniyara",
     "roomTypeEXECUTIVE_SUITE": "Suutii Eekutivii",
+    "roomTypePRESIDENTIAL_SUITE": "Suutii Paarzidaantii",
     "unknownGuest": "Beekamtuu",
     "toastBulkCheckinAllBlocked": "Kabajjii hunda {{count}} dhabsiisaa: {{reason}}",
     "toastBulkCheckinPartialBlocked": "Kabajjii {{count}} dafee: {{reason}}",
@@ -2302,6 +2305,7 @@
     "roomTypeSTANDARD_SUITE": "Suutii Standard",
     "roomTypeJUNIOR_SUITE": "Suutii Juuniyara",
     "roomTypeEXECUTIVE_SUITE": "Suutii Eekutivii",
+    "roomTypePRESIDENTIAL_SUITE": "Suutii Paarzidaantii",
     "floorLabel": "Darbii {{floor}}",
     "pricePerNight": "Gatii / halkan",
     "capacity": "Gatii",

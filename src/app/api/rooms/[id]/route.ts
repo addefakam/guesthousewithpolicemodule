@@ -140,6 +140,17 @@ export async function DELETE(
       );
     }
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "ROOM_DELETE",
+      targetType: "ROOM",
+      targetId: id,
+      details: { roomNumber: existing.number || "" },
+      providerId,
+    });
     await db.room.delete({ where: { id } });
 
     return NextResponse.json({ success: true });

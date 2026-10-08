@@ -86,6 +86,18 @@ export async function POST(req: NextRequest) {
       include: {},
     });
 
+    // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "HOUSEKEEPING_CREATE",
+      targetType: "HOUSEKEEPING",
+      targetId: task.id,
+      details: { type: task.type || "", assignedTo: task.assignedTo || "", scheduledDate: task.scheduledDate || "" },
+      providerId: auth.providerId || "",
+    });
+
     return NextResponse.json({ task }, { status: 201 });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

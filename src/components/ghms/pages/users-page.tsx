@@ -55,6 +55,8 @@ import {
   Search,
   ChevronRight,
   KeyRound,
+  ScrollText,
+  ClipboardList,
 } from "lucide-react";
 
 // ── Permission options that OPERATOR can assign to staff ──
@@ -69,6 +71,8 @@ const PERMISSION_OPTIONS_RAW = [
   { value: "reviews", tKey: "permReviews", icon: Star, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
   { value: "notifications", tKey: "permNotifications", icon: Bell, color: "text-rose-600 bg-rose-50 border-rose-200" },
   { value: "settings", tKey: "permSettings", icon: Settings, color: "text-slate-600 bg-slate-50 border-slate-200" },
+  { value: "staff_logs_view", tKey: "permStaffLogsView", icon: ScrollText, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
+  { value: "tasks", tKey: "permTasks", icon: ClipboardList, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
 ];
 
 // PERM_MAP built dynamically inside component using t()

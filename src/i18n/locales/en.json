@@ -595,7 +595,9 @@
     "permReports": "Reports",
     "permReviews": "Reviews",
     "permNotifications": "Notifications",
-    "permSettings": "Settings"
+    "permSettings": "Settings",
+    "permStaffLogsView": "Staff Activity (View Only)",
+    "permTasks": "Tasks"
   },
   "rooms": {
     "pageTitle": "Rooms Management",
@@ -2007,6 +2009,7 @@
     "roomTypeSTANDARD_SUITE": "Standard Suite",
     "roomTypeJUNIOR_SUITE": "Junior Suite",
     "roomTypeEXECUTIVE_SUITE": "Executive Suite",
+    "roomTypePRESIDENTIAL_SUITE": "Presidential Suite",
     "unknownGuest": "Unknown",
     "toastBulkCheckinAllBlocked": "All {{count}} reservation(s) blocked: {{reason}}",
     "toastBulkCheckinPartialBlocked": "{{count}} reservation(s) skipped: {{reason}}",
@@ -3378,6 +3381,7 @@
     "roomTypeSTANDARD_SUITE": "Standard Suite",
     "roomTypeJUNIOR_SUITE": "Junior Suite",
     "roomTypeEXECUTIVE_SUITE": "Executive Suite",
+    "roomTypePRESIDENTIAL_SUITE": "Presidential Suite",
     "floorLabel": "Floor {{floor}}",
     "pricePerNight": "Price / Night",
     "capacity": "Capacity",

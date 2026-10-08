@@ -119,6 +119,7 @@ export async function GET(
           certNumber,
           issuedAt: issuedAt.toISOString(),
         },
+        providerId: id,
       });
     }
 

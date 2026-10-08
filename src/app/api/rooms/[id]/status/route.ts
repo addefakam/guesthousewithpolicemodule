@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext,
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
+import { logStaffActivity } from "@/lib/staff-log";
 
 export async function PUT(
   req: NextRequest,
@@ -44,6 +45,18 @@ export async function PUT(
     const room = await db.room.update({ select: { id: true, number: true, status: true, providerId: true },
       where: { id },
       data: { status },
+    });
+
+    // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "ROOM_STATUS_CHANGE",
+      targetType: "ROOM",
+      targetId: id,
+      details: { roomNumber: room.number || "", status: room.status || "" },
+      providerId: room.providerId,
     });
 
     return NextResponse.json({ room });

@@ -595,7 +595,9 @@
     "permReports": "ሪፖርቶች",
     "permReviews": "ግምገማዎች",
     "permNotifications": "ማሳወቂያዎች",
-    "permSettings": "ቅንብሮች"
+    "permSettings": "ቅንብሮች",
+    "permStaffLogsView": "የሰራተኛ እንቅስቃሴ (ለመመልከት ብቻ)",
+    "permTasks": "ተግባራት"
   },
   "rooms": {
     "pageTitle": "ክፍል አስተዳደር",
@@ -3276,6 +3278,7 @@
     "roomTypeSTANDARD_SUITE": "መደበኛ ስዊት (Standard Suite)",
     "roomTypeJUNIOR_SUITE": "ጁኒየር ስዊት (Junior Suite)",
     "roomTypeEXECUTIVE_SUITE": "ኤግዚክዩቲቭ ስዊት (Executive Suite)",
+    "roomTypePRESIDENTIAL_SUITE": "ፕሬዚዳንሻል ስዊት (Presidential Suite)",
     "floorLabel": "ወለል {{floor}}",
     "pricePerNight": "ዋጋ / ማምሽት",
     "capacity": "አቅም",

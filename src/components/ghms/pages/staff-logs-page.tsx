@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "react-i18next";
 
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { useAppStore } from "@/lib/store";
 import { apiGetStaffLogs } from "@/lib/api";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClipboardList, Search, ChevronDown, ChevronUp, Filter, Calendar, Wifi } from "lucide-react";
+import { ClipboardList, Search, ChevronDown, ChevronUp, Filter, Calendar, Wifi, Download } from "lucide-react";
 
 // ── Types ──
 
@@ -37,9 +37,9 @@ interface StaffLog {
 
 // ── Constants ──
 
-const ACTION_VALUES = ["ALL", "CHECKIN", "CHECKOUT", "RESERVATION_CREATE", "RESERVATION_CANCEL", "GUEST_CREATE", "GUEST_UPDATE", "ROOM_CREATE", "ROOM_UPDATE", "PAYMENT_RECORD", "BULK_CHECKIN", "BULK_CHECKOUT", "BULK_CANCEL", "CREATE_GROUP_BOOKING", "UPDATE_GROUP_BOOKING", "DELETE_GROUP_BOOKING", "CREATE_MESSAGE_TEMPLATE", "SEND_MESSAGE", "BULK_SEND_MESSAGES"] as const;
+const ACTION_VALUES = ["ALL", "CHECKIN", "CHECKOUT", "RESERVATION_CREATE", "RESERVATION_CANCEL", "RESERVATION_UPDATE", "GUEST_CREATE", "GUEST_UPDATE", "GUEST_DELETE", "ROOM_CREATE", "ROOM_UPDATE", "ROOM_DELETE", "ROOM_STATUS_CHANGE", "PAYMENT_RECORD", "BULK_CHECKIN", "BULK_CHECKOUT", "BULK_CANCEL", "CREATE_GROUP_BOOKING", "UPDATE_GROUP_BOOKING", "DELETE_GROUP_BOOKING", "GROUP_CHECKOUT", "GROUP_PAYMENT", "CREATE_MESSAGE_TEMPLATE", "UPDATE_MESSAGE_TEMPLATE", "DELETE_MESSAGE_TEMPLATE", "SEND_MESSAGE", "BULK_SEND_MESSAGES", "ISSUE_CERTIFICATE", "HOUSEKEEPING_CREATE", "HOUSEKEEPING_UPDATE", "HOUSEKEEPING_DELETE", "USER_CREATE", "USER_UPDATE", "USER_DELETE", "TASK_CREATE", "TASK_UPDATE", "TASK_ASSIGN", "TASK_COMPLETE", "TASK_DELETE"] as const;
 
-const TARGET_VALUES = ["ALL", "RESERVATION", "GUEST", "ROOM", "PAYMENT", "EXPENSE", "GROUP_BOOKING", "MESSAGE_TEMPLATE", "MESSAGE_LOG"] as const;
+const TARGET_VALUES = ["ALL", "RESERVATION", "GUEST", "ROOM", "PAYMENT", "EXPENSE", "GROUP_BOOKING", "MESSAGE_TEMPLATE", "MESSAGE_LOG", "PROVIDER", "HOUSEKEEPING", "USER", "TASK"] as const;
 
 const PAGE_LIMIT = 20;
 
@@ -278,6 +278,7 @@ export default function StaffLogsPage() {
   // Filters
   const [actionFilter, setActionFilter] = useState<string>("ALL");
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>("ALL");
+  const [staffFilter, setStaffFilter] = useState<string>("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -306,11 +307,14 @@ export default function StaffLogsPage() {
       if (targetTypeFilter && targetTypeFilter !== "ALL") {
         params.set("targetType", targetTypeFilter);
       }
+      if (staffFilter && staffFilter !== "ALL") {
+        params.set("userId", staffFilter);
+      }
       if (dateFrom) {
-        params.set("dateFrom", dateFrom);
+        params.set("from", dateFrom);
       }
       if (dateTo) {
-        params.set("dateTo", dateTo);
+        params.set("to", dateTo);
       }
 
       const res = await apiGetStaffLogs(params.toString());
@@ -335,11 +339,26 @@ export default function StaffLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, actionFilter, targetTypeFilter, dateFrom, dateTo, t]);
+  }, [page, actionFilter, targetTypeFilter, staffFilter, dateFrom, dateTo, t]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs, refreshKey]);
+
+  // Staff dropdown options — derived from the unique staff members that
+  // appear in the current page of logs. Built client-side so we don't need
+  // an extra /api/users round-trip; the trade-off is that switching the
+  // filter to a user not in the current page requires narrowing the date
+  // range first.
+  const staffOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    logs.forEach((l) => {
+      if (l.userId && !seen.has(l.userId)) {
+        seen.set(l.userId, l.userName || l.userId);
+      }
+    });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [logs]);
 
   // Reset to page 1 when filters change
   function applyFilters() {
@@ -349,6 +368,7 @@ export default function StaffLogsPage() {
   function clearFilters() {
     setActionFilter("ALL");
     setTargetTypeFilter("ALL");
+    setStaffFilter("ALL");
     setDateFrom("");
     setDateTo("");
     setPage(1);
@@ -443,6 +463,24 @@ export default function StaffLogsPage() {
               </Select>
             </div>
 
+            {/* Staff Filter — built from the unique userIds in the current page */}
+            <div className="space-y-1.5">
+              <Label>{t("lblStaffMember", { defaultValue: "Staff Member" })}</Label>
+              <Select value={staffFilter} onValueChange={setStaffFilter}>
+                <SelectTrigger id="staff-filter" className="w-full">
+                  <SelectValue placeholder={t("placeholderAllStaff", { defaultValue: "All staff" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">{t("placeholderAllStaff", { defaultValue: "All staff" })}</SelectItem>
+                  {staffOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date From */}
             <div className="space-y-1.5">
               <Label>{t("lblDateFrom")}</Label>
@@ -480,6 +518,27 @@ export default function StaffLogsPage() {
               size="sm"
             >
               {t("btnClear")}
+            </Button>
+            <Button
+              onClick={() => {
+                // Build the same filter query as fetchLogs but hit the export
+                // endpoint and trigger a browser download.
+                const params = new URLSearchParams();
+                if (actionFilter && actionFilter !== "ALL") params.set("action", actionFilter);
+                if (targetTypeFilter && targetTypeFilter !== "ALL") params.set("targetType", targetTypeFilter);
+                if (staffFilter && staffFilter !== "ALL") params.set("userId", staffFilter);
+                if (dateFrom) params.set("from", dateFrom);
+                if (dateTo) params.set("to", dateTo);
+                const url = `/api/staff-logs/export${params.toString() ? "?" + params.toString() : ""}`;
+                window.open(url, "_blank");
+              }}
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              title={t("btnExportCsv", { defaultValue: "Download CSV" })}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              {t("btnExportCsv", { defaultValue: "Export CSV" })}
             </Button>
           </div>
         </CardContent>

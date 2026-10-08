@@ -34,6 +34,7 @@ enum RoomType {
   STANDARD_SUITE
   JUNIOR_SUITE
   EXECUTIVE_SUITE
+  PRESIDENTIAL_SUITE
 }
 
 enum RoomStatus {
@@ -169,6 +170,7 @@ model Provider {
   staffLogs        StaffLog[]
   messageTemplates MessageTemplate[]
   messageLogs      MessageLog[]
+  tasks            Task[]
 
   @@index([status])
   @@index([createdAt])
@@ -199,6 +201,12 @@ model User {
   updatedAt   DateTime        @updatedAt
 
   provider    Provider?       @relation(fields: [providerId], references: [id])
+
+  // Tasks — three relations so we can filter "tasks assigned to me",
+  // "tasks I assigned to others", and "tasks I completed".
+  assignedTasks   Task[]        @relation("AssignedTasks")
+  assignedByTasks Task[]        @relation("AssignedByTasks")
+  completedTasks  Task[]        @relation("CompletedTasks")
 
   @@index([providerId])
   @@index([isActive])
@@ -643,6 +651,58 @@ model StaffLog {
   @@index([action])
   @@index([targetType])
   @@index([createdAt])
+}
+
+// ─── Tasks — formal staff work assignments with audit trail ──────────────────
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id              String       @id @default(cuid())
+  title           String
+  description     String       @default("")
+  status          TaskStatus   @default(PENDING)
+  priority        TaskPriority @default(MEDIUM)
+  // Category — free-text label so operators can group tasks: "Cleaning",
+  // "Front Desk", "Maintenance", "Inventory", etc.
+  category        String       @default("General")
+  // Due date as ISO string (YYYY-MM-DD) — kept as text to match the
+  // existing convention used by Reservation.checkIn/checkOut.
+  dueDate         String       @default("")
+  // Assignment & audit — full relations to User so we can filter
+  // "tasks assigned to Abebe" and "tasks completed by Abebe".
+  assignedToUserId String?
+  assignedToUser   User?        @relation("AssignedTasks", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedByUserId String?
+  assignedByUser   User?        @relation("AssignedByTasks", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  completedByUserId String?
+  completedByUser  User?        @relation("CompletedTasks", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  completedAt      DateTime?
+  // Provider scoping — same pattern as Room, Reservation, StaffLog.
+  providerId       String
+  provider         Provider     @relation(fields: [providerId], references: [id])
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([providerId])
+  @@index([assignedToUserId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([providerId, status])
+  @@index([providerId, assignedToUserId, status])
 }
 
 // ─── Guest Communication ─────────────────────────────────────────────────────

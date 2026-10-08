@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext,
+import { logStaffActivity } from "@/lib/staff-log";
   getProviderFilter,
   checkWritePermission, AuthError } from "@/lib/tenant";
 
@@ -49,6 +50,18 @@ export async function PUT(
       include: {},
     });
 
+    // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "HOUSEKEEPING_UPDATE",
+      targetType: "HOUSEKEEPING",
+      targetId: id,
+      details: { status: task.status || "" },
+      providerId: task.providerId,
+    });
+
     return NextResponse.json({ task });
   } catch (error: unknown) {
         if (error instanceof AuthError) {
@@ -93,6 +106,17 @@ export async function DELETE(
 
     await db.housekeepingTask.delete({ where: { id } });
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "HOUSEKEEPING_DELETE",
+      targetType: "HOUSEKEEPING",
+      targetId: id,
+      details: { roomNumber: existing.roomNumber || "" },
+      providerId,
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

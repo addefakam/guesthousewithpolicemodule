@@ -76,6 +76,7 @@ import {
   Star,
   Building2,
   Layers,
+  Trophy,
   Wifi,
   Info,
   CalendarPlus,
@@ -136,7 +137,7 @@ interface RoomReservation {
   roomId?: string;
 }
 
-const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE", "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE"] as const;
+const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "SUITE", "DELUXE", "KING", "STANDARD", "STANDARD_SUITE", "JUNIOR_SUITE", "EXECUTIVE_SUITE", "PRESIDENTIAL_SUITE"] as const;
 
 const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   SINGLE: <BedSingle className="h-4 w-4" />,
@@ -149,6 +150,7 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   STANDARD_SUITE: <Layers className="h-4 w-4" />,
   JUNIOR_SUITE: <Armchair className="h-4 w-4" />,
   EXECUTIVE_SUITE: <Sparkles className="h-4 w-4" />,
+  PRESIDENTIAL_SUITE: <Trophy className="h-4 w-4" />,
 };
 
 const ROOM_TYPE_COLORS: Record<string, string> = {
@@ -162,6 +164,7 @@ const ROOM_TYPE_COLORS: Record<string, string> = {
   STANDARD_SUITE: "bg-cyan-50 text-cyan-700 border-cyan-200",
   JUNIOR_SUITE: "bg-pink-50 text-pink-700 border-pink-200",
   EXECUTIVE_SUITE: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PRESIDENTIAL_SUITE: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-300",
 };
 
 const STATUS_STYLES: Record<string, string> = {

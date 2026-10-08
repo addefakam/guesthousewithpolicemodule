@@ -40,6 +40,7 @@ import {
   Megaphone,
   Smartphone,
   ExternalLink,
+  TrendingUp,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -114,6 +115,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { page: "group-bookings", label: "Group Bookings", icon: Users },
   { page: "guest-communication", label: "Messages", icon: MessageSquare },
   { page: "staff-logs", label: "Staff Activity", icon: ScrollText },
+  { page: "tasks", label: "Tasks", icon: ClipboardList },
+  { page: "staff-performance", label: "Staff Performance", icon: TrendingUp },
   { page: "my-subscription", label: "Subscription", icon: CreditCard },
   { page: "settings", label: "Settings", icon: Settings },
 ];
@@ -225,6 +228,7 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   staff_logs_view: { page: "staff-logs", label: "Staff Activity", icon: ScrollText },
   guest_communication_view: { page: "guest-communication", label: "Messages", icon: MessageSquare },
   group_bookings_view: { page: "group-bookings", label: "Group Bookings", icon: Users },
+  tasks: { page: "tasks", label: "Tasks", icon: ClipboardList },
 };
 
 // ── Police permission → page mapping ──

@@ -8,7 +8,7 @@ const { Client } = pg;
 const ENUMS_SQL = `
 DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('POLICE','SUPERUSER','OPERATOR','STAFF'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "ProviderStatus" AS ENUM ('PENDING','APPROVED','REJECTED','SUSPENDED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-DO $$ BEGIN CREATE TYPE "RoomType" AS ENUM ('SINGLE','DOUBLE','TWIN','SUITE','DELUXE','KING','STANDARD','STANDARD_SUITE','JUNIOR_SUITE','EXECUTIVE_SUITE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "RoomType" AS ENUM ('SINGLE','DOUBLE','TWIN','SUITE','DELUXE','KING','STANDARD','STANDARD_SUITE','JUNIOR_SUITE','EXECUTIVE_SUITE','PRESIDENTIAL_SUITE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE','OCCUPIED','MAINTENANCE','RESERVED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "PaymentStatusType" AS ENUM ('PAID','PARTIAL','PENDING'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "PaymentMethodType" AS ENUM ('CASH','TRANSFER','CARD','MOBILE'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -17,6 +17,8 @@ DO $$ BEGIN ALTER TYPE "ReservationStatus" ADD VALUE IF NOT EXISTS 'DELETED'; EX
 DO $$ BEGIN CREATE TYPE "NotificationType" AS ENUM ('INFO','WARNING','SUCCESS','ERROR'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "HousekeepingTaskType" AS ENUM ('CLEANING','MAINTENANCE','INSPECTION'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "HousekeepingTaskStatus" AS ENUM ('PENDING','IN_PROGRESS','COMPLETED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "TaskStatus" AS ENUM ('PENDING','IN_PROGRESS','COMPLETED','CANCELLED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "TaskPriority" AS ENUM ('LOW','MEDIUM','HIGH','URGENT'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "SuspectSeverity" AS ENUM ('LOW','MEDIUM','HIGH','CRITICAL'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "SubscriptionCycle" AS ENUM ('MONTHLY','QUARTERLY','SEMI_ANNUAL','YEARLY'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN CREATE TYPE "GroupBookingStatus" AS ENUM ('PENDING','CONFIRMED','IN_PROGRESS','COMPLETED','CANCELLED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -571,6 +573,38 @@ CREATE TABLE IF NOT EXISTS "StaffLog" (
   "providerId" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ─── Tasks table — formal staff work assignments ──────────────────────────
+-- Created in init-db.ts so the table is always available even on databases
+-- that were provisioned before the Task model was added to the Prisma schema.
+CREATE TABLE IF NOT EXISTS "Task" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "title" TEXT NOT NULL,
+  "description" TEXT NOT NULL DEFAULT '',
+  "status" "TaskStatus" NOT NULL DEFAULT 'PENDING',
+  "priority" "TaskPriority" NOT NULL DEFAULT 'MEDIUM',
+  "category" TEXT NOT NULL DEFAULT 'General',
+  "dueDate" TEXT NOT NULL DEFAULT '',
+  "assignedToUserId" TEXT,
+  "assignedByUserId" TEXT,
+  "completedByUserId" TEXT,
+  "completedAt" TIMESTAMP(3),
+  "providerId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "Task_provider_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE RESTRICT,
+  CONSTRAINT "Task_assignedTo_fkey" FOREIGN KEY ("assignedToUserId") REFERENCES "User"("id") ON DELETE SET NULL,
+  CONSTRAINT "Task_assignedBy_fkey" FOREIGN KEY ("assignedByUserId") REFERENCES "User"("id") ON DELETE SET NULL,
+  CONSTRAINT "Task_completedBy_fkey" FOREIGN KEY ("completedByUserId") REFERENCES "User"("id") ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS "Task_providerId_idx" ON "Task" ("providerId");
+CREATE INDEX IF NOT EXISTS "Task_assignedToUserId_idx" ON "Task" ("assignedToUserId");
+CREATE INDEX IF NOT EXISTS "Task_status_idx" ON "Task" ("status");
+CREATE INDEX IF NOT EXISTS "Task_priority_idx" ON "Task" ("priority");
+CREATE INDEX IF NOT EXISTS "Task_dueDate_idx" ON "Task" ("dueDate");
+CREATE INDEX IF NOT EXISTS "Task_provider_status_idx" ON "Task" ("providerId", "status");
+CREATE INDEX IF NOT EXISTS "Task_provider_assignee_status_idx" ON "Task" ("providerId", "assignedToUserId", "status");
+
 CREATE TABLE IF NOT EXISTS "MessageTemplate" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "name" TEXT NOT NULL,
@@ -627,6 +661,7 @@ DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'STANDARD'; EXCEPTION 
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'STANDARD_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'JUNIOR_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'EXECUTIVE_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TYPE "RoomType" ADD VALUE IF NOT EXISTS 'PRESIDENTIAL_SUITE'; EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN ALTER TABLE "Expense" ADD COLUMN "stockMovementId" TEXT; EXCEPTION WHEN duplicate_column THEN null; END $$;
 CREATE INDEX IF NOT EXISTS "Expense_stockMovementId_idx" ON "Expense" ("stockMovementId");
 DO $$ BEGIN ALTER TABLE "Provider" ADD COLUMN "bedCount" INTEGER; EXCEPTION WHEN duplicate_column THEN null; END $$;

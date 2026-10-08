@@ -107,6 +107,7 @@ import {
   Armchair,
   Sparkles,
   Box,
+  Trophy,
   ListChecks,
   Loader2,
 } from "lucide-react";
@@ -165,6 +166,7 @@ const ROOM_TYPE_ICONS: Record<string, React.ReactNode> = {
   STANDARD_SUITE: <Layers className="h-4 w-4" />,
   JUNIOR_SUITE: <Armchair className="h-4 w-4" />,
   EXECUTIVE_SUITE: <Sparkles className="h-4 w-4" />,
+  PRESIDENTIAL_SUITE: <Trophy className="h-4 w-4" />,
   OTHER: <Box className="h-4 w-4" />,
 };
 
@@ -183,6 +185,7 @@ const MOBILE_ROOM_TYPES = [
   "STANDARD_SUITE",
   "JUNIOR_SUITE",
   "EXECUTIVE_SUITE",
+  "PRESIDENTIAL_SUITE",
   "OTHER",
 ] as const;
 

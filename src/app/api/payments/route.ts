@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
     // Staff activity log
     logStaffActivity({
       req, userId: auth.userId, userName: auth.userName, action: "PAYMENT_RECORD", targetType: "PAYMENT", targetId: payment.id,
-      details: { reservationId, amount, method: paymentMethod || "" },
+      details: { reservationId, amount, method: method || "" },
       providerId,
     });
 

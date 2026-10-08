@@ -128,6 +128,17 @@ export async function DELETE(
       );
     }
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "GUEST_DELETE",
+      targetType: "GUEST",
+      targetId: id,
+      details: { guestName: existing.name || "" },
+      providerId,
+    });
     await db.guest.delete({ where: { id } });
 
     return NextResponse.json({ success: true });

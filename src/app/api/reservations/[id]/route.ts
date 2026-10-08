@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 import { ensureReservationStatusEnum } from "@/lib/ensure-enum-values";
 
+import { logStaffActivity } from "@/lib/staff-log";
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -175,6 +176,20 @@ export async function PUT(
       }
     }
 
+    // Staff activity log — general reservation update (PUT).
+    // Check-in/check-out/cancel have their own dedicated routes and log
+    // different actions; this log is for edits to the reservation itself
+    // (e.g. changing check-in date, swapping the room, editing guest info).
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "RESERVATION_UPDATE",
+      targetType: "RESERVATION",
+      targetId: id,
+      details: { guestName: reservation.guestName || "", roomId: reservation.roomId || "" },
+      providerId,
+    });
     return NextResponse.json(reservation);
   } catch (error: unknown) {
         if (error instanceof AuthError) {
@@ -237,6 +252,17 @@ export async function DELETE(
       });
     }
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "RESERVATION_DELETE",
+      targetType: "RESERVATION",
+      targetId: id,
+      details: { guestName: existing.guestName || "", roomId: updated.roomId || "" },
+      providerId,
+    });
     return NextResponse.json(updated);
   } catch (error: unknown) {
         if (error instanceof AuthError) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 
+import { logStaffActivity } from "@/lib/staff-log";
 export async function GET(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
@@ -96,6 +97,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "REVIEW_CREATE",
+      targetType: "RESERVATION",
+      targetId: id,
+      details: { rating: review.rating || 0, comment: review.comment || "" },
+      providerId,
+    });
     return NextResponse.json(review, { status: 201 });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

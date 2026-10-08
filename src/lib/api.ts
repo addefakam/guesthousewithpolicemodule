@@ -577,6 +577,18 @@ export const apiGroupPayment = (id: string, data: Record<string, unknown>) =>
 export const apiGetStaffLogs = (params?: string) =>
   req(`/api/staff-logs${params ? `?${params}` : ""}`);
 
+// ── Tasks (formal staff work assignments) ──
+export const apiGetTasks = (params?: string) =>
+  req(`/api/tasks${params ? `?${params}` : ""}`);
+export const apiCreateTask = (data: Record<string, unknown>) =>
+  req("/api/tasks", { method: "POST", body: JSON.stringify(data) });
+export const apiUpdateTask = (id: string, data: Record<string, unknown>) =>
+  req(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const apiDeleteTask = (id: string) =>
+  req(`/api/tasks/${id}`, { method: "DELETE" });
+export const apiGetStaffPerformance = () =>
+  req("/api/tasks/performance");
+
 // ── Notification Broadcast (Police / Admin) ──
 export const apiGetBroadcastProviders = () =>
   req("/api/messages/broadcast");

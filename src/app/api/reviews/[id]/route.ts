@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthContext, getProviderFilter, checkWritePermission, AuthError } from "@/lib/tenant";
 
+import { logStaffActivity } from "@/lib/staff-log";
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,6 +31,17 @@ export async function DELETE(
 
     await db.review.delete({ where: { id } });
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "REVIEW_DELETE",
+      targetType: "RESERVATION",
+      targetId: id,
+      details: { rating: existing.rating || 0 },
+      providerId,
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

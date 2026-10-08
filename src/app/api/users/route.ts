@@ -112,6 +112,18 @@ export async function POST(req: NextRequest) {
 
     const { password: _, ...userWithoutPassword } = user;
 
+    // Staff activity log — operator creates a new staff account
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "USER_CREATE",
+      targetType: "USER",
+      targetId: user.id,
+      details: { name: user.name || "", role: user.role || "STAFF" },
+      providerId: user.providerId || "",
+    });
+
     return NextResponse.json(userWithoutPassword, { status: 201 });
   } catch (error: unknown) {
         if (error instanceof AuthError) {

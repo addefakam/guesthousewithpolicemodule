@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthContext, checkWritePermission, AuthError } from "@/lib/tenant";
 import { hashPassword } from "@/lib/auth-utils";
 
+import { logStaffActivity } from "@/lib/staff-log";
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -69,6 +70,18 @@ export async function PUT(
       },
     });
 
+    // Staff activity log — operator updates a staff account
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "USER_UPDATE",
+      targetType: "USER",
+      targetId: id,
+      details: { name: user.name || "", role: user.role || "", active: user.isActive },
+      providerId: user.providerId || "",
+    });
+
     return NextResponse.json(user);
   } catch (error: unknown) {
         if (error instanceof AuthError) {
@@ -106,6 +119,17 @@ export async function DELETE(
 
     await db.user.delete({ where: { id } });
 
+        // Staff activity log
+    logStaffActivity({
+      req,
+      userId: auth.userId,
+      userName: auth.userName,
+      action: "USER_DELETE",
+      targetType: "USER",
+      targetId: id,
+      details: { name: existing.name || "", role: existing.role || "" },
+      providerId,
+    });
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
         if (error instanceof AuthError) {
