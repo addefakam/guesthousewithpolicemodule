@@ -21,6 +21,7 @@ import {
   CreditCard,
   CheckCircle2,
   Phone,
+  Power,
 } from "lucide-react";
 
 // ── Types ──
@@ -82,6 +83,11 @@ interface PaymentSettings {
   pricingEnabled: boolean;
   // Payment overdue enforcement
   enablePaymentOverdue: boolean;
+  // Global subscription system toggle — when false, no provider is required
+  // to have an active subscription. Banners, lockout, and mini-status are
+  // all hidden. Super-admin can flip this off during the rollout period
+  // (e.g. when onboarding new guesthouses who shouldn't be billed yet).
+  subscriptionEnabled: boolean;
 }
 
 interface SystemConfig {
@@ -147,6 +153,9 @@ const DEFAULT_PAYMENT: PaymentSettings = {
   pricePerBedPerDay: 15,
   pricingEnabled: false,
   enablePaymentOverdue: false,
+  // Default: subscription system is ENABLED (current behavior preserved).
+  // Super-admin can turn it off from the Payment & Billing tab.
+  subscriptionEnabled: true,
 };
 
 const FULL_DEFAULTS: SystemConfig = {
@@ -856,6 +865,45 @@ function PaymentTab({
 }) {
   return (
     <div className="space-y-5">
+      {/* Subscription System Master Toggle */}
+      <SectionCard
+        title="Subscription System"
+        description="Globally enable or disable the subscription requirement for all guesthouses"
+        icon={Power}
+      >
+        <SettingRow
+          label="Require Subscriptions"
+          description="When ON, operators must have an active subscription — banners, lockouts, and the sidebar status all work normally. When OFF, no subscription is required and all subscription-related UI is hidden. Useful during rollout when onboarding new guesthouses who shouldn't be billed yet."
+        >
+          <div className="flex items-center gap-3">
+            <ToggleSwitch
+              id="subscriptionEnabled"
+              checked={settings.subscriptionEnabled}
+              onChange={(v) => onPricingSave({ subscriptionEnabled: v })}
+            />
+            {settings.subscriptionEnabled ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <CheckCircle2 className="w-3 h-3" />
+                Enabled
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                <Power className="w-3 h-3" />
+                Disabled — no subscription required
+              </span>
+            )}
+          </div>
+        </SettingRow>
+        {!settings.subscriptionEnabled && (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>
+              The subscription system is currently <strong>disabled globally</strong>. Operators will not see subscription banners, lockouts, or the sidebar status indicator. They can use the full system without payment. Re-enable this when you're ready to start billing.
+            </span>
+          </div>
+        )}
+      </SectionCard>
+
       {/* Subscription Timing */}
       <SectionCard
         title="Subscription Timing"

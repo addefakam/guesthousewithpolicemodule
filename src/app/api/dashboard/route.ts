@@ -85,29 +85,50 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Subscription + provider info (OPERATOR/STAFF only, safe wrapper) ──
+    // When the global subscription system is disabled (super-admin toggled
+    // it off in System Config → Payment & Billing), short-circuit to exempt
+    // so no banner/lockout/sidebar-status is shown to operators.
     let subResult: { subscription: any; provider: any } | null = null;
+    let subscriptionSystemDisabled = false;
     if (auth.role !== "SUPERUSER" && auth.role !== "POLICE" && auth.providerId) {
       try {
-        const [sub, prov] = await Promise.all([
-          db.subscription.findFirst({ where: { providerId: auth.providerId } }),
-          db.provider.findFirst({
-            where: { id: auth.providerId },
-            select: { name: true, ownerName: true, phone: true, status: true },
-          }),
-        ]);
-        let finalSub = sub;
-        if (!sub && prov?.status === "APPROVED") {
-          const trialEnd = new Date();
-          trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
-          try {
-            finalSub = await db.subscription.create({
-              data: { providerId: auth.providerId, startDate: new Date(), endDate: trialEnd, cycle: "MONTHLY", price: 0 },
-            });
-          } catch {
-            finalSub = await db.subscription.findFirst({ where: { providerId: auth.providerId } });
+        // Read the global subscriptionEnabled flag from Settings.configJson
+        const sysSettings = await db.settings.findFirst({ where: { providerId: null } });
+        let subscriptionEnabled = true;
+        if (sysSettings?.configJson && typeof sysSettings.configJson === "object") {
+          const config = sysSettings.configJson as Record<string, unknown>;
+          const payment = config.payment;
+          if (payment && typeof payment === "object") {
+            const p = payment as Record<string, unknown>;
+            subscriptionEnabled = p.subscriptionEnabled !== false;
           }
         }
-        subResult = { subscription: finalSub, provider: prov };
+        if (!subscriptionEnabled) {
+          subscriptionSystemDisabled = true;
+          // Skip the subscription query entirely — operator is exempt
+          subResult = null;
+        } else {
+          const [sub, prov] = await Promise.all([
+            db.subscription.findFirst({ where: { providerId: auth.providerId } }),
+            db.provider.findFirst({
+              where: { id: auth.providerId },
+              select: { name: true, ownerName: true, phone: true, status: true },
+            }),
+          ]);
+          let finalSub = sub;
+          if (!sub && prov?.status === "APPROVED") {
+            const trialEnd = new Date();
+            trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+            try {
+              finalSub = await db.subscription.create({
+                data: { providerId: auth.providerId, startDate: new Date(), endDate: trialEnd, cycle: "MONTHLY", price: 0 },
+              });
+            } catch {
+              finalSub = await db.subscription.findFirst({ where: { providerId: auth.providerId } });
+            }
+          }
+          subResult = { subscription: finalSub, provider: prov };
+        }
       } catch (err) {
         console.error("[dashboard] Subscription query failed (non-fatal):", err instanceof Error ? err.message : err);
         subResult = null;
@@ -147,7 +168,10 @@ export async function GET(req: NextRequest) {
     let subscriptionData = null as Record<string, unknown> | null;
     const subscription = subResult?.subscription;
     const providerInfo = subResult?.provider;
-    if (subscription && providerInfo) {
+    if (subscriptionSystemDisabled) {
+      // Global subscription system is disabled — exempt the operator
+      subscriptionData = { exempt: true, systemDisabled: true };
+    } else if (subscription && providerInfo) {
       const { status, daysRemaining } = calcSubscriptionStatus(subscription.endDate);
       subscriptionData = {
         status,

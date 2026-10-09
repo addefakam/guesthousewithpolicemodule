@@ -23,6 +23,9 @@ async function getPaymentConfig() {
           paymentInstructions: (p.paymentInstructions as string) ?? "",
           latePaymentPenalty: (p.latePaymentPenalty as number) ?? 10,
           pricePerBedPerDay: (p.pricePerBedPerDay as number) ?? 15,
+          // Global subscription system toggle — defaults to true (enabled)
+          // when not set, so existing deployments preserve current behavior.
+          subscriptionEnabled: p.subscriptionEnabled !== false,
         };
       }
     }
@@ -38,6 +41,7 @@ async function getPaymentConfig() {
     paymentInstructions: "",
     latePaymentPenalty: 10,
     pricePerBedPerDay: 15,
+    subscriptionEnabled: true,
   };
 }
 
@@ -51,6 +55,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ exempt: true });
     }
 
+    // ── Global subscription system toggle ──
+    // When the super-admin disables the subscription system from the
+    // System Config → Payment & Billing tab, every operator is exempt.
+    // No banners, no lockout, no sidebar mini-status. They can use the
+    // full system without payment. This is useful during rollout when
+    // onboarding new guesthouses who shouldn't be billed yet.
+    const paymentConfig = await getPaymentConfig();
+    if (!paymentConfig.subscriptionEnabled) {
+      return NextResponse.json({
+        exempt: true,
+        systemDisabled: true,
+      });
+    }
+
     if (!auth.providerId) {
       return NextResponse.json(
         { error: "No provider associated with this account" },
@@ -58,9 +76,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Fetch payment config, subscription, and provider info IN PARALLEL
-    const [paymentConfig, subscription, provider] = await Promise.all([
-      getPaymentConfig(),
+    // Fetch subscription and provider info (paymentConfig already fetched above)
+    const [subscription, provider] = await Promise.all([
       db.subscription.findFirst({ where: { providerId: auth.providerId } }),
       db.provider.findFirst({
         where: { id: auth.providerId },
