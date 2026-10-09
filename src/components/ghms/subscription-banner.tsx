@@ -54,8 +54,8 @@ export default function SubscriptionBanner({
         </p>
         <p className={`text-xs mt-0.5 ${isExpired ? "text-rose-700" : "text-amber-700"}`}>
           {isExpired
-            ? t("bannerExpiredDesc", { days: absDays, percent: penaltyPercent ?? 10 })
-            : t("bannerWarningDesc", { days: absDays })}
+            ? t("bannerExpiredDesc", { days: absDays, percent: penaltyPercent ?? 10, count: absDays })
+            : t("bannerWarningDesc", { days: absDays, count: absDays })}
         </p>
 
         {/* Penalty amount breakdown */}
