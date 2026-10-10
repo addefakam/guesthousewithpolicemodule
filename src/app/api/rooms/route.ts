@@ -30,8 +30,22 @@ export async function GET(req: NextRequest) {
 
     // Lazy maintenance (throttled) so room statuses reflect past-checkout
     // auto-releases even between cron runs. Never blocks the read.
+    //
+    // IMPORTANT: This is fire-and-forget — we DON'T await it. Previously we
+    // awaited runReservationMaintenance(), which meant:
+    //   1. fetchRooms() is called from the Add Guest to Group dialog
+    //   2. runReservationMaintenance() runs synchronously
+    //   3. It finds UPCOMING reservations with past checkout dates
+    //   4. It CANCELS them (sets status to CANCELLED)
+    //   5. The group bookings list refreshes and shows the guest as CANCELLED
+    //
+    // This was causing the operator to see "the previous guest was cancelled"
+    // right after adding a new guest. By making it fire-and-forget (not awaited),
+    // the room list returns immediately with current data, and the maintenance
+    // runs in the background — the cancellation (if any) happens on the NEXT
+    // page load, not during the Add Guest dialog flow.
     try {
-      await runReservationMaintenance(filter.isPolice ? {} : { providerId: filter.providerId });
+      runReservationMaintenance(filter.isPolice ? {} : { providerId: filter.providerId });
     } catch {
       // Ignore — maintenance must not break room reads.
     }

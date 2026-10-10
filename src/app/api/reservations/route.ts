@@ -20,8 +20,14 @@ export async function GET(req: NextRequest) {
     // Lazy maintenance: cancel past-checkout reservations, release their rooms
     // and create overdue check-in reminders so list data is never stale.
     // Throttled in the lib — repeated reads are cheap no-ops.
+    //
+    // Fire-and-forget (not awaited) — see rooms/route.ts for the same fix.
+    // Awaiting this caused the "previous guest was cancelled" bug in group
+    // bookings: when fetchRooms()/fetchReservations() ran after adding a
+    // new guest, the maintenance cancelled stale UPCOMING reservations
+    // synchronously, and the group list showed them as CANCELLED.
     try {
-      await runReservationMaintenance(isPolice ? {} : { providerId });
+      runReservationMaintenance(isPolice ? {} : { providerId });
     } catch {
       // Never block reads on maintenance failures.
     }
