@@ -238,7 +238,10 @@ export async function POST(req: NextRequest) {
     const guest = await db.guest.create({
       data: {
         name,
-        phone,
+        // phone column is NOT nullable in the schema (String, no default).
+        // When the caller omits phone (group-bookings inline registration —
+        // name only), store empty string instead of undefined/null.
+        phone: phone || "",
         email: email || "",
         idNumber: idNumber || "",
         // Normalize the ID type to the canonical form ("National ID",
@@ -270,7 +273,7 @@ export async function POST(req: NextRequest) {
     // Background: check if guest matches any suspected person (fire-and-forget)
     checkSuspectMatch({
       name,
-      phone,
+      phone: phone || "",
       idNumber: idNumber || "",
       idType: idType || "",
       matchType: "GUEST_CHECKIN",
@@ -288,7 +291,7 @@ export async function POST(req: NextRequest) {
     // Staff activity log — who created/enriched this guest
     logStaffActivity({
       req, userId: auth.userId, userName: auth.userName, action: "GUEST_CREATE", targetType: "GUEST", targetId: guest.id,
-      details: { guestName: name, phone, idNumber: idNumber || "" },
+      details: { guestName: name, phone: phone || "", idNumber: idNumber || "" },
       providerId,
     });
 
