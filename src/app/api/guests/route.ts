@@ -124,20 +124,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, phone, email, idNumber, idType, nationality, region, zone, woreda, kebele, houseNumber, streetName, plateNumber, weapon, address, notes, vip } = body;
 
-    if (!name || !phone) {
-      return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
+    // ── Required field: name only ──
+    // Phone, nationality, and ID type are OPTIONAL — the group-bookings
+    // inline registration form only requires a name (operator can fill in
+    // the rest later). When these fields are omitted, they default to
+    // empty strings in the DB (all are nullable/empty-default in the schema).
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    if (!isValidPhone(phone)) {
+    // Validate phone FORMAT only if provided
+    if (phone && phone.trim() && !isValidPhone(phone)) {
       return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
     }
     if (email && !isValidEmail(email)) {
       return NextResponse.json({ error: "Invalid email address format" }, { status: 400 });
-    }
-    if (!nationality || !nationality.trim()) {
-      return NextResponse.json({ error: "Nationality is required" }, { status: 400 });
-    }
-    if (!idType || !idType.trim()) {
-      return NextResponse.json({ error: "ID type is required" }, { status: 400 });
     }
 
     // ── AUTO-DEDUP: find or create by phone number ──
@@ -157,11 +157,16 @@ export async function POST(req: NextRequest) {
     // Phone is the natural unique key per provider because:
     //   - Two different people at the same guesthouse won't share a phone
     //   - The same person across multiple stays WILL have the same phone
-    //   - It's the field the operator always fills in (required)
-    const existingGuest = await db.guest.findFirst({
-      where: { phone, providerId },
-      include: { provider: { select: { name: true } } },
-    });
+    //
+    // When phone is empty (group-bookings inline registration — name only),
+    // we SKIP dedup entirely and create a new guest. This prevents matching
+    // against other guests who also have empty phones.
+    const existingGuest = phone && phone.trim()
+      ? await db.guest.findFirst({
+          where: { phone, providerId },
+          include: { provider: { select: { name: true } } },
+        })
+      : null;
 
     if (existingGuest) {
       // ── Enrich the existing guest with any new data ──
@@ -206,23 +211,25 @@ export async function POST(req: NextRequest) {
     }
 
     // ── No existing guest found — create a new one ──
-    if (!idNumber || !idNumber.trim()) {
-      return NextResponse.json({ error: "ID number is required" }, { status: 400 });
-    }
-    if (idNumber.trim().length < 4) {
-      return NextResponse.json({ error: "ID number is too short. Please enter a valid ID number." }, { status: 400 });
-    }
-    // National ID validation — 16 digits in "FAN XX XX XX XX XX XX XX XX" format
-    // when the ID type is National ID. Other ID types (passport, driver's license,
-    // etc.) are accepted as-is.
-    if (isNationalIdType(idType) && !isValidNationalId(idNumber)) {
-      return NextResponse.json(
-        {
-          error: "National ID must be exactly 16 digits in FAN format (e.g. FAN 12 34 56 78 90 12 34 56)",
-          code: "INVALID_NATIONAL_ID",
-        },
-        { status: 400 }
-      );
+    // ID number validation — only validate FORMAT if provided.
+    // ID number is optional in the group-bookings inline registration flow
+    // (operator may only enter a name). The DB allows empty strings.
+    if (idNumber && idNumber.trim()) {
+      if (idNumber.trim().length < 4) {
+        return NextResponse.json({ error: "ID number is too short. Please enter a valid ID number." }, { status: 400 });
+      }
+      // National ID validation — 16 digits in "FAN XX XX XX XX XX XX XX XX" format
+      // when the ID type is National ID. Other ID types (passport, driver's license,
+      // etc.) are accepted as-is.
+      if (isNationalIdType(idType) && !isValidNationalId(idNumber)) {
+        return NextResponse.json(
+          {
+            error: "National ID must be exactly 16 digits in FAN format (e.g. FAN 12 34 56 78 90 12 34 56)",
+            code: "INVALID_NATIONAL_ID",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Auto-compose address from normalized fields if not explicitly provided
