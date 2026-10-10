@@ -936,12 +936,12 @@ async function runMigrationsOnly(): Promise<void> {
 
 export async function ensureDatabase(): Promise<void> {
   if (_initDone) {
-    // Always run migrations synchronously to ensure columns exist
-    // before any query executes. Migrations are idempotent.
-    // Note: _migrationsRan flag is intentionally NOT used here —
-    // we want migrations to run on EVERY cold start because new
-    // ALTER TABLE statements may have been added since the last deploy.
-    await runMigrationsOnly();
+    // Migrations already ran successfully in this process — skip.
+    // Previously this re-ran ~200 DDL statements (ALTER TABLE + CREATE INDEX)
+    // on EVERY API request, adding 4-20 seconds of latency on hosted Postgres.
+    // The migrations are idempotent (IF NOT EXISTS / EXCEPTION WHEN duplicate),
+    // so running them once per cold start is sufficient. New ALTER TABLE
+    // statements added in a new deploy will run on the NEXT cold start.
     return;
   }
   if (_initPromise) return _initPromise;
