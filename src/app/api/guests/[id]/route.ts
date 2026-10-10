@@ -14,7 +14,12 @@ export async function PUT(
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffPermissionKey: "guests" });
+    // Accept 'guests' OR 'reservations' permission (see guests/route.ts for explanation)
+    try {
+      checkWritePermission(auth, { staffPermissionKey: "guests" });
+    } catch {
+      checkWritePermission(auth, { staffPermissionKey: "reservations" });
+    }
 
     const { id } = await params;
     const body = await req.json();
@@ -102,7 +107,12 @@ export async function DELETE(
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffPermissionKey: "guests" });
+    // Accept 'guests' OR 'reservations' permission (see guests/route.ts for explanation)
+    try {
+      checkWritePermission(auth, { staffPermissionKey: "guests" });
+    } catch {
+      checkWritePermission(auth, { staffPermissionKey: "reservations" });
+    }
 
     const { id } = await params;
 

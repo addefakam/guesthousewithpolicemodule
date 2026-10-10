@@ -119,7 +119,14 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getAuthContext(req);
     const { providerId } = getProviderFilter(auth);
-    checkWritePermission(auth, { staffPermissionKey: "guests" });
+    // Staff need either 'guests' or 'reservations' permission to create guests.
+    // 'guests' was removed from the operator's permission UI (redundant with
+    // 'reservations'), so we accept both keys for backwards compatibility.
+    try {
+      checkWritePermission(auth, { staffPermissionKey: "guests" });
+    } catch {
+      checkWritePermission(auth, { staffPermissionKey: "reservations" });
+    }
 
     const body = await req.json();
     const { name, phone, email, idNumber, idType, nationality, region, zone, woreda, kebele, houseNumber, streetName, plateNumber, weapon, address, notes, vip } = body;
