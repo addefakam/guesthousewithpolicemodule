@@ -1618,25 +1618,33 @@ export default function GroupBookingsPage() {
               </div>
             )}
 
-            {/* Dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>{t("lblcheckinDate")}</Label>
-                <Input
-                  type="date"
-                  value={resCheckIn}
-                  onChange={(e) => setResCheckIn(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t("lblcheckoutDate")}</Label>
-                <Input
-                  type="date"
-                  value={resCheckOut}
-                  onChange={(e) => setResCheckOut(e.target.value)}
-                />
-              </div>
-            </div>
+            {/* Dates — inherited from the group booking (read-only).
+                The group's startDate/endDate are the single source of truth
+                for all guests in the group. Showing them as read-only info
+                prevents the operator from accidentally setting different
+                (or past) dates per guest. */}
+            {(() => {
+              const grp = groupBookings.find((g) => g.id === addReservationGroupId);
+              if (!grp) return null;
+              return (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                  <p className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {t("groupDatesLabel", { defaultValue: "Group dates (applied to all guests)" })}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] text-blue-600/70">{t("lblcheckinDate")}</p>
+                      <p className="text-sm font-medium text-blue-900">{formatDate(grp.startDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-blue-600/70">{t("lblcheckoutDate")}</p>
+                      <p className="text-sm font-medium text-blue-900">{formatDate(grp.endDate)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button
