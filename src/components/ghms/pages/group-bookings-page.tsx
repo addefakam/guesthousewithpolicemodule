@@ -585,7 +585,12 @@ export default function GroupBookingsPage() {
       setNewGuestIdNumber("");
       setNewGuestIdType("");
       setShowAdditionalDetails(false);
+      // Refresh BOTH group bookings AND rooms — the room that was just
+      // assigned changed status from AVAILABLE → RESERVED, so we need
+      // the updated room list so the operator doesn't try to assign the
+      // same room to another guest (which would fail with ROOM_CONFLICT).
       fetchGroupBookings();
+      fetchRooms();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("toastFailedAddReservation"));
     } finally {
