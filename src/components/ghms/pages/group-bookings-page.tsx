@@ -410,7 +410,6 @@ export default function GroupBookingsPage() {
     setNotes("");
     setDiscountType("AMOUNT");
     setDiscountAmount("");
-    setEditingGroup(null);
   };
 
   const resetReservationForm = () => {
