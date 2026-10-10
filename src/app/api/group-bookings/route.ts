@@ -84,6 +84,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name, startDate, and endDate are required" }, { status: 400 });
     }
 
+    // Prevent past dates — group bookings are for future stays only.
+    // Past-date reservations get auto-cancelled by the maintenance cron,
+    // causing confusion for operators (guest appears as "Cancelled").
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (startDate < todayStr) {
+      return NextResponse.json(
+        { error: "Start date cannot be in the past. Please select today or a future date." },
+        { status: 400 }
+      );
+    }
+    if (endDate <= startDate) {
+      return NextResponse.json(
+        { error: "End date must be after the start date." },
+        { status: 400 }
+      );
+    }
+
     if (contactPhone && !isValidPhone(contactPhone)) {
       return NextResponse.json({ error: "Invalid phone number format. Use 7-15 digits with optional + prefix." }, { status: 400 });
     }

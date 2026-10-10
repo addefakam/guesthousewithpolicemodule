@@ -410,6 +410,19 @@ export default function GroupBookingsPage() {
   const handleCreate = async () => {
     if (!name.trim()) { toast.error(t("toastGroupNameRequired")); return; }
     if (!startDate || !endDate) { toast.error(t("toastDatesRequired")); return; }
+    // Prevent past dates — group bookings are for future stays.
+    // Past-date reservations get auto-cancelled by the maintenance cron,
+    // which causes confusion (guest appears as "Cancelled" immediately).
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (startDate < todayStr) {
+      toast.error(t("toastStartPastDate", { defaultValue: "Start date cannot be in the past. Please select today or a future date." }));
+      return;
+    }
+    if (endDate <= startDate) {
+      toast.error(t("toastEndBeforeStart", { defaultValue: "End date must be after the start date." }));
+      return;
+    }
     if (contactPhone.trim() && !isValidPhone(contactPhone)) {
       toast.error(t("toastInvalidPhone"));
       return;
@@ -1287,6 +1300,10 @@ export default function GroupBookingsPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  min={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                  })()}
                 />
               </div>
               <div className="grid gap-2">
@@ -1298,6 +1315,10 @@ export default function GroupBookingsPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate || (() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                  })()}
                 />
               </div>
             </div>
