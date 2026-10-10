@@ -501,8 +501,10 @@ export default function GroupBookingsPage() {
       setNewGuestIdType("");
       setShowAdditionalDetails(false);
       toast.success(t("toastGuestRegistered", { name: guest.name }));
+      return guest;
     } catch {
       toast.error(t("toastFailedRegister"));
+      return null;
     } finally {
       setRegisteringGuest(false);
     }
@@ -1451,31 +1453,11 @@ export default function GroupBookingsPage() {
                       </div>
                     </div>
                   )}
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleRegisterGuest}
-                    disabled={registeringGuest || !newGuestName.trim()}
-                    className="w-full"
-                  >
-                    {registeringGuest ? (
-                      <>
-                        <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                        {t("btnRegistering")}
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-3.5 w-3.5 mr-1" />
-                        {t("btnRegisterSelect")}
-                      </>
-                    )}
-                  </Button>
                 </div>
               )}
             </div>
 
-            {/* Room Selection */}
+            {/* Room Selection — always visible (both existing + new guest modes) */}
             <div className="grid gap-2">
               <Label>{t("lblRoom")} <span className="text-destructive">*</span></Label>
               <Select value={resRoomId} onValueChange={(val) => { setResRoomId(val); setResSecondGuestName(""); setResSecondGuestPhone(""); setResSecondGuestIdNumber(""); setResExceptionallyReserved(false); setResExceptionReason(""); }}>
@@ -1582,15 +1564,53 @@ export default function GroupBookingsPage() {
                 resetReservationForm();
                 setAddReservationGroupId(null);
               }}
-              disabled={addingReservation}
+              disabled={addingReservation || registeringGuest}
             >
               {t("btnCancel")}
             </Button>
             <Button
-              onClick={handleAddReservation}
-              disabled={addingReservation || !resGuestId || !resRoomId}
+              onClick={async () => {
+                // When in "Register New Guest" mode, create the guest FIRST,
+                // then create the reservation — all in one click.
+                if (showNewGuest) {
+                  if (!newGuestName.trim()) {
+                    toast.error(t("toastGuestNameRequired"));
+                    return;
+                  }
+                  const guest = await handleRegisterGuest();
+                  if (!guest) return; // error toast already shown by handleRegisterGuest
+                  // guest.id is now set as resGuestId — proceed with reservation
+                }
+                // Validate room selection (required in both modes)
+                if (!resRoomId) {
+                  toast.error(t("toastSelectGuestRoom"));
+                  return;
+                }
+                await handleAddReservation();
+              }}
+              disabled={
+                addingReservation ||
+                registeringGuest ||
+                // In existing-guest mode: need resGuestId + resRoomId
+                // In new-guest mode: need newGuestName + resRoomId
+                (showNewGuest ? !newGuestName.trim() || !resRoomId : !resGuestId || !resRoomId)
+              }
             >
-              {addingReservation ? t("btnAdding") : t("btnAddToGroup")}
+              {addingReservation || registeringGuest ? (
+                <>
+                  <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                  {showNewGuest
+                    ? t("btnRegistering", { defaultValue: "Registering..." })
+                    : t("btnAdding")}
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                  {showNewGuest
+                    ? t("btnRegisterAddToGroup", { defaultValue: "Register & Add to Group" })
+                    : t("btnAddToGroup")}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
