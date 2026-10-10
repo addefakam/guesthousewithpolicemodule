@@ -79,8 +79,8 @@ interface AppState {
   preselectedRoom: PreselectedRoom | null;
   setPreselectedRoom: (r: PreselectedRoom | null) => void;
   /** Which tab the Accommodation page should open on. */
-  accommodationTab: "rooms" | "reservations";
-  setAccommodationTab: (t: "rooms" | "reservations") => void;
+  accommodationTab: "rooms" | "reservations" | "group-bookings";
+  setAccommodationTab: (t: "rooms" | "reservations" | "group-bookings") => void;
   // Joint session state (Concurrent Dual Session)
   jointSession: JointSessionInfo;
   setJointSession: (info: JointSessionInfo) => void;

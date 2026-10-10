@@ -84,7 +84,7 @@ interface NavItem {
   // (Rooms → tab=rooms, Reservations → tab=reservations). When undefined,
   // the page opens with its default tab (controlled by useAppStore's
   // accommodationTab state).
-  tab?: "rooms" | "reservations";
+  tab?: "rooms" | "reservations" | "group-bookings";
   // Optional: child items rendered as an expandable sub-list beneath this
   // parent. Only 'Accommodation' uses this today — its children are Rooms
   // and Reservations. Parents with children render with a chevron toggle
@@ -106,13 +106,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
     children: [
       { page: "accommodation", label: "Rooms", icon: Bed, tab: "rooms" },
       { page: "accommodation", label: "Reservations", icon: CalendarCheck, tab: "reservations" },
+      { page: "accommodation", label: "Group Bookings", icon: Users, tab: "group-bookings" },
     ],
   },
   { page: "users", label: "Account Management", icon: UserCog },
   { page: "reports", label: "Reports", icon: BarChart3 },
   { page: "resources", label: "Stock Management", icon: Package },
   { page: "expenses", label: "Expenses", icon: Receipt },
-  { page: "group-bookings", label: "Group Bookings", icon: Users },
   { page: "guest-communication", label: "Messages", icon: MessageSquare },
   { page: "staff-logs", label: "Staff Activity", icon: ScrollText },
   { page: "my-subscription", label: "Subscription", icon: CreditCard },
@@ -225,7 +225,7 @@ const PERMISSION_PAGE_MAP: Record<string, NavItem> = {
   guests: { page: "accommodation", label: "Accommodation", icon: DoorOpen },
   staff_logs_view: { page: "staff-logs", label: "Staff Activity", icon: ScrollText },
   guest_communication_view: { page: "guest-communication", label: "Messages", icon: MessageSquare },
-  group_bookings_view: { page: "group-bookings", label: "Group Bookings", icon: Users },
+  group_bookings_view: { page: "accommodation", label: "Group Bookings", icon: Users, tab: "group-bookings" },
 };
 
 // ── Police permission → page mapping ──
