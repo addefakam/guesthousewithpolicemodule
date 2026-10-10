@@ -46,10 +46,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     const body = await req.json();
-    const { name, contactName, contactPhone, contactEmail, startDate, endDate, notes, status } = body;
+    const { name, contactName, contactPhone, contactEmail, startDate, endDate, notes, status, discountType, discountAmount } = body;
 
     const existing = await db.groupBooking.findFirst({ where: { id, providerId } });
     if (!existing) return NextResponse.json({ error: "Group booking not found" }, { status: 404 });
+
+    // Validate discount fields if provided
+    const validDiscountTypes = ["AMOUNT", "PERCENT"];
+    const finalDiscountType = discountType && validDiscountTypes.includes(String(discountType)) ? String(discountType) : existing.discountType || "AMOUNT";
+    let finalDiscountAmount = existing.discountAmount || 0;
+    if (discountAmount !== undefined) {
+      finalDiscountAmount = !isNaN(Number(discountAmount)) && Number(discountAmount) > 0 ? Number(discountAmount) : 0;
+    }
+    if (finalDiscountType === "PERCENT" && finalDiscountAmount > 100) {
+      return NextResponse.json({ error: "Discount percentage cannot exceed 100%" }, { status: 400 });
+    }
 
     const reservations = await db.reservation.findMany({
       where: { groupBookingId: id },
@@ -69,6 +80,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(endDate !== undefined ? { endDate } : {}),
         ...(notes !== undefined ? { notes } : {}),
         ...(status !== undefined ? { status } : {}),
+        ...(discountType !== undefined ? { discountType: finalDiscountType } : {}),
+        ...(discountAmount !== undefined ? { discountAmount: finalDiscountAmount } : {}),
         totalRooms,
         totalGuests,
         totalCost,
@@ -81,7 +94,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       action: "UPDATE_GROUP_BOOKING",
       targetType: "GROUP_BOOKING",
       targetId: id,
-      details: { changes: body, totalRooms, totalGuests, totalCost },
+      details: { changes: body, totalRooms, totalGuests, totalCost, discountType: finalDiscountType, discountAmount: finalDiscountAmount },
       providerId,
     });
 

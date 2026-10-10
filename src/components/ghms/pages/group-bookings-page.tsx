@@ -102,6 +102,9 @@ interface GroupBooking {
   totalRooms: number;
   totalGuests: number;
   totalCost: number;
+  // Group discount fields
+  discountType?: string;    // "AMOUNT" or "PERCENT"
+  discountAmount?: number; // ETB when AMOUNT, 0-100 when PERCENT
   reservations?: Reservation[];
   _count?: { reservations: number };
   createdAt: string;
@@ -120,6 +123,7 @@ interface Reservation {
   paymentStatus?: string;
   nights?: number;
   roomRate?: number;
+  notes?: string;
   guest?: { id: string; name: string; phone: string; email: string };
   room?: { id: string; number: string; name: string; type: string; pricePerNight: number };
 }
@@ -136,6 +140,34 @@ type CheckInEligibility = {
   reasonKey: string | null;
   reasonContext: Record<string, string | number> | null;
 };
+
+// ── Group discount calculation helper ──
+// Returns the discounted grand total given the group's subtotal and
+// discount fields. Used by the card, detail dialog, and payment form.
+function getDiscountedTotal(group: GroupBooking): {
+  subtotal: number;
+  discount: number;
+  grandTotal: number;
+  hasDiscount: boolean;
+} {
+  const subtotal = group.totalCost || 0;
+  const type = group.discountType || "AMOUNT";
+  const amount = group.discountAmount || 0;
+  let discount = 0;
+  if (amount > 0) {
+    if (type === "PERCENT") {
+      discount = Math.round(subtotal * (amount / 100) * 100) / 100;
+    } else {
+      discount = Math.min(amount, subtotal); // cap at subtotal
+    }
+  }
+  return {
+    subtotal,
+    discount,
+    grandTotal: Math.max(0, subtotal - discount),
+    hasDiscount: discount > 0,
+  };
+}
 
 function getCheckInEligibility(res: Reservation): CheckInEligibility {
   if (res.status !== "UPCOMING") {
@@ -250,6 +282,9 @@ export default function GroupBookingsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
+  // Group discount form fields
+  const [discountType, setDiscountType] = useState<"AMOUNT" | "PERCENT">("AMOUNT");
+  const [discountAmount, setDiscountAmount] = useState("");
 
   // Add reservation form
   const [resGuestId, setResGuestId] = useState("");
@@ -343,6 +378,9 @@ export default function GroupBookingsPage() {
     setStartDate("");
     setEndDate("");
     setNotes("");
+    setDiscountType("AMOUNT");
+    setDiscountAmount("");
+    setEditingGroup(null);
   };
 
   const resetReservationForm = () => {
@@ -373,6 +411,16 @@ export default function GroupBookingsPage() {
       toast.error(t("toastInvalidEmail"));
       return;
     }
+    // Validate discount
+    const discountNum = discountAmount ? Number(discountAmount) : 0;
+    if (discountAmount && (isNaN(discountNum) || discountNum < 0)) {
+      toast.error(t("toastInvalidDiscount", { defaultValue: "Invalid discount value" }));
+      return;
+    }
+    if (discountType === "PERCENT" && discountNum > 100) {
+      toast.error(t("toastDiscountPercentTooHigh", { defaultValue: "Discount percentage cannot exceed 100%" }));
+      return;
+    }
     try {
       setCreating(true);
       await apiCreateGroupBooking({
@@ -382,6 +430,8 @@ export default function GroupBookingsPage() {
         contactEmail: contactEmail.trim(),
         startDate, endDate,
         notes: notes.trim(),
+        discountType,
+        discountAmount: discountNum,
       });
       toast.success(t("toastCreated"));
       setCreateOpen(false);
@@ -653,9 +703,11 @@ export default function GroupBookingsPage() {
 
   const openPaymentDialog = (group: GroupBooking) => {
     // Calculate total cost and total paid from reservations
-    const totalCost = group.reservations?.reduce((s, r) => (s + (r.totalCost || 0)), 0) || 0;
+    const subtotal = group.reservations?.reduce((s, r) => (s + (r.totalCost || 0)), 0) || 0;
+    // Apply group discount to get the effective grand total
+    const pricing = getDiscountedTotal({ ...group, totalCost: subtotal });
     setPaymentGroupId(group.id);
-    setPaymentForm({ amount: String(totalCost), method: "CASH", referenceNo: "", notes: "" });
+    setPaymentForm({ amount: String(pricing.grandTotal), method: "CASH", referenceNo: "", notes: "" });
     setPaymentOpen(true);
   };
 
@@ -927,11 +979,25 @@ export default function GroupBookingsPage() {
                       <Users className="h-3.5 w-3.5" />
                       <span>{t((group.totalGuests || 0) === 1 ? "guests_one" : "guests_other", { count: group.totalGuests || 0 })}</span>
                     </div>
-                    {(group.totalCost ?? 0) > 0 && (
-                      <span className="font-medium text-foreground">
-                        {group.totalCost?.toLocaleString()} ETB
-                      </span>
-                    )}
+                    {(group.totalCost ?? 0) > 0 && (() => {
+                      const pricing = getDiscountedTotal(group);
+                      if (pricing.hasDiscount) {
+                        return (
+                          <span className="font-medium text-foreground flex items-center gap-1.5">
+                            <span className="text-muted-foreground line-through text-xs">{pricing.subtotal.toLocaleString()}</span>
+                            <span>{pricing.grandTotal.toLocaleString()} ETB</span>
+                            <Badge variant="outline" className="text-[9px] text-emerald-700 border-emerald-300 bg-emerald-50 px-1 py-0">
+                              -{pricing.discount.toLocaleString()}
+                            </Badge>
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="font-medium text-foreground">
+                          {group.totalCost?.toLocaleString()} ETB
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {group.notes && (
@@ -1032,6 +1098,44 @@ export default function GroupBookingsPage() {
                           {t("noReservationsYet")}
                         </div>
                       )}
+
+                      {/* Discount breakdown + Notes — shown when the group detail is expanded */}
+                      {(() => {
+                        const pricing = getDiscountedTotal(group);
+                        const hasNotes = group.notes && group.notes.trim().length > 0;
+                        if (!pricing.hasDiscount && !hasNotes) return null;
+                        return (
+                          <div className="border-t bg-muted/30 px-4 py-3 space-y-3">
+                            {/* Discount breakdown */}
+                            {pricing.hasDiscount && (
+                              <div className="space-y-1 text-sm">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                  <span>{t("subtotal", { defaultValue: "Subtotal" })}</span>
+                                  <span>{pricing.subtotal.toLocaleString()} ETB</span>
+                                </div>
+                                <div className="flex items-center justify-between text-emerald-700">
+                                  <span>
+                                    {t("discount", { defaultValue: "Discount" })}
+                                    {group.discountType === "PERCENT" && ` (${group.discountAmount}%)`}
+                                  </span>
+                                  <span>-{pricing.discount.toLocaleString()} ETB</span>
+                                </div>
+                                <div className="flex items-center justify-between font-bold text-foreground border-t pt-1">
+                                  <span>{t("grandTotal", { defaultValue: "Grand Total" })}</span>
+                                  <span>{pricing.grandTotal.toLocaleString()} ETB</span>
+                                </div>
+                              </div>
+                            )}
+                            {/* Notes */}
+                            {hasNotes && (
+                              <div className="text-sm">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">{t("lblnotes")}</p>
+                                <p className="text-foreground whitespace-pre-wrap border-l-2 border-muted pl-3">{group.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </CardContent>
@@ -1153,6 +1257,38 @@ export default function GroupBookingsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </div>
+
+            {/* Group Discount */}
+            <div className="grid gap-2">
+              <Label>{t("lblGroupDiscount", { defaultValue: "Group Discount (optional)" })}</Label>
+              <div className="flex gap-2">
+                <Select value={discountType} onValueChange={(v) => setDiscountType(v as "AMOUNT" | "PERCENT")}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AMOUNT">{t("discountTypeAmount", { defaultValue: "Amount (ETB)" })}</SelectItem>
+                    <SelectItem value="PERCENT">{t("discountTypePercent", { defaultValue: "Percent (%)" })}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  min="0"
+                  max={discountType === "PERCENT" ? "100" : undefined}
+                  placeholder="0"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+              {discountAmount && Number(discountAmount) > 0 && (
+                <p className="text-xs text-emerald-600">
+                  {discountType === "PERCENT"
+                    ? t("discountPreviewPercent", { defaultValue: "{{value}}% off the group subtotal", value: discountAmount })
+                    : t("discountPreviewAmount", { defaultValue: "{{value}} ETB off the group subtotal", value: Number(discountAmount).toLocaleString() })}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -1655,6 +1791,35 @@ export default function GroupBookingsPage() {
                   {t("nightsCalc", { nights: detailRes.nights, rate: detailRes.room.pricePerNight.toLocaleString(), total: detailRes.totalCost?.toLocaleString() ?? "0" })}
                 </div>
               )}
+
+              {/* Per-guest notes — editable inline */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t("perGuestNotes", { defaultValue: "Guest Notes (special requests, VIP, late arrival, etc.)" })}
+                </Label>
+                <Textarea
+                  value={detailRes.notes || ""}
+                  onChange={(e) => setDetailRes({ ...detailRes, notes: e.target.value })}
+                  placeholder={t("perGuestNotesPlaceholder", { defaultValue: "e.g. VIP — wants extra towels, Late arrival at 11 PM, Allergic to feather pillows" })}
+                  className="text-sm"
+                  rows={2}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={async () => {
+                    try {
+                      await apiUpdateReservation(detailRes.id, { notes: detailRes.notes || "" });
+                      toast.success(t("toastNotesSaved", { defaultValue: "Notes saved" }));
+                    } catch {
+                      toast.error(t("toastNotesSaveFailed", { defaultValue: "Failed to save notes" }));
+                    }
+                  }}
+                >
+                  {t("btnSaveNotes", { defaultValue: "Save Notes" })}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

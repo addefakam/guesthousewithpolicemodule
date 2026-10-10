@@ -624,6 +624,12 @@ model GroupBooking {
   totalRooms   Int                @default(0)
   totalGuests  Int                @default(0)
   totalCost    Float              @default(0)
+  // ── Group discount ──
+  // discountType: "AMOUNT" (fixed ETB) or "PERCENT" (% of subtotal)
+  // discountAmount: the value — when AMOUNT, it's ETB; when PERCENT, it's 0-100
+  // The group's effective grand total = subtotal - discount
+  discountType    String             @default("AMOUNT")
+  discountAmount  Float              @default(0)
   providerId   String
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt

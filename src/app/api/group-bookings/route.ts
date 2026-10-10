@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (!providerId) return NextResponse.json({ error: "Provider required" }, { status: 403 });
 
     const body = await req.json();
-    const { name, contactName, contactPhone, contactEmail, startDate, endDate, notes } = body;
+    const { name, contactName, contactPhone, contactEmail, startDate, endDate, notes, discountType, discountAmount } = body;
 
     if (!name || !startDate || !endDate) {
       return NextResponse.json({ error: "Name, startDate, and endDate are required" }, { status: 400 });
@@ -90,6 +90,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid email address format" }, { status: 400 });
     }
 
+    // Validate discount fields if provided
+    const validDiscountTypes = ["AMOUNT", "PERCENT"];
+    const finalDiscountType = discountType && validDiscountTypes.includes(String(discountType)) ? String(discountType) : "AMOUNT";
+    const finalDiscountAmount = discountAmount != null && !isNaN(Number(discountAmount)) && Number(discountAmount) > 0
+      ? Number(discountAmount)
+      : 0;
+    // Cap percent at 100
+    if (finalDiscountType === "PERCENT" && finalDiscountAmount > 100) {
+      return NextResponse.json({ error: "Discount percentage cannot exceed 100%" }, { status: 400 });
+    }
+
     const groupBooking = await db.groupBooking.create({
       data: {
         name,
@@ -99,6 +110,8 @@ export async function POST(req: NextRequest) {
         startDate,
         endDate,
         notes: notes || "",
+        discountType: finalDiscountType,
+        discountAmount: finalDiscountAmount,
         providerId,
       },
     });
