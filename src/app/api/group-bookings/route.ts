@@ -120,20 +120,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Discount percentage cannot exceed 100%" }, { status: 400 });
     }
 
-    const groupBooking = await db.groupBooking.create({
-      data: {
-        name,
-        contactName: contactName || "",
-        contactPhone: contactPhone || "",
-        contactEmail: contactEmail || "",
-        startDate,
-        endDate,
-        notes: notes || "",
-        discountType: finalDiscountType,
-        discountAmount: finalDiscountAmount,
-        providerId,
-      },
-    });
+    // Create the group booking — wrap in try/catch in case the discountType/
+    // discountAmount columns don't exist yet on the production DB. Fall back
+    // to creating without those fields.
+    let groupBooking;
+    try {
+      groupBooking = await db.groupBooking.create({
+        data: {
+          name,
+          contactName: contactName || "",
+          contactPhone: contactPhone || "",
+          contactEmail: contactEmail || "",
+          startDate,
+          endDate,
+          notes: notes || "",
+          discountType: finalDiscountType,
+          discountAmount: finalDiscountAmount,
+          providerId,
+        },
+      });
+    } catch (createErr: unknown) {
+      const errMsg = createErr instanceof Error ? createErr.message : String(createErr);
+      if (errMsg.includes("discountType") || errMsg.includes("discountAmount") || errMsg.includes("does not exist")) {
+        // Fallback: create without discount fields — the ALTER TABLE in
+        // init-db.ts will add them on the next ensureDatabase() call.
+        console.warn("[group-bookings POST] discount columns not found — creating without discount fields.");
+        groupBooking = await db.groupBooking.create({
+          data: {
+            name,
+            contactName: contactName || "",
+            contactPhone: contactPhone || "",
+            contactEmail: contactEmail || "",
+            startDate,
+            endDate,
+            notes: notes || "",
+            providerId,
+          },
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     const { userId, userName } = getLogUserInfo(req);
     logStaffActivity({

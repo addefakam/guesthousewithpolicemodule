@@ -479,12 +479,12 @@ export default function GroupBookingsPage() {
         discountType,
         discountAmount: discountNum,
       });
-      toast.success(t("toastCreated"));
       setCreateOpen(false);
       resetCreateForm();
-      fetchGroupBookings();
-    } catch {
-      toast.error(t("toastFailedCreate"));
+      await fetchGroupBookings();
+      toast.success(t("toastCreated"));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedCreate"));
     } finally {
       setCreating(false);
     }
