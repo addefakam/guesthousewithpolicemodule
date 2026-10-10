@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { COUNTRIES, type Country } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,6 +46,7 @@ export function NationalityCombobox({
   t,
 }: NationalityComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   // Find the currently-selected country object (for display label)
   const selected = COUNTRIES.find((c) => c.name === value);
@@ -70,6 +71,12 @@ export function NationalityCombobox({
     a.name.localeCompare(b.name)
   );
 
+  // Filter the countries based on the search query — done client-side
+  // because the list is small (197 items) and we want to match against
+  // multiple fields (name, displayAs, code) which cmdk's built-in filter
+  // can't do.
+  const filteredCountries = sortedCountries.filter((c) => matchesCountry(c, search));
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -87,40 +94,46 @@ export function NationalityCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[300px] p-0" align="start">
-        <Command filter={() => 1}>
-          {/* filter={() => 1} disables cmdk's built-in filtering — we do it ourselves via matchesCountry */}
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-            <CommandInput
-              placeholder={t ? t("searchNationality", { defaultValue: "Search country..." }) : "Search country..."}
-              className="h-9 border-0 ring-0 focus:ring-0"
-            />
-          </div>
+        <Command shouldFilter={false}>
+          {/* shouldFilter={false} disables cmdk's built-in filtering — we do it ourselves
+              via matchesCountry + the filteredCountries variable below. This lets us
+              match against name + displayAs + code (cmdk's filter only matches against
+              the CommandItem value string). */}
+          <CommandInput
+            placeholder={t ? t("searchNationality", { defaultValue: "Search country..." }) : "Search country..."}
+            className="h-9"
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList className="max-h-60 overflow-y-auto">
-            <CommandEmpty>
-              {t ? t("noCountryFound", { defaultValue: "No country found." }) : "No country found."}
-            </CommandEmpty>
-            <CommandGroup>
-              {sortedCountries.map((country) => (
-                <CommandItem
-                  key={country.code}
-                  value={country.name + " " + (country.displayAs || "") + " " + country.code}
-                  onSelect={() => {
-                    onValueChange(country.name === value ? "" : country.name);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === country.name ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span>{country.displayAs || country.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filteredCountries.length === 0 ? (
+              <CommandEmpty>
+                {t ? t("noCountryFound", { defaultValue: "No country found." }) : "No country found."}
+              </CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {filteredCountries.map((country) => (
+                  <CommandItem
+                    key={country.code}
+                    value={country.name + " " + (country.displayAs || "") + " " + country.code}
+                    onSelect={() => {
+                      onValueChange(country.name === value ? "" : country.name);
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === country.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span>{country.displayAs || country.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
