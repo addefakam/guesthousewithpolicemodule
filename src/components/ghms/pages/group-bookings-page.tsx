@@ -300,6 +300,10 @@ export default function GroupBookingsPage() {
   // Inline guest registration
   const [showNewGuest, setShowNewGuest] = useState(false);
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
+  // Tracks guests added in the current dialog session — shown as a list
+  // at the top of the dialog so the operator can see their progress and
+  // know that previous entries were saved (not cancelled).
+  const [addedGuests, setAddedGuests] = useState<Array<{ name: string; roomNumber: string }>>([]);
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestPhone, setNewGuestPhone] = useState("");
   const [newGuestIdNumber, setNewGuestIdNumber] = useState("");
@@ -550,6 +554,19 @@ export default function GroupBookingsPage() {
         exceptionReason: resExceptionReason,
       });
       toast.success(t("toastReservationAdded"));
+      // Track the added guest for the "added so far" display
+      const addedRoom = rooms.find((r) => r.id === resRoomId);
+      const addedGuestName = showNewGuest
+        ? (newGuestName.trim() || "(guest)")
+        : (guests.find((g) => g.id === effectiveGuestId)?.name || "(guest)");
+      // Note: at this point newGuestName might already be cleared by
+      // handleRegisterGuest, so we use the guest name from the guests list
+      // or the API response. Let's get it from the guests list.
+      const guestName = guests.find((g) => g.id === effectiveGuestId)?.name || addedGuestName;
+      setAddedGuests((prev) => [...prev, {
+        name: guestName,
+        roomNumber: addedRoom?.number || "?",
+      }]);
       // DON'T close the dialog — reset the form so the operator can
       // immediately add the next group member. The "Done" button at
       // the bottom closes the dialog when they're finished.
@@ -769,6 +786,7 @@ export default function GroupBookingsPage() {
     setAddReservationGroupId(group.id);
     setResCheckIn(group.startDate);
     setResCheckOut(group.endDate);
+    setAddedGuests([]); // clear the "added so far" list for the new session
     setAddReservationOpen(true);
   };
 
@@ -1350,6 +1368,25 @@ export default function GroupBookingsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* "Added so far" list — shows guests added in this session.
+                This gives the operator visual confirmation that previous
+                entries were saved (not cancelled) when the form resets. */}
+            {addedGuests.length > 0 && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {t("addedSoFar", { defaultValue: "Added to group" })} ({addedGuests.length})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {addedGuests.map((g, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-200 px-2 py-0.5 text-xs text-emerald-700">
+                      <Check className="h-3 w-3" />
+                      {g.name} · Room {g.roomNumber}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Guest Selection with inline register toggle */}
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
