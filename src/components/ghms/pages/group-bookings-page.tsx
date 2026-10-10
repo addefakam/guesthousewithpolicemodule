@@ -299,6 +299,7 @@ export default function GroupBookingsPage() {
 
   // Inline guest registration
   const [showNewGuest, setShowNewGuest] = useState(false);
+  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [newGuestName, setNewGuestName] = useState("");
   const [newGuestPhone, setNewGuestPhone] = useState("");
   const [newGuestIdNumber, setNewGuestIdNumber] = useState("");
@@ -394,6 +395,7 @@ export default function GroupBookingsPage() {
     setResExceptionallyReserved(false);
     setResExceptionReason("");
     setShowNewGuest(false);
+    setShowAdditionalDetails(false);
     setNewGuestName("");
     setNewGuestPhone("");
     setNewGuestIdNumber("");
@@ -472,6 +474,7 @@ export default function GroupBookingsPage() {
 
   const handleRegisterGuest = async () => {
     if (!newGuestName.trim()) { toast.error(t("toastGuestNameRequired")); return; }
+    // Phone is optional — only validate format IF the user provided one.
     if (newGuestPhone.trim() && !isValidPhone(newGuestPhone)) {
       toast.error(t("toastInvalidGuestPhone"));
       return;
@@ -480,18 +483,23 @@ export default function GroupBookingsPage() {
       setRegisteringGuest(true);
       const guest = await apiCreateGuest({
         name: newGuestName.trim(),
-        phone: newGuestPhone.trim(),
-        idNumber: newGuestIdNumber.trim(),
+        // Phone + ID fields are optional — only save if the user filled them.
+        // The DB schema allows empty strings for all of these.
+        phone: newGuestPhone.trim() || undefined,
+        idNumber: newGuestIdNumber.trim() || undefined,
         idType: newGuestIdType || undefined,
       });
       const newGuest = { id: guest.id, name: guest.name, phone: guest.phone || "" };
       setGuests((prev) => [newGuest, ...prev]);
       setResGuestId(guest.id);
-      setShowNewGuest(false);
+      // Reset the form but DON'T close the dialog — the operator can
+      // immediately register the next group member. The "Done" button
+      // at the bottom closes the dialog when they're finished.
       setNewGuestName("");
       setNewGuestPhone("");
       setNewGuestIdNumber("");
       setNewGuestIdType("");
+      setShowAdditionalDetails(false);
       toast.success(t("toastGuestRegistered", { name: guest.name }));
     } catch {
       toast.error(t("toastFailedRegister"));
@@ -1355,55 +1363,95 @@ export default function GroupBookingsPage() {
               ) : (
                 /* Inline guest registration form */
                 <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="new-guest-name" className="text-xs">
-                        {t("lblFullName")} <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="new-guest-name"
-                        placeholder={t("placeholderGuestFullName")}
-                        value={newGuestName}
-                        onChange={(e) => setNewGuestName(e.target.value)}
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label>{t("lblphoneNumber")}</Label>
-                      <Input
-                        id="new-guest-phone"
-                        type="tel"
-                        placeholder={t("placeholderPhone")}
-                        value={newGuestPhone}
-                        onChange={(e) => setNewGuestPhone(e.target.value)}
-                      />
-                    </div>
+                  {/* Full Name — the only required field */}
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="new-guest-name" className="text-xs">
+                      {t("lblFullName")} <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="new-guest-name"
+                      placeholder={t("placeholderGuestFullName")}
+                      value={newGuestName}
+                      onChange={(e) => setNewGuestName(e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="grid gap-1.5">
-                      <Label>{t("lblidType")}</Label>
-                      <Select value={newGuestIdType} onValueChange={setNewGuestIdType}>
-                        <SelectTrigger id="new-guest-id-type">
-                          <SelectValue placeholder={t("placeholderSelectIdType")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="National_ID">{t("idNationalId")}</SelectItem>
-                          <SelectItem value="Passport">{t("idPassport")}</SelectItem>
-                          <SelectItem value="Driver_License">{t("idDriverLicense")}</SelectItem>
-                          <SelectItem value="Military_ID">{t("idMilitaryId")}</SelectItem>
-                          <SelectItem value="Other">{t("idOther")}</SelectItem>
-                        </SelectContent>
-                      </Select>
+
+                  {/* Collapsible "additional details" section — Phone + ID Type + ID Number.
+                      All three are optional. Hidden by default to keep the form simple
+                      for the common case (operator just types a name and clicks Register).
+                      Expanding reveals the 3 fields in a 2-column grid. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAdditionalDetails(!showAdditionalDetails)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  >
+                    {showAdditionalDetails ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                    {showAdditionalDetails
+                      ? t("hideAdditionalDetails", { defaultValue: "Hide additional details" })
+                      : t("showAdditionalDetails", { defaultValue: "Show additional details (optional)" })}
+                  </button>
+
+                  {showAdditionalDetails && (
+                    <div className="space-y-3 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            {t("lblphoneNumber")}{" "}
+                            <span className="text-[10px] text-muted-foreground/60">
+                              ({t("optional", { defaultValue: "optional" })})
+                            </span>
+                          </Label>
+                          <Input
+                            id="new-guest-phone"
+                            type="tel"
+                            placeholder={t("placeholderPhone")}
+                            value={newGuestPhone}
+                            onChange={(e) => setNewGuestPhone(e.target.value)}
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            {t("lblidType")}{" "}
+                            <span className="text-[10px] text-muted-foreground/60">
+                              ({t("optional", { defaultValue: "optional" })})
+                            </span>
+                          </Label>
+                          <Select value={newGuestIdType} onValueChange={setNewGuestIdType}>
+                            <SelectTrigger id="new-guest-id-type">
+                              <SelectValue placeholder={t("placeholderSelectIdType")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="National_ID">{t("idNationalId")}</SelectItem>
+                              <SelectItem value="Passport">{t("idPassport")}</SelectItem>
+                              <SelectItem value="Driver_License">{t("idDriverLicense")}</SelectItem>
+                              <SelectItem value="Military_ID">{t("idMilitaryId")}</SelectItem>
+                              <SelectItem value="Other">{t("idOther")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          {t("lblidNumber")}{" "}
+                          <span className="text-[10px] text-muted-foreground/60">
+                            ({t("optional", { defaultValue: "optional" })})
+                          </span>
+                        </Label>
+                        <Input
+                          id="new-guest-id-number"
+                          placeholder={t("placeholderIdNumber")}
+                          value={newGuestIdNumber}
+                          onChange={(e) => setNewGuestIdNumber(e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="grid gap-1.5">
-                      <Label>{t("lblidNumber")}</Label>
-                      <Input
-                        id="new-guest-id-number"
-                        placeholder={t("placeholderIdNumber")}
-                        value={newGuestIdNumber}
-                        onChange={(e) => setNewGuestIdNumber(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                  )}
+
                   <Button
                     type="button"
                     size="sm"
