@@ -64,6 +64,8 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { NationalityCombobox } from "@/components/shared/nationality-combobox";
+import { DEFAULT_NATIONALITY } from "@/lib/countries";
 import {
   BedSingle,
   BedDouble,
@@ -2759,18 +2761,11 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
           </div>
           <div>
             <Label className="text-xs font-semibold">{t("lblGuestNationality")}</Label>
-            <Input
-              value={form.directNationality}
-              onChange={(e) => {
-                // Strip all digit characters as the user types —
-                // nationality is a name (Ethiopian, Pakistani, etc.),
-                // never a number. Prevents junk like '25874174572' from
-                // being entered in this field by mistake.
-                const stripped = e.target.value.replace(/[0-9]/g, "");
-                onUpdate({ directNationality: stripped });
-              }}
-              inputMode="text"
+            <NationalityCombobox
+              value={form.directNationality || DEFAULT_NATIONALITY}
+              onValueChange={(v) => onUpdate({ directNationality: v })}
               placeholder={t("phGuestNationality")}
+              t={t}
               className="mt-1.5 h-11 rounded-xl"
             />
           </div>
