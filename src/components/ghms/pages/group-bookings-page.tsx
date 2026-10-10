@@ -657,9 +657,9 @@ export default function GroupBookingsPage() {
       setActionLoading(resId);
       await apiCheckin(resId);
       toast.success(t("toastCheckedIn", { defaultValue: "Guest checked in" }));
-      // Auto-transition: if group is CONFIRMED, set to IN_PROGRESS
+      // Auto-transition: if group is PENDING or CONFIRMED, set to IN_PROGRESS
       const group = groupBookings.find((g) => g.reservations?.some((r) => r.id === resId));
-      if (group && group.status === "CONFIRMED") {
+      if (group && (group.status === "PENDING" || group.status === "CONFIRMED")) {
         try { await apiUpdateGroupBooking(group.id, { status: "IN_PROGRESS" }); } catch { /* non-blocking */ }
       }
       fetchGroupBookings();
@@ -1079,21 +1079,22 @@ export default function GroupBookingsPage() {
             const completedCount = group.reservations?.filter((r) => r.status === "COMPLETED").length ?? 0;
 
             // ── Business rules based on group status ──
-            // PENDING     → can add guests, auto-assign, edit dates. Cannot check in.
-            // CONFIRMED   → can check in, pay, edit dates. Cannot add guests or auto-assign.
-            // IN_PROGRESS → can check out, pay, per-reservation actions. Cannot add guests or check in.
+            // PENDING     → can add guests, auto-assign, edit dates, change room/dates per guest.
+            //               Can also check in individual guests (auto-transitions to IN_PROGRESS).
+            // CONFIRMED   → can check in (all + individual), pay, edit dates. Cannot add guests.
+            // IN_PROGRESS → can check out, pay, per-reservation actions. Cannot add guests or check in new guests.
             // COMPLETED   → read-only (no actions).
             // CANCELLED   → read-only (only delete allowed).
             const gs = group.status;
             const canAddGuests = gs === "PENDING";
             const canAutoAssign = gs === "PENDING";
             const canEditDates = gs === "PENDING" || gs === "CONFIRMED";
-            const canCheckinAll = gs === "CONFIRMED" && upcomingCount > 0;
+            const canCheckinAll = (gs === "PENDING" || gs === "CONFIRMED") && upcomingCount > 0;
             const canCheckoutAll = gs === "IN_PROGRESS" && activeCount > 0;
-            const canPay = gs === "CONFIRMED" || gs === "IN_PROGRESS";
+            const canPay = gs === "PENDING" || gs === "CONFIRMED" || gs === "IN_PROGRESS";
             const canDelete = gs === "PENDING" || gs === "CANCELLED";
             const isReadOnly = gs === "COMPLETED" || gs === "CANCELLED";
-            // Per-reservation actions: only for non-read-only groups
+            // Per-reservation actions: available in PENDING, CONFIRMED, IN_PROGRESS
             const canPerResAction = !isReadOnly;
 
             return (
@@ -1135,6 +1136,7 @@ export default function GroupBookingsPage() {
                           {t("btnCheckinAll")} ({upcomingCount})
                         </Button>
                       )}
+                      {/* Group check-in also auto-transitions PENDING/CONFIRMED → IN_PROGRESS */}
                       {canCheckoutAll && (
                         <Button
                           variant="outline"
@@ -1355,8 +1357,8 @@ export default function GroupBookingsPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    {/* Check-in — only for UPCOMING + group must be CONFIRMED or IN_PROGRESS */}
-                                    {res.status === "UPCOMING" && canPerResAction && (gs === "CONFIRMED" || gs === "IN_PROGRESS") && (
+                                    {/* Check-in — for UPCOMING + group must be PENDING, CONFIRMED, or IN_PROGRESS */}
+                                    {res.status === "UPCOMING" && canPerResAction && (gs === "PENDING" || gs === "CONFIRMED" || gs === "IN_PROGRESS") && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
