@@ -731,7 +731,20 @@ export default function GuestsPage() {
               <Label htmlFor="guest-nationality">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
               <NationalityCombobox
                 value={form.nationality || DEFAULT_NATIONALITY}
-                onValueChange={(v) => setForm({ ...form, nationality: v })}
+                onValueChange={(v) => {
+                  // Auto-switch ID type based on nationality:
+                  // - Ethiopia → "National ID" (Ethiopian residents use FAN/National ID)
+                  // - Any other country → "Passport" (foreign visitors use their passport)
+                  // Only auto-switch if the user hasn't already entered an ID number
+                  // (don't override their existing ID number + type mid-entry).
+                  const isEthiopian = v === "Ethiopia";
+                  const newIdType = isEthiopian ? "National ID" : "Passport";
+                  if (!form.idNumber || form.idNumber.trim() === "") {
+                    setForm({ ...form, nationality: v, idType: newIdType });
+                  } else {
+                    setForm({ ...form, nationality: v });
+                  }
+                }}
                 placeholder="Select nationality"
                 t={t}
               />

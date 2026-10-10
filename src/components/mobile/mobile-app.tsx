@@ -2763,7 +2763,22 @@ function NewReservationForm({ form, onUpdate, guests, guestSearch, setGuestSearc
             <Label className="text-xs font-semibold">{t("lblGuestNationality")}</Label>
             <NationalityCombobox
               value={form.directNationality || DEFAULT_NATIONALITY}
-              onValueChange={(v) => onUpdate({ directNationality: v })}
+              onValueChange={(v) => {
+                // Auto-switch ID type based on nationality:
+                // - Ethiopia → "National ID" (Ethiopian residents use FAN/National ID)
+                // - Any other country → "Passport" (foreign visitors use their passport)
+                // The operator can still manually change it back — this is just a
+                // convenience default that saves a step for the most common case.
+                const isEthiopian = v === "Ethiopia";
+                const newIdType = isEthiopian ? "National ID" : "Passport";
+                // Only auto-switch if the user hasn't already entered an ID number
+                // (don't override their existing ID number + type mid-entry).
+                if (!form.directIdNumber || form.directIdNumber.trim() === "") {
+                  onUpdate({ directNationality: v, directIdType: newIdType });
+                } else {
+                  onUpdate({ directNationality: v });
+                }
+              }}
               placeholder={t("phGuestNationality")}
               t={t}
               className="mt-1.5 h-11 rounded-xl"

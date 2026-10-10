@@ -2411,7 +2411,18 @@ export default function ReservationsPage() {
                       <Label className="whitespace-nowrap">{t("labelNationality")} <span className="text-rose-500">*</span></Label>
                       <NationalityCombobox
                         value={newGuestForm.nationality || DEFAULT_NATIONALITY}
-                        onValueChange={(v) => setNewGuestForm({ ...newGuestForm, nationality: v })}
+                        onValueChange={(v) => {
+                          // Auto-switch ID type based on nationality:
+                          // - Ethiopia → "National ID" (Ethiopian residents use FAN/National ID)
+                          // - Any other country → "Passport" (foreign visitors use their passport)
+                          const isEthiopian = v === "Ethiopia";
+                          const newIdType = isEthiopian ? "National ID" : "Passport";
+                          if (!newGuestForm.idNumber || newGuestForm.idNumber.trim() === "") {
+                            setNewGuestForm({ ...newGuestForm, nationality: v, idType: newIdType });
+                          } else {
+                            setNewGuestForm({ ...newGuestForm, nationality: v });
+                          }
+                        }}
                         placeholder={t("placeholderNationality")}
                         t={t}
                       />
