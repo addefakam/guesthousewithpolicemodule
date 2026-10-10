@@ -14,7 +14,9 @@ import {
   apiCreateReservation,
   apiCreateGuest,
   apiUpdateReservation,
+  apiCancelReservation,
   apiCheckin,
+  apiCheckout,
   apiGroupCheckout,
   apiGroupPayment,
 } from "@/lib/api";
@@ -86,6 +88,13 @@ import {
   Check,
   BedDouble,
   AlertCircle,
+  CalendarClock,
+  ArrowRightLeft,
+  LogOut,
+  LogIn,
+  XCircle,
+  CalendarPlus,
+  Edit,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { isValidPhone, isValidEmail } from "@/lib/utils";
@@ -313,6 +322,23 @@ export default function GroupBookingsPage() {
 
   // Unlink reservation
   const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+
+  // Per-reservation actions (same as individual reservations page):
+  // - Change Dates (extend stay)
+  // - Shift Room (move to different room)
+  // - Early Checkout
+  // - Cancel reservation
+  // - Check-in
+  const [extendTarget, setExtendTarget] = useState<Reservation | null>(null);
+  const [extendForm, setExtendForm] = useState({ checkIn: "", checkOut: "" });
+  const [shiftTarget, setShiftTarget] = useState<Reservation | null>(null);
+  const [shiftRoomId, setShiftRoomId] = useState("");
+  const [earlyCheckoutTarget, setEarlyCheckoutTarget] = useState<Reservation | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Edit group dates dialog
+  const [editDatesTarget, setEditDatesTarget] = useState<GroupBooking | null>(null);
+  const [editDatesForm, setEditDatesForm] = useState({ startDate: "", endDate: "" });
 
   // Auto-assign
   const [autoAssigning, setAutoAssigning] = useState<string | null>(null);
@@ -621,6 +647,142 @@ export default function GroupBookingsPage() {
       toast.error(t("toastFailedRemoveReservation"));
     } finally {
       setUnlinkingId(null);
+    }
+  };
+
+  // ── Per-reservation actions (same features as individual reservations) ──
+
+  const handleResCheckin = async (resId: string) => {
+    try {
+      setActionLoading(resId);
+      await apiCheckin(resId);
+      toast.success(t("toastCheckedIn", { defaultValue: "Guest checked in" }));
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedCheckin", { defaultValue: "Failed to check in" }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResCancel = async (resId: string) => {
+    if (!confirm(t("confirmCancelReservation", { defaultValue: "Cancel this reservation? This cannot be undone." }))) return;
+    try {
+      setActionLoading(resId);
+      await apiCancelReservation(resId);
+      toast.success(t("toastReservationCancelled", { defaultValue: "Reservation cancelled" }));
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedCancel", { defaultValue: "Failed to cancel" }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleExtendSave = async () => {
+    if (!extendTarget) return;
+    if (!extendForm.checkIn || !extendForm.checkOut) {
+      toast.error(t("toastDatesRequired"));
+      return;
+    }
+    try {
+      setActionLoading(extendTarget.id);
+      await apiUpdateReservation(extendTarget.id, {
+        checkIn: extendForm.checkIn,
+        checkOut: extendForm.checkOut,
+      });
+      toast.success(t("toastDatesUpdated", { defaultValue: "Dates updated" }));
+      setExtendTarget(null);
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedUpdate", { defaultValue: "Failed to update" }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleShiftRoom = async () => {
+    if (!shiftTarget || !shiftRoomId) {
+      toast.error(t("toastSelectRoom", { defaultValue: "Please select a room" }));
+      return;
+    }
+    try {
+      setActionLoading(shiftTarget.id);
+      await apiUpdateReservation(shiftTarget.id, { roomId: shiftRoomId });
+      toast.success(t("toastRoomShifted", { defaultValue: "Room changed successfully" }));
+      setShiftTarget(null);
+      setShiftRoomId("");
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedShift", { defaultValue: "Failed to change room" }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEarlyCheckout = async () => {
+    if (!earlyCheckoutTarget) return;
+    try {
+      setActionLoading(earlyCheckoutTarget.id);
+      await apiCheckout(earlyCheckoutTarget.id);
+      toast.success(t("toastCheckedOut", { defaultValue: "Guest checked out" }));
+      setEarlyCheckoutTarget(null);
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedCheckout", { defaultValue: "Failed to check out" }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ── Edit group dates (propagates to all reservations) ──
+
+  const handleEditGroupDates = async () => {
+    if (!editDatesTarget) return;
+    if (!editDatesForm.startDate || !editDatesForm.endDate) {
+      toast.error(t("toastDatesRequired"));
+      return;
+    }
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (editDatesForm.startDate < todayStr) {
+      toast.error(t("toastStartPastDate", { defaultValue: "Start date cannot be in the past" }));
+      return;
+    }
+    if (editDatesForm.endDate <= editDatesForm.startDate) {
+      toast.error(t("toastEndBeforeStart", { defaultValue: "End date must be after start date" }));
+      return;
+    }
+    try {
+      setActionLoading("group-dates");
+      // Update the group's dates
+      await apiUpdateGroupBooking(editDatesTarget.id, {
+        startDate: editDatesForm.startDate,
+        endDate: editDatesForm.endDate,
+      });
+      // Propagate to all reservations in the group
+      const reservations = editDatesTarget.reservations || [];
+      for (const res of reservations) {
+        if (res.status === "UPCOMING" || res.status === "ACTIVE") {
+          await apiUpdateReservation(res.id, {
+            checkIn: editDatesForm.startDate,
+            checkOut: editDatesForm.endDate,
+          });
+        }
+      }
+      toast.success(t("toastGroupDatesUpdated", { defaultValue: "Group dates updated for all guests" }));
+      setEditDatesTarget(null);
+      fetchGroupBookings();
+      fetchRooms();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("toastFailedUpdate", { defaultValue: "Failed to update dates" }));
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -985,6 +1147,17 @@ export default function GroupBookingsPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                          setEditDatesTarget(group);
+                          setEditDatesForm({ startDate: group.startDate, endDate: group.endDate });
+                        }}
+                        title={t("btnEditDates", { defaultValue: "Edit Group Dates" })}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteTarget(group)}
                       >
@@ -1138,20 +1311,94 @@ export default function GroupBookingsPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                    disabled={unlinkingId === res.id}
-                                    onClick={(e) => { e.stopPropagation(); handleUnlinkReservation(res.id); }}
-                                    title={t("titleRemoveFromGroup")}
-                                  >
-                                    {unlinkingId === res.id ? (
-                                      <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <X className="h-3.5 w-3.5" />
+                                  <div className="flex items-center gap-1">
+                                    {/* Check-in — only for UPCOMING */}
+                                    {res.status === "UPCOMING" && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-emerald-600 hover:bg-emerald-50"
+                                        disabled={actionLoading === res.id}
+                                        onClick={(e) => { e.stopPropagation(); handleResCheckin(res.id); }}
+                                        title={t("btnCheckIn", { defaultValue: "Check In" })}
+                                      >
+                                        {actionLoading === res.id ? (
+                                          <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <LogIn className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
                                     )}
-                                  </Button>
+                                    {/* Check-out / Early Checkout — only for ACTIVE */}
+                                    {res.status === "ACTIVE" && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-amber-600 hover:bg-amber-50"
+                                        disabled={actionLoading === res.id}
+                                        onClick={(e) => { e.stopPropagation(); setEarlyCheckoutTarget(res); }}
+                                        title={t("btnEarlyCheckout", { defaultValue: "Check Out" })}
+                                      >
+                                        {actionLoading === res.id ? (
+                                          <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <LogOut className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    )}
+                                    {/* Change Dates — for UPCOMING or ACTIVE */}
+                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-sky-600 hover:bg-sky-50"
+                                        onClick={(e) => { e.stopPropagation(); setExtendTarget(res); setExtendForm({ checkIn: res.checkIn, checkOut: res.checkOut }); }}
+                                        title={t("btnChangeDates", { defaultValue: "Change Dates" })}
+                                      >
+                                        <CalendarClock className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                    {/* Shift Room — for UPCOMING or ACTIVE */}
+                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-violet-600 hover:bg-violet-50"
+                                        onClick={(e) => { e.stopPropagation(); setShiftTarget(res); setShiftRoomId(""); }}
+                                        title={t("btnShiftRoom", { defaultValue: "Change Room" })}
+                                      >
+                                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                    {/* Cancel — only for UPCOMING */}
+                                    {res.status === "UPCOMING" && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-rose-600 hover:bg-rose-50"
+                                        disabled={actionLoading === res.id}
+                                        onClick={(e) => { e.stopPropagation(); handleResCancel(res.id); }}
+                                        title={t("btnCancelReservation", { defaultValue: "Cancel Reservation" })}
+                                      >
+                                        <XCircle className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                    {/* Unlink from group — always available */}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                      disabled={unlinkingId === res.id}
+                                      onClick={(e) => { e.stopPropagation(); handleUnlinkReservation(res.id); }}
+                                      title={t("titleRemoveFromGroup")}
+                                    >
+                                      {unlinkingId === res.id ? (
+                                        <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <X className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1982,6 +2229,150 @@ export default function GroupBookingsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Change Dates Dialog (per-reservation) ── */}
+      <Dialog open={!!extendTarget} onOpenChange={(open) => { if (!open) setExtendTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" />
+              {t("dlgChangeDatesTitle", { defaultValue: "Change Reservation Dates" })}
+            </DialogTitle>
+            <DialogDescription>
+              {extendTarget?.guest?.name ?? ""} — Room {extendTarget?.room?.number ?? ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>{t("lblcheckinDate")}</Label>
+              <Input type="date" value={extendForm.checkIn} onChange={(e) => setExtendForm({ ...extendForm, checkIn: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("lblcheckoutDate")}</Label>
+              <Input type="date" value={extendForm.checkOut} onChange={(e) => setExtendForm({ ...extendForm, checkOut: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendTarget(null)}>{t("btnCancel")}</Button>
+            <Button onClick={handleExtendSave} disabled={actionLoading === extendTarget?.id}>
+              {actionLoading === extendTarget?.id ? (
+                <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              ) : null}
+              {t("btnSave", { defaultValue: "Save" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Shift Room Dialog (per-reservation) ── */}
+      <Dialog open={!!shiftTarget} onOpenChange={(open) => { if (!open) setShiftTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4" />
+              {t("dlgShiftRoomTitle", { defaultValue: "Change Room" })}
+            </DialogTitle>
+            <DialogDescription>
+              {shiftTarget?.guest?.name ?? ""} — currently in Room {shiftTarget?.room?.number ?? ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Label>{t("lblRoom")} <span className="text-destructive">*</span></Label>
+            <Select value={shiftRoomId} onValueChange={setShiftRoomId}>
+              <SelectTrigger><SelectValue placeholder={t("placeholderSelectRoom")} /></SelectTrigger>
+              <SelectContent>
+                {rooms.filter((r) => r.status === "AVAILABLE" && r.id !== shiftTarget?.roomId).map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.number}{r.name ? ` — ${r.name}` : ""}
+                    {r.type ? ` (${r.type})` : ""}
+                    {r.pricePerNight ? ` — ${r.pricePerNight} ETB` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShiftTarget(null)}>{t("btnCancel")}</Button>
+            <Button onClick={handleShiftRoom} disabled={!shiftRoomId || actionLoading === shiftTarget?.id}>
+              {actionLoading === shiftTarget?.id ? (
+                <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              ) : null}
+              {t("btnShift", { defaultValue: "Change Room" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Early Checkout Confirmation ── */}
+      <Dialog open={!!earlyCheckoutTarget} onOpenChange={(open) => { if (!open) setEarlyCheckoutTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogOut className="h-4 w-4 text-amber-600" />
+              {t("dlgCheckoutTitle", { defaultValue: "Check Out Guest" })}
+            </DialogTitle>
+            <DialogDescription>
+              {earlyCheckoutTarget?.guest?.name ?? ""} — Room {earlyCheckoutTarget?.room?.number ?? ""}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            {t("dlgCheckoutConfirm", { defaultValue: "This will check out the guest, mark the reservation as completed, and free up the room. Are you sure?" })}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEarlyCheckoutTarget(null)}>{t("btnCancel")}</Button>
+            <Button onClick={handleEarlyCheckout} disabled={actionLoading === earlyCheckoutTarget?.id} className="bg-amber-600 hover:bg-amber-700">
+              {actionLoading === earlyCheckoutTarget?.id ? (
+                <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              ) : null}
+              {t("btnConfirmCheckout", { defaultValue: "Check Out" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Group Dates Dialog ── */}
+      <Dialog open={!!editDatesTarget} onOpenChange={(open) => { if (!open) setEditDatesTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-4 w-4" />
+              {t("dlgEditGroupDatesTitle", { defaultValue: "Edit Group Dates" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("dlgEditGroupDatesDesc", { defaultValue: "Changes the check-in/check-out dates for ALL guests in this group." })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>{t("lblstartDate")} <span className="text-destructive">*</span></Label>
+              <Input
+                type="date"
+                value={editDatesForm.startDate}
+                onChange={(e) => setEditDatesForm({ ...editDatesForm, startDate: e.target.value })}
+                min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })()}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("lblendDate")} <span className="text-destructive">*</span></Label>
+              <Input
+                type="date"
+                value={editDatesForm.endDate}
+                onChange={(e) => setEditDatesForm({ ...editDatesForm, endDate: e.target.value })}
+                min={editDatesForm.startDate}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDatesTarget(null)}>{t("btnCancel")}</Button>
+            <Button onClick={handleEditGroupDates} disabled={actionLoading === "group-dates"}>
+              {actionLoading === "group-dates" ? (
+                <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              ) : null}
+              {t("btnUpdateDates", { defaultValue: "Update All Dates" })}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
