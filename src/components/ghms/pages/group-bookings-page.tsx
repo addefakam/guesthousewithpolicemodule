@@ -90,8 +90,6 @@ import {
   AlertCircle,
   CalendarClock,
   ArrowRightLeft,
-  LogOut,
-  LogIn,
   XCircle,
   CalendarPlus,
   Edit,
