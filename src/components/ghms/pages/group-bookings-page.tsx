@@ -2001,48 +2001,66 @@ export default function GroupBookingsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog
+      <Dialog
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("dlgDeleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-destructive" />
+              {t("dlgDeleteTitle")}
+            </DialogTitle>
+            <DialogDescription>
               {t("dlgDeleteDesc", { name: deleteTarget?.name || "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>{t("btnCancel")}</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+            >
+              {t("btnCancel")}
+            </Button>
+            <Button
+              variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
+              {deleting ? (
+                <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+              ) : null}
               {deleting ? t("btnDeleting") : t("btnDelete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Group Checkout Confirmation Dialog */}
-      <AlertDialog
+      <Dialog
         open={!!checkoutTarget}
         onOpenChange={(open) => { if (!open) setCheckoutTarget(null); }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <LogOut className="h-5 w-5 text-orange-500" />
               {t("dlgCheckoutTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               {t("dlgCheckoutDesc", { name: checkoutTarget?.name || "", count: checkoutTarget?.reservations?.filter((r: { status: string }) => r.status === "ACTIVE").length || 0 })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={checkingOut}>{t("btnCancel")}</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setCheckoutTarget(null)}
+              disabled={checkingOut}
+            >
+              {t("btnCancel")}
+            </Button>
+            <Button
               onClick={handleGroupCheckout}
               disabled={checkingOut}
               className="bg-orange-600 hover:bg-orange-700"
@@ -2052,12 +2070,14 @@ export default function GroupBookingsPage() {
                   <Loader2 className="h-4 w-4 animate-spin" /> {t("btnCheckingOut")}
                 </span>
               ) : (
-                t("btnCheckoutAll")
+                <span className="flex items-center gap-1.5">
+                  <LogOut className="h-4 w-4" /> {t("btnCheckoutAll")}
+                </span>
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Group Payment Dialog */}
       <Dialog open={paymentOpen} onOpenChange={(open) => {
@@ -2078,13 +2098,13 @@ export default function GroupBookingsPage() {
             <div className="grid gap-2">
               <Label>{t("lblAmount")} <span className="text-destructive">*</span></Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">ETB</span>
                 <Input
                   type="number"
                   min="1"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="pl-9"
+                  className="pl-12"
                   placeholder="0"
                 />
               </div>
