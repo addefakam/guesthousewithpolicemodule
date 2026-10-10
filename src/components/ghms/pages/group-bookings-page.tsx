@@ -510,8 +510,12 @@ export default function GroupBookingsPage() {
     }
   };
 
-  const handleAddReservation = async () => {
-    if (!addReservationGroupId || !resGuestId || !resRoomId) {
+  const handleAddReservation = async (overrideGuestId?: string) => {
+    // overrideGuestId is used when registering a NEW guest — the guest ID
+    // isn't in the resGuestId state yet (React state update is async),
+    // so the combined handler passes it directly.
+    const effectiveGuestId = overrideGuestId || resGuestId;
+    if (!addReservationGroupId || !effectiveGuestId || !resRoomId) {
       toast.error(t("toastSelectGuestRoom"));
       return;
     }
@@ -534,7 +538,7 @@ export default function GroupBookingsPage() {
     try {
       setAddingReservation(true);
       await apiCreateReservation({
-        guestId: resGuestId,
+        guestId: effectiveGuestId,
         roomId: resRoomId,
         checkIn: resCheckIn,
         checkOut: resCheckOut,
@@ -546,9 +550,23 @@ export default function GroupBookingsPage() {
         exceptionReason: resExceptionReason,
       });
       toast.success(t("toastReservationAdded"));
-      setAddReservationOpen(false);
-      resetReservationForm();
-      setAddReservationGroupId(null);
+      // DON'T close the dialog — reset the form so the operator can
+      // immediately add the next group member. The "Done" button at
+      // the bottom closes the dialog when they're finished.
+      // Only reset guest-specific fields, NOT the dates (they stay the
+      // same for the whole group).
+      setResGuestId("");
+      setResRoomId("");
+      setResSecondGuestName("");
+      setResSecondGuestPhone("");
+      setResSecondGuestIdNumber("");
+      setResExceptionallyReserved(false);
+      setResExceptionReason("");
+      setNewGuestName("");
+      setNewGuestPhone("");
+      setNewGuestIdNumber("");
+      setNewGuestIdType("");
+      setShowAdditionalDetails(false);
       fetchGroupBookings();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("toastFailedAddReservation"));
@@ -1566,7 +1584,7 @@ export default function GroupBookingsPage() {
               }}
               disabled={addingReservation || registeringGuest}
             >
-              {t("btnCancel")}
+              {t("btnDone", { defaultValue: "Done" })}
             </Button>
             <Button
               onClick={async () => {
@@ -1579,14 +1597,16 @@ export default function GroupBookingsPage() {
                   }
                   const guest = await handleRegisterGuest();
                   if (!guest) return; // error toast already shown by handleRegisterGuest
-                  // guest.id is now set as resGuestId — proceed with reservation
+                  // Pass the guest ID directly — don't rely on the async
+                  // resGuestId state update (which hasn't applied yet).
+                  if (!resRoomId) {
+                    toast.error(t("toastSelectGuestRoom"));
+                    return;
+                  }
+                  await handleAddReservation(guest.id);
+                } else {
+                  await handleAddReservation();
                 }
-                // Validate room selection (required in both modes)
-                if (!resRoomId) {
-                  toast.error(t("toastSelectGuestRoom"));
-                  return;
-                }
-                await handleAddReservation();
               }}
               disabled={
                 addingReservation ||
