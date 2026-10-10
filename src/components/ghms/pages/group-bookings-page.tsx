@@ -657,6 +657,11 @@ export default function GroupBookingsPage() {
       setActionLoading(resId);
       await apiCheckin(resId);
       toast.success(t("toastCheckedIn", { defaultValue: "Guest checked in" }));
+      // Auto-transition: if group is CONFIRMED, set to IN_PROGRESS
+      const group = groupBookings.find((g) => g.reservations?.some((r) => r.id === resId));
+      if (group && group.status === "CONFIRMED") {
+        try { await apiUpdateGroupBooking(group.id, { status: "IN_PROGRESS" }); } catch { /* non-blocking */ }
+      }
       fetchGroupBookings();
       fetchRooms();
     } catch (err: unknown) {
@@ -730,6 +735,15 @@ export default function GroupBookingsPage() {
       setActionLoading(earlyCheckoutTarget.id);
       await apiCheckout(earlyCheckoutTarget.id);
       toast.success(t("toastCheckedOut", { defaultValue: "Guest checked out" }));
+      // Auto-transition: if all reservations in the group are COMPLETED/CANCELLED,
+      // set the group status to COMPLETED
+      const group = groupBookings.find((g) => g.reservations?.some((r) => r.id === earlyCheckoutTarget.id));
+      if (group && group.status === "IN_PROGRESS") {
+        const allDone = group.reservations?.every((r) => r.status === "COMPLETED" || r.status === "CANCELLED" || r.id === earlyCheckoutTarget.id);
+        if (allDone) {
+          try { await apiUpdateGroupBooking(group.id, { status: "COMPLETED" }); } catch { /* non-blocking */ }
+        }
+      }
       setEarlyCheckoutTarget(null);
       fetchGroupBookings();
       fetchRooms();
@@ -1061,6 +1075,26 @@ export default function GroupBookingsPage() {
             const badgeClass = STATUS_COLORS[group.status] ?? "bg-gray-100 text-gray-700 border-gray-200";
             const numRes = resCount(group);
             const upcomingCount = group.reservations?.filter((r) => r.status === "UPCOMING").length ?? 0;
+            const activeCount = group.reservations?.filter((r) => r.status === "ACTIVE").length ?? 0;
+            const completedCount = group.reservations?.filter((r) => r.status === "COMPLETED").length ?? 0;
+
+            // ── Business rules based on group status ──
+            // PENDING     → can add guests, auto-assign, edit dates. Cannot check in.
+            // CONFIRMED   → can check in, pay, edit dates. Cannot add guests or auto-assign.
+            // IN_PROGRESS → can check out, pay, per-reservation actions. Cannot add guests or check in.
+            // COMPLETED   → read-only (no actions).
+            // CANCELLED   → read-only (only delete allowed).
+            const gs = group.status;
+            const canAddGuests = gs === "PENDING";
+            const canAutoAssign = gs === "PENDING";
+            const canEditDates = gs === "PENDING" || gs === "CONFIRMED";
+            const canCheckinAll = gs === "CONFIRMED" && upcomingCount > 0;
+            const canCheckoutAll = gs === "IN_PROGRESS" && activeCount > 0;
+            const canPay = gs === "CONFIRMED" || gs === "IN_PROGRESS";
+            const canDelete = gs === "PENDING" || gs === "CANCELLED";
+            const isReadOnly = gs === "COMPLETED" || gs === "CANCELLED";
+            // Per-reservation actions: only for non-read-only groups
+            const canPerResAction = !isReadOnly;
 
             return (
               <Card key={group.id} className="overflow-hidden">
@@ -1079,6 +1113,7 @@ export default function GroupBookingsPage() {
                       <Select
                         value={group.status}
                         onValueChange={(value) => handleStatusChange(group.id, value)}
+                        disabled={isReadOnly}
                       >
                         <SelectTrigger className="w-[140px] h-8 text-xs">
                           <SelectValue />
@@ -1089,7 +1124,7 @@ export default function GroupBookingsPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {upcomingCount > 0 && (
+                      {canCheckinAll && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1100,7 +1135,7 @@ export default function GroupBookingsPage() {
                           {t("btnCheckinAll")} ({upcomingCount})
                         </Button>
                       )}
-                      {group.reservations?.some((r) => r.status === "ACTIVE") && (
+                      {canCheckoutAll && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1111,7 +1146,7 @@ export default function GroupBookingsPage() {
                           <span className="hidden sm:inline">{t("btnCheckoutAll")}</span>
                         </Button>
                       )}
-                      {group.reservations?.some((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED" && r.status !== "DELETED") && (
+                      {canPay && group.reservations?.some((r) => r.status !== "COMPLETED" && r.status !== "CANCELLED" && r.status !== "DELETED") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1122,47 +1157,55 @@ export default function GroupBookingsPage() {
                           <span className="hidden sm:inline">{t("btnPay")}</span>
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-violet-600 border-violet-200 hover:bg-violet-50"
-                        disabled={autoAssigning === group.id}
-                        onClick={() => handleAutoAssign(group.id)}
-                      >
-                        {autoAssigning === group.id ? (
-                          <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                        ) : (
-                          <Wand2 className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        <span className="hidden sm:inline">{t("btnAutoAssign")}</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openAddReservation(group)}
-                      >
-                        <UserPlus className="h-3.5 w-3.5 mr-1" />
-                        <span className="hidden sm:inline">{t("btnAddGuest")}</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditDatesTarget(group);
-                          setEditDatesForm({ startDate: group.startDate, endDate: group.endDate });
-                        }}
-                        title={t("btnEditDates", { defaultValue: "Edit Group Dates" })}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(group)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {canAutoAssign && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-violet-600 border-violet-200 hover:bg-violet-50"
+                          disabled={autoAssigning === group.id}
+                          onClick={() => handleAutoAssign(group.id)}
+                        >
+                          {autoAssigning === group.id ? (
+                            <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                          ) : (
+                            <Wand2 className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          <span className="hidden sm:inline">{t("btnAutoAssign")}</span>
+                        </Button>
+                      )}
+                      {canAddGuests && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAddReservation(group)}
+                        >
+                          <UserPlus className="h-3.5 w-3.5 mr-1" />
+                          <span className="hidden sm:inline">{t("btnAddGuest")}</span>
+                        </Button>
+                      )}
+                      {canEditDates && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditDatesTarget(group);
+                            setEditDatesForm({ startDate: group.startDate, endDate: group.endDate });
+                          }}
+                          title={t("btnEditDates", { defaultValue: "Edit Group Dates" })}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(group)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1312,8 +1355,8 @@ export default function GroupBookingsPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-1">
-                                    {/* Check-in — only for UPCOMING */}
-                                    {res.status === "UPCOMING" && (
+                                    {/* Check-in — only for UPCOMING + group must be CONFIRMED or IN_PROGRESS */}
+                                    {res.status === "UPCOMING" && canPerResAction && (gs === "CONFIRMED" || gs === "IN_PROGRESS") && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1329,8 +1372,8 @@ export default function GroupBookingsPage() {
                                         )}
                                       </Button>
                                     )}
-                                    {/* Check-out / Early Checkout — only for ACTIVE */}
-                                    {res.status === "ACTIVE" && (
+                                    {/* Check-out — only for ACTIVE + group must be IN_PROGRESS */}
+                                    {res.status === "ACTIVE" && canPerResAction && gs === "IN_PROGRESS" && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1346,8 +1389,8 @@ export default function GroupBookingsPage() {
                                         )}
                                       </Button>
                                     )}
-                                    {/* Change Dates — for UPCOMING or ACTIVE */}
-                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                    {/* Change Dates — for UPCOMING or ACTIVE + non-read-only */}
+                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && canPerResAction && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1358,8 +1401,8 @@ export default function GroupBookingsPage() {
                                         <CalendarClock className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
-                                    {/* Shift Room — for UPCOMING or ACTIVE */}
-                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && (
+                                    {/* Shift Room — for UPCOMING or ACTIVE + non-read-only */}
+                                    {(res.status === "UPCOMING" || res.status === "ACTIVE") && canPerResAction && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1370,8 +1413,8 @@ export default function GroupBookingsPage() {
                                         <ArrowRightLeft className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
-                                    {/* Cancel — only for UPCOMING */}
-                                    {res.status === "UPCOMING" && (
+                                    {/* Cancel — only for UPCOMING + group must be CONFIRMED or PENDING */}
+                                    {res.status === "UPCOMING" && canPerResAction && (gs === "PENDING" || gs === "CONFIRMED") && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1383,21 +1426,23 @@ export default function GroupBookingsPage() {
                                         <XCircle className="h-3.5 w-3.5" />
                                       </Button>
                                     )}
-                                    {/* Unlink from group — always available */}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                      disabled={unlinkingId === res.id}
-                                      onClick={(e) => { e.stopPropagation(); handleUnlinkReservation(res.id); }}
-                                      title={t("titleRemoveFromGroup")}
-                                    >
-                                      {unlinkingId === res.id ? (
-                                        <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                      ) : (
-                                        <X className="h-3.5 w-3.5" />
-                                      )}
-                                    </Button>
+                                    {/* Unlink from group — only when PENDING or CONFIRMED (can't unlink from an active/completed group) */}
+                                    {(gs === "PENDING" || gs === "CONFIRMED") && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                        disabled={unlinkingId === res.id}
+                                        onClick={(e) => { e.stopPropagation(); handleUnlinkReservation(res.id); }}
+                                        title={t("titleRemoveFromGroup")}
+                                      >
+                                        {unlinkingId === res.id ? (
+                                          <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <X className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
