@@ -75,14 +75,14 @@ export function ExternalApiTab() {
       .catch(() => toast.error("Failed to create integration"));
   };
 
-  const revokeIntegration = (id: string) => {
-    if (!confirm("Revoke this integration? The external system will immediately lose access.")) return;
+  const deleteIntegration = (id: string) => {
+    if (!confirm("Delete this integration permanently?\n\nThe external system will immediately lose access and ALL API logs will be deleted.\nThis cannot be undone.")) return;
     fetch(`/api/admin/integrations/${id}`, { method: "DELETE" })
       .then(() => {
         fetchIntegrations();
-        toast.success("Integration revoked");
+        toast.success("Integration deleted permanently");
       })
-      .catch(() => toast.error("Failed to revoke"));
+      .catch(() => toast.error("Failed to delete"));
   };
 
   const copyKey = () => {
@@ -235,15 +235,13 @@ export function ExternalApiTab() {
                 >
                   Configure
                 </button>
-                {integ.status !== "REVOKED" && (
-                  <button
-                    onClick={() => revokeIntegration(integ.id)}
-                    className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600"
-                    title="Revoke access"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                <button
+                  onClick={() => deleteIntegration(integ.id)}
+                  className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600"
+                  title="Delete permanently"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           </div>

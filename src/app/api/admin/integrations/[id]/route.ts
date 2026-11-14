@@ -243,7 +243,7 @@ export async function DELETE(
     const { id } = await params;
     const existing = await db.integration.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: { id: true, name: true },
     });
     if (!existing) {
       return NextResponse.json(
@@ -252,20 +252,14 @@ export async function DELETE(
       );
     }
 
-    // Revoke = set status to REVOKED and wipe the apiKeyHash so the key
-    // can no longer validate, even if someone recovers it from a backup.
-    // We don't hard-delete the row — audit logs reference it via FK.
-    await db.integration.update({
-      where: { id },
-      data: {
-        status: "REVOKED",
-        apiKeyHash: `revoked:${id}`, // placeholder to satisfy @unique constraint
-      },
-    });
+    // HARD DELETE — completely removes the integration AND all its
+    // API logs (cascade delete via FK constraint). The external system
+    // immediately loses access (API key hash is gone).
+    await db.integration.delete({ where: { id } });
 
     return NextResponse.json({
       success: true,
-      data: { id, status: "REVOKED", revokedAt: new Date().toISOString() },
+      data: { id, deleted: true, name: existing.name },
     });
   } catch (error: unknown) {
     return handleError(error);
