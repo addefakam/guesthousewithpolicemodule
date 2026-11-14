@@ -62,8 +62,10 @@ export function ExternalApiTab() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.apiKey) {
-          setNewKey(data.apiKey);
+        // API returns { success, data: { ..., apiKey: "ghms_live_xxx" } }
+        const key = data?.data?.apiKey || data?.apiKey;
+        if (key) {
+          setNewKey(key);
           setCopied(false);
         }
         fetchIntegrations();
@@ -84,11 +86,39 @@ export function ExternalApiTab() {
   };
 
   const copyKey = () => {
-    if (newKey) {
-      navigator.clipboard.writeText(newKey);
+    if (!newKey) return;
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(newKey).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }).catch(() => {
+        // Fallback: use textarea + execCommand
+        fallbackCopy(newKey);
+      });
+    } else {
+      fallbackCopy(newKey);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand("copy");
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
+      toast.success("API key copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy automatically — select the text and press Ctrl+C");
     }
+    document.body.removeChild(textarea);
   };
 
   if (loading) {
@@ -120,17 +150,28 @@ export function ExternalApiTab() {
             <span className="text-sm font-bold text-amber-900">⚠️ Copy your API key now — it won't be shown again!</span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-white px-3 py-2 text-xs font-mono text-slate-900 break-all border border-amber-200">
-              {newKey}
-            </code>
+            <input
+              type="text"
+              readOnly
+              value={newKey}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="flex-1 rounded-lg bg-white px-3 py-2 text-xs font-mono text-slate-900 border border-amber-200 outline-none focus:ring-2 focus:ring-amber-400 select-all"
+              style={{ wordBreak: "break-all" }}
+            />
             <button
               onClick={copyKey}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white hover:bg-amber-600"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
               title="Copy to clipboard"
             >
               {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
+          {copied && (
+            <p className="mt-1.5 text-xs font-medium text-emerald-600">✓ Copied to clipboard!</p>
+          )}
+          <p className="mt-1.5 text-[11px] text-amber-700">
+            Tip: You can also select the text above and press Ctrl+C / Cmd+C
+          </p>
           <button
             onClick={() => setNewKey(null)}
             className="mt-2 text-xs font-medium text-amber-700 hover:text-amber-900"
