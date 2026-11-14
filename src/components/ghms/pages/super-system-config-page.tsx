@@ -1962,8 +1962,8 @@ export default function SuperSystemConfigPage() {
       </div>
 
       {/* ── Tab Bar ── */}
-      <div className="border-b border-slate-200 mb-6 overflow-x-auto scrollbar-none">
-        <nav className="flex gap-0 min-w-max" role="tablist" aria-label="Configuration sections">
+      <div className="border-b border-slate-200 mb-6">
+        <nav className="flex flex-wrap gap-0" role="tablist" aria-label="Configuration sections">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
